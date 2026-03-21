@@ -20,7 +20,7 @@ describe('requestLoggerMiddleware', () => {
             originalUrl: '/api/v1/test',
             id: 'req-123',
         }
-        
+
         mockResponse = {
             statusCode: 200,
             on: jest.fn((event, callback) => {
@@ -36,12 +36,12 @@ describe('requestLoggerMiddleware', () => {
 
     it('should attach finish event and log on completion', () => {
         requestLoggerMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
-        
+
         expect(mockResponse.on).toHaveBeenCalledWith('finish', expect.any(Function))
         expect(nextFunction).toHaveBeenCalled()
-        
+
         finishCallback()
-        
+
         expect(logger.info).toHaveBeenCalledWith(
             'HTTP GET /api/v1/test',
             expect.objectContaining({
@@ -51,8 +51,8 @@ describe('requestLoggerMiddleware', () => {
                     path: '/api/v1/test',
                     status_code: 200,
                     duration_ms: expect.any(Number),
-                })
-            })
+                }),
+            }),
         )
     })
 })

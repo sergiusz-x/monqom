@@ -75,12 +75,13 @@ With Mau, you can deploy your application in just a few clicks, allowing you to 
 This project uses [Bruno](https://www.usebruno.com/) as the primary API client for local development and testing.
 
 To use the Bruno workspace:
+
 1. Download and install Bruno.
 2. Open Bruno and select **Open Collection**.
 3. Navigate to the `bruno` directory in this project and select it.
 4. Select the `Local` environment in the top right corner.
 
-*Note: Every new or changed endpoint must be accompanied by corresponding updates to the Bruno collection.*
+_Note: Every new or changed endpoint must be accompanied by corresponding updates to the Bruno collection._
 
 ## Resources
 

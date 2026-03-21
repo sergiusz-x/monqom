@@ -28,7 +28,7 @@ describe('requestIdMiddleware', () => {
     it('should reuse existing x-request-id from headers if provided', () => {
         mockRequest.headers = { 'x-request-id': 'custom-id-123' }
         requestIdMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
-        
+
         expect(mockRequest.id).toBe('custom-id-123')
         expect(mockResponse.setHeader).toHaveBeenCalledWith('x-request-id', 'custom-id-123')
         expect(nextFunction).toHaveBeenCalled()

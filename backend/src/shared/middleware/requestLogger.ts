@@ -10,7 +10,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
 
     res.on('finish', () => {
         const duration = Date.now() - start
-        
+
         logger.info(`HTTP ${req.method} ${req.originalUrl}`, {
             request_id: req.id,
             context: {
@@ -18,7 +18,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
                 path: req.originalUrl,
                 status_code: res.statusCode,
                 duration_ms: duration,
-            }
+            },
         })
     })
 

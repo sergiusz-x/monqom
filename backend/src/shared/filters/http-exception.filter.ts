@@ -1,37 +1,31 @@
-import {
-    ExceptionFilter,
-    Catch,
-    ArgumentsHost,
-    HttpException,
-    HttpStatus,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
-import { logger } from '../utils/logger';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
+import { Request, Response } from 'express'
+import { logger } from '../utils/logger'
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
     catch(exception: unknown, host: ArgumentsHost) {
-        const ctx = host.switchToHttp();
-        const response = ctx.getResponse<Response>();
-        const request = ctx.getRequest<Request>();
+        const ctx = host.switchToHttp()
+        const response = ctx.getResponse<Response>()
+        const request = ctx.getRequest<Request>()
 
-        let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-        let message: string | string[] = 'Internal server error';
-        let error = 'Internal Server Error';
+        let statusCode = HttpStatus.INTERNAL_SERVER_ERROR
+        let message: string | string[] = 'Internal server error'
+        let error = 'Internal Server Error'
 
         if (exception instanceof HttpException) {
-            statusCode = exception.getStatus();
-            const exceptionResponse = exception.getResponse();
+            statusCode = exception.getStatus()
+            const exceptionResponse = exception.getResponse()
 
             if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-                const res = exceptionResponse as Record<string, any>;
-                message = res.message || exception.message;
-                error = res.error || exception.name;
+                const res = exceptionResponse as Record<string, any>
+                message = res.message || exception.message
+                error = res.error || exception.name
             } else if (typeof exceptionResponse === 'string') {
-                message = exceptionResponse;
+                message = exceptionResponse
             } else {
-                message = exception.message;
-                error = exception.name;
+                message = exception.message
+                error = exception.name
             }
         } else if (exception instanceof Error) {
             // Keep default "Internal server error" message for generic errors
@@ -42,10 +36,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
             statusCode,
             message,
             error,
-        };
+        }
 
         if (process.env.NODE_ENV !== 'production' && exception instanceof Error) {
-            responseBody.stack = exception.stack;
+            responseBody.stack = exception.stack
         }
 
         logger.error(exception instanceof Error ? exception.message : String(exception), {
@@ -56,8 +50,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 status_code: statusCode,
                 stack: exception instanceof Error ? exception.stack : undefined,
             },
-        });
+        })
 
-        response.status(statusCode).json(responseBody);
+        response.status(statusCode).json(responseBody)
     }
 }

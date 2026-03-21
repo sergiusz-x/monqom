@@ -13,7 +13,7 @@ async function bootstrap() {
     app.use(helmet())
     app.use(compression())
     app.enableCors()
-    
+
     // Apply observability middlewares globally
     app.use(requestIdMiddleware)
     app.use(requestLoggerMiddleware)
