@@ -5,6 +5,7 @@ import helmet from 'helmet'
 import compression from 'compression'
 import { requestIdMiddleware } from './shared/middleware/requestId'
 import { requestLoggerMiddleware } from './shared/middleware/requestLogger'
+import { AllExceptionsFilter } from './shared/filters/http-exception.filter'
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule)
@@ -20,6 +21,8 @@ async function bootstrap() {
     app.setGlobalPrefix('api/v1', {
         exclude: ['health', 'ready'],
     })
+
+    app.useGlobalFilters(new AllExceptionsFilter())
 
     const configService = app.get(ConfigService)
     const port = configService.get<number>('env.port', 3000)
