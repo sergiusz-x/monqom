@@ -21,13 +21,4 @@ export class HealthController {
     checkReady() {
         return 'OK'
     }
-
-    @Get('api/v1/health')
-    @HealthCheck()
-    checkApiHealth() {
-        return {
-            status: 'ok',
-            timestamp: new Date().toISOString(),
-        }
-    }
 }
