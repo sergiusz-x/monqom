@@ -5,6 +5,7 @@ import { logger } from '../utils/logger'
 jest.mock('../utils/logger', () => ({
     logger: {
         error: jest.fn(),
+        warn: jest.fn(),
     },
 }))
 
@@ -55,7 +56,7 @@ describe('AllExceptionsFilter', () => {
                 error: 'HttpException',
             }),
         )
-        expect(logger.error).toHaveBeenCalled()
+        expect(logger.error).not.toHaveBeenCalled()
     })
 
     it('should handle BadRequestException with validation format', () => {
@@ -91,7 +92,14 @@ describe('AllExceptionsFilter', () => {
                 error: 'Internal Server Error',
             }),
         )
-        expect(logger.error).toHaveBeenCalledWith('Some unexpected error', expect.any(Object))
+        expect(logger.error).toHaveBeenCalledWith(
+            'GET /test 500 Internal server error',
+            expect.objectContaining({
+                context_name: 'ExceptionsHandler',
+                request_id: 'test-req-id',
+                stack: expect.any(String),
+            }),
+        )
     })
 
     it('should include stack trace in development mode', () => {

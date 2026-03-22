@@ -10,16 +10,23 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
 
     res.on('finish', () => {
         const duration = Date.now() - start
-
-        logger.info(`HTTP ${req.method} ${req.originalUrl}`, {
+        const message = `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`
+        const metadata = {
+            context_name: 'HTTP',
             request_id: req.id,
-            context: {
-                method: req.method,
-                path: req.originalUrl,
-                status_code: res.statusCode,
-                duration_ms: duration,
-            },
-        })
+        }
+
+        if (res.statusCode >= 500) {
+            logger.error(message, metadata)
+            return
+        }
+
+        if (res.statusCode >= 400) {
+            logger.warn(message, metadata)
+            return
+        }
+
+        logger.info(message, metadata)
     })
 
     next()

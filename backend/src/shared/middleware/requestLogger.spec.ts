@@ -5,6 +5,8 @@ import { logger } from '../utils/logger'
 jest.mock('../utils/logger', () => ({
     logger: {
         info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
     },
 }))
 
@@ -34,7 +36,7 @@ describe('requestLoggerMiddleware', () => {
         jest.clearAllMocks()
     })
 
-    it('should attach finish event and log on completion', () => {
+    it('should log successful requests as info', () => {
         requestLoggerMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
 
         expect(mockResponse.on).toHaveBeenCalledWith('finish', expect.any(Function))
@@ -43,15 +45,25 @@ describe('requestLoggerMiddleware', () => {
         finishCallback()
 
         expect(logger.info).toHaveBeenCalledWith(
-            'HTTP GET /api/v1/test',
+            expect.stringMatching(/^GET \/api\/v1\/test 200 \d+ms$/),
             expect.objectContaining({
+                context_name: 'HTTP',
                 request_id: 'req-123',
-                context: expect.objectContaining({
-                    method: 'GET',
-                    path: '/api/v1/test',
-                    status_code: 200,
-                    duration_ms: expect.any(Number),
-                }),
+            }),
+        )
+    })
+
+    it('should log client errors as warnings', () => {
+        mockResponse.statusCode = 409
+
+        requestLoggerMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
+        finishCallback()
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            expect.stringMatching(/^GET \/api\/v1\/test 409 \d+ms$/),
+            expect.objectContaining({
+                context_name: 'HTTP',
+                request_id: 'req-123',
             }),
         )
     })

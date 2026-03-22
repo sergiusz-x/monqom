@@ -5,6 +5,7 @@ export default registerAs('env', () => {
         port: parseInt(process.env.PORT || '3000', 10),
         nodeEnv: process.env.NODE_ENV || 'development',
         databaseUrl: process.env.DATABASE_URL,
+        corsAllowedOrigins: parseCorsAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
     }
 
     // Simplistic MVP validation mechanism
@@ -14,3 +15,14 @@ export default registerAs('env', () => {
 
     return env
 })
+
+function parseCorsAllowedOrigins(input?: string): string[] {
+    if (!input) {
+        return []
+    }
+
+    return input
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0)
+}

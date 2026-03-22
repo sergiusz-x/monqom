@@ -47,16 +47,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
             responseBody.stack = exception.stack
         }
 
-        logger.error(exception instanceof Error ? exception.message : String(exception), {
-            request_id: request.id,
-            context: {
-                method: request.method,
-                path: request.originalUrl,
-                status_code: statusCode,
-                stack: exception instanceof Error ? exception.stack : undefined,
-            },
-        })
+        if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+            logger.error(
+                `${request.method} ${request.originalUrl} ${statusCode} ${formatLogMessage(message)}`,
+                {
+                    context_name: 'ExceptionsHandler',
+                    request_id: request.id,
+                    stack: exception instanceof Error ? exception.stack : undefined,
+                },
+            )
+        }
 
         response.status(statusCode).json(responseBody)
     }
+}
+
+function formatLogMessage(message: string | string[]): string {
+    if (Array.isArray(message)) {
+        return message.join('; ')
+    }
+
+    return message
 }
