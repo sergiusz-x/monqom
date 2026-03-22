@@ -31,6 +31,11 @@ export interface VerificationTokenValidationInput {
     token?: unknown
 }
 
+export interface ResetPasswordValidationInput {
+    token?: unknown
+    newPassword?: unknown
+}
+
 export interface RegistrationValidationResult {
     email?: string
     name?: string
@@ -51,6 +56,12 @@ export interface LoginValidationResult {
 
 export interface VerificationTokenValidationResult {
     token?: string
+    errors: string[]
+}
+
+export interface ResetPasswordValidationResult {
+    token?: string
+    newPassword?: string
     errors: string[]
 }
 
@@ -126,6 +137,26 @@ export function validateVerificationTokenInput(
 
     return {
         token,
+        errors,
+    }
+}
+
+export function validateResetPasswordInput(
+    input: ResetPasswordValidationInput,
+): ResetPasswordValidationResult {
+    const { token, errors } = validateVerificationTokenInput(input)
+
+    let newPassword: string | undefined
+    if (typeof input.newPassword !== 'string' || input.newPassword.length === 0) {
+        errors.push('New password is required')
+    } else {
+        newPassword = input.newPassword
+        errors.push(...validatePassword(newPassword))
+    }
+
+    return {
+        token,
+        newPassword,
         errors,
     }
 }

@@ -16,6 +16,7 @@ interface StoredUser {
     name: string
     passwordHash: string
     emailVerified: boolean
+    sessionVersion: number
     createdAt: Date
     updatedAt: Date
 }
@@ -352,6 +353,7 @@ async function createStoredUser(input: {
             type: argon2.argon2id,
         }),
         emailVerified: input.emailVerified,
+        sessionVersion: 0,
         createdAt: now,
         updatedAt: now,
     }

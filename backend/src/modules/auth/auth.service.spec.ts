@@ -22,6 +22,9 @@ describe('AuthService', () => {
             | 'findEmailVerificationTokenWithUser'
             | 'consumeVerificationTokensAndMarkEmailVerified'
             | 'createVerificationTokenForUser'
+            | 'createPasswordResetTokenForUser'
+            | 'findPasswordResetTokenWithUser'
+            | 'resetPasswordWithToken'
             | 'createUserAuditEvent'
         >
     >
@@ -35,6 +38,9 @@ describe('AuthService', () => {
             findEmailVerificationTokenWithUser: jest.fn(),
             consumeVerificationTokensAndMarkEmailVerified: jest.fn(),
             createVerificationTokenForUser: jest.fn(),
+            createPasswordResetTokenForUser: jest.fn(),
+            findPasswordResetTokenWithUser: jest.fn(),
+            resetPasswordWithToken: jest.fn(),
             createUserAuditEvent: jest.fn(),
         }
 
@@ -228,6 +234,7 @@ describe('AuthService', () => {
             email: 'test@example.com',
             name: 'Ada Lovelace',
             emailVerified: true,
+            sessionVersion: 0,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })
@@ -500,6 +507,173 @@ describe('AuthService', () => {
 
         expect(authRepository.createVerificationTokenForUser).not.toHaveBeenCalled()
     })
+
+    it('creates a password reset token for an existing user and logs it', async () => {
+        const now = Date.now()
+
+        process.env.NODE_ENV = 'development'
+        authRepository.findUserByEmail.mockResolvedValue(createMockUser({ emailVerified: true }))
+        authRepository.createPasswordResetTokenForUser.mockResolvedValue(undefined)
+
+        await expect(service.forgotPassword({ email: ' Test@Example.com ' })).resolves.toEqual({
+            message:
+                'If an account with that email exists, a password reset link has been generated',
+        })
+
+        const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
+
+        expect(createCall.userId).toBe('user-1')
+        expect(createCall.passwordResetToken).toMatch(/^[a-f0-9]{64}$/)
+        expect(
+            Math.abs(createCall.passwordResetTokenExpiresAt.getTime() - (now + 60 * 60 * 1000)),
+        ).toBeLessThanOrEqual(5000)
+        expect(logger.info).toHaveBeenCalledWith(
+            'Password reset token generated for forgot-password',
+            expect.objectContaining({
+                context_name: 'AuthService',
+                password_reset_token: createCall.passwordResetToken,
+            }),
+        )
+    })
+
+    it('masks password reset token metadata outside local development', async () => {
+        authRepository.findUserByEmail.mockResolvedValue(createMockUser({ emailVerified: true }))
+        authRepository.createPasswordResetTokenForUser.mockResolvedValue(undefined)
+
+        await service.forgotPassword({ email: 'test@example.com' })
+
+        const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
+        const expectedFingerprint = createHash('sha256')
+            .update(createCall.passwordResetToken)
+            .digest('hex')
+
+        expect(logger.info).toHaveBeenCalledWith(
+            'Password reset token generated for forgot-password',
+            expect.objectContaining({
+                context_name: 'AuthService',
+                password_reset_token_last6: createCall.passwordResetToken.slice(-6),
+                password_reset_token_fingerprint: expectedFingerprint,
+            }),
+        )
+
+        const passwordResetLogCall = (logger.info as jest.Mock).mock.calls.find(
+            ([message]) => message === 'Password reset token generated for forgot-password',
+        )
+        expect(passwordResetLogCall?.[1]).toEqual(
+            expect.not.objectContaining({
+                password_reset_token: expect.any(String),
+            }),
+        )
+    })
+
+    it('returns a generic forgot-password response for unknown accounts', async () => {
+        authRepository.findUserByEmail.mockResolvedValue(null)
+
+        await expect(service.forgotPassword({ email: 'missing@example.com' })).resolves.toEqual({
+            message:
+                'If an account with that email exists, a password reset link has been generated',
+        })
+
+        expect(authRepository.createPasswordResetTokenForUser).not.toHaveBeenCalled()
+    })
+
+    it('resets a password with a valid token and invalidates sessions', async () => {
+        const now = Date.now()
+
+        authRepository.findPasswordResetTokenWithUser.mockResolvedValue(
+            createMockPasswordResetToken(),
+        )
+        authRepository.resetPasswordWithToken.mockResolvedValue(true)
+
+        await expect(
+            service.resetPassword({
+                token: '  password-reset-token  ',
+                newPassword: 'OceanStoneBridge!1234',
+            }),
+        ).resolves.toEqual({
+            message: 'Password reset successfully',
+        })
+
+        expect(authRepository.findPasswordResetTokenWithUser).toHaveBeenCalledWith(
+            'password-reset-token',
+        )
+
+        const resetCall = authRepository.resetPasswordWithToken.mock.calls[0][0]
+
+        expect(resetCall.tokenId).toBe('password-reset-token-1')
+        expect(resetCall.userId).toBe('user-1')
+        expect(Math.abs(resetCall.resetAt.getTime() - now)).toBeLessThanOrEqual(5000)
+        await expect(argon2.verify(resetCall.passwordHash, 'OceanStoneBridge!1234')).resolves.toBe(
+            true,
+        )
+    })
+
+    it('rejects invalid reset-password input before hitting the repository', async () => {
+        try {
+            await service.resetPassword({
+                token: '   ',
+                newPassword: 'weak',
+            })
+            fail('Expected resetPassword to throw a BadRequestException')
+        } catch (error) {
+            expect(error).toBeInstanceOf(BadRequestException)
+            const response = (error as BadRequestException).getResponse() as {
+                message: string[]
+            }
+
+            expect(response.message).toEqual([
+                'Token is required',
+                'Password must be at least 16 characters long',
+                'Password must contain at least one uppercase letter',
+                'Password must contain at least one number',
+                'Password must contain at least one special character',
+            ])
+        }
+
+        expect(authRepository.findPasswordResetTokenWithUser).not.toHaveBeenCalled()
+        expect(authRepository.resetPasswordWithToken).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        ['missing token', null],
+        [
+            'used token',
+            createMockPasswordResetToken({
+                usedAt: new Date('2026-03-23T10:00:00.000Z'),
+            }),
+        ],
+        [
+            'expired token',
+            createMockPasswordResetToken({
+                expiresAt: new Date('2026-03-21T10:00:00.000Z'),
+            }),
+        ],
+    ])('rejects %s during password reset', async (_, tokenRecord) => {
+        authRepository.findPasswordResetTokenWithUser.mockResolvedValue(tokenRecord)
+
+        await expect(
+            service.resetPassword({
+                token: 'password-reset-token',
+                newPassword: 'OceanStoneBridge!1234',
+            }),
+        ).rejects.toThrow('Password reset token is invalid or expired')
+
+        expect(authRepository.resetPasswordWithToken).not.toHaveBeenCalled()
+    })
+
+    it('rejects password reset if the token is consumed during the update transaction', async () => {
+        authRepository.findPasswordResetTokenWithUser.mockResolvedValue(
+            createMockPasswordResetToken(),
+        )
+        authRepository.resetPasswordWithToken.mockResolvedValue(false)
+
+        await expect(
+            service.resetPassword({
+                token: 'password-reset-token',
+                newPassword: 'OceanStoneBridge!1234',
+            }),
+        ).rejects.toThrow('Password reset token is invalid or expired')
+    })
 })
 
 function createMockUser(
@@ -509,6 +683,7 @@ function createMockUser(
         name: string
         passwordHash: string
         emailVerified: boolean
+        sessionVersion: number
         createdAt: Date
         updatedAt: Date
     }> = {},
@@ -519,6 +694,7 @@ function createMockUser(
         name: 'Ada Lovelace',
         passwordHash: 'hash',
         emailVerified: false,
+        sessionVersion: 0,
         createdAt: new Date('2026-03-22T10:00:00.000Z'),
         updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         ...overrides,
@@ -546,6 +722,31 @@ function createMockVerificationToken(
         createdAt: new Date('2026-03-22T10:00:00.000Z'),
         updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         user: createMockUser(),
+        ...overrides,
+    }
+}
+
+function createMockPasswordResetToken(
+    overrides: Partial<{
+        id: string
+        userId: string
+        token: string
+        expiresAt: Date
+        usedAt: Date | null
+        createdAt: Date
+        updatedAt: Date
+        user: ReturnType<typeof createMockUser>
+    }> = {},
+) {
+    return {
+        id: 'password-reset-token-1',
+        userId: 'user-1',
+        token: 'password-reset-token',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        usedAt: null,
+        createdAt: new Date('2026-03-22T10:00:00.000Z'),
+        updatedAt: new Date('2026-03-22T10:00:00.000Z'),
+        user: createMockUser({ emailVerified: true }),
         ...overrides,
     }
 }

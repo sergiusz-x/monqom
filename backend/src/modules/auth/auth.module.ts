@@ -34,6 +34,14 @@ export class AuthModule implements NestModule {
                 method: RequestMethod.POST,
             },
             {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.forgotPassword}`,
+                method: RequestMethod.POST,
+            },
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.resetPassword}`,
+                method: RequestMethod.POST,
+            },
+            {
                 path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.verifyEmail}`,
                 method: RequestMethod.POST,
             },

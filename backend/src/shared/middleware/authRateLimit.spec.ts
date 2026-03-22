@@ -57,15 +57,15 @@ describe('AuthRateLimitMiddleware', () => {
         expect(statusMock).not.toHaveBeenCalled()
     })
 
-    it('tracks rate limits separately for register and resend-verification', () => {
+    it('tracks rate limits separately for register and forgot-password', () => {
         const registerRequest = createRequest({
             ip: '127.0.0.1',
             path: '/api/v1/auth/register',
             trustProxy: false,
         })
-        const resendRequest = createRequest({
+        const forgotPasswordRequest = createRequest({
             ip: '127.0.0.1',
-            path: '/api/v1/auth/resend-verification',
+            path: '/api/v1/auth/forgot-password',
             trustProxy: false,
         })
 
@@ -73,7 +73,7 @@ describe('AuthRateLimitMiddleware', () => {
             middleware.use(registerRequest, response as Response, nextFunction)
         }
 
-        middleware.use(resendRequest, response as Response, nextFunction)
+        middleware.use(forgotPasswordRequest, response as Response, nextFunction)
 
         expect(nextFunction).toHaveBeenCalledTimes(6)
         expect(statusMock).not.toHaveBeenCalled()
@@ -97,6 +97,28 @@ describe('AuthRateLimitMiddleware', () => {
         expect(jsonMock).toHaveBeenCalledWith({
             statusCode: 429,
             message: 'Too many email verification attempts. Please try again later.',
+            error: 'Too Many Requests',
+        })
+    })
+
+    it('returns an endpoint-specific message for password reset requests', () => {
+        const request = createRequest({
+            ip: '127.0.0.1',
+            path: '/api/v1/auth/forgot-password',
+            trustProxy: false,
+        })
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            middleware.use(request, response as Response, nextFunction)
+        }
+
+        middleware.use(request, response as Response, nextFunction)
+
+        expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '900')
+        expect(statusMock).toHaveBeenCalledWith(429)
+        expect(jsonMock).toHaveBeenCalledWith({
+            statusCode: 429,
+            message: 'Too many password reset requests. Please try again later.',
             error: 'Too Many Requests',
         })
     })

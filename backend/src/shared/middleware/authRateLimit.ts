@@ -33,6 +33,20 @@ const AUTH_RATE_LIMIT_POLICIES: Array<{
         },
     },
     {
+        routeSuffix: '/auth/forgot-password',
+        policy: {
+            key: 'forgot-password',
+            message: 'Too many password reset requests. Please try again later.',
+        },
+    },
+    {
+        routeSuffix: '/auth/reset-password',
+        policy: {
+            key: 'reset-password',
+            message: 'Too many password reset attempts. Please try again later.',
+        },
+    },
+    {
         routeSuffix: '/auth/resend-verification',
         policy: {
             key: 'resend-verification',

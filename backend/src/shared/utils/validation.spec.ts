@@ -3,6 +3,7 @@ import {
     validateLoginInput,
     validatePassword,
     validateRegistrationInput,
+    validateResetPasswordInput,
     validateVerificationTokenInput,
 } from './validation'
 
@@ -91,6 +92,38 @@ describe('validation utils', () => {
         expect(validateVerificationTokenInput({ token: '  abc123  ' })).toEqual({
             token: 'abc123',
             errors: [],
+        })
+    })
+
+    it('validates password reset input with the same password rules as registration', () => {
+        expect(
+            validateResetPasswordInput({
+                token: '  reset-token  ',
+                newPassword: 'GraniteHarbor!1234',
+            }),
+        ).toEqual({
+            token: 'reset-token',
+            newPassword: 'GraniteHarbor!1234',
+            errors: [],
+        })
+    })
+
+    it('returns clear validation errors for invalid password reset input', () => {
+        expect(
+            validateResetPasswordInput({
+                token: '   ',
+                newPassword: 'weak',
+            }),
+        ).toEqual({
+            token: undefined,
+            newPassword: 'weak',
+            errors: [
+                'Token is required',
+                'Password must be at least 16 characters long',
+                'Password must contain at least one uppercase letter',
+                'Password must contain at least one number',
+                'Password must contain at least one special character',
+            ],
         })
     })
 })

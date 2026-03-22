@@ -23,6 +23,7 @@ interface StoredUser {
     name: string
     passwordHash: string
     emailVerified: boolean
+    sessionVersion: number
     createdAt: Date
     updatedAt: Date
 }
@@ -589,6 +590,7 @@ function createPrismaMock(): PrismaMock {
                     name: data.name,
                     passwordHash: data.passwordHash,
                     emailVerified: data.emailVerified,
+                    sessionVersion: 0,
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }

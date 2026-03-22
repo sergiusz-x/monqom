@@ -1,6 +1,7 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common'
 import type { Request } from 'express'
 import type { SessionData } from 'express-session'
+import { AuthRepository } from '../../modules/auth/auth.repository'
 import { SessionGuard } from './session.guard'
 
 type SessionRequest = Omit<Partial<Request>, 'session'> & {
@@ -8,27 +9,73 @@ type SessionRequest = Omit<Partial<Request>, 'session'> & {
 }
 
 describe('SessionGuard', () => {
-    const guard = new SessionGuard()
+    let guard: SessionGuard
+    let authRepository: jest.Mocked<Pick<AuthRepository, 'findUserById'>>
 
-    it('allows requests with a session user id', () => {
+    beforeEach(() => {
+        authRepository = {
+            findUserById: jest.fn(),
+        }
+
+        guard = new SessionGuard(authRepository as unknown as AuthRepository)
+    })
+
+    it('allows requests with a valid session user id and session version', async () => {
+        authRepository.findUserById.mockResolvedValue({
+            id: 'user-1',
+            email: 'test@example.com',
+            name: 'Ada Lovelace',
+            passwordHash: 'hash',
+            emailVerified: true,
+            sessionVersion: 2,
+            createdAt: new Date('2026-03-22T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-22T10:00:00.000Z'),
+        })
+
         const context = createExecutionContext({
             session: {
                 auth: {
                     userId: 'user-1',
+                    sessionVersion: 2,
                 },
             },
         })
 
-        expect(guard.canActivate(context)).toBe(true)
+        await expect(guard.canActivate(context)).resolves.toBe(true)
     })
 
-    it('rejects requests without an authenticated session', () => {
+    it('rejects requests without an authenticated session', async () => {
         const context = createExecutionContext({
             session: {},
         })
 
-        expect(() => guard.canActivate(context)).toThrow(UnauthorizedException)
-        expect(() => guard.canActivate(context)).toThrow('Authentication required')
+        await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+        await expect(guard.canActivate(context)).rejects.toThrow('Authentication required')
+        expect(authRepository.findUserById).not.toHaveBeenCalled()
+    })
+
+    it('rejects requests when the session version is stale', async () => {
+        authRepository.findUserById.mockResolvedValue({
+            id: 'user-1',
+            email: 'test@example.com',
+            name: 'Ada Lovelace',
+            passwordHash: 'hash',
+            emailVerified: true,
+            sessionVersion: 3,
+            createdAt: new Date('2026-03-22T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-22T10:00:00.000Z'),
+        })
+
+        const context = createExecutionContext({
+            session: {
+                auth: {
+                    userId: 'user-1',
+                    sessionVersion: 2,
+                },
+            },
+        })
+
+        await expect(guard.canActivate(context)).rejects.toThrow('Authentication required')
     })
 })
 

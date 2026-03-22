@@ -42,4 +42,23 @@ describe('Prisma migrations', () => {
         expect(migrationSql).toContain('CREATE TABLE "email_verification_tokens"')
         expect(migrationSql).toContain('CREATE UNIQUE INDEX "email_verification_tokens_token_key"')
     })
+
+    it('adds password reset token storage and session versioning', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0003_password_reset',
+            'migration.sql',
+        )
+
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+
+        expect(migrationSql).toContain('ADD COLUMN "session_version" INTEGER NOT NULL DEFAULT 0')
+        expect(migrationSql).toContain('CREATE TABLE "password_reset_tokens"')
+        expect(migrationSql).toContain('CREATE UNIQUE INDEX "password_reset_tokens_token_key"')
+    })
 })

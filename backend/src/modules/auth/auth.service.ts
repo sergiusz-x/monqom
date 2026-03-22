@@ -11,15 +11,21 @@ import {
     validateEmailInput,
     validateLoginInput,
     validateRegistrationInput,
+    validateResetPasswordInput,
     validateVerificationTokenInput,
 } from '../../shared/utils/validation'
 import { AuthRepository } from './auth.repository'
 import { logger } from '../../shared/utils/logger'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
 const INVALID_EMAIL_VERIFICATION_TOKEN_MESSAGE = 'Verification token is invalid or expired'
+const INVALID_PASSWORD_RESET_TOKEN_MESSAGE = 'Password reset token is invalid or expired'
 const EMAIL_VERIFIED_SUCCESS_MESSAGE = 'Email verified successfully'
 const EMAIL_VERIFICATION_SENT_MESSAGE = 'Verification email sent'
+const PASSWORD_RESET_SENT_MESSAGE =
+    'If an account with that email exists, a password reset link has been generated'
+const PASSWORD_RESET_SUCCESS_MESSAGE = 'Password reset successfully'
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password'
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address must be verified before logging in'
 
@@ -42,6 +48,15 @@ export interface ResendVerificationRequestInput {
     email?: unknown
 }
 
+export interface ForgotPasswordRequestInput {
+    email?: unknown
+}
+
+export interface ResetPasswordRequestInput {
+    token?: unknown
+    newPassword?: unknown
+}
+
 export interface AuthAuditEventInput {
     userId: string
     ipAddress?: string
@@ -61,6 +76,9 @@ export interface RegisteredUserResponse {
 }
 
 export type AuthenticatedUserResponse = RegisteredUserResponse
+export type AuthenticatedSessionUserResponse = AuthenticatedUserResponse & {
+    sessionVersion: number
+}
 
 @Injectable()
 export class AuthService {
@@ -83,7 +101,7 @@ export class AuthService {
             type: argon2.argon2id,
         })
 
-        const verificationTokenPayload = createEmailVerificationTokenPayload()
+        const verificationTokenPayload = createTokenPayload(EMAIL_VERIFICATION_TOKEN_TTL_MS)
 
         try {
             const user = await this.authRepository.createUserWithVerificationToken({
@@ -141,7 +159,7 @@ export class AuthService {
         }
     }
 
-    async login(input: LoginRequestInput): Promise<AuthenticatedUserResponse> {
+    async login(input: LoginRequestInput): Promise<AuthenticatedSessionUserResponse> {
         const { email, password, errors } = validateLoginInput(input)
 
         if (errors.length > 0 || !email || !password) {
@@ -164,7 +182,7 @@ export class AuthService {
             throw new UnauthorizedException(EMAIL_NOT_VERIFIED_MESSAGE)
         }
 
-        return mapRegisteredUser(user)
+        return mapAuthenticatedSessionUser(user)
     }
 
     async getAuthenticatedUser(userId: string): Promise<AuthenticatedUserResponse> {
@@ -208,7 +226,7 @@ export class AuthService {
             }
         }
 
-        const verificationTokenPayload = createEmailVerificationTokenPayload()
+        const verificationTokenPayload = createTokenPayload(EMAIL_VERIFICATION_TOKEN_TTL_MS)
 
         await this.authRepository.createVerificationTokenForUser({
             userId: user.id,
@@ -222,15 +240,83 @@ export class AuthService {
             message: EMAIL_VERIFICATION_SENT_MESSAGE,
         }
     }
+
+    async forgotPassword(input: ForgotPasswordRequestInput): Promise<AuthActionResponse> {
+        const { email, errors } = validateEmailInput(input)
+
+        if (errors.length > 0 || !email) {
+            throw new BadRequestException(errors)
+        }
+
+        const user = await this.authRepository.findUserByEmail(email)
+
+        if (!user) {
+            return {
+                message: PASSWORD_RESET_SENT_MESSAGE,
+            }
+        }
+
+        const passwordResetTokenPayload = createTokenPayload(PASSWORD_RESET_TOKEN_TTL_MS)
+
+        await this.authRepository.createPasswordResetTokenForUser({
+            userId: user.id,
+            passwordResetToken: passwordResetTokenPayload.token,
+            passwordResetTokenExpiresAt: passwordResetTokenPayload.expiresAt,
+        })
+
+        exposePasswordResetToken(passwordResetTokenPayload.token)
+
+        return {
+            message: PASSWORD_RESET_SENT_MESSAGE,
+        }
+    }
+
+    async resetPassword(input: ResetPasswordRequestInput): Promise<AuthActionResponse> {
+        const { token, newPassword, errors } = validateResetPasswordInput(input)
+
+        if (errors.length > 0 || !token || !newPassword) {
+            throw new BadRequestException(errors)
+        }
+
+        const now = new Date()
+        const storedToken = await this.authRepository.findPasswordResetTokenWithUser(token)
+
+        if (
+            !storedToken ||
+            storedToken.usedAt !== null ||
+            storedToken.expiresAt.getTime() <= now.getTime()
+        ) {
+            throw new BadRequestException(INVALID_PASSWORD_RESET_TOKEN_MESSAGE)
+        }
+
+        const passwordHash = await argon2.hash(newPassword, {
+            type: argon2.argon2id,
+        })
+
+        const wasReset = await this.authRepository.resetPasswordWithToken({
+            tokenId: storedToken.id,
+            userId: storedToken.userId,
+            passwordHash,
+            resetAt: now,
+        })
+
+        if (!wasReset) {
+            throw new BadRequestException(INVALID_PASSWORD_RESET_TOKEN_MESSAGE)
+        }
+
+        return {
+            message: PASSWORD_RESET_SUCCESS_MESSAGE,
+        }
+    }
 }
 
-function createEmailVerificationTokenPayload(): {
+function createTokenPayload(ttlMs: number): {
     token: string
     expiresAt: Date
 } {
     return {
         token: randomBytes(32).toString('hex'),
-        expiresAt: new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_TTL_MS),
+        expiresAt: new Date(Date.now() + ttlMs),
     }
 }
 
@@ -238,24 +324,47 @@ function exposeVerificationToken(
     reason: 'registration' | 'resend',
     verificationToken: string,
 ): void {
-    const message = `Email verification token generated for ${reason}`
-    const shouldLogFullToken = process.env.NODE_ENV !== 'production'
+    exposeSensitiveToken({
+        message: `Email verification token generated for ${reason}`,
+        fullTokenKey: 'verification_token',
+        maskedTokenKey: 'verification_token_last6',
+        fingerprintKey: 'verification_token_fingerprint',
+        token: verificationToken,
+    })
+}
+
+function exposePasswordResetToken(passwordResetToken: string): void {
+    exposeSensitiveToken({
+        message: 'Password reset token generated for forgot-password',
+        fullTokenKey: 'password_reset_token',
+        maskedTokenKey: 'password_reset_token_last6',
+        fingerprintKey: 'password_reset_token_fingerprint',
+        token: passwordResetToken,
+    })
+}
+
+function exposeSensitiveToken(input: {
+    message: string
+    fullTokenKey: string
+    maskedTokenKey: string
+    fingerprintKey: string
+    token: string
+}): void {
+    const shouldLogFullToken = process.env.NODE_ENV === 'development'
 
     if (shouldLogFullToken) {
-        logger.info(message, {
+        logger.info(input.message, {
             context_name: AuthService.name,
-            verification_token: verificationToken,
+            [input.fullTokenKey]: input.token,
         })
 
         return
     }
 
-    logger.info(message, {
+    logger.info(input.message, {
         context_name: AuthService.name,
-        verification_token_last6: verificationToken.slice(-6),
-        verification_token_fingerprint: createHash('sha256')
-            .update(verificationToken)
-            .digest('hex'),
+        [input.maskedTokenKey]: input.token.slice(-6),
+        [input.fingerprintKey]: createHash('sha256').update(input.token).digest('hex'),
     })
 }
 
@@ -267,6 +376,13 @@ function mapRegisteredUser(user: User): RegisteredUserResponse {
         emailVerified: user.emailVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+    }
+}
+
+function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {
+    return {
+        ...mapRegisteredUser(user),
+        sessionVersion: user.sessionVersion,
     }
 }
 

@@ -56,11 +56,12 @@ export class AuthController {
         @Body() body: Record<string, unknown>,
         @Req() req: Request,
     ): Promise<AuthenticatedUserResponse> {
-        const user = await this.authService.login(body)
+        const { sessionVersion, ...user } = await this.authService.login(body)
 
         await regenerateSession(req)
         req.session.auth = {
             userId: user.id,
+            sessionVersion,
         }
         await this.authService.recordSuccessfulLogin({
             userId: user.id,
@@ -112,6 +113,18 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async resendVerification(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
         return this.authService.resendVerification(body)
+    }
+
+    @Post(AUTH_ROUTES.forgotPassword)
+    @HttpCode(HttpStatus.OK)
+    async forgotPassword(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
+        return this.authService.forgotPassword(body)
+    }
+
+    @Post(AUTH_ROUTES.resetPassword)
+    @HttpCode(HttpStatus.OK)
+    async resetPassword(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
+        return this.authService.resetPassword(body)
     }
 
     private getNodeEnv(): string {
