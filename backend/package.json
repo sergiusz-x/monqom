@@ -4,7 +4,7 @@
     "description": "",
     "author": "",
     "private": true,
-    "license": "UNLICENSED",
+    "license": "AGPL-3.0-only",
     "scripts": {
         "build": "nest build",
         "format": "prettier --write .",
@@ -12,6 +12,9 @@
         "start:dev": "nest start --watch",
         "start:debug": "nest start --debug --watch",
         "start:prod": "node dist/main",
+        "migrate:deploy": "prisma migrate deploy",
+        "migrate:dev": "prisma migrate dev",
+        "seed": "prisma db seed",
         "lint": "eslint \"{src,test}/**/*.ts\"",
         "test": "jest",
         "test:watch": "jest --watch",
