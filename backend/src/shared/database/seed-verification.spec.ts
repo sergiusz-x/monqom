@@ -1,7 +1,4 @@
-import {
-    assertSeedVerificationResult,
-    collectSeedVerificationResult,
-} from './seed-verification'
+import { assertSeedVerificationResult, collectSeedVerificationResult } from './seed-verification'
 import type { SeedVerificationPrismaClient } from './seed-verification'
 
 describe('Seed verification', () => {
@@ -21,8 +18,12 @@ describe('Seed verification', () => {
         const result = await collectSeedVerificationResult(prisma, 'workspace-id')
 
         expect(prisma.workspace.count).toHaveBeenCalledWith({ where: { id: 'workspace-id' } })
-        expect(prisma.category.count).toHaveBeenCalledWith({ where: { workspaceId: 'workspace-id' } })
-        expect(prisma.paymentSource.count).toHaveBeenCalledWith({ where: { workspaceId: 'workspace-id' } })
+        expect(prisma.category.count).toHaveBeenCalledWith({
+            where: { workspaceId: 'workspace-id' },
+        })
+        expect(prisma.paymentSource.count).toHaveBeenCalledWith({
+            where: { workspaceId: 'workspace-id' },
+        })
         expect(result).toEqual({
             workspaceCount: 1,
             categoryCount: 9,

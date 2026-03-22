@@ -6,7 +6,10 @@ export interface SeedVerificationResult {
     paymentSourceCount: number
 }
 
-export type SeedVerificationPrismaClient = Pick<PrismaClient, 'workspace' | 'category' | 'paymentSource'>
+export type SeedVerificationPrismaClient = Pick<
+    PrismaClient,
+    'workspace' | 'category' | 'paymentSource'
+>
 
 export async function collectSeedVerificationResult(
     prisma: SeedVerificationPrismaClient,

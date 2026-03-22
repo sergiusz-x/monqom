@@ -46,7 +46,9 @@ export async function runOrderedSeeds<TClient>({
         const seedHandler = seedModule.seed ?? seedModule.default
 
         if (typeof seedHandler !== 'function') {
-            throw new Error(`Seed file '${orderedSeedFile}' must export a 'seed' or default function`)
+            throw new Error(
+                `Seed file '${orderedSeedFile}' must export a 'seed' or default function`,
+            )
         }
 
         await seedHandler(prisma)
