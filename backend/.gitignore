@@ -34,3 +34,5 @@ coverage/
 
 # Local tests
 test.log
+
+/generated/prisma

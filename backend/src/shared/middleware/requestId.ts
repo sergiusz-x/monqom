@@ -4,6 +4,7 @@ import crypto from 'crypto'
 /**
  * Extend Express Request interface to include id.
  */
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
     namespace Express {
         interface Request {
@@ -11,6 +12,7 @@ declare global {
         }
     }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 /**
  * Middleware that generates and assigns a unique request ID.

@@ -10,8 +10,8 @@ jest.mock('../utils/logger', () => ({
 
 describe('AllExceptionsFilter', () => {
     let filter: AllExceptionsFilter
-    let mockResponse: any
-    let mockRequest: any
+    let mockResponse: { status: jest.Mock; json: jest.Mock }
+    let mockRequest: { method: string; originalUrl: string; id: string }
     let mockArgumentsHost: Partial<ArgumentsHost>
 
     beforeEach(() => {
@@ -34,7 +34,6 @@ describe('AllExceptionsFilter', () => {
                 getRequest: () => mockRequest,
             }),
         }
-
         ;(logger.error as jest.Mock).mockClear()
         process.env.NODE_ENV = 'development'
     })

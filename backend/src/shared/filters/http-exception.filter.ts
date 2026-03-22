@@ -13,26 +13,31 @@ export class AllExceptionsFilter implements ExceptionFilter {
         let message: string | string[] = 'Internal server error'
         let error = 'Internal Server Error'
 
-        if (exception instanceof HttpException) {
-            statusCode = exception.getStatus()
-            const exceptionResponse = exception.getResponse()
+        if (
+            exception instanceof HttpException ||
+            (exception && typeof exception === 'object' && 'getStatus' in exception)
+        ) {
+            const httpException = exception as HttpException
+            statusCode = httpException.getStatus()
+            const exceptionResponse = httpException.getResponse()
 
             if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-                const res = exceptionResponse as Record<string, any>
-                message = res.message || exception.message
-                error = res.error || exception.name
+                const res = exceptionResponse as Record<string, unknown>
+                message = (res.message as string | string[]) || httpException.message
+                error = (res.error as string) || httpException.name
             } else if (typeof exceptionResponse === 'string') {
                 message = exceptionResponse
+                error = httpException.name
             } else {
-                message = exception.message
-                error = exception.name
+                message = httpException.message
+                error = httpException.name
             }
         } else if (exception instanceof Error) {
             // Keep default "Internal server error" message for generic errors
             // but the original error is available in the 'exception' variable for logging
         }
 
-        const responseBody: Record<string, any> = {
+        const responseBody: Record<string, unknown> = {
             statusCode,
             message,
             error,
@@ -43,7 +48,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
 
         logger.error(exception instanceof Error ? exception.message : String(exception), {
-            request_id: (request as any).id,
+            request_id: request.id,
             context: {
                 method: request.method,
                 path: request.originalUrl,

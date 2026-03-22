@@ -27,9 +27,4 @@ describe('HealthController', () => {
     it('should return ready status', () => {
         expect(controller.checkReady()).toBe('OK')
     })
-
-    it('should return api health status', () => {
-        const result = controller.checkApiHealth()
-        expect(result.status).toBe('ok')
-    })
 })

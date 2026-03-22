@@ -1,6 +1,5 @@
 import { requestIdMiddleware } from './requestId'
 import { Request, Response } from 'express'
-import crypto from 'crypto'
 
 describe('requestIdMiddleware', () => {
     let mockRequest: Partial<Request>
