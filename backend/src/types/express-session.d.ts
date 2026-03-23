@@ -6,5 +6,9 @@ declare module 'express-session' {
             userId: string
             sessionVersion: number
         }
+        twoFactorChallenge?: {
+            userId: string
+            sessionVersion: number
+        }
     }
 }

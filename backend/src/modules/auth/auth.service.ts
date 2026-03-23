@@ -46,6 +46,17 @@ export interface LoginRequestInput {
     password?: unknown
 }
 
+export type LoginServiceResult =
+    | {
+          type: 'authenticated'
+          user: AuthenticatedSessionUserResponse
+      }
+    | {
+          type: 'two_factor_required'
+          userId: string
+          sessionVersion: number
+      }
+
 export interface ResendVerificationRequestInput {
     email?: unknown
 }
@@ -178,7 +189,7 @@ export class AuthService {
         }
     }
 
-    async login(input: LoginRequestInput): Promise<AuthenticatedSessionUserResponse> {
+    async login(input: LoginRequestInput): Promise<LoginServiceResult> {
         const { email, password, errors } = validateLoginInput(input)
 
         if (errors.length > 0 || !email || !password) {
@@ -201,7 +212,18 @@ export class AuthService {
             throw new UnauthorizedException(EMAIL_NOT_VERIFIED_MESSAGE)
         }
 
-        return mapAuthenticatedSessionUser(user)
+        if (user.totpEnabled) {
+            return {
+                type: 'two_factor_required',
+                userId: user.id,
+                sessionVersion: user.sessionVersion,
+            }
+        }
+
+        return {
+            type: 'authenticated',
+            user: mapAuthenticatedSessionUser(user),
+        }
     }
 
     async getAuthenticatedUser(userId: string): Promise<AuthenticatedUserResponse> {

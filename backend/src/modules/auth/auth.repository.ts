@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common'
-import { EmailVerificationToken, PasswordResetToken, Prisma, User } from '@prisma/client'
+import {
+    EmailVerificationToken,
+    PasswordResetToken,
+    Prisma,
+    TwoFactorRecoveryCode,
+    User,
+} from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 const POSTGRES_UNDEFINED_TABLE_ERROR_CODE = '42P01'
@@ -42,6 +48,22 @@ export interface ResetPasswordWithTokenInput {
     resetAt: Date
 }
 
+export interface ReplaceTwoFactorSetupSecretInput {
+    userId: string
+    encryptedSecret: string
+}
+
+export interface EnableTwoFactorForUserInput {
+    userId: string
+    recoveryCodeHashes: string[]
+}
+
+export interface ConsumeRecoveryCodeInput {
+    recoveryCodeId: string
+    userId: string
+    usedAt: Date
+}
+
 export type EmailVerificationTokenWithUser = EmailVerificationToken & {
     user: User
 }
@@ -49,6 +71,8 @@ export type EmailVerificationTokenWithUser = EmailVerificationToken & {
 export type PasswordResetTokenWithUser = PasswordResetToken & {
     user: User
 }
+
+export type RecoveryCodeRecord = TwoFactorRecoveryCode
 
 export type AuthPersistenceClient = Prisma.TransactionClient | PrismaService
 
@@ -269,6 +293,116 @@ export class AuthRepository {
             })
 
             return true
+        })
+    }
+
+    async replaceTwoFactorSetupSecret(input: ReplaceTwoFactorSetupSecretInput): Promise<void> {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            await tx.twoFactorRecoveryCode.deleteMany({
+                where: {
+                    userId: input.userId,
+                },
+            })
+
+            await tx.user.update({
+                where: { id: input.userId },
+                data: {
+                    totpEnabled: false,
+                    totpSecretEncrypted: input.encryptedSecret,
+                },
+            })
+        })
+    }
+
+    async enableTwoFactorForUser(input: EnableTwoFactorForUserInput): Promise<void> {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            await tx.twoFactorRecoveryCode.deleteMany({
+                where: {
+                    userId: input.userId,
+                },
+            })
+
+            await tx.user.update({
+                where: { id: input.userId },
+                data: {
+                    totpEnabled: true,
+                },
+            })
+
+            if (input.recoveryCodeHashes.length > 0) {
+                await tx.twoFactorRecoveryCode.createMany({
+                    data: input.recoveryCodeHashes.map((codeHash) => ({
+                        userId: input.userId,
+                        codeHash,
+                    })),
+                })
+            }
+
+            await tx.auditEvent.create({
+                data: {
+                    action: 'USER_2FA_ENABLED',
+                    userId: input.userId,
+                    entityType: 'USER',
+                    entityId: input.userId,
+                    metadata: {
+                        method: 'TOTP',
+                    },
+                },
+            })
+        })
+    }
+
+    async listUnusedRecoveryCodes(userId: string): Promise<RecoveryCodeRecord[]> {
+        return this.prisma.twoFactorRecoveryCode.findMany({
+            where: {
+                userId,
+                usedAt: null,
+            },
+        })
+    }
+
+    async consumeRecoveryCode(input: ConsumeRecoveryCodeInput): Promise<boolean> {
+        const result = await this.prisma.twoFactorRecoveryCode.updateMany({
+            where: {
+                id: input.recoveryCodeId,
+                userId: input.userId,
+                usedAt: null,
+            },
+            data: {
+                usedAt: input.usedAt,
+            },
+        })
+
+        return result.count > 0
+    }
+
+    async disableTwoFactorForUser(userId: string): Promise<void> {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            await tx.twoFactorRecoveryCode.deleteMany({
+                where: {
+                    userId,
+                },
+            })
+
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    totpEnabled: false,
+                    totpSecretEncrypted: null,
+                },
+            })
+
+            await tx.auditEvent.create({
+                data: {
+                    action: 'USER_2FA_DISABLED',
+                    userId,
+                    entityType: 'USER',
+                    entityId: userId,
+                    metadata: {
+                        method: 'TOTP',
+                    },
+                },
+            })
         })
     }
 

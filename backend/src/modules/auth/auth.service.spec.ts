@@ -302,16 +302,46 @@ describe('AuthService', () => {
                 password,
             }),
         ).resolves.toEqual({
-            id: 'user-1',
-            email: 'test@example.com',
-            name: 'Ada Lovelace',
-            emailVerified: true,
-            sessionVersion: 0,
-            createdAt: new Date('2026-03-22T10:00:00.000Z'),
-            updatedAt: new Date('2026-03-22T10:00:00.000Z'),
+            type: 'authenticated',
+            user: {
+                id: 'user-1',
+                email: 'test@example.com',
+                name: 'Ada Lovelace',
+                emailVerified: true,
+                sessionVersion: 0,
+                createdAt: new Date('2026-03-22T10:00:00.000Z'),
+                updatedAt: new Date('2026-03-22T10:00:00.000Z'),
+            },
         })
 
         expect(authRepository.findUserByEmail).toHaveBeenCalledWith('test@example.com')
+    })
+
+    it('requires a second factor for users with TOTP enabled', async () => {
+        const password = 'GraniteHarbor!1234'
+        const passwordHash = await argon2.hash(password, {
+            type: argon2.argon2id,
+        })
+
+        authRepository.findUserByEmail.mockResolvedValue(
+            createMockUser({
+                passwordHash,
+                emailVerified: true,
+                totpEnabled: true,
+                totpSecretEncrypted: 'encrypted-secret',
+            }),
+        )
+
+        await expect(
+            service.login({
+                email: 'test@example.com',
+                password,
+            }),
+        ).resolves.toEqual({
+            type: 'two_factor_required',
+            userId: 'user-1',
+            sessionVersion: 0,
+        })
     })
 
     it('rejects invalid login input before hitting the repository', async () => {
@@ -758,6 +788,8 @@ function createMockUser(
         sessionVersion: number
         createdAt: Date
         updatedAt: Date
+        totpEnabled: boolean
+        totpSecretEncrypted: string | null
     }> = {},
 ) {
     return {
@@ -767,6 +799,8 @@ function createMockUser(
         passwordHash: 'hash',
         emailVerified: false,
         sessionVersion: 0,
+        totpEnabled: false,
+        totpSecretEncrypted: null,
         createdAt: new Date('2026-03-22T10:00:00.000Z'),
         updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         ...overrides,

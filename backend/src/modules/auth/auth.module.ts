@@ -7,6 +7,7 @@ import { AUTH_BASE_ROUTE, AUTH_ROUTES } from './auth.routes'
 import { AuthService } from './auth.service'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceModule } from '../workspace/workspace.module'
+import { TwoFactorService } from './twoFactor.service'
 
 const AUTH_LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 const AUTH_LOGIN_RATE_LIMIT_MESSAGE = 'Too many login attempts. Please try again later.'
@@ -26,7 +27,7 @@ const AUTH_LOGIN_RATE_LIMIT_MESSAGE = 'Too many login attempts. Please try again
         WorkspaceModule,
     ],
     controllers: [AuthController],
-    providers: [AuthService, AuthRepository, SessionGuard],
+    providers: [AuthService, AuthRepository, SessionGuard, TwoFactorService],
 })
 export class AuthModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
@@ -49,6 +50,22 @@ export class AuthModule implements NestModule {
             },
             {
                 path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.resendVerification}`,
+                method: RequestMethod.POST,
+            },
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.twoFactorSetup}`,
+                method: RequestMethod.POST,
+            },
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.twoFactorVerifySetup}`,
+                method: RequestMethod.POST,
+            },
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.twoFactorVerify}`,
+                method: RequestMethod.POST,
+            },
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.twoFactorDisable}`,
                 method: RequestMethod.POST,
             },
         )

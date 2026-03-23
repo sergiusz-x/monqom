@@ -10,19 +10,22 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  name           String
-  passwordHash   String   @map("password_hash")
-  emailVerified  Boolean  @default(false) @map("email_verified")
-  sessionVersion Int      @default(0) @map("session_version")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  name                String
+  passwordHash        String   @map("password_hash")
+  emailVerified       Boolean  @default(false) @map("email_verified")
+  sessionVersion      Int      @default(0) @map("session_version")
+  totpEnabled         Boolean  @default(false) @map("totp_enabled")
+  totpSecretEncrypted String?  @map("totp_secret_encrypted")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   memberships             WorkspaceMembership[]
   auditEvents             AuditEvent[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  recoveryCodes           TwoFactorRecoveryCode[]
 
   @@map("users")
 }
@@ -55,6 +58,20 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model TwoFactorRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factor_recovery_codes")
 }
 
 model Workspace {

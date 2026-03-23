@@ -53,6 +53,34 @@ const AUTH_RATE_LIMIT_POLICIES: Array<{
             message: 'Too many verification email requests. Please try again later.',
         },
     },
+    {
+        routeSuffix: '/auth/2fa/setup',
+        policy: {
+            key: '2fa-setup',
+            message: 'Too many two-factor setup attempts. Please try again later.',
+        },
+    },
+    {
+        routeSuffix: '/auth/2fa/verify-setup',
+        policy: {
+            key: '2fa-verify-setup',
+            message: 'Too many two-factor setup verification attempts. Please try again later.',
+        },
+    },
+    {
+        routeSuffix: '/auth/2fa/verify',
+        policy: {
+            key: '2fa-verify',
+            message: 'Too many two-factor verification attempts. Please try again later.',
+        },
+    },
+    {
+        routeSuffix: '/auth/2fa/disable',
+        policy: {
+            key: '2fa-disable',
+            message: 'Too many two-factor disable attempts. Please try again later.',
+        },
+    },
 ]
 
 @Injectable()

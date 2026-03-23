@@ -122,6 +122,28 @@ describe('AuthRateLimitMiddleware', () => {
             error: 'Too Many Requests',
         })
     })
+
+    it('returns an endpoint-specific message for two-factor verification requests', () => {
+        const request = createRequest({
+            ip: '127.0.0.1',
+            path: '/api/v1/auth/2fa/verify',
+            trustProxy: false,
+        })
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            middleware.use(request, response as Response, nextFunction)
+        }
+
+        middleware.use(request, response as Response, nextFunction)
+
+        expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '900')
+        expect(statusMock).toHaveBeenCalledWith(429)
+        expect(jsonMock).toHaveBeenCalledWith({
+            statusCode: 429,
+            message: 'Too many two-factor verification attempts. Please try again later.',
+            error: 'Too Many Requests',
+        })
+    })
 })
 
 function createRequest(input: {
