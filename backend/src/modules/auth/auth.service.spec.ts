@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common'
 import * as argon2 from 'argon2'
 import { createHash } from 'crypto'
+import { WorkspaceService } from '../workspace/workspace.service'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 import { logger } from '../../shared/utils/logger'
@@ -13,6 +14,7 @@ jest.mock('../../shared/utils/logger', () => ({
 
 describe('AuthService', () => {
     let service: AuthService
+    let transactionClient: object
     let authRepository: jest.Mocked<
         Pick<
             AuthRepository,
@@ -28,9 +30,14 @@ describe('AuthService', () => {
             | 'createUserAuditEvent'
         >
     >
+    let workspaceService: jest.Mocked<Pick<WorkspaceService, 'createPersonalWorkspace'>>
+    let prisma: {
+        $transaction: jest.Mock
+    }
     const originalNodeEnv = process.env.NODE_ENV
 
     beforeEach(() => {
+        transactionClient = {}
         authRepository = {
             findUserByEmail: jest.fn(),
             findUserById: jest.fn(),
@@ -43,8 +50,20 @@ describe('AuthService', () => {
             resetPasswordWithToken: jest.fn(),
             createUserAuditEvent: jest.fn(),
         }
+        workspaceService = {
+            createPersonalWorkspace: jest.fn(),
+        }
+        prisma = {
+            $transaction: jest.fn(async (callback: (tx: object) => Promise<unknown>) =>
+                callback(transactionClient),
+            ),
+        }
 
-        service = new AuthService(authRepository as unknown as AuthRepository)
+        service = new AuthService(
+            authRepository as unknown as AuthRepository,
+            workspaceService as unknown as WorkspaceService,
+            prisma as never,
+        )
         jest.clearAllMocks()
         process.env.NODE_ENV = 'test'
     })
@@ -60,15 +79,23 @@ describe('AuthService', () => {
         process.env.NODE_ENV = 'development'
 
         authRepository.findUserByEmail.mockResolvedValue(null)
-        authRepository.createUserWithVerificationToken.mockImplementation(async (input) => ({
-            id: 'user-1',
-            email: input.email,
-            name: input.name,
-            passwordHash: input.passwordHash,
-            emailVerified: false,
+        authRepository.createUserWithVerificationToken.mockImplementation(async (input) =>
+            createMockUser({
+                id: 'user-1',
+                email: input.email,
+                name: input.name,
+                passwordHash: input.passwordHash,
+                emailVerified: false,
+            }),
+        )
+        workspaceService.createPersonalWorkspace.mockResolvedValue({
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
-        }))
+        } as never)
 
         const result = await service.register({
             email: ' Test@Example.com ',
@@ -86,6 +113,16 @@ describe('AuthService', () => {
         expect(
             Math.abs(createCall.verificationTokenExpiresAt.getTime() - (now + 24 * 60 * 60 * 1000)),
         ).toBeLessThanOrEqual(5000)
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+        expect(authRepository.createUserWithVerificationToken).toHaveBeenCalledWith(
+            createCall,
+            transactionClient,
+        )
+        expect(workspaceService.createPersonalWorkspace).toHaveBeenCalledWith(
+            'user-1',
+            'Ada Lovelace',
+            transactionClient,
+        )
         expect(logger.info).toHaveBeenCalledWith(
             'Email verification token generated for registration',
             expect.objectContaining({
@@ -137,6 +174,7 @@ describe('AuthService', () => {
             name: 'Existing User',
             passwordHash: 'hash',
             emailVerified: false,
+            sessionVersion: 0,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })
@@ -150,6 +188,7 @@ describe('AuthService', () => {
         ).rejects.toBeInstanceOf(ConflictException)
 
         expect(authRepository.createUserWithVerificationToken).not.toHaveBeenCalled()
+        expect(workspaceService.createPersonalWorkspace).not.toHaveBeenCalled()
     })
 
     it('maps Prisma unique constraint errors to conflicts', async () => {
@@ -167,17 +206,50 @@ describe('AuthService', () => {
         ).rejects.toBeInstanceOf(ConflictException)
     })
 
+    it('propagates workspace creation failures and does not log verification tokens', async () => {
+        authRepository.findUserByEmail.mockResolvedValue(null)
+        authRepository.createUserWithVerificationToken.mockResolvedValue(
+            createMockUser({
+                id: 'user-1',
+            }),
+        )
+        workspaceService.createPersonalWorkspace.mockRejectedValue(
+            new Error('Workspace creation failed'),
+        )
+
+        await expect(
+            service.register({
+                email: 'test@example.com',
+                name: 'Ada Lovelace',
+                password: 'GraniteHarbor!1234',
+            }),
+        ).rejects.toThrow('Workspace creation failed')
+
+        expect(logger.info).not.toHaveBeenCalledWith(
+            'Email verification token generated for registration',
+            expect.anything(),
+        )
+    })
+
     it('logs only masked token metadata in production for the MVP flow', async () => {
         authRepository.findUserByEmail.mockResolvedValue(null)
-        authRepository.createUserWithVerificationToken.mockImplementation(async (input) => ({
-            id: 'user-1',
-            email: input.email,
-            name: input.name,
-            passwordHash: input.passwordHash,
-            emailVerified: false,
+        authRepository.createUserWithVerificationToken.mockImplementation(async (input) =>
+            createMockUser({
+                id: 'user-1',
+                email: input.email,
+                name: input.name,
+                passwordHash: input.passwordHash,
+                emailVerified: false,
+            }),
+        )
+        workspaceService.createPersonalWorkspace.mockResolvedValue({
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
-        }))
+        } as never)
 
         process.env.NODE_ENV = 'production'
 

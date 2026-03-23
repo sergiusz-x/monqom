@@ -50,6 +50,8 @@ export type PasswordResetTokenWithUser = PasswordResetToken & {
     user: User
 }
 
+export type AuthPersistenceClient = Prisma.TransactionClient | PrismaService
+
 @Injectable()
 export class AuthRepository {
     constructor(private readonly prisma: PrismaService) {}
@@ -64,8 +66,9 @@ export class AuthRepository {
 
     async createUserWithVerificationToken(
         input: CreateUserWithVerificationTokenInput,
+        prisma: AuthPersistenceClient = this.prisma,
     ): Promise<User> {
-        return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const createUser = async (tx: AuthPersistenceClient): Promise<User> => {
             const user = await tx.user.create({
                 data: {
                     email: input.email,
@@ -96,7 +99,13 @@ export class AuthRepository {
             })
 
             return user
-        })
+        }
+
+        if (prisma === this.prisma) {
+            return this.prisma.$transaction((tx: Prisma.TransactionClient) => createUser(tx))
+        }
+
+        return createUser(prisma)
     }
 
     async findEmailVerificationTokenWithUser(

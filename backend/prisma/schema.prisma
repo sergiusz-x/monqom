@@ -10,80 +10,82 @@ datasource db {
 }
 
 model User {
-  id            String                @id @default(uuid())
-  email         String                @unique
-  name          String
-  passwordHash  String                @map("password_hash")
-  emailVerified Boolean               @default(false) @map("email_verified")
-  sessionVersion Int                  @default(0) @map("session_version")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  email          String   @unique
+  name           String
+  passwordHash   String   @map("password_hash")
+  emailVerified  Boolean  @default(false) @map("email_verified")
+  sessionVersion Int      @default(0) @map("session_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  memberships   WorkspaceMembership[]
-  auditEvents   AuditEvent[]
+  memberships             WorkspaceMembership[]
+  auditEvents             AuditEvent[]
   emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens PasswordResetToken[]
+  passwordResetTokens     PasswordResetToken[]
 
   @@map("users")
 }
 
 model EmailVerificationToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("email_verification_tokens")
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("password_reset_tokens")
 }
 
 model Workspace {
-  id            String                @id @default(uuid())
-  name          String
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  name      String
+  type      String   @default("personal")
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships   WorkspaceMembership[]
-  categories    Category[]
-  paymentSources PaymentSource[]
-  transactions  Transaction[]
-  budgets       Budget[]
-  auditEvents   AuditEvent[]
+  memberships     WorkspaceMembership[]
+  categories      Category[]
+  paymentSources  PaymentSource[]
+  transactions    Transaction[]
+  budgets         Budget[]
+  auditEvents     AuditEvent[]
   transactionTags TransactionTag[]
 
   @@map("workspaces")
 }
 
 model WorkspaceMembership {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  workspaceId String    @map("workspace_id")
-  role        String    @default("MEMBER") // OWNER, ADMIN, MEMBER
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  workspaceId String   @map("workspace_id")
+  role        String   @default("member") // owner, admin, member
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
   @@index([workspaceId])
@@ -100,15 +102,15 @@ model Category {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent      Category?  @relation("ParentChild", fields: [workspaceId, parentId], references: [workspaceId, id])
-  children    Category[] @relation("ParentChild")
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent       Category?     @relation("ParentChild", fields: [workspaceId, parentId], references: [workspaceId, id])
+  children     Category[]    @relation("ParentChild")
   transactions Transaction[]
   budgets      Budget[]
 
+  @@unique([workspaceId, id])
   @@index([workspaceId])
   @@index([workspaceId, parentId])
-  @@unique([workspaceId, id])
   @@map("categories")
 }
 
@@ -116,80 +118,80 @@ model PaymentSource {
   id          String    @id @default(uuid())
   workspaceId String    @map("workspace_id")
   name        String
-  type        String    // cash, debit_card, credit_card, bank, other
+  type        String // cash, debit_card, credit_card, bank, other
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   transactions Transaction[]
 
-  @@index([workspaceId])
   @@unique([workspaceId, id])
+  @@index([workspaceId])
   @@map("payment_sources")
 }
 
 model Transaction {
-  id              String    @id @default(uuid())
-  workspaceId     String    @map("workspace_id")
-  categoryId      String    @map("category_id")
-  paymentSourceId String?   @map("payment_source_id")
-  
-  amount          Int       // stored as integer minor units (cents)
-  currency        String
-  date            DateTime
-  notes           String?
-  
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  deletedAt       DateTime? @map("deleted_at")
+  id              String  @id @default(uuid())
+  workspaceId     String  @map("workspace_id")
+  categoryId      String  @map("category_id")
+  paymentSourceId String? @map("payment_source_id")
 
-  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  category        Category       @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
-  paymentSource   PaymentSource? @relation(fields: [workspaceId, paymentSourceId], references: [workspaceId, id])
-  tags            TransactionTag[]
+  amount   Int // stored as integer minor units (cents)
+  currency String
+  date     DateTime
+  notes    String?
 
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category      Category         @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+  paymentSource PaymentSource?   @relation(fields: [workspaceId, paymentSourceId], references: [workspaceId, id])
+  tags          TransactionTag[]
+
+  @@unique([workspaceId, id])
   @@index([workspaceId])
   @@index([workspaceId, categoryId])
   @@index([workspaceId, paymentSourceId])
   @@index([categoryId])
   @@index([date])
-  @@unique([workspaceId, id])
   @@map("transactions")
 }
 
 model TransactionTag {
-  id            String      @id @default(uuid())
-  workspaceId   String      @map("workspace_id")
-  transactionId String      @map("transaction_id")
+  id            String   @id @default(uuid())
+  workspaceId   String   @map("workspace_id")
+  transactionId String   @map("transaction_id")
   name          String
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  transaction   Transaction @relation(fields: [workspaceId, transactionId], references: [workspaceId, id], onDelete: Cascade)
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [workspaceId, transactionId], references: [workspaceId, id], onDelete: Cascade)
 
+  @@unique([workspaceId, id])
   @@index([workspaceId])
   @@index([transactionId])
-  @@unique([workspaceId, id])
   @@map("transaction_tags")
 }
 
 model Budget {
-  id          String   @id @default(uuid())
-  workspaceId String   @map("workspace_id")
-  categoryId  String?  @map("category_id")
-  
-  amount      Int      // stored as integer minor units (cents)
-  currency    String
-  year        Int
-  month       Int
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id          String  @id @default(uuid())
+  workspaceId String  @map("workspace_id")
+  categoryId  String? @map("category_id")
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  category    Category? @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+  amount   Int // stored as integer minor units (cents)
+  currency String
+  year     Int
+  month    Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category  Category? @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
 
   @@unique([workspaceId, categoryId, year, month])
   @@index([workspaceId])
@@ -198,20 +200,20 @@ model Budget {
 }
 
 model AuditEvent {
-  id          String   @id @default(uuid())
-  workspaceId String?  @map("workspace_id")
-  userId      String?  @map("user_id")
-  
-  action      String   // e.g. TRANSACTION_DELETED, USER_LOGGED_IN
-  entityType  String?  @map("entity_type")
-  entityId    String?  @map("entity_id")
-  metadata    Json?
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id          String  @id @default(uuid())
+  workspaceId String? @map("workspace_id")
+  userId      String? @map("user_id")
 
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String // e.g. TRANSACTION_DELETED, USER_LOGGED_IN
+  entityType String? @map("entity_type")
+  entityId   String? @map("entity_id")
+  metadata   Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@index([userId])

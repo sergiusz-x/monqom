@@ -14,8 +14,10 @@ import {
     validateResetPasswordInput,
     validateVerificationTokenInput,
 } from '../../shared/utils/validation'
+import { PrismaService } from '../../shared/database/prisma.service'
 import { AuthRepository } from './auth.repository'
 import { logger } from '../../shared/utils/logger'
+import { WorkspaceService } from '../workspace/workspace.service'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
@@ -82,7 +84,11 @@ export type AuthenticatedSessionUserResponse = AuthenticatedUserResponse & {
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly authRepository: AuthRepository) {}
+    constructor(
+        private readonly authRepository: AuthRepository,
+        private readonly workspaceService: WorkspaceService,
+        private readonly prisma: PrismaService,
+    ) {}
 
     async register(input: RegisterRequestInput): Promise<RegisteredUserResponse> {
         const { email, name, password, errors } = validateRegistrationInput(input)
@@ -104,12 +110,25 @@ export class AuthService {
         const verificationTokenPayload = createTokenPayload(EMAIL_VERIFICATION_TOKEN_TTL_MS)
 
         try {
-            const user = await this.authRepository.createUserWithVerificationToken({
-                email,
-                name,
-                passwordHash,
-                verificationToken: verificationTokenPayload.token,
-                verificationTokenExpiresAt: verificationTokenPayload.expiresAt,
+            const user = await this.prisma.$transaction(async (tx) => {
+                const createdUser = await this.authRepository.createUserWithVerificationToken(
+                    {
+                        email,
+                        name,
+                        passwordHash,
+                        verificationToken: verificationTokenPayload.token,
+                        verificationTokenExpiresAt: verificationTokenPayload.expiresAt,
+                    },
+                    tx,
+                )
+
+                await this.workspaceService.createPersonalWorkspace(
+                    createdUser.id,
+                    createdUser.name,
+                    tx,
+                )
+
+                return createdUser
             })
 
             exposeVerificationToken('registration', verificationTokenPayload.token)

@@ -61,4 +61,40 @@ describe('Prisma migrations', () => {
         expect(migrationSql).toContain('CREATE TABLE "password_reset_tokens"')
         expect(migrationSql).toContain('CREATE UNIQUE INDEX "password_reset_tokens_token_key"')
     })
+
+    it('adds personal workspace type and timezone defaults', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0004_personal_workspace_on_registration',
+            'migration.sql',
+        )
+
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+
+        expect(migrationSql).toContain('ADD COLUMN "type" TEXT NOT NULL DEFAULT \'personal\'')
+        expect(migrationSql).toContain('ADD COLUMN "timezone" TEXT NOT NULL DEFAULT \'UTC\'')
+    })
+
+    it('normalizes workspace membership roles to lowercase defaults', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0005_normalize_workspace_membership_roles',
+            'migration.sql',
+        )
+
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+
+        expect(migrationSql).toContain('ALTER COLUMN "role" SET DEFAULT \'member\'')
+        expect(migrationSql).toContain('SET "role" = LOWER("role")')
+    })
 })

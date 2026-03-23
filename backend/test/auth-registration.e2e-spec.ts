@@ -5,6 +5,7 @@ import { App } from 'supertest/types'
 import * as argon2 from 'argon2'
 import { createHash } from 'crypto'
 import { AppModule } from './../src/app.module'
+import { DEFAULT_CATEGORY_SEEDS } from './../src/modules/workspaces/seeds/01_default_categories'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { logger } from './../src/shared/utils/logger'
@@ -50,6 +51,34 @@ interface StoredAuditEvent {
     updatedAt: Date
 }
 
+interface StoredWorkspace {
+    id: string
+    name: string
+    type: string
+    timezone: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredWorkspaceMembership {
+    id: string
+    userId: string
+    workspaceId: string
+    role: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredCategory {
+    id: string
+    workspaceId: string
+    parentId: string | null
+    name: string
+    icon: string | null
+    createdAt: Date
+    updatedAt: Date
+}
+
 interface FakeTransactionClient {
     user: {
         findUnique(args: { where: { email: string } }): Promise<StoredUser | null>
@@ -86,12 +115,33 @@ interface FakeTransactionClient {
             }
         }): Promise<StoredAuditEvent>
     }
+    workspace: {
+        create(args: {
+            data: Pick<StoredWorkspace, 'name' | 'type' | 'timezone'>
+        }): Promise<StoredWorkspace>
+    }
+    workspaceMembership: {
+        create(args: {
+            data: Pick<StoredWorkspaceMembership, 'userId' | 'workspaceId' | 'role'>
+        }): Promise<StoredWorkspaceMembership>
+    }
+    category: {
+        upsert(args: {
+            where: { id: string }
+            update: Pick<StoredCategory, 'workspaceId' | 'parentId' | 'name' | 'icon'>
+            create: Pick<StoredCategory, 'id' | 'workspaceId' | 'parentId' | 'name' | 'icon'>
+        }): Promise<StoredCategory>
+    }
 }
 
 interface PrismaMock extends FakeTransactionClient {
     users: StoredUser[]
     verificationTokens: StoredEmailVerificationToken[]
     auditEvents: StoredAuditEvent[]
+    workspaces: StoredWorkspace[]
+    workspaceMemberships: StoredWorkspaceMembership[]
+    categories: StoredCategory[]
+    failNextCategoryUpsert: boolean
     $transaction<T>(callback: (tx: FakeTransactionClient) => Promise<T>): Promise<T>
     $connect(): Promise<void>
     $disconnect(): Promise<void>
@@ -132,6 +182,9 @@ describe('Auth registration (e2e)', () => {
 
     it('creates a user, stores a hashed password, and logs a verification token', async () => {
         const password = 'GraniteHarbor!1234'
+        const expectedCategoryCount =
+            DEFAULT_CATEGORY_SEEDS.length +
+            DEFAULT_CATEGORY_SEEDS.reduce((total, parent) => total + parent.children.length, 0)
 
         process.env.NODE_ENV = 'development'
 
@@ -158,9 +211,14 @@ describe('Auth registration (e2e)', () => {
         expect(prismaMock.users).toHaveLength(1)
         expect(prismaMock.verificationTokens).toHaveLength(1)
         expect(prismaMock.auditEvents).toHaveLength(1)
+        expect(prismaMock.workspaces).toHaveLength(1)
+        expect(prismaMock.workspaceMemberships).toHaveLength(1)
+        expect(prismaMock.categories).toHaveLength(expectedCategoryCount)
 
         const storedUser = prismaMock.users[0]
         const storedVerificationToken = prismaMock.verificationTokens[0]
+        const storedWorkspace = prismaMock.workspaces[0]
+        const storedMembership = prismaMock.workspaceMemberships[0]
 
         expect(storedUser.email).toBe('ada@example.com')
         expect(storedUser.emailVerified).toBe(false)
@@ -177,12 +235,69 @@ describe('Auth registration (e2e)', () => {
                 entityId: storedUser.id,
             }),
         )
+        expect(storedWorkspace).toEqual(
+            expect.objectContaining({
+                name: "Ada Lovelace's Finances",
+                type: 'personal',
+                timezone: 'UTC',
+            }),
+        )
+        expect(storedMembership).toEqual(
+            expect.objectContaining({
+                userId: storedUser.id,
+                workspaceId: storedWorkspace.id,
+                role: 'owner',
+            }),
+        )
+        expect(
+            prismaMock.categories.every((category) => category.workspaceId === storedWorkspace.id),
+        ).toBe(true)
+
+        const foodCategory = prismaMock.categories.find(
+            (category) =>
+                category.workspaceId === storedWorkspace.id &&
+                category.parentId === null &&
+                category.name === 'Food',
+        )
+        const groceriesCategory = prismaMock.categories.find(
+            (category) =>
+                category.workspaceId === storedWorkspace.id && category.name === 'Groceries',
+        )
+
+        expect(foodCategory).toBeDefined()
+        expect(groceriesCategory).toBeDefined()
+        expect(groceriesCategory?.parentId).toBe(foodCategory?.id)
+
         expect(logger.info).toHaveBeenCalledWith(
             'Email verification token generated for registration',
             expect.objectContaining({
                 context_name: 'AuthService',
                 verification_token: storedVerificationToken.token,
             }),
+        )
+    })
+
+    it('rolls back user registration when personal workspace creation fails', async () => {
+        prismaMock.failNextCategoryUpsert = true
+
+        await request(app.getHttpServer())
+            .post('/api/v1/auth/register')
+            .send({
+                email: 'rollback@example.com',
+                name: 'Rollback User',
+                password: 'GraniteHarbor!1234',
+            })
+            .expect(500)
+
+        expect(prismaMock.users).toHaveLength(0)
+        expect(prismaMock.verificationTokens).toHaveLength(0)
+        expect(prismaMock.auditEvents).toHaveLength(0)
+        expect(prismaMock.workspaces).toHaveLength(0)
+        expect(prismaMock.workspaceMemberships).toHaveLength(0)
+        expect(prismaMock.categories).toHaveLength(0)
+        expect(logger.info).not.toHaveBeenCalledWith(
+            'Email verification token generated for registration',
+            expect.anything(),
         )
     })
 
@@ -573,9 +688,15 @@ function createPrismaMock(): PrismaMock {
     const users: StoredUser[] = []
     const verificationTokens: StoredEmailVerificationToken[] = []
     const auditEvents: StoredAuditEvent[] = []
+    const workspaces: StoredWorkspace[] = []
+    const workspaceMemberships: StoredWorkspaceMembership[] = []
+    const categories: StoredCategory[] = []
     let userCounter = 0
     let verificationTokenCounter = 0
     let auditEventCounter = 0
+    let workspaceCounter = 0
+    let workspaceMembershipCounter = 0
+    let failNextCategoryUpsert = false
 
     const transactionClient: FakeTransactionClient = {
         user: {
@@ -684,18 +805,132 @@ function createPrismaMock(): PrismaMock {
                 return auditEvent
             },
         },
+        workspace: {
+            create: async ({ data }) => {
+                workspaceCounter += 1
+
+                const workspace: StoredWorkspace = {
+                    id: `workspace-${workspaceCounter}`,
+                    name: data.name,
+                    type: data.type,
+                    timezone: data.timezone,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+
+                workspaces.push(workspace)
+                return workspace
+            },
+        },
+        workspaceMembership: {
+            create: async ({ data }) => {
+                workspaceMembershipCounter += 1
+
+                const membership: StoredWorkspaceMembership = {
+                    id: `workspace-membership-${workspaceMembershipCounter}`,
+                    userId: data.userId,
+                    workspaceId: data.workspaceId,
+                    role: data.role,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+
+                workspaceMemberships.push(membership)
+                return membership
+            },
+        },
+        category: {
+            upsert: async ({ where, update, create }) => {
+                if (failNextCategoryUpsert) {
+                    failNextCategoryUpsert = false
+                    throw new Error('Category seed failed')
+                }
+
+                const existingCategory = categories.find((item) => item.id === where.id)
+
+                if (existingCategory) {
+                    existingCategory.workspaceId = update.workspaceId
+                    existingCategory.parentId = update.parentId
+                    existingCategory.name = update.name
+                    existingCategory.icon = update.icon
+                    existingCategory.updatedAt = new Date()
+
+                    return existingCategory
+                }
+
+                const category: StoredCategory = {
+                    id: create.id,
+                    workspaceId: create.workspaceId,
+                    parentId: create.parentId,
+                    name: create.name,
+                    icon: create.icon,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+
+                categories.push(category)
+                return category
+            },
+        },
     }
 
-    return {
+    const prismaMock: PrismaMock = {
         users,
         verificationTokens,
         auditEvents,
+        workspaces,
+        workspaceMemberships,
+        categories,
+        get failNextCategoryUpsert() {
+            return failNextCategoryUpsert
+        },
+        set failNextCategoryUpsert(value: boolean) {
+            failNextCategoryUpsert = value
+        },
         ...transactionClient,
-        $transaction: async <T>(callback: (tx: FakeTransactionClient) => Promise<T>) =>
-            callback(transactionClient),
+        $transaction: async <T>(callback: (tx: FakeTransactionClient) => Promise<T>) => {
+            const snapshot = {
+                users: users.map((user) => ({ ...user })),
+                verificationTokens: verificationTokens.map((token) => ({ ...token })),
+                auditEvents: auditEvents.map((auditEvent) => ({ ...auditEvent })),
+                workspaces: workspaces.map((workspace) => ({ ...workspace })),
+                workspaceMemberships: workspaceMemberships.map((membership) => ({ ...membership })),
+                categories: categories.map((category) => ({ ...category })),
+                userCounter,
+                verificationTokenCounter,
+                auditEventCounter,
+                workspaceCounter,
+                workspaceMembershipCounter,
+                failNextCategoryUpsert,
+            }
+
+            try {
+                return await callback(transactionClient)
+            } catch (error) {
+                replaceContents(users, snapshot.users)
+                replaceContents(verificationTokens, snapshot.verificationTokens)
+                replaceContents(auditEvents, snapshot.auditEvents)
+                replaceContents(workspaces, snapshot.workspaces)
+                replaceContents(workspaceMemberships, snapshot.workspaceMemberships)
+                replaceContents(categories, snapshot.categories)
+                userCounter = snapshot.userCounter
+                verificationTokenCounter = snapshot.verificationTokenCounter
+                auditEventCounter = snapshot.auditEventCounter
+                workspaceCounter = snapshot.workspaceCounter
+                workspaceMembershipCounter = snapshot.workspaceMembershipCounter
+                failNextCategoryUpsert = snapshot.failNextCategoryUpsert
+                throw error
+            }
+        },
         $connect: async () => undefined,
         $disconnect: async () => undefined,
     }
+
+    return prismaMock
+}
+
+function replaceContents<T>(target: T[], source: T[]): void {
+    target.splice(0, target.length, ...source)
 }
 
 function getLoggedVerificationToken(message: string): string {
