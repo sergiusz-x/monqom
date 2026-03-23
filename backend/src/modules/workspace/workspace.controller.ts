@@ -1,8 +1,9 @@
-import { Controller, Get, HttpCode, HttpStatus, Param, Req, UseGuards } from '@nestjs/common'
+import { Controller, Get, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common'
 import type { Request } from 'express'
 import { SessionGuard } from '../../shared/guards/session.guard'
+import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { WorkspaceService } from './workspace.service'
-import { WORKSPACE_BASE_ROUTE, WORKSPACE_ROUTES } from './workspace.routes'
+import { WORKSPACE_BASE_ROUTE, WORKSPACE_SCOPED_BASE_ROUTE } from './workspace.routes'
 
 @Controller(WORKSPACE_BASE_ROUTE)
 @UseGuards(SessionGuard)
@@ -14,10 +15,16 @@ export class WorkspaceController {
     async listWorkspaces(@Req() req: Request) {
         return this.workspaceService.listUserWorkspaces(req.session.auth!.userId)
     }
+}
 
-    @Get(WORKSPACE_ROUTES.detail)
+@Controller(WORKSPACE_SCOPED_BASE_ROUTE)
+@UseGuards(SessionGuard, WorkspaceGuard)
+export class WorkspaceScopedController {
+    constructor(private readonly workspaceService: WorkspaceService) {}
+
+    @Get()
     @HttpCode(HttpStatus.OK)
-    async getWorkspace(@Param('id') workspaceId: string, @Req() req: Request) {
-        return this.workspaceService.getWorkspaceForUser(req.session.auth!.userId, workspaceId)
+    async getWorkspace(@Req() req: Request) {
+        return this.workspaceService.getWorkspaceById(req.workspace!.workspaceId)
     }
 }

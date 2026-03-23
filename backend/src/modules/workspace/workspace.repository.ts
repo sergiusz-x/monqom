@@ -15,6 +15,11 @@ export interface CreateWorkspaceMembershipInput {
     role: string
 }
 
+export interface WorkspaceMembershipAccess {
+    workspaceId: string
+    role: string
+}
+
 export type WorkspacePersistenceClient = Prisma.TransactionClient | PrismaService
 
 @Injectable()
@@ -47,6 +52,37 @@ export class WorkspaceRepository {
                 id: workspaceId,
             },
         })
+    }
+
+    async findWorkspaceAccess(
+        userId: string,
+        workspaceId: string,
+    ): Promise<WorkspaceMembershipAccess | null> {
+        return this.prisma.workspaceMembership
+            .findFirst({
+                where: {
+                    userId,
+                    workspaceId,
+                },
+                select: {
+                    role: true,
+                    workspace: {
+                        select: {
+                            id: true,
+                        },
+                    },
+                },
+            })
+            .then((membership) => {
+                if (!membership) {
+                    return null
+                }
+
+                return {
+                    workspaceId: membership.workspace.id,
+                    role: membership.role,
+                }
+            })
     }
 
     async checkMembership(userId: string, workspaceId: string): Promise<boolean> {

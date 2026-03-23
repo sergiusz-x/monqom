@@ -1,13 +1,27 @@
-import { INestApplication } from '@nestjs/common'
+import { Controller, Get, INestApplication, Req, UseGuards } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import * as argon2 from 'argon2'
 import session from 'express-session'
+import type { Request } from 'express'
 import request from 'supertest'
 import { App } from 'supertest/types'
 import { AppModule } from './../src/app.module'
+import { AuthRepository } from './../src/modules/auth/auth.repository'
+import { WorkspaceRepository } from './../src/modules/workspace/workspace.repository'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
+import { SessionGuard } from './../src/shared/guards/session.guard'
+import { WorkspaceGuard } from './../src/shared/guards/workspace.guard'
 import { createSessionOptions } from './../src/shared/session/session.config'
+
+@Controller('workspace-guard-test')
+class WorkspaceGuardTestController {
+    @Get('active')
+    @UseGuards(SessionGuard, WorkspaceGuard)
+    getActiveWorkspace(@Req() req: Request) {
+        return req.workspace
+    }
+}
 
 interface StoredUser {
     id: string
@@ -71,6 +85,10 @@ interface PrismaMock {
         findUnique(args: { where: { id: string } }): Promise<StoredWorkspace | null>
     }
     workspaceMembership: {
+        findFirst(args: {
+            where: { userId: string; workspaceId: string }
+            select: { role: boolean; workspace: { select: { id: boolean } } }
+        }): Promise<{ role: string; workspace: { id: string } } | null>
         count(args: { where: { userId: string; workspaceId: string } }): Promise<number>
     }
     auditEvent: {
@@ -102,6 +120,8 @@ describe('Workspace membership endpoints (e2e)', () => {
 
         const moduleFixture: TestingModule = await Test.createTestingModule({
             imports: [AppModule],
+            controllers: [WorkspaceGuardTestController],
+            providers: [AuthRepository, WorkspaceRepository, SessionGuard, WorkspaceGuard],
         })
             .overrideProvider(PrismaService)
             .useValue(prismaMock)
@@ -171,6 +191,32 @@ describe('Workspace membership endpoints (e2e)', () => {
                 error: 'Forbidden',
             }),
         )
+
+        const missingWorkspaceResponse = await agent
+            .get('/api/v1/workspaces/workspace-9')
+            .expect(404)
+
+        expect(missingWorkspaceResponse.body).toEqual(
+            expect.objectContaining({
+                statusCode: 404,
+                message: 'Workspace not found',
+                error: 'Not Found',
+            }),
+        )
+    })
+
+    it('accepts workspace id from the x-workspace-id header when route params are absent', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspace-guard-test/active')
+            .set('x-workspace-id', ' workspace-1 ')
+            .expect(200)
+
+        expect(response.body).toEqual({
+            workspaceId: 'workspace-1',
+            role: 'owner',
+        })
     })
 })
 
@@ -215,6 +261,19 @@ function createPrismaMock(): PrismaMock {
                 workspaces.find((workspace) => workspace.id === where.id) ?? null,
         },
         workspaceMembership: {
+            findFirst: async ({ where }) =>
+                workspaceMemberships
+                    .filter(
+                        (membership) =>
+                            membership.userId === where.userId &&
+                            membership.workspaceId === where.workspaceId,
+                    )
+                    .map((membership) => ({
+                        role: membership.role,
+                        workspace: {
+                            id: membership.workspaceId,
+                        },
+                    }))[0] ?? null,
             count: async ({ where }) =>
                 workspaceMemberships.filter(
                     (membership) =>

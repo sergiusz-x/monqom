@@ -148,6 +148,22 @@ describe('WorkspaceService', () => {
         expect(workspaceRepository.findWorkspacesByUserId).toHaveBeenCalledWith('user-1')
     })
 
+    it('returns workspace details by id', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+
+        workspaceRepository.findWorkspaceById.mockResolvedValue(workspace as never)
+
+        await expect(service.getWorkspaceById(' workspace-1 ')).resolves.toEqual(workspace)
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+    })
+
     it('returns workspace details when the user is a member', async () => {
         const workspace = {
             id: 'workspace-1',
@@ -177,6 +193,13 @@ describe('WorkspaceService', () => {
 
         expect(workspaceRepository.checkMembership).toHaveBeenCalledWith('user-1', 'workspace-2')
         expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+    })
+
+    it('rejects missing workspace details by id', async () => {
+        workspaceRepository.findWorkspaceById.mockResolvedValue(null)
+
+        await expect(service.getWorkspaceById('workspace-2')).rejects.toThrow('Workspace not found')
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-2')
     })
 
     it('exports membership checks for other modules', async () => {

@@ -27,6 +27,18 @@ export class WorkspaceService {
         return this.workspaceRepository.findWorkspacesByUserId(normalizedUserId)
     }
 
+    async getWorkspaceById(workspaceId: string): Promise<Workspace> {
+        const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
+
+        const workspace = await this.workspaceRepository.findWorkspaceById(normalizedWorkspaceId)
+
+        if (!workspace) {
+            throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE)
+        }
+
+        return workspace
+    }
+
     async getWorkspaceForUser(userId: string, workspaceId: string): Promise<Workspace> {
         const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
         const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
@@ -40,13 +52,7 @@ export class WorkspaceService {
             throw new ForbiddenException(WORKSPACE_ACCESS_FORBIDDEN_MESSAGE)
         }
 
-        const workspace = await this.workspaceRepository.findWorkspaceById(normalizedWorkspaceId)
-
-        if (!workspace) {
-            throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE)
-        }
-
-        return workspace
+        return this.getWorkspaceById(normalizedWorkspaceId)
     }
 
     async checkMembership(userId: string, workspaceId: string): Promise<boolean> {
