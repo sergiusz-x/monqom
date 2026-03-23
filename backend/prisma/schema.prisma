@@ -137,6 +137,7 @@ model Transaction {
   categoryId      String  @map("category_id")
   paymentSourceId String? @map("payment_source_id")
 
+  type     String @default("expense")
   amount   Int // stored as integer minor units (cents)
   currency String
   date     DateTime

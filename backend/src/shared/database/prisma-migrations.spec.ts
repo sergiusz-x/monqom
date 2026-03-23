@@ -97,4 +97,42 @@ describe('Prisma migrations', () => {
         expect(migrationSql).toContain('ALTER COLUMN "role" SET DEFAULT \'member\'')
         expect(migrationSql).toContain('SET "role" = LOWER("role")')
     })
+
+    it('adds an expense transaction type default for new transactions', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0006_transaction_type',
+            'migration.sql',
+        )
+
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+
+        expect(migrationSql).toContain('ALTER TABLE "transactions"')
+        expect(migrationSql).toContain('ADD COLUMN "type" TEXT NOT NULL DEFAULT \'expense\'')
+    })
+
+    it('adds a case-insensitive transaction tag uniqueness index using LOWER()', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0007_transaction_tags_case_insensitive_name',
+            'migration.sql',
+        )
+
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+
+        expect(migrationSql).toContain('CREATE UNIQUE INDEX')
+        expect(migrationSql).toContain(
+            'ON "transaction_tags" ("workspace_id", "transaction_id", LOWER("name"))',
+        )
+    })
 })

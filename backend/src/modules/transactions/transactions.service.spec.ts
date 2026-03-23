@@ -1,0 +1,350 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { TransactionsRepository } from './transactions.repository'
+import { TransactionsService } from './transactions.service'
+
+describe('TransactionsService', () => {
+    let service: TransactionsService
+    let transactionClient: object
+    let prisma: {
+        $transaction: jest.Mock
+    }
+    let transactionsRepository: jest.Mocked<
+        Pick<
+            TransactionsRepository,
+            | 'countTransactions'
+            | 'createTransactionWithTags'
+            | 'findActivePaymentSourceById'
+            | 'findCategoryById'
+            | 'listTransactions'
+            | 'listWorkspaceTags'
+        >
+    >
+
+    beforeEach(() => {
+        transactionClient = {}
+        prisma = {
+            $transaction: jest.fn(async (callback: (tx: object) => Promise<unknown>) =>
+                callback(transactionClient),
+            ),
+        }
+        transactionsRepository = {
+            countTransactions: jest.fn(),
+            createTransactionWithTags: jest.fn(),
+            findActivePaymentSourceById: jest.fn(),
+            findCategoryById: jest.fn(),
+            listTransactions: jest.fn(),
+            listWorkspaceTags: jest.fn(),
+        }
+
+        service = new TransactionsService(
+            prisma as never,
+            transactionsRepository as unknown as TransactionsRepository,
+        )
+    })
+
+    it('creates an expense transaction and leaves case-insensitive tag normalization to the repository layer', async () => {
+        const createdTransaction = {
+            id: 'transaction-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 1050,
+            currency: 'USD',
+            date: new Date('2026-03-23T00:00:00.000Z'),
+            notes: 'Lunch with the team',
+            createdAt: new Date('2026-03-23T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T12:00:00.000Z'),
+            deletedAt: null,
+            tags: [
+                {
+                    id: 'tag-1',
+                    workspaceId: 'workspace-1',
+                    transactionId: 'transaction-1',
+                    name: 'Food',
+                    createdAt: new Date('2026-03-23T12:00:01.000Z'),
+                    updatedAt: new Date('2026-03-23T12:00:01.000Z'),
+                },
+                {
+                    id: 'tag-2',
+                    workspaceId: 'workspace-1',
+                    transactionId: 'transaction-1',
+                    name: 'Work',
+                    createdAt: new Date('2026-03-23T12:00:02.000Z'),
+                    updatedAt: new Date('2026-03-23T12:00:02.000Z'),
+                },
+            ],
+        }
+
+        transactionsRepository.findCategoryById.mockResolvedValue({ id: 'category-1' } as never)
+        transactionsRepository.findActivePaymentSourceById.mockResolvedValue({
+            id: 'payment-source-1',
+        } as never)
+        transactionsRepository.createTransactionWithTags.mockResolvedValue(
+            createdTransaction as never,
+        )
+
+        await expect(
+            service.createTransaction(
+                {
+                    amount: 10.5,
+                    date: '2026-03-23',
+                    category_id: ' category-1 ',
+                    payment_source_id: ' payment-source-1 ',
+                    notes: ' Lunch with the team ',
+                    tags: [' Food ', 'food', ' Work '],
+                },
+                ' workspace-1 ',
+                ' user-1 ',
+            ),
+        ).resolves.toEqual({
+            id: 'transaction-1',
+            workspace_id: 'workspace-1',
+            category_id: 'category-1',
+            payment_source_id: 'payment-source-1',
+            type: 'expense',
+            amount: 10.5,
+            currency: 'USD',
+            date: new Date('2026-03-23T00:00:00.000Z'),
+            notes: 'Lunch with the team',
+            tags: ['Food', 'Work'],
+            created_at: new Date('2026-03-23T12:00:00.000Z'),
+            updated_at: new Date('2026-03-23T12:00:00.000Z'),
+        })
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+        expect(transactionsRepository.findCategoryById).toHaveBeenCalledWith(
+            'workspace-1',
+            'category-1',
+            transactionClient,
+        )
+        expect(transactionsRepository.findActivePaymentSourceById).toHaveBeenCalledWith(
+            'workspace-1',
+            'payment-source-1',
+            transactionClient,
+        )
+        expect(transactionsRepository.createTransactionWithTags).toHaveBeenCalledWith(
+            {
+                workspaceId: 'workspace-1',
+                userId: 'user-1',
+                categoryId: 'category-1',
+                paymentSourceId: 'payment-source-1',
+                type: 'expense',
+                amount: 1050,
+                currency: 'USD',
+                date: new Date('2026-03-23T00:00:00.000Z'),
+                notes: 'Lunch with the team',
+                tags: ['Food', 'food', 'Work'],
+            },
+            transactionClient,
+        )
+    })
+
+    it('lists transactions with trimmed filters, inclusive date ranges, pagination, and display amounts', async () => {
+        transactionsRepository.listTransactions.mockResolvedValue([
+            {
+                id: 'transaction-4',
+                workspace_id: 'workspace-1',
+                category_id: 'category-1',
+                payment_source_id: 'payment-source-2',
+                type: 'expense',
+                amount: 4050,
+                currency: 'USD',
+                date: new Date('2026-03-22T09:30:00.000Z'),
+                notes: 'Train pass',
+                tags: ['food', 'Travel'],
+                created_at: new Date('2026-03-22T10:00:00.000Z'),
+                updated_at: new Date('2026-03-22T10:00:00.000Z'),
+            },
+        ] as never)
+        transactionsRepository.countTransactions.mockResolvedValue(2)
+
+        await expect(
+            service.listTransactions(
+                {
+                    category_id: ' category-1 ',
+                    payment_source_id: ' payment-source-2 ',
+                    tag: ' FOOD ',
+                    date_from: '2026-03-21',
+                    date_to: '2026-03-22',
+                    limit: '1',
+                    offset: '1',
+                },
+                ' workspace-1 ',
+            ),
+        ).resolves.toEqual({
+            data: [
+                {
+                    id: 'transaction-4',
+                    workspace_id: 'workspace-1',
+                    category_id: 'category-1',
+                    payment_source_id: 'payment-source-2',
+                    type: 'expense',
+                    amount: 40.5,
+                    currency: 'USD',
+                    date: new Date('2026-03-22T09:30:00.000Z'),
+                    notes: 'Train pass',
+                    tags: ['food', 'Travel'],
+                    created_at: new Date('2026-03-22T10:00:00.000Z'),
+                    updated_at: new Date('2026-03-22T10:00:00.000Z'),
+                },
+            ],
+            total: 2,
+            limit: 1,
+            offset: 1,
+        })
+
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+        expect(transactionsRepository.listTransactions).toHaveBeenCalledWith(
+            {
+                workspaceId: 'workspace-1',
+                categoryId: 'category-1',
+                paymentSourceId: 'payment-source-2',
+                tag: 'FOOD',
+                dateFrom: new Date('2026-03-21T00:00:00.000Z'),
+                dateTo: new Date('2026-03-22T23:59:59.999Z'),
+                limit: 1,
+                offset: 1,
+            },
+            prisma,
+        )
+        expect(transactionsRepository.countTransactions).toHaveBeenCalledWith(
+            {
+                workspaceId: 'workspace-1',
+                categoryId: 'category-1',
+                paymentSourceId: 'payment-source-2',
+                tag: 'FOOD',
+                dateFrom: new Date('2026-03-21T00:00:00.000Z'),
+                dateTo: new Date('2026-03-22T23:59:59.999Z'),
+            },
+            prisma,
+        )
+    })
+
+    it('returns workspace tags from the repository layer', async () => {
+        transactionsRepository.listWorkspaceTags.mockResolvedValue(['Food', 'Travel'])
+
+        await expect(service.listWorkspaceTags(' workspace-1 ')).resolves.toEqual([
+            'Food',
+            'Travel',
+        ])
+
+        expect(transactionsRepository.listWorkspaceTags).toHaveBeenCalledWith('workspace-1', prisma)
+    })
+
+    it('rejects invalid transaction input before opening a database transaction', async () => {
+        try {
+            await service.createTransaction(
+                {
+                    amount: '10.505',
+                    date: '03/23/2026',
+                    category_id: '   ',
+                    tags: new Array(11).fill('tag'),
+                },
+                'workspace-1',
+                'user-1',
+            )
+            throw new Error('Expected createTransaction to reject invalid input')
+        } catch (error) {
+            expect(error).toBeInstanceOf(BadRequestException)
+            expect((error as BadRequestException).getResponse()).toEqual(
+                expect.objectContaining({
+                    message: expect.arrayContaining([
+                        'Amount must be a positive number with up to 2 decimal places',
+                        'Date must be a valid ISO 8601 value',
+                        'Category id is required',
+                        'Tags cannot contain more than 10 items',
+                    ]),
+                }),
+            )
+        }
+
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+        expect(transactionsRepository.findCategoryById).not.toHaveBeenCalled()
+        expect(transactionsRepository.createTransactionWithTags).not.toHaveBeenCalled()
+    })
+
+    it('rejects invalid list query values before hitting the repository layer', async () => {
+        await expect(
+            service.listTransactions(
+                {
+                    tag: '   ',
+                    date_from: '2026-03-24',
+                    date_to: '2026-03-23',
+                    limit: '0',
+                    offset: '-1',
+                },
+                'workspace-1',
+            ),
+        ).rejects.toMatchObject({
+            response: {
+                message: expect.arrayContaining([
+                    'Tag must be a non-empty string',
+                    'Date from must be less than or equal to date to',
+                    'Limit must be an integer between 1 and 100',
+                    'Offset must be a non-negative integer',
+                ]),
+            },
+        })
+
+        expect(transactionsRepository.listTransactions).not.toHaveBeenCalled()
+        expect(transactionsRepository.countTransactions).not.toHaveBeenCalled()
+    })
+
+    it('rejects missing categories inside the workspace', async () => {
+        transactionsRepository.findCategoryById.mockResolvedValue(null)
+
+        await expect(
+            service.createTransaction(
+                {
+                    amount: 10.5,
+                    date: '2026-03-23',
+                    category_id: 'category-9',
+                },
+                'workspace-1',
+                'user-1',
+            ),
+        ).rejects.toBeInstanceOf(NotFoundException)
+
+        expect(transactionsRepository.findActivePaymentSourceById).not.toHaveBeenCalled()
+        expect(transactionsRepository.createTransactionWithTags).not.toHaveBeenCalled()
+    })
+
+    it('rejects archived or missing payment sources', async () => {
+        transactionsRepository.findCategoryById.mockResolvedValue({ id: 'category-1' } as never)
+        transactionsRepository.findActivePaymentSourceById.mockResolvedValue(null)
+
+        await expect(
+            service.createTransaction(
+                {
+                    amount: 10.5,
+                    date: '2026-03-23T09:30:00Z',
+                    category_id: 'category-1',
+                    payment_source_id: 'payment-source-9',
+                },
+                'workspace-1',
+                'user-1',
+            ),
+        ).rejects.toBeInstanceOf(NotFoundException)
+
+        expect(transactionsRepository.createTransactionWithTags).not.toHaveBeenCalled()
+    })
+
+    it('rejects non-string notes values', async () => {
+        await expect(
+            service.createTransaction(
+                {
+                    amount: 10.5,
+                    date: '2026-03-23',
+                    category_id: 'category-1',
+                    notes: 123,
+                },
+                'workspace-1',
+                'user-1',
+            ),
+        ).rejects.toThrow('Bad Request Exception')
+
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+        expect(transactionsRepository.createTransactionWithTags).not.toHaveBeenCalled()
+    })
+})

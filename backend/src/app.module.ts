@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config'
 import envConfig from './config/env'
 import { AuthModule } from './modules/auth/auth.module'
 import { HealthModule } from './modules/health/health.module'
+import { TransactionsModule } from './modules/transactions/transactions.module'
 import { WorkspaceModule } from './modules/workspace/workspace.module'
 import { DatabaseModule } from './shared/database/database.module'
 
@@ -15,6 +16,7 @@ import { DatabaseModule } from './shared/database/database.module'
         HealthModule,
         AuthModule,
         WorkspaceModule,
+        TransactionsModule,
         DatabaseModule,
     ],
 })
