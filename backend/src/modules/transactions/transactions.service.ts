@@ -4,6 +4,7 @@ import {
     ListedTransactionRecord,
     ListTransactionsFilters,
     TransactionWithTags,
+    TransactionsPersistenceClient,
     TransactionsRepository,
 } from './transactions.repository'
 
@@ -17,6 +18,7 @@ const DEFAULT_TRANSACTION_LIST_LIMIT = 20
 const MAX_TRANSACTION_LIST_LIMIT = 100
 const MAX_TAGS_PER_TRANSACTION = 10
 const PAYMENT_SOURCE_NOT_FOUND_MESSAGE = 'Payment source not found'
+const TRANSACTION_NOT_FOUND_MESSAGE = 'Transaction not found'
 
 export interface CreateTransactionRequestInput {
     amount?: unknown
@@ -115,27 +117,12 @@ export class TransactionsService {
         const transactionDate = validatedInput.date
 
         return this.prisma.$transaction(async (tx) => {
-            const category = await this.transactionsRepository.findCategoryById(
+            await this.assertValidTransactionReferences(
                 normalizedWorkspaceId,
                 categoryId,
+                validatedInput.paymentSourceId,
                 tx,
             )
-
-            if (!category) {
-                throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
-            }
-
-            if (validatedInput.paymentSourceId) {
-                const paymentSource = await this.transactionsRepository.findActivePaymentSourceById(
-                    normalizedWorkspaceId,
-                    validatedInput.paymentSourceId,
-                    tx,
-                )
-
-                if (!paymentSource) {
-                    throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
-                }
-            }
 
             const transaction = await this.transactionsRepository.createTransactionWithTags(
                 {
@@ -154,6 +141,126 @@ export class TransactionsService {
             )
 
             return mapCreateTransactionResponse(transaction)
+        })
+    }
+
+    async getTransactionById(
+        transactionId: string,
+        workspaceId: string,
+    ): Promise<CreateTransactionResponse> {
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedTransactionId = normalizeRequiredValue(transactionId, 'Transaction id')
+        const transaction = await this.transactionsRepository.findTransactionById(
+            normalizedWorkspaceId,
+            normalizedTransactionId,
+            this.prisma,
+        )
+
+        if (!transaction) {
+            throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+        }
+
+        return mapCreateTransactionResponse(transaction)
+    }
+
+    async updateTransaction(
+        input: CreateTransactionRequestInput,
+        transactionId: string,
+        workspaceId: string,
+    ): Promise<CreateTransactionResponse> {
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedTransactionId = normalizeRequiredValue(transactionId, 'Transaction id')
+        const validatedInput = validateCreateTransactionInput(input)
+
+        if (
+            validatedInput.errors.length > 0 ||
+            typeof validatedInput.amountCents !== 'number' ||
+            !validatedInput.categoryId ||
+            !validatedInput.date
+        ) {
+            throw new BadRequestException(validatedInput.errors)
+        }
+
+        const amountCents = validatedInput.amountCents
+        const categoryId = validatedInput.categoryId
+        const transactionDate = validatedInput.date
+
+        return this.prisma.$transaction(async (tx) => {
+            const existingTransaction = await this.transactionsRepository.findTransactionById(
+                normalizedWorkspaceId,
+                normalizedTransactionId,
+                tx,
+            )
+
+            if (!existingTransaction) {
+                throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+            }
+
+            await this.assertValidTransactionReferences(
+                normalizedWorkspaceId,
+                categoryId,
+                validatedInput.paymentSourceId,
+                tx,
+            )
+
+            const transaction = await this.transactionsRepository.updateTransactionWithTags(
+                {
+                    workspaceId: normalizedWorkspaceId,
+                    transactionId: normalizedTransactionId,
+                    categoryId,
+                    paymentSourceId: validatedInput.paymentSourceId,
+                    type: EXPENSE_TRANSACTION_TYPE,
+                    amount: amountCents,
+                    currency: DEFAULT_TRANSACTION_CURRENCY,
+                    date: transactionDate,
+                    notes: validatedInput.notes,
+                    tags: validatedInput.tags,
+                },
+                tx,
+            )
+
+            if (!transaction) {
+                throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+            }
+
+            return mapCreateTransactionResponse(transaction)
+        })
+    }
+
+    async deleteTransaction(
+        transactionId: string,
+        workspaceId: string,
+        userId: string,
+    ): Promise<void> {
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedTransactionId = normalizeRequiredValue(transactionId, 'Transaction id')
+        const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+
+        await this.prisma.$transaction(async (tx) => {
+            const transaction = await this.transactionsRepository.findTransactionById(
+                normalizedWorkspaceId,
+                normalizedTransactionId,
+                tx,
+            )
+
+            if (!transaction) {
+                throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+            }
+
+            const wasDeleted = await this.transactionsRepository.softDeleteTransaction(
+                {
+                    workspaceId: normalizedWorkspaceId,
+                    transactionId: normalizedTransactionId,
+                    userId: normalizedUserId,
+                    deletedAt: new Date(),
+                    transaction,
+                },
+                tx,
+            )
+
+            if (!wasDeleted) {
+                throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+            }
         })
     }
 
@@ -201,6 +308,37 @@ export class TransactionsService {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
 
         return this.transactionsRepository.listWorkspaceTags(normalizedWorkspaceId, this.prisma)
+    }
+
+    private async assertValidTransactionReferences(
+        workspaceId: string,
+        categoryId: string,
+        paymentSourceId: string | undefined,
+        prisma: TransactionsPersistenceClient,
+    ): Promise<void> {
+        const category = await this.transactionsRepository.findCategoryById(
+            workspaceId,
+            categoryId,
+            prisma,
+        )
+
+        if (!category) {
+            throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
+        }
+
+        if (!paymentSourceId) {
+            return
+        }
+
+        const paymentSource = await this.transactionsRepository.findActivePaymentSourceById(
+            workspaceId,
+            paymentSourceId,
+            prisma,
+        )
+
+        if (!paymentSource) {
+            throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
+        }
     }
 }
 

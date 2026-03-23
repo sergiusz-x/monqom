@@ -140,6 +140,25 @@ interface PrismaMock {
                 notes: string | null
             }
         }): Promise<StoredTransaction>
+        findFirst(args: {
+            where: { workspaceId: string; id: string; deletedAt: null }
+            include?: { tags: { orderBy: { name: 'asc' | 'desc' } } }
+        }): Promise<
+            (StoredTransaction & { tags: StoredTransactionTag[] }) | StoredTransaction | null
+        >
+        updateMany(args: {
+            where: { workspaceId: string; id: string; deletedAt: null }
+            data: {
+                categoryId?: string
+                paymentSourceId?: string | null
+                type?: string
+                amount?: number
+                currency?: string
+                date?: Date
+                notes?: string | null
+                deletedAt?: Date
+            }
+        }): Promise<{ count: number }>
     }
     transactionTag: {
         create(args: {
@@ -149,6 +168,9 @@ interface PrismaMock {
                 name: string
             }
         }): Promise<StoredTransactionTag>
+        deleteMany(args: {
+            where: { workspaceId: string; transactionId: string }
+        }): Promise<{ count: number }>
     }
     auditEvent: {
         create(args: {
@@ -295,6 +317,147 @@ describe('Transactions endpoints (e2e)', () => {
         )
     })
 
+    it('supports a create-get-update-delete transaction flow and hides the soft-deleted record', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const createResponse = await agent
+            .post('/api/v1/workspaces/workspace-1/transactions')
+            .send({
+                amount: 18.99,
+                date: '2026-03-24',
+                category_id: 'category-1',
+                payment_source_id: 'payment-source-1',
+                notes: 'Household items',
+                tags: ['Home', 'Errands'],
+            })
+
+        expect(createResponse.status).toBe(201)
+
+        const transactionId = createResponse.body.id as string
+
+        await expect(
+            agent.get(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`),
+        ).resolves.toMatchObject({
+            status: 200,
+            body: {
+                id: transactionId,
+                workspace_id: 'workspace-1',
+                category_id: 'category-1',
+                payment_source_id: 'payment-source-1',
+                type: 'expense',
+                amount: 18.99,
+                currency: 'USD',
+                date: '2026-03-24T00:00:00.000Z',
+                notes: 'Household items',
+                tags: ['Errands', 'Home'],
+                created_at: '2026-03-24T12:00:00.000Z',
+                updated_at: '2026-03-24T12:00:00.000Z',
+            },
+        })
+
+        const updateResponse = await agent
+            .put(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`)
+            .send({
+                amount: 12.75,
+                date: '2026-03-24T08:30:00Z',
+                category_id: 'category-2',
+                payment_source_id: 'payment-source-2',
+                notes: 'Bus pass',
+                tags: ['Travel', 'travel', 'Work'],
+            })
+
+        expect(updateResponse.status).toBe(200)
+        expect(updateResponse.body).toEqual({
+            id: transactionId,
+            workspace_id: 'workspace-1',
+            category_id: 'category-2',
+            payment_source_id: 'payment-source-2',
+            type: 'expense',
+            amount: 12.75,
+            currency: 'USD',
+            date: '2026-03-24T08:30:00.000Z',
+            notes: 'Bus pass',
+            tags: ['Travel', 'Work'],
+            created_at: '2026-03-24T12:00:00.000Z',
+            updated_at: '2026-03-24T12:30:00.000Z',
+        })
+
+        await expect(
+            agent.get(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`),
+        ).resolves.toMatchObject({
+            status: 200,
+            body: {
+                id: transactionId,
+                workspace_id: 'workspace-1',
+                category_id: 'category-2',
+                payment_source_id: 'payment-source-2',
+                type: 'expense',
+                amount: 12.75,
+                currency: 'USD',
+                date: '2026-03-24T08:30:00.000Z',
+                notes: 'Bus pass',
+                tags: ['Travel', 'Work'],
+                created_at: '2026-03-24T12:00:00.000Z',
+                updated_at: '2026-03-24T12:30:00.000Z',
+            },
+        })
+
+        await agent
+            .delete(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`)
+            .expect(204)
+
+        expect(
+            prismaMock.transactions.find(
+                (transaction) =>
+                    transaction.workspaceId === 'workspace-1' && transaction.id === transactionId,
+            ),
+        ).toEqual(
+            expect.objectContaining({
+                id: transactionId,
+                categoryId: 'category-2',
+                paymentSourceId: 'payment-source-2',
+                amount: 1275,
+                notes: 'Bus pass',
+                deletedAt: expect.any(Date),
+            }),
+        )
+        expect(
+            prismaMock.transactionTags
+                .filter(
+                    (tag) =>
+                        tag.workspaceId === 'workspace-1' && tag.transactionId === transactionId,
+                )
+                .map((tag) => tag.name),
+        ).toEqual(['Travel', 'Work'])
+        expect(prismaMock.auditEvents).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    action: 'TRANSACTION_DELETED',
+                    userId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    entityType: 'TRANSACTION',
+                    entityId: transactionId,
+                    metadata: {
+                        id: transactionId,
+                        workspace_id: 'workspace-1',
+                        category_id: 'category-2',
+                        payment_source_id: 'payment-source-2',
+                        type: 'expense',
+                        amount: 1275,
+                        currency: 'USD',
+                        date: '2026-03-24T08:30:00.000Z',
+                        notes: 'Bus pass',
+                        tags: ['Travel', 'Work'],
+                        created_at: '2026-03-24T12:00:00.000Z',
+                        updated_at: '2026-03-24T12:30:00.000Z',
+                    },
+                }),
+            ]),
+        )
+
+        await agent.get(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`).expect(404)
+    })
+
     it('rejects archived payment sources', async () => {
         const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
 
@@ -320,6 +483,49 @@ describe('Transactions endpoints (e2e)', () => {
                 (auditEvent) => auditEvent.action === 'TRANSACTION_CREATED',
             ),
         ).toHaveLength(0)
+    })
+
+    it('returns 404 for a missing transaction id', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/transactions/transaction-missing')
+            .expect(404)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 404,
+                message: 'Transaction not found',
+                error: 'Not Found',
+            }),
+        )
+    })
+
+    it('forbids non-members from accessing workspace transactions', async () => {
+        seedExistingTransactions(prismaMock)
+        prismaMock.users.push(
+            await createStoredUser({
+                id: 'user-2',
+                email: 'grace@example.com',
+                password: 'CopperAtlas!1234',
+                emailVerified: true,
+                name: 'Grace Hopper',
+            }),
+        )
+
+        const agent = await authenticateAs(app, 'grace@example.com', 'CopperAtlas!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/transactions/transaction-existing-1')
+            .expect(403)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 403,
+                message: 'Forbidden',
+                error: 'Forbidden',
+            }),
+        )
     })
 
     it('lists transactions newest first with tags, total count, pagination, and no soft-deleted rows', async () => {
@@ -546,6 +752,85 @@ function createPrismaMock(): PrismaMock {
                 transactions.push(transaction)
                 return transaction
             },
+            findFirst: async ({ where, include }) => {
+                const transaction = transactions.find(
+                    (entry) =>
+                        entry.workspaceId === where.workspaceId &&
+                        entry.id === where.id &&
+                        entry.deletedAt === where.deletedAt,
+                )
+
+                if (!transaction) {
+                    return null
+                }
+
+                if (!include?.tags) {
+                    return transaction
+                }
+
+                return {
+                    ...transaction,
+                    tags: transactionTags
+                        .filter(
+                            (tag) =>
+                                tag.workspaceId === transaction.workspaceId &&
+                                tag.transactionId === transaction.id,
+                        )
+                        .sort((left, right) => left.name.localeCompare(right.name)),
+                }
+            },
+            updateMany: async ({ where, data }) => {
+                let count = 0
+
+                for (const transaction of transactions) {
+                    if (
+                        transaction.workspaceId !== where.workspaceId ||
+                        transaction.id !== where.id ||
+                        transaction.deletedAt !== where.deletedAt
+                    ) {
+                        continue
+                    }
+
+                    if (data.categoryId !== undefined) {
+                        transaction.categoryId = data.categoryId
+                    }
+
+                    if (data.paymentSourceId !== undefined) {
+                        transaction.paymentSourceId = data.paymentSourceId
+                    }
+
+                    if (data.type !== undefined) {
+                        transaction.type = data.type
+                    }
+
+                    if (data.amount !== undefined) {
+                        transaction.amount = data.amount
+                    }
+
+                    if (data.currency !== undefined) {
+                        transaction.currency = data.currency
+                    }
+
+                    if (data.date !== undefined) {
+                        transaction.date = data.date
+                    }
+
+                    if (data.notes !== undefined) {
+                        transaction.notes = data.notes
+                    }
+
+                    if (data.deletedAt !== undefined) {
+                        transaction.deletedAt = data.deletedAt
+                        transaction.updatedAt = data.deletedAt
+                    } else {
+                        transaction.updatedAt = new Date('2026-03-24T12:30:00.000Z')
+                    }
+
+                    count += 1
+                }
+
+                return { count }
+            },
         },
         transactionTag: {
             create: async ({ data }) => {
@@ -563,6 +848,20 @@ function createPrismaMock(): PrismaMock {
 
                 transactionTags.push(tag)
                 return tag
+            },
+            deleteMany: async ({ where }) => {
+                const remainingTags = transactionTags.filter(
+                    (tag) =>
+                        !(
+                            tag.workspaceId === where.workspaceId &&
+                            tag.transactionId === where.transactionId
+                        ),
+                )
+                const deletedCount = transactionTags.length - remainingTags.length
+
+                transactionTags.splice(0, transactionTags.length, ...remainingTags)
+
+                return { count: deletedCount }
             },
         },
         auditEvent: {

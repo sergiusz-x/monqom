@@ -15,6 +15,27 @@ export interface CreateTransactionRecordInput {
     tags: string[]
 }
 
+export interface UpdateTransactionRecordInput {
+    workspaceId: string
+    transactionId: string
+    categoryId: string
+    paymentSourceId?: string
+    type: string
+    amount: number
+    currency: string
+    date: Date
+    notes: string | null
+    tags: string[]
+}
+
+export interface SoftDeleteTransactionInput {
+    workspaceId: string
+    transactionId: string
+    userId: string
+    deletedAt: Date
+    transaction: TransactionWithTags
+}
+
 export interface ListTransactionsFilters {
     workspaceId: string
     categoryId?: string
@@ -169,6 +190,148 @@ export class TransactionsRepository {
         return createTransactionRecord(prisma)
     }
 
+    async findTransactionById(
+        workspaceId: string,
+        transactionId: string,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<TransactionWithTags | null> {
+        return prisma.transaction.findFirst({
+            where: {
+                workspaceId,
+                id: transactionId,
+                deletedAt: null,
+            },
+            include: {
+                tags: {
+                    orderBy: {
+                        name: 'asc',
+                    },
+                },
+            },
+        })
+    }
+
+    async updateTransactionWithTags(
+        input: UpdateTransactionRecordInput,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<TransactionWithTags | null> {
+        const updateTransactionRecord = async (
+            tx: TransactionsPersistenceClient,
+        ): Promise<TransactionWithTags | null> => {
+            const updatedTransaction = await tx.transaction.updateMany({
+                where: {
+                    workspaceId: input.workspaceId,
+                    id: input.transactionId,
+                    deletedAt: null,
+                },
+                data: {
+                    categoryId: input.categoryId,
+                    paymentSourceId: input.paymentSourceId ?? null,
+                    type: input.type,
+                    amount: input.amount,
+                    currency: input.currency,
+                    date: input.date,
+                    notes: input.notes,
+                },
+            })
+
+            if (updatedTransaction.count === 0) {
+                return null
+            }
+
+            const normalizedTags = await this.normalizeTagsCaseInsensitive(input.tags, tx)
+
+            await tx.transactionTag.deleteMany({
+                where: {
+                    workspaceId: input.workspaceId,
+                    transactionId: input.transactionId,
+                },
+            })
+
+            const tags = await Promise.all(
+                normalizedTags.map((name) =>
+                    tx.transactionTag.create({
+                        data: {
+                            workspaceId: input.workspaceId,
+                            transactionId: input.transactionId,
+                            name,
+                        },
+                    }),
+                ),
+            )
+
+            const transaction = await tx.transaction.findFirst({
+                where: {
+                    workspaceId: input.workspaceId,
+                    id: input.transactionId,
+                    deletedAt: null,
+                },
+            })
+
+            if (!transaction) {
+                return null
+            }
+
+            return {
+                ...transaction,
+                tags,
+            }
+        }
+
+        if (prisma === this.prisma) {
+            return this.prisma.$transaction((tx: Prisma.TransactionClient) =>
+                updateTransactionRecord(tx),
+            )
+        }
+
+        return updateTransactionRecord(prisma)
+    }
+
+    async softDeleteTransaction(
+        input: SoftDeleteTransactionInput,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<boolean> {
+        const softDeleteTransactionRecord = async (
+            tx: TransactionsPersistenceClient,
+        ): Promise<boolean> => {
+            const deletedTransaction = await tx.transaction.updateMany({
+                where: {
+                    workspaceId: input.workspaceId,
+                    id: input.transactionId,
+                    deletedAt: null,
+                },
+                data: {
+                    deletedAt: input.deletedAt,
+                },
+            })
+
+            if (deletedTransaction.count === 0) {
+                return false
+            }
+
+            await tx.auditEvent.create({
+                data: {
+                    action: 'TRANSACTION_DELETED',
+                    workspaceId: input.workspaceId,
+                    userId: input.userId,
+                    entityType: 'TRANSACTION',
+                    entityId: input.transactionId,
+                    metadata: mapDeletedTransactionMetadata(input.transaction),
+                },
+            })
+
+            return true
+        }
+
+        if (prisma === this.prisma) {
+            return this.prisma.$transaction((tx: Prisma.TransactionClient) =>
+                softDeleteTransactionRecord(tx),
+            )
+        }
+
+        return softDeleteTransactionRecord(prisma)
+    }
+
     async listTransactions(
         filters: ListTransactionsQuery,
         prisma: TransactionsPersistenceClient = this.prisma,
@@ -308,4 +471,21 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
     }
 
     return whereClause
+}
+
+function mapDeletedTransactionMetadata(transaction: TransactionWithTags) {
+    return {
+        id: transaction.id,
+        workspace_id: transaction.workspaceId,
+        category_id: transaction.categoryId,
+        payment_source_id: transaction.paymentSourceId,
+        type: transaction.type,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        date: transaction.date.toISOString(),
+        notes: transaction.notes,
+        tags: transaction.tags.map((tag) => tag.name),
+        created_at: transaction.createdAt.toISOString(),
+        updated_at: transaction.updatedAt.toISOString(),
+    }
 }

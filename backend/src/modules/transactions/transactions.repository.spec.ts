@@ -6,11 +6,37 @@ describe('TransactionsRepository', () => {
     let repository: TransactionsRepository
     let prisma: {
         $queryRaw: jest.Mock
+        $transaction: jest.Mock
+        auditEvent: {
+            create: jest.Mock
+        }
+        transaction: {
+            findFirst: jest.Mock
+            updateMany: jest.Mock
+        }
+        transactionTag: {
+            create: jest.Mock
+            deleteMany: jest.Mock
+        }
     }
 
     beforeEach(() => {
         prisma = {
             $queryRaw: jest.fn(),
+            $transaction: jest.fn(async (callback: (tx: typeof prisma) => Promise<unknown>) =>
+                callback(prisma),
+            ),
+            auditEvent: {
+                create: jest.fn(),
+            },
+            transaction: {
+                findFirst: jest.fn(),
+                updateMany: jest.fn(),
+            },
+            transactionTag: {
+                create: jest.fn(),
+                deleteMany: jest.fn(),
+            },
         }
 
         repository = new TransactionsRepository(prisma as never as PrismaService)
@@ -67,6 +93,190 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('OFFSET')
     })
 
+    it('loads a single non-deleted transaction scoped to its workspace with ordered tags', async () => {
+        const transaction = {
+            id: 'transaction-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 1050,
+            currency: 'USD',
+            date: new Date('2026-03-23T00:00:00.000Z'),
+            notes: 'Lunch',
+            createdAt: new Date('2026-03-23T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T12:00:00.000Z'),
+            deletedAt: null,
+            tags: [],
+        }
+
+        prisma.transaction.findFirst.mockResolvedValue(transaction)
+
+        await expect(
+            repository.findTransactionById('workspace-1', 'transaction-1'),
+        ).resolves.toEqual(transaction)
+
+        expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
+            where: {
+                workspaceId: 'workspace-1',
+                id: 'transaction-1',
+                deletedAt: null,
+            },
+            include: {
+                tags: {
+                    orderBy: {
+                        name: 'asc',
+                    },
+                },
+            },
+        })
+    })
+
+    it('updates a transaction and replaces its tags with normalized values', async () => {
+        prisma.$queryRaw.mockResolvedValue([{ name: 'Travel' }, { name: 'Work' }])
+        prisma.transaction.updateMany.mockResolvedValue({ count: 1 })
+        prisma.transactionTag.deleteMany.mockResolvedValue({ count: 2 })
+        prisma.transactionTag.create
+            .mockResolvedValueOnce({
+                id: 'tag-1',
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                name: 'Travel',
+                createdAt: new Date('2026-03-24T09:00:01.000Z'),
+                updatedAt: new Date('2026-03-24T09:00:01.000Z'),
+            })
+            .mockResolvedValueOnce({
+                id: 'tag-2',
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                name: 'Work',
+                createdAt: new Date('2026-03-24T09:00:02.000Z'),
+                updatedAt: new Date('2026-03-24T09:00:02.000Z'),
+            })
+        prisma.transaction.findFirst.mockResolvedValue({
+            id: 'transaction-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-2',
+            paymentSourceId: 'payment-source-2',
+            type: 'expense',
+            amount: 1275,
+            currency: 'USD',
+            date: new Date('2026-03-24T08:30:00.000Z'),
+            notes: 'Bus pass',
+            createdAt: new Date('2026-03-23T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-24T09:00:00.000Z'),
+            deletedAt: null,
+        })
+
+        await expect(
+            repository.updateTransactionWithTags({
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                categoryId: 'category-2',
+                paymentSourceId: 'payment-source-2',
+                type: 'expense',
+                amount: 1275,
+                currency: 'USD',
+                date: new Date('2026-03-24T08:30:00.000Z'),
+                notes: 'Bus pass',
+                tags: [' Travel ', 'travel', ' Work '],
+            }),
+        ).resolves.toEqual({
+            id: 'transaction-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-2',
+            paymentSourceId: 'payment-source-2',
+            type: 'expense',
+            amount: 1275,
+            currency: 'USD',
+            date: new Date('2026-03-24T08:30:00.000Z'),
+            notes: 'Bus pass',
+            createdAt: new Date('2026-03-23T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-24T09:00:00.000Z'),
+            deletedAt: null,
+            tags: [
+                {
+                    id: 'tag-1',
+                    workspaceId: 'workspace-1',
+                    transactionId: 'transaction-1',
+                    name: 'Travel',
+                    createdAt: new Date('2026-03-24T09:00:01.000Z'),
+                    updatedAt: new Date('2026-03-24T09:00:01.000Z'),
+                },
+                {
+                    id: 'tag-2',
+                    workspaceId: 'workspace-1',
+                    transactionId: 'transaction-1',
+                    name: 'Work',
+                    createdAt: new Date('2026-03-24T09:00:02.000Z'),
+                    updatedAt: new Date('2026-03-24T09:00:02.000Z'),
+                },
+            ],
+        })
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+            where: {
+                workspaceId: 'workspace-1',
+                id: 'transaction-1',
+                deletedAt: null,
+            },
+            data: {
+                categoryId: 'category-2',
+                paymentSourceId: 'payment-source-2',
+                type: 'expense',
+                amount: 1275,
+                currency: 'USD',
+                date: new Date('2026-03-24T08:30:00.000Z'),
+                notes: 'Bus pass',
+            },
+        })
+        expect(prisma.transactionTag.deleteMany).toHaveBeenCalledWith({
+            where: {
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+            },
+        })
+        expect(prisma.transactionTag.create).toHaveBeenNthCalledWith(1, {
+            data: {
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                name: 'Travel',
+            },
+        })
+        expect(prisma.transactionTag.create).toHaveBeenNthCalledWith(2, {
+            data: {
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                name: 'Work',
+            },
+        })
+    })
+
+    it('returns null without replacing tags when no active transaction row is updated', async () => {
+        prisma.transaction.updateMany.mockResolvedValue({ count: 0 })
+
+        await expect(
+            repository.updateTransactionWithTags({
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                categoryId: 'category-2',
+                paymentSourceId: 'payment-source-2',
+                type: 'expense',
+                amount: 1275,
+                currency: 'USD',
+                date: new Date('2026-03-24T08:30:00.000Z'),
+                notes: 'Bus pass',
+                tags: [' Travel ', 'travel', ' Work '],
+            }),
+        ).resolves.toBeNull()
+
+        expect(prisma.$queryRaw).not.toHaveBeenCalled()
+        expect(prisma.transactionTag.deleteMany).not.toHaveBeenCalled()
+        expect(prisma.transactionTag.create).not.toHaveBeenCalled()
+        expect(prisma.transaction.findFirst).not.toHaveBeenCalled()
+    })
+
     it('counts matching transactions with the same workspace and filter clauses', async () => {
         prisma.$queryRaw.mockResolvedValue([{ total: 3 }])
 
@@ -105,6 +315,110 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('tt."workspace_id" =')
         expect(renderedQuery).toContain('t."deleted_at" IS NULL')
         expect(renderedQuery).toContain('ORDER BY "name" ASC')
+    })
+
+    it('soft deletes a transaction and records the previous transaction snapshot in the audit log', async () => {
+        const deletedAt = new Date('2026-03-24T10:00:00.000Z')
+        prisma.transaction.updateMany.mockResolvedValue({ count: 1 })
+        prisma.auditEvent.create.mockResolvedValue({ id: 'audit-event-1' })
+
+        await expect(
+            repository.softDeleteTransaction({
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                userId: 'user-1',
+                deletedAt,
+                transaction: {
+                    id: 'transaction-1',
+                    workspaceId: 'workspace-1',
+                    categoryId: 'category-1',
+                    paymentSourceId: 'payment-source-1',
+                    type: 'expense',
+                    amount: 1050,
+                    currency: 'USD',
+                    date: new Date('2026-03-23T00:00:00.000Z'),
+                    notes: 'Lunch',
+                    createdAt: new Date('2026-03-23T12:00:00.000Z'),
+                    updatedAt: new Date('2026-03-23T12:00:00.000Z'),
+                    deletedAt: null,
+                    tags: [
+                        {
+                            id: 'tag-1',
+                            workspaceId: 'workspace-1',
+                            transactionId: 'transaction-1',
+                            name: 'Food',
+                            createdAt: new Date('2026-03-23T12:00:01.000Z'),
+                            updatedAt: new Date('2026-03-23T12:00:01.000Z'),
+                        },
+                    ],
+                },
+            }),
+        ).resolves.toBe(true)
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+            where: {
+                workspaceId: 'workspace-1',
+                id: 'transaction-1',
+                deletedAt: null,
+            },
+            data: {
+                deletedAt,
+            },
+        })
+        expect(prisma.auditEvent.create).toHaveBeenCalledWith({
+            data: {
+                action: 'TRANSACTION_DELETED',
+                workspaceId: 'workspace-1',
+                userId: 'user-1',
+                entityType: 'TRANSACTION',
+                entityId: 'transaction-1',
+                metadata: {
+                    id: 'transaction-1',
+                    workspace_id: 'workspace-1',
+                    category_id: 'category-1',
+                    payment_source_id: 'payment-source-1',
+                    type: 'expense',
+                    amount: 1050,
+                    currency: 'USD',
+                    date: '2026-03-23T00:00:00.000Z',
+                    notes: 'Lunch',
+                    tags: ['Food'],
+                    created_at: '2026-03-23T12:00:00.000Z',
+                    updated_at: '2026-03-23T12:00:00.000Z',
+                },
+            },
+        })
+    })
+
+    it('returns false and skips audit logging when no active transaction row is deleted', async () => {
+        prisma.transaction.updateMany.mockResolvedValue({ count: 0 })
+
+        await expect(
+            repository.softDeleteTransaction({
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                userId: 'user-1',
+                deletedAt: new Date('2026-03-24T10:00:00.000Z'),
+                transaction: {
+                    id: 'transaction-1',
+                    workspaceId: 'workspace-1',
+                    categoryId: 'category-1',
+                    paymentSourceId: 'payment-source-1',
+                    type: 'expense',
+                    amount: 1050,
+                    currency: 'USD',
+                    date: new Date('2026-03-23T00:00:00.000Z'),
+                    notes: 'Lunch',
+                    createdAt: new Date('2026-03-23T12:00:00.000Z'),
+                    updatedAt: new Date('2026-03-23T12:00:00.000Z'),
+                    deletedAt: null,
+                    tags: [],
+                },
+            }),
+        ).resolves.toBe(false)
+
+        expect(prisma.auditEvent.create).not.toHaveBeenCalled()
     })
 
     it('skips querying when no tags are provided', async () => {

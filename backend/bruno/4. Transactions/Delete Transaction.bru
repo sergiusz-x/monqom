@@ -1,0 +1,14 @@
+meta {
+  name: Delete Transaction
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/transactions/{{transactionId}}
+  body: none
+  auth: none
+}
+
+headers {
+}

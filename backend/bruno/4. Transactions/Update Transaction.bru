@@ -1,0 +1,26 @@
+meta {
+  name: Update Transaction
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/transactions/{{transactionId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "amount": 12.75,
+    "date": "2026-03-24T08:30:00Z",
+    "category_id": "{{categoryId}}",
+    "notes": "Bus pass",
+    "tags": ["Travel", "Work"],
+    "payment_source_id": "{{paymentSourceId}}"
+  }
+}
