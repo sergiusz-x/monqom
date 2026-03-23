@@ -21,6 +21,45 @@ export type WorkspacePersistenceClient = Prisma.TransactionClient | PrismaServic
 export class WorkspaceRepository {
     constructor(private readonly prisma: PrismaService) {}
 
+    async findWorkspacesByUserId(userId: string): Promise<Workspace[]> {
+        return this.prisma.workspace.findMany({
+            where: {
+                memberships: {
+                    some: {
+                        userId,
+                    },
+                },
+            },
+            orderBy: [
+                {
+                    createdAt: 'asc',
+                },
+                {
+                    id: 'asc',
+                },
+            ],
+        })
+    }
+
+    async findWorkspaceById(workspaceId: string): Promise<Workspace | null> {
+        return this.prisma.workspace.findUnique({
+            where: {
+                id: workspaceId,
+            },
+        })
+    }
+
+    async checkMembership(userId: string, workspaceId: string): Promise<boolean> {
+        const membershipCount = await this.prisma.workspaceMembership.count({
+            where: {
+                userId,
+                workspaceId,
+            },
+        })
+
+        return membershipCount > 0
+    }
+
     async createWorkspace(
         input: CreateWorkspaceInput,
         prisma: WorkspacePersistenceClient = this.prisma,

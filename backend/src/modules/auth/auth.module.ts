@@ -6,8 +6,7 @@ import { AuthRateLimitMiddleware } from '../../shared/middleware/authRateLimit'
 import { AUTH_BASE_ROUTE, AUTH_ROUTES } from './auth.routes'
 import { AuthService } from './auth.service'
 import { SessionGuard } from '../../shared/guards/session.guard'
-import { WorkspaceRepository } from '../workspace/workspace.repository'
-import { WorkspaceService } from '../workspace/workspace.service'
+import { WorkspaceModule } from '../workspace/workspace.module'
 
 const AUTH_LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 const AUTH_LOGIN_RATE_LIMIT_MESSAGE = 'Too many login attempts. Please try again later.'
@@ -24,9 +23,10 @@ const AUTH_LOGIN_RATE_LIMIT_MESSAGE = 'Too many login attempts. Please try again
                 },
             ],
         }),
+        WorkspaceModule,
     ],
     controllers: [AuthController],
-    providers: [AuthService, AuthRepository, WorkspaceService, WorkspaceRepository, SessionGuard],
+    providers: [AuthService, AuthRepository, SessionGuard],
 })
 export class AuthModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
