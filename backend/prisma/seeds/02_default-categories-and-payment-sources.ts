@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { DEFAULT_CATEGORIES, DEFAULT_PAYMENT_SOURCES, DEFAULT_WORKSPACE_ID } from './constants'
 
 export async function seed(prisma: PrismaClient) {
-    for (const parentCategory of DEFAULT_CATEGORIES) {
+    for (const [parentIndex, parentCategory] of DEFAULT_CATEGORIES.entries()) {
         await prisma.category.upsert({
             where: {
                 id: parentCategory.id,
@@ -12,6 +12,8 @@ export async function seed(prisma: PrismaClient) {
                 parentId: null,
                 name: parentCategory.name,
                 icon: parentCategory.icon,
+                sortOrder: parentIndex + 1,
+                deletedAt: null,
             },
             create: {
                 id: parentCategory.id,
@@ -19,10 +21,12 @@ export async function seed(prisma: PrismaClient) {
                 parentId: null,
                 name: parentCategory.name,
                 icon: parentCategory.icon,
+                sortOrder: parentIndex + 1,
+                deletedAt: null,
             },
         })
 
-        for (const childCategory of parentCategory.children) {
+        for (const [childIndex, childCategory] of parentCategory.children.entries()) {
             await prisma.category.upsert({
                 where: {
                     id: childCategory.id,
@@ -32,12 +36,16 @@ export async function seed(prisma: PrismaClient) {
                     parentId: parentCategory.id,
                     name: childCategory.name,
                     icon: null,
+                    sortOrder: childIndex + 1,
+                    deletedAt: null,
                 },
                 create: {
                     id: childCategory.id,
                     workspaceId: DEFAULT_WORKSPACE_ID,
                     parentId: parentCategory.id,
                     name: childCategory.name,
+                    sortOrder: childIndex + 1,
+                    deletedAt: null,
                 },
             })
         }

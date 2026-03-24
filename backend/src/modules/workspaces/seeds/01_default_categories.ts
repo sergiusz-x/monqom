@@ -108,6 +108,8 @@ interface CategorySeedUpsertArgs {
         parentId: string | null
         name: string
         icon: string | null
+        sortOrder: number
+        deletedAt: null
     }
     create: {
         id: string
@@ -115,6 +117,8 @@ interface CategorySeedUpsertArgs {
         parentId: string | null
         name: string
         icon?: string | null
+        sortOrder: number
+        deletedAt: null
     }
 }
 
@@ -154,6 +158,8 @@ export async function seedCategoriesForWorkspace(
                 parentId: null,
                 name: parent.name,
                 icon: parent.icon ?? null,
+                sortOrder: parent.sort_order,
+                deletedAt: null,
             },
             create: {
                 id: parentId,
@@ -161,6 +167,8 @@ export async function seedCategoriesForWorkspace(
                 parentId: null,
                 name: parent.name,
                 icon: parent.icon,
+                sortOrder: parent.sort_order,
+                deletedAt: null,
             },
         })
 
@@ -178,6 +186,8 @@ export async function seedCategoriesForWorkspace(
                     parentId: parentId,
                     name: child.name,
                     icon: child.icon ?? null,
+                    sortOrder: child.sort_order,
+                    deletedAt: null,
                 },
                 create: {
                     id: childId,
@@ -185,6 +195,8 @@ export async function seedCategoriesForWorkspace(
                     parentId: parentId,
                     name: child.name,
                     icon: child.icon,
+                    sortOrder: child.sort_order,
+                    deletedAt: null,
                 },
             })
         }

@@ -116,8 +116,10 @@ model Category {
   name        String
   color       String?
   icon        String?
+  sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   parent       Category?     @relation("ParentChild", fields: [workspaceId, parentId], references: [workspaceId, id])

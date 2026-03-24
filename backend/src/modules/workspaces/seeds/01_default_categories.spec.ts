@@ -6,6 +6,8 @@ interface StoredCategory {
     parentId: string | null
     name: string
     icon?: string | null
+    sortOrder: number
+    deletedAt: null
 }
 
 describe('default category seed', () => {
@@ -102,7 +104,9 @@ describe('default category seed', () => {
         )
 
         expect(foodCategory).toBeDefined()
+        expect(foodCategory?.sortOrder).toBe(1)
         expect(groceriesCategory?.parentId).toBe(foodCategory?.id)
+        expect(groceriesCategory?.sortOrder).toBe(1)
     })
 
     it('rejects blank workspace ids', async () => {
