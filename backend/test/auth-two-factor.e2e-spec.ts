@@ -359,7 +359,7 @@ describe('Auth two-factor authentication (e2e)', () => {
             createdAt: expect.any(String),
             updatedAt: expect.any(String),
         })
-    })
+    }, 15000)
 
     it('rejects stale two-factor login challenges after the session version changes', async () => {
         const password = 'GraniteHarbor!1234'

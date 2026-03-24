@@ -15,12 +15,21 @@ import type { Request } from 'express'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { BUDGETS_BASE_ROUTE } from './budgets.routes'
-import { BudgetResponse, BudgetsService } from './budgets.service'
+import { BudgetProgressResponse, BudgetResponse, BudgetsService } from './budgets.service'
 
 @Controller(BUDGETS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
 export class BudgetsController {
     constructor(private readonly budgetsService: BudgetsService) {}
+
+    @Get('progress')
+    @HttpCode(HttpStatus.OK)
+    async listBudgetProgress(@Req() req: Request): Promise<BudgetProgressResponse[]> {
+        return this.budgetsService.listBudgetProgress(
+            req.query as Record<string, unknown>,
+            req.workspace!.workspaceId,
+        )
+    }
 
     @Get()
     @HttpCode(HttpStatus.OK)

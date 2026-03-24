@@ -8,6 +8,7 @@ import { PrismaService } from '../../shared/database/prisma.service'
 import { validateMoneyAmountValue } from '../../shared/utils/validation'
 import { Budget } from '@prisma/client'
 import { BudgetsPersistenceClient, BudgetsRepository } from './budgets.repository'
+import { calculateBudgetProgress } from './budget-progress.calculator'
 
 const BUDGET_ALREADY_EXISTS_MESSAGE = 'Budget already exists for category and month'
 const BUDGET_CATEGORY_CHILD_REQUIRED_MESSAGE = 'Budget category must be a child category'
@@ -29,6 +30,10 @@ export interface ListBudgetsRequestInput {
     month?: unknown
 }
 
+export interface ListBudgetProgressRequestInput {
+    month?: unknown
+}
+
 export interface BudgetResponse {
     id: string
     workspace_id: string
@@ -41,12 +46,29 @@ export interface BudgetResponse {
     updated_at: Date
 }
 
+export interface BudgetProgressResponse {
+    category_id: string
+    category_name: string
+    budget_amount: number | null
+    limit: number | null
+    spent: number
+    remaining: number | null
+    percentage: number | null
+}
+
 interface ValidatedBudgetInput {
     amountCents?: number
     categoryId?: string
     year?: number
     month?: number
     errors: string[]
+}
+
+interface ValidatedBudgetProgressMonth {
+    year: number
+    month: number
+    startDate: Date
+    endDateExclusive: Date
 }
 
 @Injectable()
@@ -79,6 +101,36 @@ export class BudgetsService {
         )
 
         return budgets.map((budget) => mapBudgetResponse(budget))
+    }
+
+    async listBudgetProgress(
+        input: ListBudgetProgressRequestInput,
+        workspaceId: string,
+    ): Promise<BudgetProgressResponse[]> {
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const monthRange = validateBudgetProgressMonthInput(input)
+
+        const [categories, budgets, spending] = await Promise.all([
+            this.budgetsRepository.listCategoriesForProgress(normalizedWorkspaceId, this.prisma),
+            this.budgetsRepository.listBudgetsByMonth(
+                normalizedWorkspaceId,
+                monthRange.year,
+                monthRange.month,
+                this.prisma,
+            ),
+            this.budgetsRepository.listTransactionSpendByCategory(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+                this.prisma,
+            ),
+        ])
+
+        return calculateBudgetProgress({
+            categories,
+            budgets,
+            spending,
+        }).map((progress) => mapBudgetProgressResponse(progress))
     }
 
     async createBudget(
@@ -295,6 +347,31 @@ function validateBudgetInput(
     }
 }
 
+function validateBudgetProgressMonthInput(
+    input: ListBudgetProgressRequestInput,
+): ValidatedBudgetProgressMonth {
+    if (typeof input.month !== 'string' || input.month.trim().length === 0) {
+        throw new BadRequestException(['Month is required'])
+    }
+
+    const normalizedMonth = input.month.trim()
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(normalizedMonth)
+
+    if (!match) {
+        throw new BadRequestException(['Month must use YYYY-MM format'])
+    }
+
+    const year = Number.parseInt(match[1], 10)
+    const month = Number.parseInt(match[2], 10)
+
+    return {
+        year,
+        month,
+        startDate: new Date(Date.UTC(year, month - 1, 1)),
+        endDateExclusive: new Date(Date.UTC(year, month, 1)),
+    }
+}
+
 function validateAmountValue(value: unknown, errors: string[]): number | undefined {
     return validateMoneyAmountValue(value, errors, {
         maxAmountCents: BUDGET_MAX_AMOUNT_CENTS,
@@ -403,8 +480,53 @@ function mapBudgetResponse(budget: Budget): BudgetResponse {
     }
 }
 
+function mapBudgetProgressResponse(progress: {
+    categoryId: string
+    categoryName: string
+    budgetAmountCents: number | null
+    spentCents: number
+    remainingCents: number | null
+    percentageBasisPoints: number | null
+}): BudgetProgressResponse {
+    const budgetAmount =
+        progress.budgetAmountCents === null
+            ? null
+            : convertAmountToDisplayValue(progress.budgetAmountCents)
+
+    return {
+        category_id: progress.categoryId,
+        category_name: progress.categoryName,
+        budget_amount: budgetAmount,
+        limit: budgetAmount,
+        spent: convertAmountToDisplayValue(progress.spentCents),
+        remaining:
+            progress.remainingCents === null
+                ? null
+                : convertAmountToDisplayValue(progress.remainingCents),
+        percentage:
+            progress.percentageBasisPoints === null
+                ? null
+                : convertBasisPointsToDisplayValue(progress.percentageBasisPoints),
+    }
+}
+
 function convertAmountToDisplayValue(amountInCents: number): number {
     return Number((amountInCents / 100).toFixed(2))
+}
+
+function convertBasisPointsToDisplayValue(basisPoints: number): number {
+    const sign = basisPoints < 0 ? '-' : ''
+    const absoluteBasisPoints = Math.abs(basisPoints)
+    const wholePart = Math.trunc(absoluteBasisPoints / 100)
+    const fractionalPart = absoluteBasisPoints % 100
+
+    if (fractionalPart === 0) {
+        return Number(`${sign}${wholePart}`)
+    }
+
+    return Number(
+        `${sign}${wholePart}.${fractionalPart.toString().padStart(2, '0').replace(/0+$/, '')}`,
+    )
 }
 
 function isUniqueConstraintError(error: unknown): boolean {

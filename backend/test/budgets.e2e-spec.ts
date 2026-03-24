@@ -44,6 +44,7 @@ interface StoredCategory {
     workspaceId: string
     parentId: string | null
     name: string
+    sortOrder: number
     deletedAt: Date | null
     createdAt: Date
     updatedAt: Date
@@ -57,6 +58,21 @@ interface StoredBudget {
     currency: string
     year: number
     month: number
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredTransaction {
+    id: string
+    workspaceId: string
+    categoryId: string
+    paymentSourceId: string | null
+    type: string
+    amount: number
+    currency: string
+    date: Date
+    notes: string | null
+    deletedAt: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -79,6 +95,7 @@ interface PrismaMock {
     workspaceMemberships: StoredWorkspaceMembership[]
     categories: StoredCategory[]
     budgets: StoredBudget[]
+    transactions: StoredTransaction[]
     auditEvents: StoredAuditEvent[]
     user: {
         findUnique(args: { where: { email?: string; id?: string } }): Promise<StoredUser | null>
@@ -97,6 +114,11 @@ interface PrismaMock {
             where: { workspaceId: string; id: string; deletedAt: null }
             select?: { id: boolean; parentId: boolean }
         }): Promise<{ id: string; parentId: string | null } | StoredCategory | null>
+        findMany(args: {
+            where: { workspaceId: string }
+            select: { id: boolean; parentId: boolean; name: boolean; sortOrder: boolean }
+            orderBy: Array<Record<string, 'asc' | 'desc'>>
+        }): Promise<Array<{ id: string; parentId: string | null; name: string; sortOrder: number }>>
     }
     budget: {
         findMany(args: {
@@ -133,6 +155,22 @@ interface PrismaMock {
             }
         }): Promise<{ count: number }>
         deleteMany(args: { where: { workspaceId: string; id: string } }): Promise<{ count: number }>
+    }
+    transaction: {
+        groupBy(args: {
+            by: ['categoryId']
+            where: {
+                workspaceId: string
+                deletedAt: null
+                date: {
+                    gte: Date
+                    lt: Date
+                }
+            }
+            _sum: {
+                amount: true
+            }
+        }): Promise<Array<{ categoryId: string; _sum: { amount: number } }>>
     }
     auditEvent: {
         create(args: {
@@ -300,6 +338,132 @@ describe('Budgets endpoints (e2e)', () => {
                 'BUDGET_DELETED',
             ]),
         )
+    })
+
+    it('returns budget progress including child spending and no-budget categories', async () => {
+        prismaMock.budgets.push({
+            id: 'budget-parent-food',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-parent-food',
+            amount: 80000,
+            currency: 'USD',
+            year: 2026,
+            month: 3,
+            createdAt: new Date('2026-03-24T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-24T12:00:00.000Z'),
+        })
+        prismaMock.transactions.push(
+            {
+                id: 'transaction-1',
+                workspaceId: 'workspace-1',
+                categoryId: 'category-child-groceries',
+                paymentSourceId: null,
+                type: 'expense',
+                amount: 30000,
+                currency: 'USD',
+                date: new Date('2026-03-03T00:00:00.000Z'),
+                notes: null,
+                deletedAt: null,
+                createdAt: new Date('2026-03-03T00:00:00.000Z'),
+                updatedAt: new Date('2026-03-03T00:00:00.000Z'),
+            },
+            {
+                id: 'transaction-2',
+                workspaceId: 'workspace-1',
+                categoryId: 'category-child-dining',
+                paymentSourceId: null,
+                type: 'expense',
+                amount: 20000,
+                currency: 'USD',
+                date: new Date('2026-03-08T00:00:00.000Z'),
+                notes: null,
+                deletedAt: null,
+                createdAt: new Date('2026-03-08T00:00:00.000Z'),
+                updatedAt: new Date('2026-03-08T00:00:00.000Z'),
+            },
+            {
+                id: 'transaction-3',
+                workspaceId: 'workspace-1',
+                categoryId: 'category-child-transport',
+                paymentSourceId: null,
+                type: 'expense',
+                amount: 15000,
+                currency: 'USD',
+                date: new Date('2026-03-11T00:00:00.000Z'),
+                notes: null,
+                deletedAt: null,
+                createdAt: new Date('2026-03-11T00:00:00.000Z'),
+                updatedAt: new Date('2026-03-11T00:00:00.000Z'),
+            },
+            {
+                id: 'transaction-4',
+                workspaceId: 'workspace-1',
+                categoryId: 'category-child-groceries',
+                paymentSourceId: null,
+                type: 'expense',
+                amount: 9999,
+                currency: 'USD',
+                date: new Date('2026-04-01T00:00:00.000Z'),
+                notes: null,
+                deletedAt: null,
+                createdAt: new Date('2026-04-01T00:00:00.000Z'),
+                updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+            },
+        )
+
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/budgets/progress?month=2026-03')
+            .expect(200)
+
+        expect(response.body).toEqual([
+            {
+                category_id: 'category-parent-food',
+                category_name: 'Food',
+                budget_amount: 800,
+                limit: 800,
+                spent: 500,
+                remaining: 300,
+                percentage: 62.5,
+            },
+            {
+                category_id: 'category-child-dining',
+                category_name: 'Dining Out',
+                budget_amount: null,
+                limit: null,
+                spent: 200,
+                remaining: null,
+                percentage: null,
+            },
+            {
+                category_id: 'category-child-groceries',
+                category_name: 'Groceries',
+                budget_amount: null,
+                limit: null,
+                spent: 300,
+                remaining: null,
+                percentage: null,
+            },
+            {
+                category_id: 'category-parent-transport',
+                category_name: 'Transport',
+                budget_amount: null,
+                limit: null,
+                spent: 150,
+                remaining: null,
+                percentage: null,
+            },
+            {
+                category_id: 'category-child-transport',
+                category_name: 'Public Transport',
+                budget_amount: null,
+                limit: null,
+                spent: 150,
+                remaining: null,
+                percentage: null,
+            },
+        ])
     })
 
     it('rejects parent categories for budgets', async () => {
@@ -574,6 +738,7 @@ function createPrismaMock(): PrismaMock {
         workspaceMemberships: [],
         categories: [],
         budgets: [],
+        transactions: [],
         auditEvents: [],
         user: {
             findUnique: async ({ where }) => {
@@ -638,6 +803,28 @@ function createPrismaMock(): PrismaMock {
 
                 return category
             },
+            findMany: async ({ where }) =>
+                prismaMock.categories
+                    .filter((entry) => entry.workspaceId === where.workspaceId)
+                    .sort((left, right) => {
+                        if (left.sortOrder !== right.sortOrder) {
+                            return left.sortOrder - right.sortOrder
+                        }
+
+                        const nameComparison = left.name.localeCompare(right.name)
+
+                        if (nameComparison !== 0) {
+                            return nameComparison
+                        }
+
+                        return left.id.localeCompare(right.id)
+                    })
+                    .map((category) => ({
+                        id: category.id,
+                        parentId: category.parentId,
+                        name: category.name,
+                        sortOrder: category.sortOrder,
+                    })),
         },
         budget: {
             findMany: async ({ where }) =>
@@ -719,6 +906,34 @@ function createPrismaMock(): PrismaMock {
                 return { count: 1 }
             },
         },
+        transaction: {
+            groupBy: async ({ where }) => {
+                const totalsByCategoryId = new Map<string, number>()
+
+                for (const transaction of prismaMock.transactions) {
+                    if (
+                        transaction.workspaceId !== where.workspaceId ||
+                        transaction.deletedAt !== where.deletedAt ||
+                        transaction.date < where.date.gte ||
+                        transaction.date >= where.date.lt
+                    ) {
+                        continue
+                    }
+
+                    totalsByCategoryId.set(
+                        transaction.categoryId,
+                        (totalsByCategoryId.get(transaction.categoryId) ?? 0) + transaction.amount,
+                    )
+                }
+
+                return Array.from(totalsByCategoryId.entries()).map(([categoryId, amount]) => ({
+                    categoryId,
+                    _sum: {
+                        amount,
+                    },
+                }))
+            },
+        },
         auditEvent: {
             create: async ({ data }) => {
                 const auditEvent: StoredAuditEvent = {
@@ -780,6 +995,7 @@ async function seedBudgetFixture(prismaMock: PrismaMock): Promise<void> {
             workspaceId: 'workspace-1',
             parentId: null,
             name: 'Food',
+            sortOrder: 1,
             deletedAt: null,
             createdAt: new Date('2026-03-23T10:00:00.000Z'),
             updatedAt: new Date('2026-03-23T10:00:00.000Z'),
@@ -789,6 +1005,17 @@ async function seedBudgetFixture(prismaMock: PrismaMock): Promise<void> {
             workspaceId: 'workspace-1',
             parentId: 'category-parent-food',
             name: 'Groceries',
+            sortOrder: 3,
+            deletedAt: null,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        },
+        {
+            id: 'category-child-dining',
+            workspaceId: 'workspace-1',
+            parentId: 'category-parent-food',
+            name: 'Dining Out',
+            sortOrder: 2,
             deletedAt: null,
             createdAt: new Date('2026-03-23T10:00:00.000Z'),
             updatedAt: new Date('2026-03-23T10:00:00.000Z'),
@@ -798,6 +1025,7 @@ async function seedBudgetFixture(prismaMock: PrismaMock): Promise<void> {
             workspaceId: 'workspace-1',
             parentId: null,
             name: 'Transport',
+            sortOrder: 4,
             deletedAt: null,
             createdAt: new Date('2026-03-23T10:00:00.000Z'),
             updatedAt: new Date('2026-03-23T10:00:00.000Z'),
@@ -807,6 +1035,7 @@ async function seedBudgetFixture(prismaMock: PrismaMock): Promise<void> {
             workspaceId: 'workspace-1',
             parentId: 'category-parent-transport',
             name: 'Public Transport',
+            sortOrder: 5,
             deletedAt: null,
             createdAt: new Date('2026-03-23T10:00:00.000Z'),
             updatedAt: new Date('2026-03-23T10:00:00.000Z'),
@@ -816,6 +1045,7 @@ async function seedBudgetFixture(prismaMock: PrismaMock): Promise<void> {
             workspaceId: 'workspace-1',
             parentId: 'category-parent-food',
             name: 'Archived Child',
+            sortOrder: 6,
             deletedAt: new Date('2026-03-22T10:00:00.000Z'),
             createdAt: new Date('2026-03-23T10:00:00.000Z'),
             updatedAt: new Date('2026-03-23T10:00:00.000Z'),

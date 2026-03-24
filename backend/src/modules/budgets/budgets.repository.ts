@@ -3,6 +3,14 @@ import { Budget, Category, Prisma } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 export interface BudgetCategoryRecord extends Pick<Category, 'id' | 'parentId'> {}
+export interface BudgetProgressCategoryRecord extends Pick<
+    Category,
+    'id' | 'parentId' | 'name' | 'sortOrder'
+> {}
+export interface BudgetProgressSpendingRecord {
+    categoryId: string
+    amount: number
+}
 
 export interface CreateBudgetRecordInput {
     workspaceId: string
@@ -101,6 +109,51 @@ export class BudgetsRepository {
                 parentId: true,
             },
         })
+    }
+
+    async listCategoriesForProgress(
+        workspaceId: string,
+        prisma: BudgetsPersistenceClient = this.prisma,
+    ): Promise<BudgetProgressCategoryRecord[]> {
+        return prisma.category.findMany({
+            where: {
+                workspaceId,
+            },
+            select: {
+                id: true,
+                parentId: true,
+                name: true,
+                sortOrder: true,
+            },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+        })
+    }
+
+    async listTransactionSpendByCategory(
+        workspaceId: string,
+        startDate: Date,
+        endDateExclusive: Date,
+        prisma: BudgetsPersistenceClient = this.prisma,
+    ): Promise<BudgetProgressSpendingRecord[]> {
+        const rows = await prisma.transaction.groupBy({
+            by: ['categoryId'],
+            where: {
+                workspaceId,
+                deletedAt: null,
+                date: {
+                    gte: startDate,
+                    lt: endDateExclusive,
+                },
+            },
+            _sum: {
+                amount: true,
+            },
+        })
+
+        return rows.map((row) => ({
+            categoryId: row.categoryId,
+            amount: row._sum.amount ?? 0,
+        }))
     }
 
     async createBudget(

@@ -16,7 +16,9 @@ describe('BudgetsService', () => {
             | 'findActiveCategoryById'
             | 'findBudgetByCategoryAndMonth'
             | 'findBudgetById'
+            | 'listCategoriesForProgress'
             | 'listBudgetsByMonth'
+            | 'listTransactionSpendByCategory'
             | 'updateBudget'
         >
     >
@@ -34,7 +36,9 @@ describe('BudgetsService', () => {
             findActiveCategoryById: jest.fn(),
             findBudgetByCategoryAndMonth: jest.fn(),
             findBudgetById: jest.fn(),
+            listCategoriesForProgress: jest.fn(),
             listBudgetsByMonth: jest.fn(),
+            listTransactionSpendByCategory: jest.fn(),
             updateBudget: jest.fn(),
         }
 
@@ -89,6 +93,145 @@ describe('BudgetsService', () => {
         ).rejects.toBeInstanceOf(BadRequestException)
 
         expect(budgetsRepository.listBudgetsByMonth).not.toHaveBeenCalled()
+    })
+
+    it('returns progress rows for budgets and no-budget spending categories', async () => {
+        budgetsRepository.listCategoriesForProgress.mockResolvedValue([
+            {
+                id: 'category-parent-food',
+                parentId: null,
+                name: 'Food',
+                sortOrder: 1,
+            },
+            {
+                id: 'category-child-dining',
+                parentId: 'category-parent-food',
+                name: 'Dining Out',
+                sortOrder: 2,
+            },
+            {
+                id: 'category-child-groceries',
+                parentId: 'category-parent-food',
+                name: 'Groceries',
+                sortOrder: 3,
+            },
+            {
+                id: 'category-parent-utilities',
+                parentId: null,
+                name: 'Utilities',
+                sortOrder: 4,
+            },
+            {
+                id: 'category-child-internet',
+                parentId: 'category-parent-utilities',
+                name: 'Internet',
+                sortOrder: 5,
+            },
+        ] as never)
+        budgetsRepository.listBudgetsByMonth.mockResolvedValue([
+            {
+                id: 'budget-1',
+                workspaceId: 'workspace-1',
+                categoryId: 'category-child-groceries',
+                amount: 80000,
+                currency: 'USD',
+                year: 2026,
+                month: 3,
+                createdAt: new Date('2026-03-24T12:00:00.000Z'),
+                updatedAt: new Date('2026-03-24T12:00:00.000Z'),
+            },
+        ] as never)
+        budgetsRepository.listTransactionSpendByCategory.mockResolvedValue([
+            {
+                categoryId: 'category-child-groceries',
+                amount: 50000,
+            },
+            {
+                categoryId: 'category-child-dining',
+                amount: 12000,
+            },
+            {
+                categoryId: 'category-child-internet',
+                amount: 6500,
+            },
+        ])
+
+        await expect(
+            service.listBudgetProgress({ month: '2026-03' }, ' workspace-1 '),
+        ).resolves.toEqual([
+            {
+                category_id: 'category-parent-food',
+                category_name: 'Food',
+                budget_amount: null,
+                limit: null,
+                spent: 620,
+                remaining: null,
+                percentage: null,
+            },
+            {
+                category_id: 'category-child-dining',
+                category_name: 'Dining Out',
+                budget_amount: null,
+                limit: null,
+                spent: 120,
+                remaining: null,
+                percentage: null,
+            },
+            {
+                category_id: 'category-child-groceries',
+                category_name: 'Groceries',
+                budget_amount: 800,
+                limit: 800,
+                spent: 500,
+                remaining: 300,
+                percentage: 62.5,
+            },
+            {
+                category_id: 'category-parent-utilities',
+                category_name: 'Utilities',
+                budget_amount: null,
+                limit: null,
+                spent: 65,
+                remaining: null,
+                percentage: null,
+            },
+            {
+                category_id: 'category-child-internet',
+                category_name: 'Internet',
+                budget_amount: null,
+                limit: null,
+                spent: 65,
+                remaining: null,
+                percentage: null,
+            },
+        ])
+
+        expect(budgetsRepository.listCategoriesForProgress).toHaveBeenCalledWith(
+            'workspace-1',
+            prisma,
+        )
+        expect(budgetsRepository.listBudgetsByMonth).toHaveBeenCalledWith(
+            'workspace-1',
+            2026,
+            3,
+            prisma,
+        )
+        expect(budgetsRepository.listTransactionSpendByCategory).toHaveBeenCalledWith(
+            'workspace-1',
+            new Date('2026-03-01T00:00:00.000Z'),
+            new Date('2026-04-01T00:00:00.000Z'),
+            prisma,
+        )
+    })
+
+    it('rejects invalid budget progress month filters', async () => {
+        await expect(
+            service.listBudgetProgress({ month: '2026/03' }, 'workspace-1'),
+        ).rejects.toBeInstanceOf(BadRequestException)
+
+        expect(budgetsRepository.listCategoriesForProgress).not.toHaveBeenCalled()
+        expect(budgetsRepository.listBudgetsByMonth).not.toHaveBeenCalled()
+        expect(budgetsRepository.listTransactionSpendByCategory).not.toHaveBeenCalled()
     })
 
     it('creates a monthly budget for an active child category', async () => {
