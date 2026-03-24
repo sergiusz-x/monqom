@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module'
 import { BudgetsModule } from './modules/budgets/budgets.module'
 import { CategoriesModule } from './modules/categories/categories.module'
 import { HealthModule } from './modules/health/health.module'
+import { PaymentSourcesModule } from './modules/payment-sources/payment-sources.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
 import { WorkspaceModule } from './modules/workspace/workspace.module'
 import { DatabaseModule } from './shared/database/database.module'
@@ -20,6 +21,7 @@ import { DatabaseModule } from './shared/database/database.module'
         WorkspaceModule,
         CategoriesModule,
         BudgetsModule,
+        PaymentSourcesModule,
         TransactionsModule,
         DatabaseModule,
     ],

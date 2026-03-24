@@ -1,0 +1,22 @@
+meta {
+  name: Update Payment Source
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/payment-sources/{{paymentSourceId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Travel Card",
+    "type": "debit_card"
+  }
+}
