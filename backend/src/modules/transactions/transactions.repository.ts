@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Category, PaymentSource, Prisma, Transaction, TransactionTag } from '@prisma/client'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 export interface CreateTransactionRecordInput {
@@ -84,7 +86,10 @@ interface WorkspaceTagRow {
 
 @Injectable()
 export class TransactionsRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly auditService: AuditService,
+    ) {}
 
     async findCategoryById(
         workspaceId: string,
@@ -147,12 +152,12 @@ export class TransactionsRepository {
                 ),
             )
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'TRANSACTION_CREATED',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.TRANSACTION_CREATED,
                     workspaceId: input.workspaceId,
                     userId: input.userId,
-                    entityType: 'TRANSACTION',
+                    entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
                     entityId: transaction.id,
                     metadata: {
                         type: input.type,
@@ -173,7 +178,8 @@ export class TransactionsRepository {
                         tags: normalizedTags,
                     },
                 },
-            })
+                tx,
+            )
 
             return {
                 ...transaction,
@@ -309,16 +315,17 @@ export class TransactionsRepository {
                 return false
             }
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'TRANSACTION_DELETED',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.TRANSACTION_DELETED,
                     workspaceId: input.workspaceId,
                     userId: input.userId,
-                    entityType: 'TRANSACTION',
+                    entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
                     entityId: input.transactionId,
                     metadata: mapDeletedTransactionMetadata(input.transaction),
                 },
-            })
+                tx,
+            )
 
             return true
         }

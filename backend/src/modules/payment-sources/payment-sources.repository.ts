@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { PaymentSource, Prisma } from '@prisma/client'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 export interface CreatePaymentSourceRecordInput {
@@ -30,7 +32,10 @@ export type PaymentSourcesPersistenceClient = Prisma.TransactionClient | PrismaS
 
 @Injectable()
 export class PaymentSourcesRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly auditService: AuditService,
+    ) {}
 
     async listPaymentSourcesByWorkspace(
         workspaceId: string,
@@ -73,16 +78,17 @@ export class PaymentSourcesRepository {
             },
         })
 
-        await prisma.auditEvent.create({
-            data: {
-                action: 'PAYMENT_SOURCE_CREATED',
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.PAYMENT_SOURCE_CREATED,
                 workspaceId: input.workspaceId,
                 userId: input.userId,
-                entityType: 'PAYMENT_SOURCE',
+                entityType: AUDIT_ENTITY_TYPES.PAYMENT_SOURCE,
                 entityId: paymentSource.id,
                 metadata: mapPaymentSourceAuditMetadata(paymentSource),
             },
-        })
+            prisma,
+        )
 
         return paymentSource
     }
@@ -118,19 +124,20 @@ export class PaymentSourcesRepository {
             return null
         }
 
-        await prisma.auditEvent.create({
-            data: {
-                action: 'PAYMENT_SOURCE_UPDATED',
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.PAYMENT_SOURCE_UPDATED,
                 workspaceId: input.workspaceId,
                 userId: input.userId,
-                entityType: 'PAYMENT_SOURCE',
+                entityType: AUDIT_ENTITY_TYPES.PAYMENT_SOURCE,
                 entityId: paymentSource.id,
                 metadata: {
                     previous: mapPaymentSourceAuditMetadata(input.previousPaymentSource),
                     current: mapPaymentSourceAuditMetadata(paymentSource),
                 },
             },
-        })
+            prisma,
+        )
 
         return paymentSource
     }
@@ -154,19 +161,20 @@ export class PaymentSourcesRepository {
             return false
         }
 
-        await prisma.auditEvent.create({
-            data: {
-                action: 'PAYMENT_SOURCE_ARCHIVED',
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.PAYMENT_SOURCE_ARCHIVED,
                 workspaceId: input.workspaceId,
                 userId: input.userId,
-                entityType: 'PAYMENT_SOURCE',
+                entityType: AUDIT_ENTITY_TYPES.PAYMENT_SOURCE,
                 entityId: input.paymentSourceId,
                 metadata: {
                     ...mapPaymentSourceAuditMetadata(input.paymentSource),
                     archived_at: input.archivedAt.toISOString(),
                 },
             },
-        })
+            prisma,
+        )
 
         return true
     }

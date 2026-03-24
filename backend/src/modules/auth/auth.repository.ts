@@ -6,6 +6,13 @@ import {
     TwoFactorRecoveryCode,
     User,
 } from '@prisma/client'
+import { AuditService } from '../../shared/audit/audit.service'
+import {
+    AUDIT_ACTIONS,
+    AUDIT_ENTITY_TYPES,
+    AuditAction,
+    AuditMetadata,
+} from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 const POSTGRES_UNDEFINED_TABLE_ERROR_CODE = '42P01'
@@ -31,9 +38,9 @@ export interface CreatePasswordResetTokenForUserInput {
 }
 
 export interface CreateUserAuditEventInput {
-    action: string
+    action: AuditAction
     userId: string
-    metadata?: Record<string, string>
+    metadata?: AuditMetadata
 }
 
 export interface ConsumeVerificationTokensAndMarkEmailVerifiedInput {
@@ -78,7 +85,10 @@ export type AuthPersistenceClient = Prisma.TransactionClient | PrismaService
 
 @Injectable()
 export class AuthRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly auditService: AuditService,
+    ) {}
 
     async findUserByEmail(email: string): Promise<User | null> {
         return this.prisma.user.findUnique({ where: { email } })
@@ -110,17 +120,18 @@ export class AuthRepository {
                 },
             })
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'USER_REGISTERED',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_REGISTERED,
                     userId: user.id,
-                    entityType: 'USER',
+                    entityType: AUDIT_ENTITY_TYPES.USER,
                     entityId: user.id,
                     metadata: {
                         email: user.email,
                     },
                 },
-            })
+                tx,
+            )
 
             return user
         }
@@ -166,17 +177,18 @@ export class AuthRepository {
                 },
             })
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'USER_EMAIL_VERIFIED',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_EMAIL_VERIFIED,
                     userId: input.userId,
-                    entityType: 'USER',
+                    entityType: AUDIT_ENTITY_TYPES.USER,
                     entityId: input.userId,
                     metadata: {
                         source: 'EMAIL_VERIFICATION_TOKEN',
                     },
                 },
-            })
+                tx,
+            )
 
             return true
         })
@@ -194,17 +206,18 @@ export class AuthRepository {
                 },
             })
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'USER_EMAIL_VERIFICATION_RESENT',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_EMAIL_VERIFICATION_RESENT,
                     userId: input.userId,
-                    entityType: 'USER',
+                    entityType: AUDIT_ENTITY_TYPES.USER,
                     entityId: input.userId,
                     metadata: {
                         source: 'EMAIL_VERIFICATION_RESEND',
                     },
                 },
-            })
+                tx,
+            )
         })
     }
 
@@ -280,17 +293,18 @@ export class AuthRepository {
                 }
             }
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'USER_PASSWORD_RESET',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_PASSWORD_RESET,
                     userId: input.userId,
-                    entityType: 'USER',
+                    entityType: AUDIT_ENTITY_TYPES.USER,
                     entityId: input.userId,
                     metadata: {
                         source: 'PASSWORD_RESET_TOKEN',
                     },
                 },
-            })
+                tx,
+            )
 
             return true
         })
@@ -338,17 +352,18 @@ export class AuthRepository {
                 })
             }
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'USER_2FA_ENABLED',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_2FA_ENABLED,
                     userId: input.userId,
-                    entityType: 'USER',
+                    entityType: AUDIT_ENTITY_TYPES.USER,
                     entityId: input.userId,
                     metadata: {
                         method: 'TOTP',
                     },
                 },
-            })
+                tx,
+            )
         })
     }
 
@@ -392,29 +407,28 @@ export class AuthRepository {
                 },
             })
 
-            await tx.auditEvent.create({
-                data: {
-                    action: 'USER_2FA_DISABLED',
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_2FA_DISABLED,
                     userId,
-                    entityType: 'USER',
+                    entityType: AUDIT_ENTITY_TYPES.USER,
                     entityId: userId,
                     metadata: {
                         method: 'TOTP',
                     },
                 },
-            })
+                tx,
+            )
         })
     }
 
     async createUserAuditEvent(input: CreateUserAuditEventInput): Promise<void> {
-        await this.prisma.auditEvent.create({
-            data: {
-                action: input.action,
-                userId: input.userId,
-                entityType: 'USER',
-                entityId: input.userId,
-                metadata: input.metadata,
-            },
+        await this.auditService.record({
+            action: input.action,
+            userId: input.userId,
+            entityType: AUDIT_ENTITY_TYPES.USER,
+            entityId: input.userId,
+            metadata: input.metadata,
         })
     }
 }

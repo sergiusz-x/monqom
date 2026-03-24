@@ -1,15 +1,17 @@
 import { Prisma } from '@prisma/client'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { TransactionsRepository } from './transactions.repository'
 
 describe('TransactionsRepository', () => {
     let repository: TransactionsRepository
+    let auditService: {
+        record: jest.Mock
+    }
     let prisma: {
         $queryRaw: jest.Mock
         $transaction: jest.Mock
-        auditEvent: {
-            create: jest.Mock
-        }
         transaction: {
             findFirst: jest.Mock
             updateMany: jest.Mock
@@ -26,9 +28,6 @@ describe('TransactionsRepository', () => {
             $transaction: jest.fn(async (callback: (tx: typeof prisma) => Promise<unknown>) =>
                 callback(prisma),
             ),
-            auditEvent: {
-                create: jest.fn(),
-            },
             transaction: {
                 findFirst: jest.fn(),
                 updateMany: jest.fn(),
@@ -39,7 +38,14 @@ describe('TransactionsRepository', () => {
             },
         }
 
-        repository = new TransactionsRepository(prisma as never as PrismaService)
+        auditService = {
+            record: jest.fn().mockResolvedValue(undefined),
+        }
+
+        repository = new TransactionsRepository(
+            prisma as never as PrismaService,
+            auditService as never as AuditService,
+        )
     })
 
     it('normalizes tags case-insensitively with LOWER() in the persistence layer', async () => {
@@ -320,7 +326,6 @@ describe('TransactionsRepository', () => {
     it('soft deletes a transaction and records the previous transaction snapshot in the audit log', async () => {
         const deletedAt = new Date('2026-03-24T10:00:00.000Z')
         prisma.transaction.updateMany.mockResolvedValue({ count: 1 })
-        prisma.auditEvent.create.mockResolvedValue({ id: 'audit-event-1' })
 
         await expect(
             repository.softDeleteTransaction({
@@ -366,12 +371,12 @@ describe('TransactionsRepository', () => {
                 deletedAt,
             },
         })
-        expect(prisma.auditEvent.create).toHaveBeenCalledWith({
-            data: {
-                action: 'TRANSACTION_DELETED',
+        expect(auditService.record).toHaveBeenCalledWith(
+            {
+                action: AUDIT_ACTIONS.TRANSACTION_DELETED,
                 workspaceId: 'workspace-1',
                 userId: 'user-1',
-                entityType: 'TRANSACTION',
+                entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
                 entityId: 'transaction-1',
                 metadata: {
                     id: 'transaction-1',
@@ -388,7 +393,8 @@ describe('TransactionsRepository', () => {
                     updated_at: '2026-03-23T12:00:00.000Z',
                 },
             },
-        })
+            prisma,
+        )
     })
 
     it('returns false and skips audit logging when no active transaction row is deleted', async () => {
@@ -418,7 +424,7 @@ describe('TransactionsRepository', () => {
             }),
         ).resolves.toBe(false)
 
-        expect(prisma.auditEvent.create).not.toHaveBeenCalled()
+        expect(auditService.record).not.toHaveBeenCalled()
     })
 
     it('skips querying when no tags are provided', async () => {

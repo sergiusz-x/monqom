@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Budget, Category, Prisma } from '@prisma/client'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 export interface BudgetCategoryRecord extends Pick<Category, 'id' | 'parentId'> {}
@@ -45,7 +47,10 @@ export type BudgetsPersistenceClient = Prisma.TransactionClient | PrismaService
 
 @Injectable()
 export class BudgetsRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly auditService: AuditService,
+    ) {}
 
     async listBudgetsByMonth(
         workspaceId: string,
@@ -171,16 +176,17 @@ export class BudgetsRepository {
             },
         })
 
-        await prisma.auditEvent.create({
-            data: {
-                action: 'BUDGET_CREATED',
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.BUDGET_CREATED,
                 workspaceId: input.workspaceId,
                 userId: input.userId,
-                entityType: 'BUDGET',
+                entityType: AUDIT_ENTITY_TYPES.BUDGET,
                 entityId: budget.id,
                 metadata: mapBudgetAuditMetadata(budget),
             },
-        })
+            prisma,
+        )
 
         return budget
     }
@@ -213,19 +219,20 @@ export class BudgetsRepository {
             return null
         }
 
-        await prisma.auditEvent.create({
-            data: {
-                action: 'BUDGET_UPDATED',
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.BUDGET_UPDATED,
                 workspaceId: input.workspaceId,
                 userId: input.userId,
-                entityType: 'BUDGET',
+                entityType: AUDIT_ENTITY_TYPES.BUDGET,
                 entityId: budget.id,
                 metadata: {
                     previous: mapBudgetAuditMetadata(input.previousBudget),
                     current: mapBudgetAuditMetadata(budget),
                 },
             },
-        })
+            prisma,
+        )
 
         return budget
     }
@@ -245,16 +252,17 @@ export class BudgetsRepository {
             return false
         }
 
-        await prisma.auditEvent.create({
-            data: {
-                action: 'BUDGET_DELETED',
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.BUDGET_DELETED,
                 workspaceId: input.workspaceId,
                 userId: input.userId,
-                entityType: 'BUDGET',
+                entityType: AUDIT_ENTITY_TYPES.BUDGET,
                 entityId: input.budgetId,
                 metadata: mapBudgetAuditMetadata(input.budget),
             },
-        })
+            prisma,
+        )
 
         return true
     }

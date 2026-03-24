@@ -9,6 +9,7 @@ import { HealthModule } from './modules/health/health.module'
 import { PaymentSourcesModule } from './modules/payment-sources/payment-sources.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
 import { WorkspaceModule } from './modules/workspace/workspace.module'
+import { AuditModule } from './shared/audit/audit.module'
 import { DatabaseModule } from './shared/database/database.module'
 
 @Module({
@@ -25,6 +26,7 @@ import { DatabaseModule } from './shared/database/database.module'
         DashboardModule,
         PaymentSourcesModule,
         TransactionsModule,
+        AuditModule,
         DatabaseModule,
     ],
 })
