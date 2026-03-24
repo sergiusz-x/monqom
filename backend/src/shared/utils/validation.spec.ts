@@ -1,4 +1,5 @@
 import {
+    validateMoneyAmountValue,
     validateEmailInput,
     validateLoginInput,
     validatePassword,
@@ -125,5 +126,24 @@ describe('validation utils', () => {
                 'Password must contain at least one special character',
             ],
         })
+    })
+
+    it('converts valid money amounts to integer cents', () => {
+        const errors: string[] = []
+
+        expect(validateMoneyAmountValue('755.25', errors)).toBe(75525)
+        expect(errors).toEqual([])
+    })
+
+    it('rejects money amounts that exceed the configured storage limit', () => {
+        const errors: string[] = []
+
+        expect(
+            validateMoneyAmountValue('21474836.48', errors, {
+                maxAmountCents: 2147483647,
+                maxAmountMessage: 'Amount must be less than or equal to 21474836.47',
+            }),
+        ).toBeUndefined()
+        expect(errors).toEqual(['Amount must be less than or equal to 21474836.47'])
     })
 })

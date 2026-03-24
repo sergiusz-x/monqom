@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import envConfig from './config/env'
 import { AuthModule } from './modules/auth/auth.module'
+import { BudgetsModule } from './modules/budgets/budgets.module'
 import { CategoriesModule } from './modules/categories/categories.module'
 import { HealthModule } from './modules/health/health.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
@@ -18,6 +19,7 @@ import { DatabaseModule } from './shared/database/database.module'
         AuthModule,
         WorkspaceModule,
         CategoriesModule,
+        BudgetsModule,
         TransactionsModule,
         DatabaseModule,
     ],

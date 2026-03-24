@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { validateMoneyAmountValue } from '../../shared/utils/validation'
 import {
     ListedTransactionRecord,
     ListTransactionsFilters,
@@ -401,48 +402,7 @@ function validateListTransactionsInput(
 }
 
 function validateAmountValue(value: unknown, errors: string[]): number | undefined {
-    if (value === undefined || value === null) {
-        errors.push('Amount is required')
-        return undefined
-    }
-
-    let normalizedValue: string
-
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value)) {
-            errors.push('Amount must be a valid number')
-            return undefined
-        }
-
-        normalizedValue = value.toString()
-    } else if (typeof value === 'string') {
-        normalizedValue = value.trim()
-
-        if (normalizedValue.length === 0) {
-            errors.push('Amount is required')
-            return undefined
-        }
-    } else {
-        errors.push('Amount must be a positive number with up to 2 decimal places')
-        return undefined
-    }
-
-    if (!/^\d+(?:\.\d{1,2})?$/.test(normalizedValue)) {
-        errors.push('Amount must be a positive number with up to 2 decimal places')
-        return undefined
-    }
-
-    const [wholePart, fractionalPart = ''] = normalizedValue.split('.')
-    const amountCents =
-        Number.parseInt(wholePart, 10) * 100 +
-        Number.parseInt(fractionalPart.padEnd(2, '0') || '0', 10)
-
-    if (amountCents <= 0) {
-        errors.push('Amount must be greater than 0')
-        return undefined
-    }
-
-    return amountCents
+    return validateMoneyAmountValue(value, errors)
 }
 
 function validateDateValue(value: unknown, errors: string[]): Date | undefined {

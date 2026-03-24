@@ -1,4 +1,5 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MONEY_AMOUNT_REGEX = /^\d+(?:\.\d{1,2})?$/
 
 const COMMON_PASSWORD_PATTERNS = [
     'password',
@@ -72,6 +73,11 @@ export interface ResetPasswordValidationResult {
 export interface CurrentPasswordValidationResult {
     currentPassword?: string
     errors: string[]
+}
+
+export interface MoneyAmountValidationOptions {
+    maxAmountCents?: number
+    maxAmountMessage?: string
 }
 
 export function normalizeEmail(email: string): string {
@@ -222,6 +228,65 @@ export function validateRegistrationInput(
         password,
         errors,
     }
+}
+
+export function validateMoneyAmountValue(
+    value: unknown,
+    errors: string[],
+    options: MoneyAmountValidationOptions = {},
+): number | undefined {
+    if (value === undefined || value === null) {
+        errors.push('Amount is required')
+        return undefined
+    }
+
+    let normalizedValue: string
+
+    if (typeof value === 'number') {
+        if (!Number.isFinite(value)) {
+            errors.push('Amount must be a valid number')
+            return undefined
+        }
+
+        normalizedValue = value.toString()
+    } else if (typeof value === 'string') {
+        normalizedValue = value.trim()
+
+        if (normalizedValue.length === 0) {
+            errors.push('Amount is required')
+            return undefined
+        }
+    } else {
+        errors.push('Amount must be a positive number with up to 2 decimal places')
+        return undefined
+    }
+
+    if (!MONEY_AMOUNT_REGEX.test(normalizedValue)) {
+        errors.push('Amount must be a positive number with up to 2 decimal places')
+        return undefined
+    }
+
+    const [wholePart, fractionalPart = ''] = normalizedValue.split('.')
+    const amountCents =
+        Number.parseInt(wholePart, 10) * 100 +
+        Number.parseInt(fractionalPart.padEnd(2, '0') || '0', 10)
+
+    if (!Number.isSafeInteger(amountCents)) {
+        errors.push(options.maxAmountMessage ?? 'Amount is too large')
+        return undefined
+    }
+
+    if (typeof options.maxAmountCents === 'number' && amountCents > options.maxAmountCents) {
+        errors.push(options.maxAmountMessage ?? 'Amount is too large')
+        return undefined
+    }
+
+    if (amountCents <= 0) {
+        errors.push('Amount must be greater than 0')
+        return undefined
+    }
+
+    return amountCents
 }
 
 function validateEmailValue(input: unknown, errors: string[]): string | undefined {
