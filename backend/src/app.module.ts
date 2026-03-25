@@ -18,6 +18,7 @@ import { DatabaseModule } from './shared/database/database.module'
         ConfigModule.forRoot({
             isGlobal: true,
             load: [envConfig],
+            envFilePath: ['../.env', '.env'],
         }),
         HealthModule,
         AuthModule,
