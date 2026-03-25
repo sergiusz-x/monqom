@@ -10,5 +10,6 @@ import { TransactionsService } from './transactions.service'
     imports: [WorkspaceModule],
     controllers: [TransactionsController, TransactionTagsController],
     providers: [TransactionsService, TransactionsRepository, AuthRepository, SessionGuard],
+    exports: [TransactionsRepository],
 })
 export class TransactionsModule {}

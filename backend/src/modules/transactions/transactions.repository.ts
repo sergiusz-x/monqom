@@ -52,6 +52,11 @@ export interface ListTransactionsQuery extends ListTransactionsFilters {
     offset: number
 }
 
+export interface ListTransactionsForExportQuery extends ListTransactionsFilters {
+    limit: number
+    offset: number
+}
+
 export type TransactionsPersistenceClient = Prisma.TransactionClient | PrismaService
 export type TransactionWithTags = Transaction & {
     tags: TransactionTag[]
@@ -70,6 +75,15 @@ export interface ListedTransactionRecord {
     created_at: Date
     updated_at: Date
     tags: string[]
+}
+
+export interface ExportTransactionRecord {
+    date: Date
+    amount: number
+    category: string | null
+    notes: string | null
+    tags: string[]
+    payment_source: string | null
 }
 
 interface NormalizedTagRow {
@@ -379,7 +393,7 @@ export class TransactionsRepository {
                 t."notes",
                 t."created_at",
                 t."updated_at"
-            ORDER BY t."date" DESC, t."created_at" DESC
+            ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC
             LIMIT ${filters.limit}
             OFFSET ${filters.offset}
         `)
@@ -397,6 +411,48 @@ export class TransactionsRepository {
         `)
 
         return rows[0]?.total ?? 0
+    }
+
+    async listTransactionsForExport(
+        filters: ListTransactionsForExportQuery,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<ExportTransactionRecord[]> {
+        const whereClause = buildTransactionsWhereClause(filters)
+
+        return prisma.$queryRaw<ExportTransactionRecord[]>(Prisma.sql`
+            SELECT
+                t."date",
+                t."amount",
+                c."name" AS "category",
+                t."notes",
+                COALESCE(
+                    ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name") FILTER (WHERE tt."id" IS NOT NULL),
+                    ARRAY[]::TEXT[]
+                ) AS "tags",
+                ps."name" AS "payment_source"
+            FROM "transactions" t
+            LEFT JOIN "categories" c
+                ON c."workspace_id" = t."workspace_id"
+                AND c."id" = t."category_id"
+            LEFT JOIN "payment_sources" ps
+                ON ps."workspace_id" = t."workspace_id"
+                AND ps."id" = t."payment_source_id"
+            LEFT JOIN "transaction_tags" tt
+                ON tt."workspace_id" = t."workspace_id"
+                AND tt."transaction_id" = t."id"
+            ${whereClause}
+            GROUP BY
+                t."id",
+                t."date",
+                t."amount",
+                c."name",
+                t."notes",
+                ps."name",
+                t."created_at"
+            ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC
+            LIMIT ${filters.limit}
+            OFFSET ${filters.offset}
+        `)
     }
 
     async listWorkspaceTags(

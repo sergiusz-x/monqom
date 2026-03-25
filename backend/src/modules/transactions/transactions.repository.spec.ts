@@ -94,7 +94,36 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('t."date" >=')
         expect(renderedQuery).toContain('t."date" <=')
         expect(renderedQuery).toContain('ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name")')
-        expect(renderedQuery).toContain('ORDER BY t."date" DESC, t."created_at" DESC')
+        expect(renderedQuery).toContain('ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC')
+        expect(renderedQuery).toContain('LIMIT')
+        expect(renderedQuery).toContain('OFFSET')
+    })
+
+    it('builds an export query with category and payment source labels for streaming downloads', async () => {
+        prisma.$queryRaw.mockResolvedValue([])
+
+        await repository.listTransactionsForExport({
+            workspaceId: 'workspace-1',
+            dateFrom: new Date('2026-03-21T00:00:00.000Z'),
+            dateTo: new Date('2026-03-22T23:59:59.999Z'),
+            limit: 500,
+            offset: 0,
+        })
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+
+        const query = prisma.$queryRaw.mock.calls[0][0] as Prisma.Sql
+        const renderedQuery = query.strings.join(' ')
+
+        expect(renderedQuery).toContain('c."name" AS "category"')
+        expect(renderedQuery).toContain('ps."name" AS "payment_source"')
+        expect(renderedQuery).toContain('LEFT JOIN "categories" c')
+        expect(renderedQuery).toContain('LEFT JOIN "payment_sources" ps')
+        expect(renderedQuery).toContain('LEFT JOIN "transaction_tags" tt')
+        expect(renderedQuery).toContain('t."deleted_at" IS NULL')
+        expect(renderedQuery).toContain('t."date" >=')
+        expect(renderedQuery).toContain('t."date" <=')
+        expect(renderedQuery).toContain('ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC')
         expect(renderedQuery).toContain('LIMIT')
         expect(renderedQuery).toContain('OFFSET')
     })

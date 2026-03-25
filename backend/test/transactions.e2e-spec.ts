@@ -658,6 +658,178 @@ describe('Transactions endpoints (e2e)', () => {
         )
         expect(response.body).not.toContain('DeletedOnly')
     })
+
+    it('exports 10 non-deleted transactions as a CSV attachment with headers and display amounts', async () => {
+        seedTransactionsForExport(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=csv')
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('text/csv; charset=utf-8')
+        expect(response.headers['content-disposition']).toMatch(
+            /^attachment; filename="transactions-export-\d{4}-\d{2}-\d{2}\.csv"$/,
+        )
+
+        const lines = response.text.trimEnd().split('\n')
+
+        expect(lines).toHaveLength(11)
+        expect(lines[0]).toBe('date,amount,category,notes,tags,payment_source')
+        expect(lines[1]).toBe(
+            '2026-03-19T08:00:00.000Z,19.50,Transport,Export expense 10,Travel,Transit Card',
+        )
+        expect(lines[10]).toBe(
+            '2026-03-10T08:00:00.000Z,10.50,Food,Export expense 1,Recurring,Main Card',
+        )
+        expect(response.text).not.toContain('Hidden export transaction')
+        expect(response.text).not.toContain('99.50')
+    })
+
+    it('returns a CSV attachment with only headers when the workspace has no transactions', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=csv')
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('text/csv; charset=utf-8')
+        expect(response.text).toBe('date,amount,category,notes,tags,payment_source\n')
+    })
+
+    it('exports filtered transactions as a JSON attachment', async () => {
+        seedTransactionsForExport(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get(
+                '/api/v1/workspaces/workspace-1/export?format=json&date_from=2026-03-12&date_to=2026-03-14',
+            )
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('application/json; charset=utf-8')
+        expect(response.headers['content-disposition']).toMatch(
+            /^attachment; filename="transactions-export-\d{4}-\d{2}-\d{2}\.json"$/,
+        )
+
+        const body = JSON.parse(response.text) as Array<{
+            date: string
+            amount: string
+            category: string
+            notes: string | null
+            tags: string[]
+            payment_source: string | null
+        }>
+
+        expect(body).toEqual([
+            {
+                date: '2026-03-14T08:00:00.000Z',
+                amount: '14.50',
+                category: 'Food',
+                notes: 'Export expense 5',
+                tags: ['Recurring'],
+                payment_source: 'Main Card',
+            },
+            {
+                date: '2026-03-13T08:00:00.000Z',
+                amount: '13.50',
+                category: 'Transport',
+                notes: 'Export expense 4',
+                tags: ['Travel'],
+                payment_source: 'Transit Card',
+            },
+            {
+                date: '2026-03-12T08:00:00.000Z',
+                amount: '12.50',
+                category: 'Food',
+                notes: 'Export expense 3',
+                tags: ['Recurring'],
+                payment_source: 'Main Card',
+            },
+        ])
+    })
+
+    it('returns an empty JSON attachment when the workspace has no transactions', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=json')
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('application/json; charset=utf-8')
+        expect(response.text).toBe('[]')
+    })
+
+    it('sanitizes formula-like CSV values in exported fields', async () => {
+        seedTransactionsForExport(prismaMock)
+        prismaMock.transactions.push({
+            id: 'transaction-export-formula',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-formula',
+            paymentSourceId: 'payment-source-formula',
+            type: 'expense',
+            amount: 1234,
+            currency: 'USD',
+            date: new Date('2026-03-20T08:00:00.000Z'),
+            notes: '=HYPERLINK("https://example.com","click")',
+            createdAt: new Date('2026-03-20T08:15:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:15:00.000Z'),
+            deletedAt: null,
+        })
+        prismaMock.categories.push({
+            id: 'category-formula',
+            workspaceId: 'workspace-1',
+            name: '+Category',
+            parentId: null,
+            color: null,
+            icon: null,
+            createdAt: new Date('2026-03-20T08:00:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:00:00.000Z'),
+        })
+        prismaMock.paymentSources.push({
+            id: 'payment-source-formula',
+            workspaceId: 'workspace-1',
+            name: '@Wallet',
+            type: 'cash',
+            createdAt: new Date('2026-03-20T08:00:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:00:00.000Z'),
+            deletedAt: null,
+        })
+        prismaMock.transactionTags.push(
+            createStoredTransactionTag(
+                'tag-export-formula',
+                'workspace-1',
+                'transaction-export-formula',
+                '-unsafe',
+            ),
+        )
+
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=csv')
+            .expect(200)
+
+        expect(response.text).toContain(
+            `2026-03-20T08:00:00.000Z,12.34,'+Category,"'=HYPERLINK(""https://example.com"",""click"")",'-unsafe,'@Wallet`,
+        )
+    })
+
+    it('rejects unsupported export formats with a 400 response', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=xml')
+            .expect(400)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 400,
+                message: ['Format must be one of: csv, json'],
+                error: 'Bad Request',
+            }),
+        )
+    })
 })
 
 function createPrismaMock(): PrismaMock {
@@ -900,6 +1072,10 @@ function createPrismaMock(): PrismaMock {
                 return listWorkspaceTagsFromQuery(query, prismaMock) as T
             }
 
+            if (renderedQuery.includes('c."name" AS "category"')) {
+                return listTransactionsForExportFromQuery(query, prismaMock) as T
+            }
+
             if (renderedQuery.includes('ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name")')) {
                 return listTransactionsFromQuery(query, prismaMock) as T
             }
@@ -999,6 +1175,37 @@ function listWorkspaceTagsFromQuery(query: Prisma.Sql, prismaMock: PrismaMock) {
         .map((name) => ({ name }))
 }
 
+function listTransactionsForExportFromQuery(query: Prisma.Sql, prismaMock: PrismaMock) {
+    const filteredTransactions = filterTransactionsFromQuery(query, prismaMock)
+    const { limit, offset } = extractPaginationFromQuery(query)
+
+    return filteredTransactions.slice(offset, offset + limit).map((transaction) => ({
+        date: transaction.date,
+        amount: transaction.amount,
+        category:
+            prismaMock.categories.find(
+                (category) =>
+                    category.workspaceId === transaction.workspaceId &&
+                    category.id === transaction.categoryId,
+            )?.name ?? null,
+        notes: transaction.notes,
+        tags: prismaMock.transactionTags
+            .filter(
+                (tag) =>
+                    tag.workspaceId === transaction.workspaceId &&
+                    tag.transactionId === transaction.id,
+            )
+            .map((tag) => tag.name)
+            .sort((left, right) => left.localeCompare(right)),
+        payment_source:
+            prismaMock.paymentSources.find(
+                (paymentSource) =>
+                    paymentSource.workspaceId === transaction.workspaceId &&
+                    paymentSource.id === transaction.paymentSourceId,
+            )?.name ?? null,
+    }))
+}
+
 function filterTransactionsFromQuery(
     query: Prisma.Sql,
     prismaMock: PrismaMock,
@@ -1086,7 +1293,13 @@ function filterTransactionsFromQuery(
             return dateDifference
         }
 
-        return right.createdAt.getTime() - left.createdAt.getTime()
+        const createdAtDifference = right.createdAt.getTime() - left.createdAt.getTime()
+
+        if (createdAtDifference !== 0) {
+            return createdAtDifference
+        }
+
+        return right.id.localeCompare(left.id)
     })
 }
 
@@ -1264,6 +1477,62 @@ function seedExistingTransactions(prismaMock: PrismaMock): void {
             'tag-existing-9',
             'workspace-1',
             'transaction-deleted-1',
+            'DeletedOnly',
+        ),
+    )
+}
+
+function seedTransactionsForExport(prismaMock: PrismaMock): void {
+    for (let index = 0; index < 10; index += 1) {
+        const transactionId = `transaction-export-${index + 1}`
+        const day = 10 + index
+        const categoryId = index % 2 === 0 ? 'category-1' : 'category-2'
+        const paymentSourceId = index % 2 === 0 ? 'payment-source-1' : 'payment-source-2'
+
+        prismaMock.transactions.push({
+            id: transactionId,
+            workspaceId: 'workspace-1',
+            categoryId,
+            paymentSourceId,
+            type: 'expense',
+            amount: (10 + index) * 100 + 50,
+            currency: 'USD',
+            date: new Date(`2026-03-${String(day).padStart(2, '0')}T08:00:00.000Z`),
+            notes: `Export expense ${index + 1}`,
+            createdAt: new Date(`2026-03-${String(day).padStart(2, '0')}T08:15:00.000Z`),
+            updatedAt: new Date(`2026-03-${String(day).padStart(2, '0')}T08:15:00.000Z`),
+            deletedAt: null,
+        })
+
+        prismaMock.transactionTags.push(
+            createStoredTransactionTag(
+                `tag-export-${index + 1}`,
+                'workspace-1',
+                transactionId,
+                index % 2 === 0 ? 'Recurring' : 'Travel',
+            ),
+        )
+    }
+
+    prismaMock.transactions.push({
+        id: 'transaction-export-deleted',
+        workspaceId: 'workspace-1',
+        categoryId: 'category-1',
+        paymentSourceId: 'payment-source-1',
+        type: 'expense',
+        amount: 9950,
+        currency: 'USD',
+        date: new Date('2026-03-20T08:00:00.000Z'),
+        notes: 'Hidden export transaction',
+        createdAt: new Date('2026-03-20T08:15:00.000Z'),
+        updatedAt: new Date('2026-03-20T08:15:00.000Z'),
+        deletedAt: new Date('2026-03-21T08:15:00.000Z'),
+    })
+    prismaMock.transactionTags.push(
+        createStoredTransactionTag(
+            'tag-export-deleted',
+            'workspace-1',
+            'transaction-export-deleted',
             'DeletedOnly',
         ),
     )
