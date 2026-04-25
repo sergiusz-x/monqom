@@ -1,18 +1,51 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
 
 interface RegisterFormValues {
   email: string
+  name: string
   password: string
   confirmPassword: string
 }
 
+function extractErrorMessage(err: unknown): string {
+  if (
+    err &&
+    typeof err === 'object' &&
+    'response' in err &&
+    err.response &&
+    typeof err.response === 'object' &&
+    'data' in err.response
+  ) {
+    const data = (err.response as { data: unknown }).data
+    if (data && typeof data === 'object' && 'message' in data) {
+      const msg = (data as { message: unknown }).message
+      return Array.isArray(msg) ? msg.join(', ') : String(msg)
+    }
+  }
+  return 'Something went wrong. Please try again.'
+}
+
 export default function RegisterPage() {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormValues>()
+  const navigate = useNavigate()
+  const [serverError, setServerError] = useState('')
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<RegisterFormValues>()
   const password = watch('password')
 
-  const onSubmit = (_data: RegisterFormValues) => {
-    // Auth submission is wired in the auth ticket
+  async function onSubmit(data: RegisterFormValues) {
+    setServerError('')
+    try {
+      await api.post('/auth/register', {
+        email: data.email,
+        name: data.name,
+        password: data.password,
+      })
+      navigate('/verify-email', { replace: true })
+    } catch (err: unknown) {
+      setServerError(extractErrorMessage(err))
+    }
   }
 
   return (
@@ -23,6 +56,18 @@ export default function RegisterPage() {
           <p className="text-sm text-muted-foreground">Sign up to start tracking your expenses.</p>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1">
+            <label htmlFor="name" className="text-sm font-medium">Name</label>
+            <input
+              id="name"
+              type="text"
+              autoComplete="name"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Jane Doe"
+              {...register('name', { required: 'Name is required' })}
+            />
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
           <div className="space-y-1">
             <label htmlFor="email" className="text-sm font-medium">Email</label>
             <input
@@ -62,11 +107,13 @@ export default function RegisterPage() {
             />
             {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
           </div>
+          {serverError && <p className="text-xs text-destructive">{serverError}</p>}
           <button
             type="submit"
-            className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+            disabled={isSubmitting}
+            className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            Create account
+            {isSubmitting ? 'Creating account…' : 'Create account'}
           </button>
         </form>
         <p className="text-center text-sm text-muted-foreground">

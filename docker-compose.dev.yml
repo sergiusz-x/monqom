@@ -34,7 +34,7 @@ services:
     volumes:
       - ./backend:/app
       - monqom-backend-node_modules:/app/node_modules
-    command: sh -c "npm run migrate:deploy && npm run start:dev"
+    command: sh -c "npx prisma generate && npm run migrate:deploy && npm run start:dev"
     healthcheck:
       test:
         [
@@ -48,6 +48,23 @@ services:
       retries: 10
       start_period: 25s
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_TARGET: http://backend:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - monqom-frontend-node_modules:/app/node_modules
+
 volumes:
   monqom-pgdata:
   monqom-backend-node_modules:
+  monqom-frontend-node_modules:
