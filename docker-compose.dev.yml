@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - monqom-pgdata:/var/lib/postgresql/data
+      - monqom-pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U monqom -d monqom_dev"]
       interval: 5s

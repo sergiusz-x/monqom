@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 
@@ -9,9 +9,11 @@ export default function VerifyEmailPage() {
   const token = searchParams.get('token')
   const [status, setStatus] = useState<Status>(token ? 'loading' : 'no_token')
   const [message, setMessage] = useState('')
+  const didVerify = useRef(false)
 
   useEffect(() => {
-    if (!token) return
+    if (!token || didVerify.current) return
+    didVerify.current = true
 
     api
       .post<{ message: string }>('/auth/verify-email', { token })

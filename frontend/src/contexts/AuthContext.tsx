@@ -36,6 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
+  useEffect(() => {
+    const id = api.interceptors.response.use(
+      (res) => res,
+      (error) => {
+        if (error.response?.status === 401 && !error.config?.url?.includes('/auth/me')) {
+          setUser(null)
+        }
+        return Promise.reject(error)
+      },
+    )
+    return () => api.interceptors.response.eject(id)
+  }, [])
+
   async function login(email: string, password: string): Promise<LoginResult> {
     const res = await api.post<User | { requiresTwoFactor: true }>('/auth/login', {
       email,
