@@ -17,7 +17,7 @@ vi.mock('@/lib/api', () => {
     get: vi.fn(),
     post: vi.fn(),
     interceptors: {
-      response: { use: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() },
     },
     defaults: {
       baseURL: '/api/v1',
