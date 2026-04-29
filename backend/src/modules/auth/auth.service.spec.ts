@@ -128,6 +128,7 @@ describe('AuthService', () => {
             expect.objectContaining({
                 context_name: 'AuthService',
                 verification_token: createCall.verificationToken,
+                verification_url: `http://localhost:5173/verify-email?token=${createCall.verificationToken}`,
             }),
         )
         expect(result).toEqual({
@@ -577,6 +578,7 @@ describe('AuthService', () => {
             expect.objectContaining({
                 context_name: 'AuthService',
                 verification_token: createCall.verificationToken,
+                verification_url: `http://localhost:5173/verify-email?token=${createCall.verificationToken}`,
             }),
         )
     })

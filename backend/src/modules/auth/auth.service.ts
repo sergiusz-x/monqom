@@ -365,12 +365,17 @@ function exposeVerificationToken(
     reason: 'registration' | 'resend',
     verificationToken: string,
 ): void {
+    const verificationUrl = buildEmailVerificationUrl(verificationToken)
+
     exposeSensitiveToken({
         message: `Email verification token generated for ${reason}`,
         fullTokenKey: 'verification_token',
         maskedTokenKey: 'verification_token_last6',
         fingerprintKey: 'verification_token_fingerprint',
         token: verificationToken,
+        developmentMetadata: {
+            verification_url: verificationUrl,
+        },
     })
 }
 
@@ -390,6 +395,7 @@ function exposeSensitiveToken(input: {
     maskedTokenKey: string
     fingerprintKey: string
     token: string
+    developmentMetadata?: Record<string, string>
 }): void {
     const shouldLogFullToken = process.env.NODE_ENV === 'development'
 
@@ -397,6 +403,7 @@ function exposeSensitiveToken(input: {
         logger.info(input.message, {
             context_name: AuthService.name,
             [input.fullTokenKey]: input.token,
+            ...input.developmentMetadata,
         })
 
         return
@@ -407,6 +414,13 @@ function exposeSensitiveToken(input: {
         [input.maskedTokenKey]: input.token.slice(-6),
         [input.fingerprintKey]: createHash('sha256').update(input.token).digest('hex'),
     })
+}
+
+function buildEmailVerificationUrl(token: string): string {
+    const baseUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173'
+    const normalizedBaseUrl = baseUrl.replace(/\/+$/, '')
+
+    return `${normalizedBaseUrl}/verify-email?token=${encodeURIComponent(token)}`
 }
 
 function mapRegisteredUser(user: User): RegisteredUserResponse {
