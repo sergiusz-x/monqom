@@ -43,6 +43,11 @@ export interface CreateUserAuditEventInput {
     metadata?: AuditMetadata
 }
 
+export interface UpdateUserProfileInput {
+    userId: string
+    name: string
+}
+
 export interface ConsumeVerificationTokensAndMarkEmailVerifiedInput {
     userId: string
     verifiedAt: Date
@@ -96,6 +101,15 @@ export class AuthRepository {
 
     async findUserById(id: string): Promise<User | null> {
         return this.prisma.user.findUnique({ where: { id } })
+    }
+
+    async updateUserProfile(input: UpdateUserProfileInput): Promise<User> {
+        return this.prisma.user.update({
+            where: { id: input.userId },
+            data: {
+                name: input.name,
+            },
+        })
     }
 
     async createUserWithVerificationToken(

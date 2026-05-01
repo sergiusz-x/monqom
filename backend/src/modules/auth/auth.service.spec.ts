@@ -28,6 +28,7 @@ describe('AuthService', () => {
             | 'findPasswordResetTokenWithUser'
             | 'resetPasswordWithToken'
             | 'createUserAuditEvent'
+            | 'updateUserProfile'
         >
     >
     let workspaceService: jest.Mocked<Pick<WorkspaceService, 'createPersonalWorkspace'>>
@@ -49,6 +50,7 @@ describe('AuthService', () => {
             findPasswordResetTokenWithUser: jest.fn(),
             resetPasswordWithToken: jest.fn(),
             createUserAuditEvent: jest.fn(),
+            updateUserProfile: jest.fn(),
         }
         workspaceService = {
             createPersonalWorkspace: jest.fn(),
@@ -166,6 +168,42 @@ describe('AuthService', () => {
 
         expect(authRepository.findUserByEmail).not.toHaveBeenCalled()
         expect(authRepository.createUserWithVerificationToken).not.toHaveBeenCalled()
+    })
+
+    it('updates the authenticated user display name', async () => {
+        authRepository.findUserById.mockResolvedValue(createMockUser())
+        authRepository.updateUserProfile.mockResolvedValue(
+            createMockUser({
+                name: 'Grace Hopper',
+                updatedAt: new Date('2026-05-01T10:00:00.000Z'),
+            }),
+        )
+
+        await expect(
+            service.updateAuthenticatedUser('user-1', {
+                name: ' Grace Hopper ',
+            }),
+        ).resolves.toMatchObject({
+            id: 'user-1',
+            name: 'Grace Hopper',
+        })
+
+        expect(authRepository.findUserById).toHaveBeenCalledWith('user-1')
+        expect(authRepository.updateUserProfile).toHaveBeenCalledWith({
+            userId: 'user-1',
+            name: 'Grace Hopper',
+        })
+    })
+
+    it('rejects invalid profile updates before writing', async () => {
+        await expect(
+            service.updateAuthenticatedUser('user-1', {
+                name: ' ',
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException)
+
+        expect(authRepository.findUserById).not.toHaveBeenCalled()
+        expect(authRepository.updateUserProfile).not.toHaveBeenCalled()
     })
 
     it('returns a conflict when the email already exists', async () => {

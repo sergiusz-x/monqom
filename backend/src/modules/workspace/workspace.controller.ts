@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, HttpStatus, Put, Req, UseGuards } from '@nestjs/common'
 import type { Request } from 'express'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
@@ -26,5 +26,11 @@ export class WorkspaceScopedController {
     @HttpCode(HttpStatus.OK)
     async getWorkspace(@Req() req: Request) {
         return this.workspaceService.getWorkspaceById(req.workspace!.workspaceId)
+    }
+
+    @Put()
+    @HttpCode(HttpStatus.OK)
+    async updateWorkspace(@Req() req: Request, @Body() body: Record<string, unknown>) {
+        return this.workspaceService.updateWorkspaceSettings(req.workspace!.workspaceId, body)
     }
 }

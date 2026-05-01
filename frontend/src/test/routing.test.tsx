@@ -77,7 +77,7 @@ describe("page routing", () => {
   });
 
   it("renders SettingsPage at /settings", () => {
-    renderAt("/settings", <SettingsPage />);
+    renderAt("/settings", <SettingsPage />, true);
     expect(
       screen.getByRole("heading", { name: /settings/i }),
     ).toBeInTheDocument();

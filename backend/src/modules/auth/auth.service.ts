@@ -70,6 +70,10 @@ export interface ResetPasswordRequestInput {
     newPassword?: unknown
 }
 
+export interface UpdateUserProfileRequestInput {
+    name?: unknown
+}
+
 export interface AuthAuditEventInput {
     userId: string
     ipAddress?: string
@@ -232,6 +236,26 @@ export class AuthService {
         if (!user) {
             throw new UnauthorizedException('Authentication required')
         }
+
+        return mapRegisteredUser(user)
+    }
+
+    async updateAuthenticatedUser(
+        userId: string,
+        input: UpdateUserProfileRequestInput,
+    ): Promise<AuthenticatedUserResponse> {
+        const { name, errors } = validateUserProfileInput(input)
+
+        if (errors.length > 0 || !name) {
+            throw new BadRequestException(errors)
+        }
+
+        await this.getAuthenticatedUser(userId)
+
+        const user = await this.authRepository.updateUserProfile({
+            userId,
+            name,
+        })
 
         return mapRegisteredUser(user)
     }
@@ -432,6 +456,28 @@ function mapRegisteredUser(user: User): RegisteredUserResponse {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
     }
+}
+
+function validateUserProfileInput(input: UpdateUserProfileRequestInput): {
+    name?: string
+    errors: string[]
+} {
+    const errors: string[] = []
+    let name: string | undefined
+
+    if (typeof input.name !== 'string' || input.name.trim().length === 0) {
+        errors.push('Name is required')
+    } else {
+        name = input.name.trim()
+        if (name.length < 2) {
+            errors.push('Name must be at least 2 characters long')
+        }
+        if (name.length > 100) {
+            errors.push('Name must be 100 characters or fewer')
+        }
+    }
+
+    return { name, errors }
 }
 
 function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {

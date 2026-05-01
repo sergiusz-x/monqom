@@ -14,6 +14,10 @@ const PERSONAL_WORKSPACE_ROLE = 'owner'
 const WORKSPACE_ACCESS_FORBIDDEN_MESSAGE = 'Forbidden'
 const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found'
 
+export interface UpdateWorkspaceSettingsRequestInput {
+    timezone?: unknown
+}
+
 @Injectable()
 export class WorkspaceService {
     constructor(
@@ -53,6 +57,25 @@ export class WorkspaceService {
         }
 
         return this.getWorkspaceById(normalizedWorkspaceId)
+    }
+
+    async updateWorkspaceSettings(
+        workspaceId: string,
+        input: UpdateWorkspaceSettingsRequestInput,
+    ): Promise<Workspace> {
+        const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
+        const { timezone, errors } = validateWorkspaceSettingsInput(input)
+
+        if (errors.length > 0 || !timezone) {
+            throw new BadRequestException(errors)
+        }
+
+        await this.getWorkspaceById(normalizedWorkspaceId)
+
+        return this.workspaceRepository.updateWorkspaceSettings({
+            workspaceId: normalizedWorkspaceId,
+            timezone,
+        })
     }
 
     async checkMembership(userId: string, workspaceId: string): Promise<boolean> {
@@ -110,4 +133,25 @@ export class WorkspaceService {
 
         return normalizedValue
     }
+}
+
+function validateWorkspaceSettingsInput(input: UpdateWorkspaceSettingsRequestInput): {
+    timezone?: string
+    errors: string[]
+} {
+    const errors: string[] = []
+    let timezone: string | undefined
+
+    if (typeof input.timezone !== 'string' || input.timezone.trim().length === 0) {
+        errors.push('Timezone is required')
+    } else {
+        timezone = input.timezone.trim()
+        try {
+            new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date())
+        } catch {
+            errors.push('Timezone must be a valid IANA timezone')
+        }
+    }
+
+    return { timezone, errors }
 }

@@ -1,31 +1,44 @@
 import { useEffect, useReducer } from "react";
 import api from "@/lib/api";
 
-interface WorkspaceInfo {
+export interface WorkspaceInfo {
   id: string;
   name: string;
+  timezone: string;
 }
 
 interface State {
   workspaceId: string | null;
+  workspace: WorkspaceInfo | null;
   isLoading: boolean;
   error: string | null;
 }
 
 type Action =
   | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: string | null }
+  | { type: "FETCH_SUCCESS"; payload: WorkspaceInfo | null }
   | { type: "FETCH_ERROR" };
 
 function reducer(_state: State, action: Action): State {
   switch (action.type) {
     case "FETCH_START":
-      return { workspaceId: null, isLoading: true, error: null };
+      return {
+        workspaceId: null,
+        workspace: null,
+        isLoading: true,
+        error: null,
+      };
     case "FETCH_SUCCESS":
-      return { workspaceId: action.payload, isLoading: false, error: null };
+      return {
+        workspaceId: action.payload?.id ?? null,
+        workspace: action.payload,
+        isLoading: false,
+        error: null,
+      };
     case "FETCH_ERROR":
       return {
         workspaceId: null,
+        workspace: null,
         isLoading: false,
         error: "Failed to load workspace",
       };
@@ -34,6 +47,7 @@ function reducer(_state: State, action: Action): State {
 
 const initialState: State = {
   workspaceId: null,
+  workspace: null,
   isLoading: false,
   error: null,
 };
@@ -50,7 +64,7 @@ export function useWorkspace(): State {
       .then((res) => {
         if (!cancelled) {
           const first = res.data[0];
-          dispatch({ type: "FETCH_SUCCESS", payload: first?.id ?? null });
+          dispatch({ type: "FETCH_SUCCESS", payload: first ?? null });
         }
       })
       .catch(() => {

@@ -15,6 +15,11 @@ export interface CreateWorkspaceMembershipInput {
     role: string
 }
 
+export interface UpdateWorkspaceSettingsInput {
+    workspaceId: string
+    timezone: string
+}
+
 export interface WorkspaceMembershipAccess {
     workspaceId: string
     role: string
@@ -50,6 +55,17 @@ export class WorkspaceRepository {
         return this.prisma.workspace.findUnique({
             where: {
                 id: workspaceId,
+            },
+        })
+    }
+
+    async updateWorkspaceSettings(input: UpdateWorkspaceSettingsInput): Promise<Workspace> {
+        return this.prisma.workspace.update({
+            where: {
+                id: input.workspaceId,
+            },
+            data: {
+                timezone: input.timezone,
             },
         })
     }

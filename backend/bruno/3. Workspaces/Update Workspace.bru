@@ -1,0 +1,17 @@
+meta {
+  name: Update Workspace
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "timezone": "Europe/Warsaw"
+  }
+}

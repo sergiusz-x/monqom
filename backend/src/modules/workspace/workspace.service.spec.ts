@@ -16,6 +16,7 @@ describe('WorkspaceService', () => {
             | 'findWorkspaceById'
             | 'findWorkspacesByUserId'
             | 'seedDefaultCategories'
+            | 'updateWorkspaceSettings'
         >
     >
 
@@ -33,6 +34,7 @@ describe('WorkspaceService', () => {
             findWorkspaceById: jest.fn(),
             findWorkspacesByUserId: jest.fn(),
             seedDefaultCategories: jest.fn(),
+            updateWorkspaceSettings: jest.fn(),
         }
 
         service = new WorkspaceService(
@@ -162,6 +164,51 @@ describe('WorkspaceService', () => {
 
         await expect(service.getWorkspaceById(' workspace-1 ')).resolves.toEqual(workspace)
         expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+    })
+
+    it('updates workspace timezone settings', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'Europe/Warsaw',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-05-01T10:00:00.000Z'),
+        }
+
+        workspaceRepository.findWorkspaceById.mockResolvedValue({
+            ...workspace,
+            timezone: 'UTC',
+        } as never)
+        workspaceRepository.updateWorkspaceSettings.mockResolvedValue(workspace as never)
+
+        await expect(
+            service.updateWorkspaceSettings(' workspace-1 ', {
+                timezone: ' Europe/Warsaw ',
+            }),
+        ).resolves.toEqual(workspace)
+
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+        expect(workspaceRepository.updateWorkspaceSettings).toHaveBeenCalledWith({
+            workspaceId: 'workspace-1',
+            timezone: 'Europe/Warsaw',
+        })
+    })
+
+    it('rejects invalid workspace timezone settings before writing', async () => {
+        try {
+            await service.updateWorkspaceSettings('workspace-1', {
+                timezone: 'Not/A_Timezone',
+            })
+            fail('Expected updateWorkspaceSettings to throw')
+        } catch (error) {
+            expect(
+                (error as { getResponse: () => { message: string[] } }).getResponse().message,
+            ).toEqual(['Timezone must be a valid IANA timezone'])
+        }
+
+        expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+        expect(workspaceRepository.updateWorkspaceSettings).not.toHaveBeenCalled()
     })
 
     it('returns workspace details when the user is a member', async () => {
