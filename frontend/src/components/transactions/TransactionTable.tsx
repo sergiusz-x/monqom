@@ -47,32 +47,38 @@ export function TransactionTable({
           </tr>
         </thead>
         <tbody>
-          {transactions.map((transaction) => (
-            <tr
-              key={transaction.id}
-              onClick={() => onOpen(transaction.id)}
-              className="cursor-pointer border-t border-border transition-colors hover:bg-muted/30"
-            >
-              <td className="px-3 py-2">{formatDate(transaction.date)}</td>
-              <td className="px-3 py-2">
-                {categoryMap[transaction.category_id] ??
-                  transaction.category_id}
-              </td>
-              <td className="px-3 py-2 font-medium">
-                {formatAmount(transaction.amount, transaction.currency)}
-              </td>
-              <td className="max-w-52 truncate px-3 py-2 text-muted-foreground">
-                {transaction.notes || "—"}
-              </td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {transaction.tags.length ? transaction.tags.join(", ") : "—"}
-              </td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {paymentSourceMap[transaction.payment_source_id] ??
-                  transaction.payment_source_id}
-              </td>
-            </tr>
-          ))}
+          {transactions.map((transaction) => {
+            const paymentSourceLabel = transaction.payment_source_id
+              ? (paymentSourceMap[transaction.payment_source_id] ??
+                transaction.payment_source_id)
+              : "None";
+
+            return (
+              <tr
+                key={transaction.id}
+                onClick={() => onOpen(transaction.id)}
+                className="cursor-pointer border-t border-border transition-colors hover:bg-muted/30"
+              >
+                <td className="px-3 py-2">{formatDate(transaction.date)}</td>
+                <td className="px-3 py-2">
+                  {categoryMap[transaction.category_id] ??
+                    transaction.category_id}
+                </td>
+                <td className="px-3 py-2 font-medium">
+                  {formatAmount(transaction.amount, transaction.currency)}
+                </td>
+                <td className="max-w-52 truncate px-3 py-2 text-muted-foreground">
+                  {transaction.notes || "—"}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {transaction.tags.length ? transaction.tags.join(", ") : "—"}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {paymentSourceLabel}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import DashboardPage from "@/pages/DashboardPage";
@@ -176,5 +176,18 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Failed to load dashboard",
     );
+  });
+
+  it("refreshes dashboard data when global transaction saved event is fired", async () => {
+    renderPage();
+    const initialCallCount = mockUseDashboardData.mock.calls.length;
+
+    window.dispatchEvent(new Event("monqom:transaction-saved"));
+
+    await waitFor(() => {
+      expect(mockUseDashboardData.mock.calls.length).toBeGreaterThan(
+        initialCallCount,
+      );
+    });
   });
 });

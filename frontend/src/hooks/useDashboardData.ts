@@ -49,7 +49,11 @@ function reducer(_state: State, action: Action): State {
   }
 }
 
-export function useDashboardData(workspaceId: string, month: string): State {
+export function useDashboardData(
+  workspaceId: string,
+  month: string,
+  refreshKey = 0,
+): State {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export function useDashboardData(workspaceId: string, month: string): State {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, month]);
+  }, [workspaceId, month, refreshKey]);
 
   return state;
 }

@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
@@ -11,6 +10,8 @@ import { TransactionCards } from "@/components/transactions/TransactionCards";
 import { TransactionEmptyState } from "@/components/transactions/TransactionEmptyState";
 import { TransactionListSkeleton } from "@/components/transactions/TransactionListSkeleton";
 import { TransactionPagination } from "@/components/transactions/TransactionPagination";
+import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
+import { TRANSACTION_SAVED_EVENT } from "@/lib/transaction-refresh";
 import type { TransactionFilters } from "@/types/transaction";
 
 const PAGE_SIZE = 20;
@@ -40,7 +41,6 @@ function buildCategoryMap(
 }
 
 export default function TransactionsPage() {
-  const navigate = useNavigate();
   const {
     workspaceId,
     isLoading: workspaceLoading,
@@ -48,6 +48,11 @@ export default function TransactionsPage() {
   } = useWorkspace();
   const [filters, setFilters] = useState(defaultFilters);
   const [offset, setOffset] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const [editingTransactionId, setEditingTransactionId] = useState<
+    string | null
+  >(null);
   const hasInvalidDateRange = Boolean(
     filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo,
   );
@@ -61,7 +66,11 @@ export default function TransactionsPage() {
     filters,
     PAGE_SIZE,
     offset,
+    refreshKey,
   );
+
+  const editingTransaction =
+    data?.data.find((item) => item.id === editingTransactionId) ?? null;
 
   const categoryMap = useMemo(() => buildCategoryMap(categories), [categories]);
   const paymentSourceMap = useMemo(
@@ -78,8 +87,27 @@ export default function TransactionsPage() {
   }
 
   function openTransaction(transactionId: string) {
-    navigate(`/transactions/${transactionId}`);
+    setEditingTransactionId(transactionId);
   }
+
+  function handleSaved() {
+    setRefreshKey((value) => value + 1);
+    setToast("Transaction saved successfully.");
+    window.setTimeout(() => setToast(null), 2500);
+  }
+
+  useEffect(() => {
+    function handleTransactionSaved() {
+      setRefreshKey((value) => value + 1);
+    }
+
+    window.addEventListener(TRANSACTION_SAVED_EVENT, handleTransactionSaved);
+    return () =>
+      window.removeEventListener(
+        TRANSACTION_SAVED_EVENT,
+        handleTransactionSaved,
+      );
+  }, []);
 
   function renderBody() {
     if (workspaceLoading || isLoading) return <TransactionListSkeleton />;
@@ -147,6 +175,22 @@ export default function TransactionsPage() {
         />
         {renderBody()}
       </div>
+      {workspaceId && (
+        <TransactionFormModal
+          key={editingTransaction?.id ?? "edit-modal"}
+          open={Boolean(editingTransactionId && editingTransaction)}
+          mode="edit"
+          workspaceId={workspaceId}
+          transaction={editingTransaction}
+          onClose={() => setEditingTransactionId(null)}
+          onSaved={handleSaved}
+        />
+      )}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[60] rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

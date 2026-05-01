@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSummary";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
+import { TRANSACTION_SAVED_EVENT } from "@/lib/transaction-refresh";
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -38,13 +39,28 @@ export default function DashboardPage() {
     error: workspaceError,
   } = useWorkspace();
   const [month, setMonth] = useState(getCurrentMonth);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { categories } = useCategories(workspaceId ?? "");
   const { summary, transactions, isLoading, error } = useDashboardData(
     workspaceId ?? "",
     month,
+    refreshKey,
   );
 
   const selectedMonthLabel = useMemo(() => monthLabel(month), [month]);
+
+  useEffect(() => {
+    function handleTransactionSaved() {
+      setRefreshKey((value) => value + 1);
+    }
+
+    window.addEventListener(TRANSACTION_SAVED_EVENT, handleTransactionSaved);
+    return () =>
+      window.removeEventListener(
+        TRANSACTION_SAVED_EVENT,
+        handleTransactionSaved,
+      );
+  }, []);
 
   if (workspaceLoading) {
     return (
@@ -105,6 +121,8 @@ export default function DashboardPage() {
         <RecentTransactions
           transactions={transactions}
           categories={categories}
+          workspaceId={workspaceId}
+          onTransactionSaved={() => setRefreshKey((value) => value + 1)}
         />
       </div>
     </div>

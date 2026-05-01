@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import TransactionsPage from "@/pages/TransactionsPage";
-import TransactionDetailPage from "@/pages/TransactionDetailPage";
 import type {
   TransactionFilters,
   TransactionsResponse,
@@ -14,6 +13,14 @@ vi.mock("@/hooks/useCategories", () => ({ useCategories: vi.fn() }));
 vi.mock("@/hooks/usePaymentSources", () => ({ usePaymentSources: vi.fn() }));
 vi.mock("@/hooks/useTags", () => ({ useTags: vi.fn() }));
 vi.mock("@/hooks/useTransactions", () => ({ useTransactions: vi.fn() }));
+vi.mock("@/components/transactions/TransactionFormModal", () => ({
+  TransactionFormModal: ({ open }: { open: boolean }) =>
+    open ? (
+      <div role="dialog" aria-label="Edit transaction">
+        Edit modal
+      </div>
+    ) : null,
+}));
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
@@ -89,10 +96,6 @@ function renderPage() {
     <MemoryRouter initialEntries={["/transactions"]}>
       <Routes>
         <Route path="/transactions" element={<TransactionsPage />} />
-        <Route
-          path="/transactions/:transactionId"
-          element={<TransactionDetailPage />}
-        />
       </Routes>
     </MemoryRouter>,
   );
@@ -185,7 +188,7 @@ describe("TransactionsPage", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
-  it("opens transaction detail route when desktop row is clicked", async () => {
+  it("opens edit transaction modal when desktop row is clicked", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -198,9 +201,8 @@ describe("TransactionsPage", () => {
 
     await user.click(row as HTMLTableRowElement);
     expect(
-      screen.getByRole("heading", { name: /transaction details/i }),
+      screen.getByRole("dialog", { name: /edit transaction/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/transaction id: tx-1/i)).toBeInTheDocument();
   });
 
   it("shows validation message for invalid date range and avoids transaction fetch", async () => {
@@ -221,5 +223,18 @@ describe("TransactionsPage", () => {
       number,
     ];
     expect(latestCall[0]).toBe("");
+  });
+
+  it("refreshes transactions when global transaction saved event is fired", async () => {
+    renderPage();
+    const initialCallCount = mockUseTransactions.mock.calls.length;
+
+    window.dispatchEvent(new Event("monqom:transaction-saved"));
+
+    await waitFor(() => {
+      expect(mockUseTransactions.mock.calls.length).toBeGreaterThan(
+        initialCallCount,
+      );
+    });
   });
 });

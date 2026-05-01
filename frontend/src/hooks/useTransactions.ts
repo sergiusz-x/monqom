@@ -61,6 +61,7 @@ export function useTransactions(
   filters: TransactionFilters,
   limit: number,
   offset: number,
+  refreshKey = 0,
 ): State {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { categoryId, tag, paymentSourceId, dateFrom, dateTo } = filters;
@@ -104,6 +105,7 @@ export function useTransactions(
     dateTo,
     limit,
     offset,
+    refreshKey,
   ]);
 
   return state;

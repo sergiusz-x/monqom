@@ -2,7 +2,7 @@ export interface TransactionItem {
   id: string;
   workspace_id: string;
   category_id: string;
-  payment_source_id: string;
+  payment_source_id: string | null;
   type: "expense";
   amount: number;
   currency: string;

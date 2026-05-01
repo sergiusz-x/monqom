@@ -2,10 +2,13 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Category } from "@/types/category";
 import type { TransactionItem } from "@/types/dashboard";
+import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 
 interface RecentTransactionsProps {
   transactions: TransactionItem[];
   categories: Category[];
+  workspaceId: string;
+  onTransactionSaved: () => void;
 }
 
 function flattenCategories(categories: Category[]): Category[] {
@@ -34,8 +37,10 @@ function formatCurrency(amount: number, currency: string): string {
 export function RecentTransactions({
   transactions,
   categories,
+  workspaceId,
+  onTransactionSaved,
 }: RecentTransactionsProps) {
-  const [selectedTransaction, setSelectedTransaction] =
+  const [editingTransaction, setEditingTransaction] =
     useState<TransactionItem | null>(null);
 
   const categoryNames = useMemo(() => {
@@ -44,10 +49,6 @@ export function RecentTransactions({
       allCategories.map((category) => [category.id, category.name]),
     );
   }, [categories]);
-
-  const selectedCategory = selectedTransaction
-    ? (categoryNames.get(selectedTransaction.category_id) ?? "Uncategorized")
-    : "";
 
   return (
     <section
@@ -78,7 +79,7 @@ export function RecentTransactions({
               <button
                 type="button"
                 className="flex w-full items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left hover:border-border hover:bg-muted/50"
-                onClick={() => setSelectedTransaction(transaction)}
+                onClick={() => setEditingTransaction(transaction)}
               >
                 <div>
                   <p className="text-sm font-medium">
@@ -98,48 +99,16 @@ export function RecentTransactions({
         </ul>
       )}
 
-      {selectedTransaction && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit transaction"
-        >
-          <div className="w-full max-w-md rounded-xl bg-background p-5 shadow-lg">
-            <h3 className="text-lg font-semibold">Edit transaction</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {formatDate(selectedTransaction.date)}
-            </p>
-            <div className="mt-4 space-y-2 rounded-lg bg-muted/40 p-3 text-sm">
-              <p>
-                <span className="text-muted-foreground">Category:</span>{" "}
-                {selectedCategory}
-              </p>
-              <p>
-                <span className="text-muted-foreground">Amount:</span>{" "}
-                {formatCurrency(
-                  selectedTransaction.amount,
-                  selectedTransaction.currency,
-                )}
-              </p>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedTransaction(null)}
-                className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
-              >
-                Close
-              </button>
-              <Link
-                to="/transactions"
-                className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-              >
-                Open transactions
-              </Link>
-            </div>
-          </div>
-        </div>
+      {editingTransaction && (
+        <TransactionFormModal
+          key={editingTransaction.id}
+          open
+          mode="edit"
+          workspaceId={workspaceId}
+          transaction={editingTransaction}
+          onClose={() => setEditingTransaction(null)}
+          onSaved={onTransactionSaved}
+        />
       )}
     </section>
   );
