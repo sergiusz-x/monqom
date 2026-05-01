@@ -9,6 +9,7 @@ export const AUTH_ROUTES = {
     twoFactorDisable: '2fa/disable',
     forgotPassword: 'forgot-password',
     resetPassword: 'reset-password',
+    changePassword: 'change-password',
     logout: 'logout',
     me: 'me',
     verifyEmail: 'verify-email',

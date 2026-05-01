@@ -39,6 +39,7 @@ const testUser: User = {
   email: "user@example.com",
   name: "Test User",
   emailVerified: true,
+  totpEnabled: false,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
@@ -199,6 +200,7 @@ describe("LoginPage 2FA flow", () => {
         email: "u@e.com",
         name: "U",
         emailVerified: true,
+        totpEnabled: false,
         createdAt: "",
         updatedAt: "",
       },

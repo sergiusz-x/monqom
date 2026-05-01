@@ -45,6 +45,7 @@ export default function LoginPage() {
         email: string;
         name: string;
         emailVerified: boolean;
+        totpEnabled: boolean;
         createdAt: string;
         updatedAt: string;
       }>("/auth/2fa/verify", { token: data.code });

@@ -27,6 +27,8 @@ describe('AuthService', () => {
             | 'createPasswordResetTokenForUser'
             | 'findPasswordResetTokenWithUser'
             | 'resetPasswordWithToken'
+            | 'changePassword'
+            | 'deleteUserAccount'
             | 'createUserAuditEvent'
             | 'updateUserProfile'
         >
@@ -49,6 +51,8 @@ describe('AuthService', () => {
             createPasswordResetTokenForUser: jest.fn(),
             findPasswordResetTokenWithUser: jest.fn(),
             resetPasswordWithToken: jest.fn(),
+            changePassword: jest.fn(),
+            deleteUserAccount: jest.fn(),
             createUserAuditEvent: jest.fn(),
             updateUserProfile: jest.fn(),
         }
@@ -138,6 +142,7 @@ describe('AuthService', () => {
             email: 'test@example.com',
             name: 'Ada Lovelace',
             emailVerified: false,
+            totpEnabled: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })
@@ -214,6 +219,8 @@ describe('AuthService', () => {
             passwordHash: 'hash',
             emailVerified: false,
             sessionVersion: 0,
+            totpEnabled: false,
+            totpSecretEncrypted: null,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })
@@ -348,6 +355,7 @@ describe('AuthService', () => {
                 name: 'Ada Lovelace',
                 emailVerified: true,
                 sessionVersion: 0,
+                totpEnabled: false,
                 createdAt: new Date('2026-03-22T10:00:00.000Z'),
                 updatedAt: new Date('2026-03-22T10:00:00.000Z'),
             },
@@ -469,6 +477,7 @@ describe('AuthService', () => {
             email: 'test@example.com',
             name: 'Ada Lovelace',
             emailVerified: true,
+            totpEnabled: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })
@@ -815,6 +824,54 @@ describe('AuthService', () => {
                 newPassword: 'OceanStoneBridge!1234',
             }),
         ).rejects.toThrow('Password reset token is invalid or expired')
+    })
+
+    it('changes a password after verifying the current password', async () => {
+        const currentPassword = 'GraniteHarbor!1234'
+        const passwordHash = await argon2.hash(currentPassword, {
+            type: argon2.argon2id,
+        })
+        authRepository.findUserById.mockResolvedValue(createMockUser({ passwordHash }))
+        authRepository.changePassword.mockResolvedValue(undefined)
+
+        await expect(
+            service.changePassword('user-1', {
+                currentPassword,
+                newPassword: 'OceanStoneBridge!1234',
+            }),
+        ).resolves.toEqual({ message: 'Password changed successfully' })
+
+        const changeCall = authRepository.changePassword.mock.calls[0][0]
+        expect(changeCall.userId).toBe('user-1')
+        await expect(argon2.verify(changeCall.passwordHash, 'OceanStoneBridge!1234')).resolves.toBe(
+            true,
+        )
+    })
+
+    it('rejects password changes when the current password is incorrect', async () => {
+        const passwordHash = await argon2.hash('GraniteHarbor!1234', {
+            type: argon2.argon2id,
+        })
+        authRepository.findUserById.mockResolvedValue(createMockUser({ passwordHash }))
+
+        await expect(
+            service.changePassword('user-1', {
+                currentPassword: 'WrongPassword!1234',
+                newPassword: 'OceanStoneBridge!1234',
+            }),
+        ).rejects.toBeInstanceOf(UnauthorizedException)
+
+        expect(authRepository.changePassword).not.toHaveBeenCalled()
+    })
+
+    it('deletes the authenticated user account', async () => {
+        authRepository.findUserById.mockResolvedValue(createMockUser({ emailVerified: true }))
+        authRepository.deleteUserAccount.mockResolvedValue(undefined)
+
+        await expect(service.deleteAuthenticatedUser('user-1')).resolves.toEqual({
+            message: 'Account deleted successfully',
+        })
+        expect(authRepository.deleteUserAccount).toHaveBeenCalledWith('user-1')
     })
 })
 

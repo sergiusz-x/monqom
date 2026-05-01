@@ -60,6 +60,11 @@ export interface ResetPasswordWithTokenInput {
     resetAt: Date
 }
 
+export interface ChangePasswordInput {
+    userId: string
+    passwordHash: string
+}
+
 export interface ReplaceTwoFactorSetupSecretInput {
     userId: string
     encryptedSecret: string
@@ -324,6 +329,69 @@ export class AuthRepository {
         })
     }
 
+    async changePassword(input: ChangePasswordInput): Promise<void> {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            await tx.user.update({
+                where: { id: input.userId },
+                data: {
+                    passwordHash: input.passwordHash,
+                    sessionVersion: {
+                        increment: 1,
+                    },
+                },
+            })
+
+            await deleteUserSessions(tx, input.userId)
+
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_PASSWORD_CHANGED,
+                    userId: input.userId,
+                    entityType: AUDIT_ENTITY_TYPES.USER,
+                    entityId: input.userId,
+                    metadata: {
+                        source: 'SETTINGS_SECURITY',
+                    },
+                },
+                tx,
+            )
+        })
+    }
+
+    async deleteUserAccount(userId: string): Promise<void> {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            const memberships = await tx.workspaceMembership.findMany({
+                where: { userId },
+                select: { workspaceId: true },
+            })
+
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.USER_DELETED,
+                    userId,
+                    entityType: AUDIT_ENTITY_TYPES.USER,
+                    entityId: userId,
+                    metadata: {
+                        source: 'SETTINGS_DATA',
+                    },
+                },
+                tx,
+            )
+
+            await deleteUserSessions(tx, userId)
+
+            await tx.workspace.deleteMany({
+                where: {
+                    id: {
+                        in: memberships.map((membership) => membership.workspaceId),
+                    },
+                },
+            })
+
+            await tx.user.delete({ where: { id: userId } })
+        })
+    }
+
     async replaceTwoFactorSetupSecret(input: ReplaceTwoFactorSetupSecretInput): Promise<void> {
         await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             await tx.twoFactorRecoveryCode.deleteMany({
@@ -444,6 +512,19 @@ export class AuthRepository {
             entityId: input.userId,
             metadata: input.metadata,
         })
+    }
+}
+
+async function deleteUserSessions(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+    try {
+        await tx.$executeRaw`
+            DELETE FROM "user_sessions"
+            WHERE sess -> 'auth' ->> 'userId' = ${userId}
+        `
+    } catch (error) {
+        if (!isMissingSessionStoreTableError(error)) {
+            throw error
+        }
     }
 }
 

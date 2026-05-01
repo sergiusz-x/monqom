@@ -246,6 +246,7 @@ function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserRespon
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified,
+        totpEnabled: user.totpEnabled,
         sessionVersion: user.sessionVersion,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,

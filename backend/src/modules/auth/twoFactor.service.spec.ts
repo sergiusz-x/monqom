@@ -170,6 +170,7 @@ describe('TwoFactorService', () => {
             email: 'test@example.com',
             name: 'Ada Lovelace',
             emailVerified: true,
+            totpEnabled: true,
             sessionVersion: 0,
             recoveryCodeUsed: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),

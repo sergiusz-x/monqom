@@ -213,6 +213,16 @@ export class AuthController {
         return this.authService.resetPassword(body)
     }
 
+    @Post(AUTH_ROUTES.changePassword)
+    @UseGuards(SessionGuard)
+    @HttpCode(HttpStatus.OK)
+    async changePassword(
+        @Req() req: Request,
+        @Body() body: Record<string, unknown>,
+    ): Promise<AuthActionResponse> {
+        return this.authService.changePassword(req.session.auth!.userId, body)
+    }
+
     private getNodeEnv(): string {
         return this.configService.get<string>('env.nodeEnv', 'development')
     }
@@ -276,6 +286,7 @@ function finalizeAuthenticatedSession(
         email: loginResult.user.email,
         name: loginResult.user.name,
         emailVerified: loginResult.user.emailVerified,
+        totpEnabled: loginResult.user.totpEnabled,
         createdAt: loginResult.user.createdAt,
         updatedAt: loginResult.user.updatedAt,
     }
@@ -302,6 +313,7 @@ function toTwoFactorLoginResponse(
         email: loginResult.email,
         name: loginResult.name,
         emailVerified: loginResult.emailVerified,
+        totpEnabled: loginResult.totpEnabled,
         recoveryCodeUsed: loginResult.recoveryCodeUsed,
         createdAt: loginResult.createdAt,
         updatedAt: loginResult.updatedAt,

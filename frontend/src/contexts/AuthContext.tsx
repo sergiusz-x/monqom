@@ -12,6 +12,7 @@ export interface User {
   email: string;
   name: string;
   emailVerified: boolean;
+  totpEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }

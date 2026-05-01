@@ -1,12 +1,30 @@
-import { Body, Controller, HttpCode, HttpStatus, Put, Req, UseGuards } from '@nestjs/common'
-import type { Request } from 'express'
+import {
+    Body,
+    Controller,
+    Delete,
+    HttpCode,
+    HttpStatus,
+    Put,
+    Req,
+    Res,
+    UseGuards,
+} from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import type { Request, Response } from 'express'
 import { SessionGuard } from '../../shared/guards/session.guard'
-import { AuthenticatedUserResponse, AuthService } from './auth.service'
+import {
+    createSessionCookieClearingOptions,
+    SESSION_COOKIE_NAME,
+} from '../../shared/session/session.config'
+import { AuthActionResponse, AuthenticatedUserResponse, AuthService } from './auth.service'
 
 @Controller('users')
 @UseGuards(SessionGuard)
 export class UsersController {
-    constructor(private readonly authService: AuthService) {}
+    constructor(
+        private readonly authService: AuthService,
+        private readonly configService: ConfigService,
+    ) {}
 
     @Put('me')
     @HttpCode(HttpStatus.OK)
@@ -16,4 +34,35 @@ export class UsersController {
     ): Promise<AuthenticatedUserResponse> {
         return this.authService.updateAuthenticatedUser(req.session.auth!.userId, body)
     }
+
+    @Delete('me')
+    @HttpCode(HttpStatus.OK)
+    async deleteMe(
+        @Req() req: Request,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<AuthActionResponse> {
+        const userId = req.session.auth!.userId
+        const result = await this.authService.deleteAuthenticatedUser(userId)
+        await destroySession(req)
+        res.clearCookie(
+            SESSION_COOKIE_NAME,
+            createSessionCookieClearingOptions(
+                this.configService.get<string>('env.nodeEnv', 'development'),
+            ),
+        )
+        return result
+    }
+}
+
+function destroySession(req: Request): Promise<void> {
+    return new Promise((resolve, reject) => {
+        req.session.destroy((error) => {
+            if (error) {
+                reject(error)
+                return
+            }
+
+            resolve()
+        })
+    })
 }

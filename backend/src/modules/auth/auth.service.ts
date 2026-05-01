@@ -10,6 +10,7 @@ import { User } from '@prisma/client'
 import {
     validateEmailInput,
     validateLoginInput,
+    validatePassword,
     validateRegistrationInput,
     validateResetPasswordInput,
     validateVerificationTokenInput,
@@ -28,6 +29,7 @@ const EMAIL_VERIFICATION_SENT_MESSAGE = 'Verification email sent'
 const PASSWORD_RESET_SENT_MESSAGE =
     'If an account with that email exists, a password reset link has been generated'
 const PASSWORD_RESET_SUCCESS_MESSAGE = 'Password reset successfully'
+const PASSWORD_CHANGE_SUCCESS_MESSAGE = 'Password changed successfully'
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password'
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address must be verified before logging in'
 
@@ -70,6 +72,11 @@ export interface ResetPasswordRequestInput {
     newPassword?: unknown
 }
 
+export interface ChangePasswordRequestInput {
+    currentPassword?: unknown
+    newPassword?: unknown
+}
+
 export interface UpdateUserProfileRequestInput {
     name?: unknown
 }
@@ -88,6 +95,7 @@ export interface RegisteredUserResponse {
     email: string
     name: string
     emailVerified: boolean
+    totpEnabled: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -373,6 +381,51 @@ export class AuthService {
             message: PASSWORD_RESET_SUCCESS_MESSAGE,
         }
     }
+
+    async changePassword(
+        userId: string,
+        input: ChangePasswordRequestInput,
+    ): Promise<AuthActionResponse> {
+        const { currentPassword, newPassword, errors } = validateChangePasswordInput(input)
+
+        if (errors.length > 0 || !currentPassword || !newPassword) {
+            throw new BadRequestException(errors)
+        }
+
+        const user = await this.authRepository.findUserById(userId)
+
+        if (!user) {
+            throw new UnauthorizedException('Authentication required')
+        }
+
+        const isCurrentPasswordValid = await argon2.verify(user.passwordHash, currentPassword)
+
+        if (!isCurrentPasswordValid) {
+            throw new UnauthorizedException('Current password is incorrect')
+        }
+
+        const passwordHash = await argon2.hash(newPassword, {
+            type: argon2.argon2id,
+        })
+
+        await this.authRepository.changePassword({
+            userId,
+            passwordHash,
+        })
+
+        return {
+            message: PASSWORD_CHANGE_SUCCESS_MESSAGE,
+        }
+    }
+
+    async deleteAuthenticatedUser(userId: string): Promise<AuthActionResponse> {
+        await this.getAuthenticatedUser(userId)
+        await this.authRepository.deleteUserAccount(userId)
+
+        return {
+            message: 'Account deleted successfully',
+        }
+    }
 }
 
 function createTokenPayload(ttlMs: number): {
@@ -453,9 +506,35 @@ function mapRegisteredUser(user: User): RegisteredUserResponse {
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified,
+        totpEnabled: user.totpEnabled,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
     }
+}
+
+function validateChangePasswordInput(input: ChangePasswordRequestInput): {
+    currentPassword?: string
+    newPassword?: string
+    errors: string[]
+} {
+    const errors: string[] = []
+    let currentPassword: string | undefined
+    let newPassword: string | undefined
+
+    if (typeof input.currentPassword !== 'string' || input.currentPassword.length === 0) {
+        errors.push('Current password is required')
+    } else {
+        currentPassword = input.currentPassword
+    }
+
+    if (typeof input.newPassword !== 'string' || input.newPassword.length === 0) {
+        errors.push('New password is required')
+    } else {
+        newPassword = input.newPassword
+        errors.push(...validatePassword(newPassword))
+    }
+
+    return { currentPassword, newPassword, errors }
 }
 
 function validateUserProfileInput(input: UpdateUserProfileRequestInput): {

@@ -12,7 +12,10 @@ vi.mock("@/hooks/useWorkspace", () => ({ useWorkspace: vi.fn() }));
 
 vi.mock("@/lib/api", () => ({
   default: {
+    get: vi.fn(),
+    post: vi.fn(),
     put: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -21,7 +24,10 @@ import api from "@/lib/api";
 
 const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const mockApi = api as unknown as {
+  get: ReturnType<typeof vi.fn>;
+  post: ReturnType<typeof vi.fn>;
   put: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
 };
 
 const testUser: User = {
@@ -29,6 +35,7 @@ const testUser: User = {
   email: "ada@example.com",
   name: "Ada Lovelace",
   emailVerified: true,
+  totpEnabled: false,
   createdAt: "2026-03-20T00:00:00.000Z",
   updatedAt: "2026-03-20T00:00:00.000Z",
 };
@@ -125,5 +132,76 @@ describe("SettingsPage", () => {
       timezone: "Europe/Warsaw",
     });
     expect(screen.getByRole("status")).toHaveTextContent("Workspace saved");
+  });
+
+  it("changes password through the security section", async () => {
+    const user = userEvent.setup();
+    mockApi.post.mockResolvedValueOnce({ data: { message: "ok" } });
+    renderSettings();
+
+    await user.click(screen.getByRole("button", { name: "Security" }));
+    await user.type(
+      screen.getByLabelText("Current password"),
+      "CurrentPass123!",
+    );
+    await user.type(screen.getByLabelText("New password"), "NewPassword123!");
+    await user.type(
+      screen.getByLabelText("Confirm new password"),
+      "NewPassword123!",
+    );
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
+    expect(mockApi.post).toHaveBeenCalledWith("/auth/change-password", {
+      currentPassword: "CurrentPass123!",
+      newPassword: "NewPassword123!",
+    });
+  });
+
+  it("triggers a CSV export download", async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => "blob:export");
+    const revokeObjectURL = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    mockApi.get.mockResolvedValueOnce({ data: new Blob(["date,amount"]) });
+    renderSettings();
+
+    await user.click(screen.getByRole("button", { name: "Data" }));
+    await user.click(screen.getByRole("button", { name: "Export CSV" }));
+
+    await waitFor(() => expect(mockApi.get).toHaveBeenCalledTimes(1));
+    expect(mockApi.get).toHaveBeenCalledWith("/workspaces/ws-1/export", {
+      params: { format: "csv" },
+      responseType: "blob",
+    });
+    expect(click).toHaveBeenCalled();
+    click.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("requires DELETE confirmation before deleting an account", async () => {
+    const user = userEvent.setup();
+    mockApi.delete.mockResolvedValueOnce({ data: { message: "deleted" } });
+    const authValue = renderSettings();
+
+    await user.click(screen.getByRole("button", { name: "Data" }));
+    await user.click(screen.getByRole("button", { name: "Delete account" }));
+    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    expect(mockApi.delete).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Type DELETE to confirm account deletion",
+    );
+
+    await user.type(screen.getByLabelText("Deletion confirmation"), "DELETE");
+    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    await waitFor(() =>
+      expect(mockApi.delete).toHaveBeenCalledWith("/users/me"),
+    );
+    expect(authValue.setUser).toHaveBeenCalledWith(null);
   });
 });

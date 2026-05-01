@@ -37,6 +37,7 @@ beforeEach(() => {
       email: "u@e.com",
       name: "U",
       emailVerified: true,
+      totpEnabled: false,
       createdAt: "",
       updatedAt: "",
     },

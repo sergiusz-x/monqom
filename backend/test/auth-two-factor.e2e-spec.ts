@@ -251,6 +251,7 @@ describe('Auth two-factor authentication (e2e)', () => {
             email: 'twofactor@example.com',
             name: 'Ada Lovelace',
             emailVerified: true,
+            totpEnabled: true,
             recoveryCodeUsed: false,
             createdAt: expect.any(String),
             updatedAt: expect.any(String),
@@ -282,6 +283,7 @@ describe('Auth two-factor authentication (e2e)', () => {
             email: 'twofactor@example.com',
             name: 'Ada Lovelace',
             emailVerified: true,
+            totpEnabled: true,
             recoveryCodeUsed: true,
             createdAt: expect.any(String),
             updatedAt: expect.any(String),
@@ -356,6 +358,7 @@ describe('Auth two-factor authentication (e2e)', () => {
             email: 'twofactor@example.com',
             name: 'Ada Lovelace',
             emailVerified: true,
+            totpEnabled: false,
             createdAt: expect.any(String),
             updatedAt: expect.any(String),
         })
