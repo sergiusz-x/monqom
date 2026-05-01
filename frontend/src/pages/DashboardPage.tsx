@@ -5,6 +5,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSummary";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { SpendingByCategoryChart } from "@/components/dashboard/SpendingByCategoryChart";
+import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
 import { TRANSACTION_SAVED_EVENT } from "@/lib/transaction-refresh";
 
 function getCurrentMonth(): string {
@@ -42,8 +43,14 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(getCurrentMonth);
   const [refreshKey, setRefreshKey] = useState(0);
   const { categories } = useCategories(workspaceId ?? "");
-  const { summary, categoryBreakdown, transactions, isLoading, error } =
-    useDashboardData(workspaceId ?? "", month, refreshKey);
+  const {
+    summary,
+    categoryBreakdown,
+    spendingTrend,
+    transactions,
+    isLoading,
+    error,
+  } = useDashboardData(workspaceId ?? "", month, refreshKey);
 
   const selectedMonthLabel = useMemo(() => monthLabel(month), [month]);
 
@@ -115,6 +122,11 @@ export default function DashboardPage() {
           monthLabel={selectedMonthLabel}
           onPreviousMonth={() => setMonth((value) => shiftMonth(value, -1))}
           onNextMonth={() => setMonth((value) => shiftMonth(value, 1))}
+        />
+        <SpendingTrendChart
+          trend={spendingTrend}
+          currency={summary.currency}
+          currentMonth={getCurrentMonth()}
         />
         <SpendingByCategoryChart breakdown={categoryBreakdown} month={month} />
         <RecentTransactions

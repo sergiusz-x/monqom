@@ -23,6 +23,11 @@ export interface CategoryBreakdown {
   categories: CategoryBreakdownItem[];
 }
 
+export interface SpendingTrendItem {
+  month: string;
+  total: number;
+}
+
 export interface TransactionItem {
   id: string;
   workspace_id: string;

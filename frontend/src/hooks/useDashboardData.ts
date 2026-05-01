@@ -2,6 +2,7 @@ import { useEffect, useReducer } from "react";
 import api from "@/lib/api";
 import type {
   CategoryBreakdown,
+  SpendingTrendItem,
   SpendingSummary,
   TransactionsListResponse,
   TransactionItem,
@@ -10,6 +11,7 @@ import type {
 interface State {
   summary: SpendingSummary | null;
   categoryBreakdown: CategoryBreakdown | null;
+  spendingTrend: SpendingTrendItem[];
   transactions: TransactionItem[];
   isLoading: boolean;
   error: string | null;
@@ -22,6 +24,7 @@ type Action =
       payload: {
         summary: SpendingSummary;
         categoryBreakdown: CategoryBreakdown;
+        spendingTrend: SpendingTrendItem[];
         transactions: TransactionItem[];
       };
     }
@@ -30,6 +33,7 @@ type Action =
 const initialState: State = {
   summary: null,
   categoryBreakdown: null,
+  spendingTrend: [],
   transactions: [],
   isLoading: false,
   error: null,
@@ -41,6 +45,7 @@ function reducer(_state: State, action: Action): State {
       return {
         summary: null,
         categoryBreakdown: null,
+        spendingTrend: [],
         transactions: [],
         isLoading: true,
         error: null,
@@ -49,6 +54,7 @@ function reducer(_state: State, action: Action): State {
       return {
         summary: action.payload.summary,
         categoryBreakdown: action.payload.categoryBreakdown,
+        spendingTrend: action.payload.spendingTrend,
         transactions: action.payload.transactions,
         isLoading: false,
         error: null,
@@ -57,6 +63,7 @@ function reducer(_state: State, action: Action): State {
       return {
         summary: null,
         categoryBreakdown: null,
+        spendingTrend: [],
         transactions: [],
         isLoading: false,
         error: "Failed to load dashboard",
@@ -77,6 +84,8 @@ export function useDashboardData(
     let cancelled = false;
     dispatch({ type: "FETCH_START" });
 
+    const trendMonths = getLastSixMonths(month);
+
     Promise.all([
       api.get<SpendingSummary>(
         `/workspaces/${workspaceId}/dashboard/spending-summary`,
@@ -92,18 +101,35 @@ export function useDashboardData(
           params: { limit: 5, offset: 0 },
         },
       ),
+      ...trendMonths.map((trendMonth) =>
+        api.get<SpendingSummary>(
+          `/workspaces/${workspaceId}/dashboard/spending-summary`,
+          { params: { month: trendMonth } },
+        ),
+      ),
     ])
-      .then(([summaryRes, categoryBreakdownRes, transactionsRes]) => {
-        if (cancelled) return;
-        dispatch({
-          type: "FETCH_SUCCESS",
-          payload: {
-            summary: summaryRes.data,
-            categoryBreakdown: categoryBreakdownRes.data,
-            transactions: transactionsRes.data.data,
-          },
-        });
-      })
+      .then(
+        ([
+          summaryRes,
+          categoryBreakdownRes,
+          transactionsRes,
+          ...trendResponses
+        ]) => {
+          if (cancelled) return;
+          dispatch({
+            type: "FETCH_SUCCESS",
+            payload: {
+              summary: summaryRes.data,
+              categoryBreakdown: categoryBreakdownRes.data,
+              spendingTrend: trendResponses.map((response) => ({
+                month: response.data.month,
+                total: response.data.current_total,
+              })),
+              transactions: transactionsRes.data.data,
+            },
+          });
+        },
+      )
       .catch(() => {
         if (!cancelled) dispatch({ type: "FETCH_ERROR" });
       });
@@ -114,4 +140,19 @@ export function useDashboardData(
   }, [workspaceId, month, refreshKey]);
 
   return state;
+}
+
+function getLastSixMonths(month: string): string[] {
+  const [yearPart, monthPart] = month.split("-");
+  const endDate = new Date(Number(yearPart), Number(monthPart) - 1, 1);
+
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(
+      endDate.getFullYear(),
+      endDate.getMonth() - 5 + index,
+      1,
+    );
+
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  });
 }

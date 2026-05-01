@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import DashboardPage from "@/pages/DashboardPage";
 import type {
   CategoryBreakdown,
+  SpendingTrendItem,
   SpendingSummary,
   TransactionItem,
 } from "@/types/dashboard";
@@ -77,6 +78,17 @@ function makeCategoryBreakdown(
   };
 }
 
+function makeSpendingTrend(): SpendingTrendItem[] {
+  return [
+    { month: "2025-11", total: 0 },
+    { month: "2025-12", total: 100 },
+    { month: "2026-01", total: 200 },
+    { month: "2026-02", total: 300 },
+    { month: "2026-03", total: 400 },
+    { month: "2026-04", total: 1234.56 },
+  ];
+}
+
 function makeCategory(overrides: Partial<Category> = {}): Category {
   return {
     id: "cat-1",
@@ -112,6 +124,7 @@ beforeEach(() => {
   mockUseDashboardData.mockReturnValue({
     summary: makeSummary(),
     categoryBreakdown: makeCategoryBreakdown(),
+    spendingTrend: makeSpendingTrend(),
     transactions: [makeTransaction()],
     isLoading: false,
     error: null,
@@ -137,6 +150,10 @@ describe("DashboardPage", () => {
       screen.getByLabelText(/monthly spending summary/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText("$1,234.56").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/spending trend/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /spending \$/i }),
+    ).toHaveLength(6);
     expect(screen.getByLabelText(/spending by category/i)).toBeInTheDocument();
     expect(screen.getAllByText("Groceries").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
@@ -179,6 +196,7 @@ describe("DashboardPage", () => {
         total_spending: 0,
         categories: [],
       }),
+      spendingTrend: makeSpendingTrend().map((item) => ({ ...item, total: 0 })),
       transactions: [],
       isLoading: false,
       error: null,
@@ -198,6 +216,7 @@ describe("DashboardPage", () => {
     mockUseDashboardData.mockReturnValue({
       summary: null,
       categoryBreakdown: null,
+      spendingTrend: [],
       transactions: [],
       isLoading: false,
       error: "Failed to load dashboard",
