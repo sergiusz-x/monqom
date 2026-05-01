@@ -1,27 +1,27 @@
-import { useLayoutEffect, useState } from 'react'
+import { useLayoutEffect, useState } from "react";
 
-const STORAGE_KEY = 'monqom-dark-mode'
+const STORAGE_KEY = "monqom-dark-mode";
 
 function getInitialDark(): boolean {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored !== null) return stored === 'true'
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored !== null) return stored === "true";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
 export function useDarkMode() {
-  const [isDark, setIsDark] = useState<boolean>(() => getInitialDark())
+  const [isDark, setIsDark] = useState<boolean>(() => getInitialDark());
 
   useLayoutEffect(() => {
-    const root = document.documentElement
+    const root = document.documentElement;
     if (isDark) {
-      root.classList.add('dark')
+      root.classList.add("dark");
     } else {
-      root.classList.remove('dark')
+      root.classList.remove("dark");
     }
-    localStorage.setItem(STORAGE_KEY, String(isDark))
-  }, [isDark])
+    localStorage.setItem(STORAGE_KEY, String(isDark));
+  }, [isDark]);
 
-  const toggle = () => setIsDark((prev) => !prev)
+  const toggle = () => setIsDark((prev) => !prev);
 
-  return { isDark, toggle }
+  return { isDark, toggle };
 }

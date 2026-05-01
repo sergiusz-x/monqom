@@ -8,6 +8,21 @@ export interface SpendingSummary {
   direction: "up" | "down" | "flat";
 }
 
+export interface CategoryBreakdownItem {
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  amount: number;
+  percentage: number;
+}
+
+export interface CategoryBreakdown {
+  month: string;
+  currency: string;
+  total_spending: number;
+  categories: CategoryBreakdownItem[];
+}
+
 export interface TransactionItem {
   id: string;
   workspace_id: string;

@@ -3,7 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import DashboardPage from "@/pages/DashboardPage";
-import type { SpendingSummary, TransactionItem } from "@/types/dashboard";
+import type {
+  CategoryBreakdown,
+  SpendingSummary,
+  TransactionItem,
+} from "@/types/dashboard";
 import type { Category } from "@/types/category";
 
 vi.mock("@/hooks/useWorkspace", () => ({ useWorkspace: vi.fn() }));
@@ -53,6 +57,26 @@ function makeTransaction(
   };
 }
 
+function makeCategoryBreakdown(
+  overrides: Partial<CategoryBreakdown> = {},
+): CategoryBreakdown {
+  return {
+    month: "2026-04",
+    currency: "USD",
+    total_spending: 1234.56,
+    categories: [
+      {
+        category_id: "cat-1",
+        category_name: "Groceries",
+        category_color: "#16a34a",
+        amount: 1234.56,
+        percentage: 100,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 function makeCategory(overrides: Partial<Category> = {}): Category {
   return {
     id: "cat-1",
@@ -87,6 +111,7 @@ beforeEach(() => {
   });
   mockUseDashboardData.mockReturnValue({
     summary: makeSummary(),
+    categoryBreakdown: makeCategoryBreakdown(),
     transactions: [makeTransaction()],
     isLoading: false,
     error: null,
@@ -111,8 +136,9 @@ describe("DashboardPage", () => {
     expect(
       screen.getByLabelText(/monthly spending summary/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("$1,234.56")).toBeInTheDocument();
-    expect(screen.getByText("Groceries")).toBeInTheDocument();
+    expect(screen.getAllByText("$1,234.56").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/spending by category/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Groceries").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
       "href",
       "/transactions",
@@ -149,6 +175,10 @@ describe("DashboardPage", () => {
         change_amount: 0,
         direction: "flat",
       }),
+      categoryBreakdown: makeCategoryBreakdown({
+        total_spending: 0,
+        categories: [],
+      }),
       transactions: [],
       isLoading: false,
       error: null,
@@ -161,11 +191,13 @@ describe("DashboardPage", () => {
         "Add your first transaction to start tracking monthly spending.",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("No category spending yet")).toBeInTheDocument();
   });
 
   it("shows dashboard error alert when data fetch fails", () => {
     mockUseDashboardData.mockReturnValue({
       summary: null,
+      categoryBreakdown: null,
       transactions: [],
       isLoading: false,
       error: "Failed to load dashboard",

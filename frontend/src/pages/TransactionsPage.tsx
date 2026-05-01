@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
@@ -41,12 +42,20 @@ function buildCategoryMap(
 }
 
 export default function TransactionsPage() {
+  const [searchParams] = useSearchParams();
   const {
     workspaceId,
     isLoading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
-  const [filters, setFilters] = useState(defaultFilters);
+  const [filters, setFilters] = useState<TransactionFilters>(() => ({
+    categoryId: searchParams.get("category_id") ?? defaultFilters.categoryId,
+    tag: searchParams.get("tag") ?? defaultFilters.tag,
+    paymentSourceId:
+      searchParams.get("payment_source_id") ?? defaultFilters.paymentSourceId,
+    dateFrom: searchParams.get("date_from") ?? defaultFilters.dateFrom,
+    dateTo: searchParams.get("date_to") ?? defaultFilters.dateTo,
+  }));
   const [offset, setOffset] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [toast, setToast] = useState<string | null>(null);

@@ -1,83 +1,95 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import api from '@/lib/api'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import api from "@/lib/api";
 
 export interface User {
-  id: string
-  email: string
-  name: string
-  emailVerified: boolean
-  createdAt: string
-  updatedAt: string
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type LoginResult =
-  | { type: 'authenticated'; user: User }
-  | { type: 'two_factor_required' }
+  | { type: "authenticated"; user: User }
+  | { type: "two_factor_required" };
 
 export interface AuthContextValue {
-  user: User | null
-  isLoading: boolean
-  login: (email: string, password: string) => Promise<LoginResult>
-  logout: () => Promise<void>
-  setUser: (user: User | null) => void
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  logout: () => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
-export const AuthContext = createContext<AuthContextValue | null>(null)
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     api
-      .get<User>('/auth/me')
+      .get<User>("/auth/me")
       .then((res) => setUser(res.data))
       .catch(() => setUser(null))
-      .finally(() => setIsLoading(false))
-  }, [])
+      .finally(() => setIsLoading(false));
+  }, []);
 
   useEffect(() => {
     const id = api.interceptors.response.use(
       (res) => res,
       (error) => {
-        if (error.response?.status === 401 && !error.config?.url?.includes('/auth/me')) {
-          setUser(null)
+        if (
+          error.response?.status === 401 &&
+          !error.config?.url?.includes("/auth/me")
+        ) {
+          setUser(null);
         }
-        return Promise.reject(error)
+        return Promise.reject(error);
       },
-    )
-    return () => api.interceptors.response.eject(id)
-  }, [])
+    );
+    return () => api.interceptors.response.eject(id);
+  }, []);
 
   async function login(email: string, password: string): Promise<LoginResult> {
-    const res = await api.post<User | { requiresTwoFactor: true }>('/auth/login', {
-      email,
-      password,
-    })
+    const res = await api.post<User | { requiresTwoFactor: true }>(
+      "/auth/login",
+      {
+        email,
+        password,
+      },
+    );
 
-    if ('requiresTwoFactor' in res.data && res.data.requiresTwoFactor) {
-      return { type: 'two_factor_required' }
+    if ("requiresTwoFactor" in res.data && res.data.requiresTwoFactor) {
+      return { type: "two_factor_required" };
     }
 
-    const userData = res.data as User
-    setUser(userData)
-    return { type: 'authenticated', user: userData }
+    const userData = res.data as User;
+    setUser(userData);
+    return { type: "authenticated", user: userData };
   }
 
   async function logout(): Promise<void> {
-    await api.post('/auth/logout')
-    setUser(null)
+    await api.post("/auth/logout");
+    setUser(null);
   }
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, setUser }}>
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

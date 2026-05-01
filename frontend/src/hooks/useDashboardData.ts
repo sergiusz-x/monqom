@@ -1,6 +1,7 @@
 import { useEffect, useReducer } from "react";
 import api from "@/lib/api";
 import type {
+  CategoryBreakdown,
   SpendingSummary,
   TransactionsListResponse,
   TransactionItem,
@@ -8,6 +9,7 @@ import type {
 
 interface State {
   summary: SpendingSummary | null;
+  categoryBreakdown: CategoryBreakdown | null;
   transactions: TransactionItem[];
   isLoading: boolean;
   error: string | null;
@@ -17,12 +19,17 @@ type Action =
   | { type: "FETCH_START" }
   | {
       type: "FETCH_SUCCESS";
-      payload: { summary: SpendingSummary; transactions: TransactionItem[] };
+      payload: {
+        summary: SpendingSummary;
+        categoryBreakdown: CategoryBreakdown;
+        transactions: TransactionItem[];
+      };
     }
   | { type: "FETCH_ERROR" };
 
 const initialState: State = {
   summary: null,
+  categoryBreakdown: null,
   transactions: [],
   isLoading: false,
   error: null,
@@ -31,10 +38,17 @@ const initialState: State = {
 function reducer(_state: State, action: Action): State {
   switch (action.type) {
     case "FETCH_START":
-      return { summary: null, transactions: [], isLoading: true, error: null };
+      return {
+        summary: null,
+        categoryBreakdown: null,
+        transactions: [],
+        isLoading: true,
+        error: null,
+      };
     case "FETCH_SUCCESS":
       return {
         summary: action.payload.summary,
+        categoryBreakdown: action.payload.categoryBreakdown,
         transactions: action.payload.transactions,
         isLoading: false,
         error: null,
@@ -42,6 +56,7 @@ function reducer(_state: State, action: Action): State {
     case "FETCH_ERROR":
       return {
         summary: null,
+        categoryBreakdown: null,
         transactions: [],
         isLoading: false,
         error: "Failed to load dashboard",
@@ -67,6 +82,10 @@ export function useDashboardData(
         `/workspaces/${workspaceId}/dashboard/spending-summary`,
         { params: { month } },
       ),
+      api.get<CategoryBreakdown>(
+        `/workspaces/${workspaceId}/dashboard/category-breakdown`,
+        { params: { month } },
+      ),
       api.get<TransactionsListResponse>(
         `/workspaces/${workspaceId}/transactions`,
         {
@@ -74,12 +93,13 @@ export function useDashboardData(
         },
       ),
     ])
-      .then(([summaryRes, transactionsRes]) => {
+      .then(([summaryRes, categoryBreakdownRes, transactionsRes]) => {
         if (cancelled) return;
         dispatch({
           type: "FETCH_SUCCESS",
           payload: {
             summary: summaryRes.data,
+            categoryBreakdown: categoryBreakdownRes.data,
             transactions: transactionsRes.data.data,
           },
         });

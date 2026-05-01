@@ -1,19 +1,25 @@
-import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Receipt, PiggyBank, Settings, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { NavLink } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Receipt,
+  PiggyBank,
+  Settings,
+  Plus,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const leftItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/transactions', label: 'Transactions', icon: Receipt },
-]
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/transactions", label: "Transactions", icon: Receipt },
+];
 
 const rightItems = [
-  { to: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { to: '/settings', label: 'Settings', icon: Settings },
-]
+  { to: "/budgets", label: "Budgets", icon: PiggyBank },
+  { to: "/settings", label: "Settings", icon: Settings },
+];
 
 interface BottomNavProps {
-  onAddTransaction: () => void
+  onAddTransaction: () => void;
 }
 
 export default function BottomNav({ onAddTransaction }: BottomNavProps) {
@@ -30,8 +36,8 @@ export default function BottomNav({ onAddTransaction }: BottomNavProps) {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-0.5 py-2 px-3 text-xs',
-                isActive ? 'text-foreground' : 'text-muted-foreground',
+                "flex flex-col items-center gap-0.5 py-2 px-3 text-xs",
+                isActive ? "text-foreground" : "text-muted-foreground",
               )
             }
           >
@@ -56,8 +62,8 @@ export default function BottomNav({ onAddTransaction }: BottomNavProps) {
             to={to}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-0.5 py-2 px-3 text-xs',
-                isActive ? 'text-foreground' : 'text-muted-foreground',
+                "flex flex-col items-center gap-0.5 py-2 px-3 text-xs",
+                isActive ? "text-foreground" : "text-muted-foreground",
               )
             }
           >
@@ -67,5 +73,5 @@ export default function BottomNav({ onAddTransaction }: BottomNavProps) {
         ))}
       </div>
     </nav>
-  )
+  );
 }

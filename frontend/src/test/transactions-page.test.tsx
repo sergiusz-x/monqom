@@ -91,9 +91,9 @@ beforeEach(() => {
   });
 });
 
-function renderPage() {
+function renderPage(initialEntry = "/transactions") {
   return render(
-    <MemoryRouter initialEntries={["/transactions"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/transactions" element={<TransactionsPage />} />
       </Routes>
@@ -156,6 +156,22 @@ describe("TransactionsPage", () => {
     ];
     expect(latestCall[1].categoryId).toBe("cat-1");
     expect(latestCall[3]).toBe(0);
+  });
+
+  it("prefills filters from query params", () => {
+    renderPage(
+      "/transactions?category_id=cat-1&date_from=2026-04-01&date_to=2026-04-30",
+    );
+
+    const latestCall = mockUseTransactions.mock.calls.at(-1) as [
+      string,
+      TransactionFilters,
+      number,
+      number,
+    ];
+    expect(latestCall[1].categoryId).toBe("cat-1");
+    expect(latestCall[1].dateFrom).toBe("2026-04-01");
+    expect(latestCall[1].dateTo).toBe("2026-04-30");
   });
 
   it("supports next page pagination", async () => {
