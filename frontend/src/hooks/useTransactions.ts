@@ -84,7 +84,8 @@ export function useTransactions(
 
     api
       .get<TransactionsResponse>(
-        `/workspaces/${workspaceId}/transactions?${params.toString()}`,
+        `/workspaces/${workspaceId}/transactions`,
+        { params },
       )
       .then((res) => {
         if (!cancelled) dispatch({ type: "FETCH_SUCCESS", payload: res.data });

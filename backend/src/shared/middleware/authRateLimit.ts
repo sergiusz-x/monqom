@@ -135,6 +135,13 @@ function getRequestPath(req: Request): string {
     return path?.toLowerCase() ?? ''
 }
 
+const IPV4_REGEX = /^(\d{1,3}\.){3}\d{1,3}$/
+const IPV6_REGEX = /^[\da-f:]+$/i
+
+function isValidIpAddress(ip: string): boolean {
+    return IPV4_REGEX.test(ip) || IPV6_REGEX.test(ip)
+}
+
 function getRequestIp(req: Request): string {
     const trustProxy = req.app.get('trust proxy')
     const forwardedForHeader = req.headers['x-forwarded-for']
@@ -144,7 +151,10 @@ function getRequestIp(req: Request): string {
         typeof forwardedForHeader === 'string' &&
         forwardedForHeader.trim().length > 0
     ) {
-        return forwardedForHeader.split(',')[0].trim()
+        const ip = forwardedForHeader.split(',')[0].trim()
+        if (isValidIpAddress(ip)) {
+            return ip
+        }
     }
 
     return req.ip || 'unknown'

@@ -350,13 +350,5 @@ function resolveEncryptionKey(): Buffer {
         return createHash('sha256').update(configuredSecret).digest()
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-        const sessionSecret = process.env.SESSION_SECRET?.trim()
-
-        if (sessionSecret) {
-            return createHash('sha256').update(sessionSecret).digest()
-        }
-    }
-
     throw new Error('TOTP_ENCRYPTION_KEY environment variable is missing')
 }

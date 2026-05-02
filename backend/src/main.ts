@@ -31,7 +31,7 @@ async function bootstrap() {
         }),
     )
 
-    if (nodeEnv === 'production') {
+    if (nodeEnv === 'production' || nodeEnv === 'staging') {
         app.set('trust proxy', 1)
     }
 

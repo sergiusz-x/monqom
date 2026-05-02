@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string): Promise<LoginResult> {
-    const res = await api.post<User | { requiresTwoFactor: true }>(
+    const res = await api.post<User | { requiresTwoFactor: true; message: string }>(
       "/auth/login",
       {
         email,

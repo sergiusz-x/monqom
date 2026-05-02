@@ -278,7 +278,7 @@ function escapeCsvValue(value: string): string {
     const normalizedValue = sanitizeSpreadsheetFormula(value)
     const escapedValue = normalizedValue.replace(/"/g, '""')
 
-    if (/[",\r\n]/.test(normalizedValue)) {
+    if (normalizedValue !== value || /[",\r\n]/.test(normalizedValue)) {
         return `"${escapedValue}"`
     }
 

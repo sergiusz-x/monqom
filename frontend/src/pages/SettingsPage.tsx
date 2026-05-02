@@ -186,7 +186,8 @@ function SecuritySection({ user, setUser, onSaved }: SecuritySectionProps) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      onSaved("Password changed. Please sign in again on other devices.");
+      onSaved("Password changed. Please sign in again.");
+      window.setTimeout(() => setUser(null), 1500);
     } catch {
       setPasswordError("Failed to change password");
     } finally {
@@ -485,7 +486,7 @@ function DataSection({ workspaceId, setUser, onSaved }: DataSectionProps) {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 100);
       onSaved(`${format.toUpperCase()} export started`);
     } catch {
       setDataError(`Failed to export ${format.toUpperCase()} data`);
