@@ -1,0 +1,10 @@
+<svg width="48" height="48" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    rect { stroke: #1a1a1a; }
+    @media (prefers-color-scheme: dark) {
+      rect { stroke: #f0f0f0; }
+    }
+  </style>
+  <rect x="1.5" y="1.5" width="28" height="28" rx="6" stroke-width="2.5" fill="none"/>
+  <rect x="14.5" y="14.5" width="28" height="28" rx="6" stroke-width="2.5" fill="none"/>
+</svg>

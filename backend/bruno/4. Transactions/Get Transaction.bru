@@ -1,0 +1,14 @@
+meta {
+  name: Get Transaction
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/transactions/{{transactionId}}
+  body: none
+  auth: none
+}
+
+headers {
+}

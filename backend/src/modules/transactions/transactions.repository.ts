@@ -1,0 +1,719 @@
+import { Injectable } from '@nestjs/common'
+import { Category, PaymentSource, Prisma, Transaction, TransactionTag } from '@prisma/client'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
+import { PrismaService } from '../../shared/database/prisma.service'
+
+export interface CreateTransactionRecordInput {
+    workspaceId: string
+    userId: string
+    categoryId: string
+    paymentSourceId: string
+    type: string
+    amount: number
+    currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
+    date: Date
+    description: string
+    notes: string | null
+    tags: string[]
+}
+
+export interface UpdateTransactionRecordInput {
+    workspaceId: string
+    transactionId: string
+    userId?: string
+    previousTransaction?: TransactionWithTags
+    categoryId: string
+    paymentSourceId: string
+    type: string
+    amount: number
+    currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
+    date: Date
+    description: string
+    notes: string | null
+    tags: string[]
+}
+
+export interface SoftDeleteTransactionInput {
+    workspaceId: string
+    transactionId: string
+    userId: string
+    deletedAt: Date
+    transaction: TransactionWithTags
+}
+
+export type TransactionSortField =
+    | 'date'
+    | 'category'
+    | 'amount'
+    | 'description'
+    | 'notes'
+    | 'tags'
+    | 'payment_source'
+
+export type TransactionSortDirection = 'asc' | 'desc'
+
+export interface ListTransactionsFilters {
+    workspaceId: string
+    categoryId?: string
+    categoryIds?: string[]
+    sortBy?: TransactionSortField
+    sortDirection?: TransactionSortDirection
+    paymentSourceId?: string
+    tag?: string
+    dateFrom?: Date
+    dateTo?: Date
+}
+
+export interface ListTransactionsQuery extends ListTransactionsFilters {
+    limit: number
+    offset: number
+}
+
+export interface ListTransactionsForExportQuery extends ListTransactionsFilters {
+    limit: number
+    offset: number
+}
+
+export type TransactionsPersistenceClient = Prisma.TransactionClient | PrismaService
+export type TransactionWithTags = Transaction & {
+    tags: TransactionTag[]
+}
+
+export interface ListedTransactionRecord {
+    id: string
+    workspace_id: string
+    category_id: string
+    payment_source_id: string
+    type: string
+    amount: number
+    currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
+    date: Date
+    description: string
+    notes: string | null
+    created_at: Date
+    updated_at: Date
+    tags: string[]
+}
+
+export interface ExportTransactionRecord {
+    date: Date
+    amount: number
+    currency: string
+    base_amount: number
+    base_currency: string
+    fx_rate: Prisma.Decimal | number
+    fx_rate_date: Date
+    fx_source: string
+    category: string | null
+    description: string
+    notes: string | null
+    tags: string[]
+    payment_source: string | null
+}
+
+interface NormalizedTagRow {
+    name: string
+}
+
+interface CountRow {
+    total: number
+}
+
+interface WorkspaceTagRow {
+    name: string
+}
+
+@Injectable()
+export class TransactionsRepository {
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly auditService: AuditService,
+    ) {}
+
+    async findCategoryById(
+        workspaceId: string,
+        categoryId: string,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<Category | null> {
+        return prisma.category.findFirst({
+            where: {
+                workspaceId,
+                id: categoryId,
+            },
+        })
+    }
+
+    async findActivePaymentSourceById(
+        workspaceId: string,
+        paymentSourceId: string,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<PaymentSource | null> {
+        return prisma.paymentSource.findFirst({
+            where: {
+                workspaceId,
+                id: paymentSourceId,
+                deletedAt: null,
+            },
+        })
+    }
+
+    async createTransactionWithTags(
+        input: CreateTransactionRecordInput,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<TransactionWithTags> {
+        const createTransactionRecord = async (
+            tx: TransactionsPersistenceClient,
+        ): Promise<TransactionWithTags> => {
+            const normalizedTags = await this.normalizeTagsCaseInsensitive(input.tags, tx)
+
+            const transaction = await tx.transaction.create({
+                data: {
+                    workspaceId: input.workspaceId,
+                    categoryId: input.categoryId,
+                    paymentSourceId: input.paymentSourceId,
+                    type: input.type,
+                    amount: input.amount,
+                    currency: input.currency,
+                    baseAmount: input.baseAmount ?? input.amount,
+                    fxRate: input.fxRate ?? 1,
+                    fxRateDate: input.fxRateDate ?? input.date,
+                    fxSource: input.fxSource ?? 'legacy',
+                    date: input.date,
+                    description: input.description,
+                    notes: input.notes,
+                },
+            })
+
+            await tx.workspaceMembership.updateMany({
+                where: {
+                    userId: input.userId,
+                    workspaceId: input.workspaceId,
+                },
+                data: {
+                    lastPaymentSourceId: input.paymentSourceId ?? null,
+                },
+            })
+
+            const tags = await Promise.all(
+                normalizedTags.map((name) =>
+                    tx.transactionTag.create({
+                        data: {
+                            workspaceId: input.workspaceId,
+                            transactionId: transaction.id,
+                            name,
+                        },
+                    }),
+                ),
+            )
+
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.TRANSACTION_CREATED,
+                    workspaceId: input.workspaceId,
+                    userId: input.userId,
+                    entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                    entityId: transaction.id,
+                    metadata: {
+                        type: input.type,
+                        amount: input.amount,
+                        currency: input.currency,
+                        baseAmount: input.baseAmount ?? input.amount,
+                        fxRate: input.fxRate ?? 1,
+                        fxRateDate: input.fxRateDate ?? input.date,
+                        fxSource: input.fxSource ?? 'legacy',
+                        date: input.date.toISOString(),
+                        description: input.description,
+                        category_id: input.categoryId,
+                        ...(input.paymentSourceId
+                            ? {
+                                  payment_source_id: input.paymentSourceId,
+                              }
+                            : {}),
+                        ...(input.notes
+                            ? {
+                                  notes: input.notes,
+                              }
+                            : {}),
+                        tags: normalizedTags,
+                    },
+                },
+                tx,
+            )
+
+            return {
+                ...transaction,
+                tags,
+            }
+        }
+
+        if (prisma === this.prisma) {
+            return this.prisma.$transaction((tx: Prisma.TransactionClient) =>
+                createTransactionRecord(tx),
+            )
+        }
+
+        return createTransactionRecord(prisma)
+    }
+
+    async findTransactionById(
+        workspaceId: string,
+        transactionId: string,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<TransactionWithTags | null> {
+        return prisma.transaction.findFirst({
+            where: {
+                workspaceId,
+                id: transactionId,
+                deletedAt: null,
+            },
+            include: {
+                tags: {
+                    orderBy: {
+                        name: 'asc',
+                    },
+                },
+            },
+        })
+    }
+
+    async updateTransactionWithTags(
+        input: UpdateTransactionRecordInput,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<TransactionWithTags | null> {
+        const updateTransactionRecord = async (
+            tx: TransactionsPersistenceClient,
+        ): Promise<TransactionWithTags | null> => {
+            const updatedTransaction = await tx.transaction.updateMany({
+                where: {
+                    workspaceId: input.workspaceId,
+                    id: input.transactionId,
+                    deletedAt: null,
+                },
+                data: {
+                    categoryId: input.categoryId,
+                    paymentSourceId: input.paymentSourceId,
+                    type: input.type,
+                    amount: input.amount,
+                    currency: input.currency,
+                    baseAmount: input.baseAmount ?? input.amount,
+                    fxRate: input.fxRate ?? 1,
+                    fxRateDate: input.fxRateDate ?? input.date,
+                    fxSource: input.fxSource ?? 'legacy',
+                    date: input.date,
+                    description: input.description,
+                    notes: input.notes,
+                },
+            })
+
+            if (updatedTransaction.count === 0) {
+                return null
+            }
+
+            const normalizedTags = await this.normalizeTagsCaseInsensitive(input.tags, tx)
+
+            await tx.transactionTag.deleteMany({
+                where: {
+                    workspaceId: input.workspaceId,
+                    transactionId: input.transactionId,
+                },
+            })
+
+            const tags = await Promise.all(
+                normalizedTags.map((name) =>
+                    tx.transactionTag.create({
+                        data: {
+                            workspaceId: input.workspaceId,
+                            transactionId: input.transactionId,
+                            name,
+                        },
+                    }),
+                ),
+            )
+
+            const transaction = await tx.transaction.findFirst({
+                where: {
+                    workspaceId: input.workspaceId,
+                    id: input.transactionId,
+                    deletedAt: null,
+                },
+            })
+
+            if (!transaction) {
+                return null
+            }
+
+            const result = { ...transaction, tags }
+
+            if (input.userId) {
+                await tx.workspaceMembership.updateMany({
+                    where: {
+                        userId: input.userId,
+                        workspaceId: input.workspaceId,
+                    },
+                    data: {
+                        lastPaymentSourceId: input.paymentSourceId,
+                    },
+                })
+            }
+
+            if (input.userId && input.previousTransaction) {
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.TRANSACTION_UPDATED,
+                        workspaceId: input.workspaceId,
+                        userId: input.userId,
+                        entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                        entityId: transaction.id,
+                        metadata: {
+                            previous: mapTransactionAuditMetadata(input.previousTransaction),
+                            current: mapTransactionAuditMetadata(result),
+                        },
+                    },
+                    tx,
+                )
+            }
+
+            return result
+        }
+
+        if (prisma === this.prisma) {
+            return this.prisma.$transaction((tx: Prisma.TransactionClient) =>
+                updateTransactionRecord(tx),
+            )
+        }
+
+        return updateTransactionRecord(prisma)
+    }
+
+    async softDeleteTransaction(
+        input: SoftDeleteTransactionInput,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<boolean> {
+        const softDeleteTransactionRecord = async (
+            tx: TransactionsPersistenceClient,
+        ): Promise<boolean> => {
+            const deletedTransaction = await tx.transaction.updateMany({
+                where: {
+                    workspaceId: input.workspaceId,
+                    id: input.transactionId,
+                    deletedAt: null,
+                },
+                data: {
+                    deletedAt: input.deletedAt,
+                },
+            })
+
+            if (deletedTransaction.count === 0) {
+                return false
+            }
+
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.TRANSACTION_DELETED,
+                    workspaceId: input.workspaceId,
+                    userId: input.userId,
+                    entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                    entityId: input.transactionId,
+                    metadata: mapDeletedTransactionMetadata(input.transaction),
+                },
+                tx,
+            )
+
+            return true
+        }
+
+        if (prisma === this.prisma) {
+            return this.prisma.$transaction((tx: Prisma.TransactionClient) =>
+                softDeleteTransactionRecord(tx),
+            )
+        }
+
+        return softDeleteTransactionRecord(prisma)
+    }
+
+    async listTransactions(
+        filters: ListTransactionsQuery,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<ListedTransactionRecord[]> {
+        const whereClause = buildTransactionsWhereClause(filters)
+        const orderByClause = buildTransactionsOrderByClause(filters)
+
+        return prisma.$queryRaw<ListedTransactionRecord[]>(Prisma.sql`
+            SELECT
+                t."id",
+                t."workspace_id",
+                t."category_id",
+                t."payment_source_id",
+                t."type",
+                t."amount",
+                t."currency",
+                t."date",
+                t."description",
+                t."notes",
+                t."created_at",
+                t."updated_at",
+                COALESCE(
+                    ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name") FILTER (WHERE tt."id" IS NOT NULL),
+                    ARRAY[]::TEXT[]
+                ) AS "tags"
+            FROM "transactions" t
+            LEFT JOIN "transaction_tags" tt
+                ON tt."workspace_id" = t."workspace_id"
+                AND tt."transaction_id" = t."id"
+            LEFT JOIN "categories" c_sort
+                ON c_sort."workspace_id" = t."workspace_id"
+                AND c_sort."id" = t."category_id"
+            LEFT JOIN "payment_sources" ps_sort
+                ON ps_sort."workspace_id" = t."workspace_id"
+                AND ps_sort."id" = t."payment_source_id"
+            ${whereClause}
+            GROUP BY
+                t."id",
+                t."workspace_id",
+                t."category_id",
+                t."payment_source_id",
+                t."type",
+                t."amount",
+                t."currency",
+                t."date",
+                t."description",
+                t."notes",
+                t."created_at",
+                t."updated_at",
+                c_sort."name",
+                ps_sort."name"
+            ${orderByClause}
+            LIMIT ${filters.limit}
+            OFFSET ${filters.offset}
+        `)
+    }
+
+    async countTransactions(
+        filters: ListTransactionsFilters,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<number> {
+        const whereClause = buildTransactionsWhereClause(filters)
+        const rows = await prisma.$queryRaw<CountRow[]>(Prisma.sql`
+            SELECT COUNT(*)::INT AS "total"
+            FROM "transactions" t
+            ${whereClause}
+        `)
+
+        return rows[0]?.total ?? 0
+    }
+
+    async listTransactionsForExport(
+        filters: ListTransactionsForExportQuery,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<ExportTransactionRecord[]> {
+        const whereClause = buildTransactionsWhereClause(filters)
+
+        return prisma.$queryRaw<ExportTransactionRecord[]>(Prisma.sql`
+            SELECT
+                t."date",
+                t."amount",
+                t."currency",
+                t."base_amount",
+                w."base_currency",
+                t."fx_rate",
+                t."fx_rate_date",
+                t."fx_source",
+                c."name" AS "category",
+                t."description",
+                t."notes",
+                COALESCE(
+                    ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name") FILTER (WHERE tt."id" IS NOT NULL),
+                    ARRAY[]::TEXT[]
+                ) AS "tags",
+                ps."name" AS "payment_source"
+            FROM "transactions" t
+            INNER JOIN "workspaces" w ON w."id" = t."workspace_id"
+            LEFT JOIN "categories" c
+                ON c."workspace_id" = t."workspace_id"
+                AND c."id" = t."category_id"
+            LEFT JOIN "payment_sources" ps
+                ON ps."workspace_id" = t."workspace_id"
+                AND ps."id" = t."payment_source_id"
+            LEFT JOIN "transaction_tags" tt
+                ON tt."workspace_id" = t."workspace_id"
+                AND tt."transaction_id" = t."id"
+            LEFT JOIN "categories" c_sort
+                ON c_sort."workspace_id" = t."workspace_id"
+                AND c_sort."id" = t."category_id"
+            LEFT JOIN "payment_sources" ps_sort
+                ON ps_sort."workspace_id" = t."workspace_id"
+                AND ps_sort."id" = t."payment_source_id"
+            ${whereClause}
+            GROUP BY
+                t."id",
+                t."date",
+                t."amount",
+                t."currency",
+                t."base_amount",
+                w."base_currency",
+                t."fx_rate",
+                t."fx_rate_date",
+                t."fx_source",
+                c."name",
+                t."description",
+                t."notes",
+                ps."name",
+                t."created_at"
+            ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC
+            LIMIT ${filters.limit}
+            OFFSET ${filters.offset}
+        `)
+    }
+
+    async listWorkspaceTags(
+        workspaceId: string,
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<string[]> {
+        const rows = await prisma.$queryRaw<WorkspaceTagRow[]>(Prisma.sql`
+            SELECT DISTINCT BTRIM(tt."name") AS "name"
+            FROM "transaction_tags" tt
+            INNER JOIN "transactions" t
+                ON t."workspace_id" = tt."workspace_id"
+                AND t."id" = tt."transaction_id"
+            WHERE tt."workspace_id" = ${workspaceId}
+                AND t."deleted_at" IS NULL
+                AND LENGTH(BTRIM(tt."name")) > 0
+            ORDER BY "name" ASC
+        `)
+
+        return rows.map((row) => row.name)
+    }
+
+    async normalizeTagsCaseInsensitive(
+        tags: string[],
+        prisma: TransactionsPersistenceClient = this.prisma,
+    ): Promise<string[]> {
+        if (tags.length === 0) {
+            return []
+        }
+
+        const values = tags.map((tag, index) => Prisma.sql`(${index}, ${tag})`)
+        const rows = await prisma.$queryRaw<NormalizedTagRow[]>(Prisma.sql`
+            WITH input_tags(position, name) AS (
+                VALUES ${Prisma.join(values)}
+            )
+            SELECT DISTINCT ON (LOWER(BTRIM(name)))
+                BTRIM(name) AS name
+            FROM input_tags
+            WHERE LENGTH(BTRIM(name)) > 0
+            ORDER BY LOWER(BTRIM(name)), position ASC
+        `)
+
+        return rows.map((row) => row.name)
+    }
+}
+
+function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.Sql {
+    let whereClause = Prisma.sql`
+        WHERE t."workspace_id" = ${filters.workspaceId}
+            AND t."deleted_at" IS NULL
+    `
+
+    if (filters.categoryIds && filters.categoryIds.length > 0) {
+        whereClause = Prisma.sql`${whereClause} AND t."category_id" IN (${Prisma.join(filters.categoryIds)})`
+    } else if (filters.categoryId) {
+        whereClause = Prisma.sql`${whereClause} AND t."category_id" = ${filters.categoryId}`
+    }
+
+    if (filters.paymentSourceId) {
+        whereClause = Prisma.sql`${whereClause} AND t."payment_source_id" = ${filters.paymentSourceId}`
+    }
+
+    if (filters.tag) {
+        whereClause = Prisma.sql`
+            ${whereClause}
+            AND EXISTS (
+                SELECT 1
+                FROM "transaction_tags" tt_filter
+                WHERE tt_filter."workspace_id" = t."workspace_id"
+                    AND tt_filter."transaction_id" = t."id"
+                    AND LOWER(BTRIM(tt_filter."name")) = LOWER(BTRIM(${filters.tag}))
+            )
+        `
+    }
+
+    if (filters.dateFrom) {
+        whereClause = Prisma.sql`${whereClause} AND t."date" >= ${filters.dateFrom}`
+    }
+
+    if (filters.dateTo) {
+        whereClause = Prisma.sql`${whereClause} AND t."date" <= ${filters.dateTo}`
+    }
+
+    return whereClause
+}
+
+function buildTransactionsOrderByClause(filters: ListTransactionsFilters): Prisma.Sql {
+    const direction = filters.sortDirection === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`
+    let expression: Prisma.Sql
+
+    switch (filters.sortBy) {
+        case 'category':
+            expression = Prisma.sql`LOWER(COALESCE(c_sort."name", ''))`
+            break
+        case 'amount':
+            expression = Prisma.sql`t."amount"`
+            break
+        case 'description':
+            expression = Prisma.sql`LOWER(t."description")`
+            break
+        case 'notes':
+            expression = Prisma.sql`LOWER(COALESCE(t."notes", ''))`
+            break
+        case 'tags':
+            expression = Prisma.sql`LOWER(COALESCE(MIN(tt."name"), ''))`
+            break
+        case 'payment_source':
+            expression = Prisma.sql`LOWER(COALESCE(ps_sort."name", ''))`
+            break
+        case 'date':
+        default:
+            expression = Prisma.sql`t."date"`
+            break
+    }
+
+    return Prisma.sql`ORDER BY ${expression} ${direction}, t."created_at" DESC, t."id" DESC`
+}
+function mapDeletedTransactionMetadata(transaction: TransactionWithTags) {
+    return mapTransactionAuditMetadata(transaction)
+}
+
+function mapTransactionAuditMetadata(transaction: TransactionWithTags) {
+    return {
+        id: transaction.id,
+        workspace_id: transaction.workspaceId,
+        category_id: transaction.categoryId,
+        payment_source_id: transaction.paymentSourceId,
+        type: transaction.type,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        base_amount: transaction.baseAmount ?? transaction.amount,
+        fx_rate: transaction.fxRate?.toString() ?? '1',
+        fx_rate_date: (transaction.fxRateDate ?? transaction.date).toISOString(),
+        fx_source: transaction.fxSource ?? 'legacy',
+        date: transaction.date.toISOString().slice(0, 10),
+        description: transaction.description,
+        notes: transaction.notes,
+        tags: transaction.tags.map((tag) => tag.name),
+        created_at: transaction.createdAt.toISOString(),
+        updated_at: transaction.updatedAt.toISOString(),
+    }
+}

@@ -1,0 +1,1676 @@
+import { INestApplication } from '@nestjs/common'
+import { Test, TestingModule } from '@nestjs/testing'
+import { Prisma } from '@prisma/client'
+import * as argon2 from 'argon2'
+import session from 'express-session'
+import request from 'supertest'
+import { App } from 'supertest/types'
+import { AppModule } from './../src/app.module'
+import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
+import { PrismaService } from './../src/shared/database/prisma.service'
+import { createSessionOptions } from './../src/shared/session/session.config'
+
+interface StoredUser {
+    id: string
+    email: string
+    name: string
+    passwordHash: string
+    emailVerified: boolean
+    sessionVersion: number
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredWorkspace {
+    id: string
+    name: string
+    type: string
+    timezone: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredWorkspaceMembership {
+    id: string
+    userId: string
+    workspaceId: string
+    role: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredCategory {
+    id: string
+    workspaceId: string
+    parentId: string | null
+    name: string
+    color: string | null
+    icon: string | null
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredPaymentSource {
+    id: string
+    workspaceId: string
+    name: string
+    type: string
+    createdAt: Date
+    updatedAt: Date
+    deletedAt: Date | null
+}
+
+interface StoredTransaction {
+    id: string
+    workspaceId: string
+    categoryId: string
+    paymentSourceId: string | null
+    type: string
+    amount: number
+    currency: string
+    date: Date
+    notes: string | null
+    createdAt: Date
+    updatedAt: Date
+    deletedAt: Date | null
+}
+
+interface StoredTransactionTag {
+    id: string
+    workspaceId: string
+    transactionId: string
+    name: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredAuditEvent {
+    id: string
+    action: string
+    userId: string | null
+    workspaceId: string | null
+    entityType: string | null
+    entityId: string | null
+    metadata: Record<string, unknown> | null
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface PrismaMock {
+    users: StoredUser[]
+    workspaces: StoredWorkspace[]
+    workspaceMemberships: StoredWorkspaceMembership[]
+    categories: StoredCategory[]
+    paymentSources: StoredPaymentSource[]
+    transactions: StoredTransaction[]
+    transactionTags: StoredTransactionTag[]
+    auditEvents: StoredAuditEvent[]
+    user: {
+        findUnique(args: { where: { email?: string; id?: string } }): Promise<StoredUser | null>
+    }
+    workspace: {
+        findUnique(args: { where: { id: string } }): Promise<StoredWorkspace | null>
+    }
+    workspaceMembership: {
+        findFirst(args: {
+            where: { userId: string; workspaceId: string }
+            select: { role: boolean; workspace: { select: { id: boolean } } }
+        }): Promise<{ role: string; workspace: { id: string } } | null>
+    }
+    category: {
+        findFirst(args: {
+            where: { workspaceId: string; id: string }
+        }): Promise<StoredCategory | null>
+    }
+    paymentSource: {
+        findFirst(args: {
+            where: { workspaceId: string; id: string; deletedAt: null }
+        }): Promise<StoredPaymentSource | null>
+    }
+    transaction: {
+        create(args: {
+            data: {
+                workspaceId: string
+                categoryId: string
+                paymentSourceId: string | null
+                type: string
+                amount: number
+                currency: string
+                date: Date
+                notes: string | null
+            }
+        }): Promise<StoredTransaction>
+        findFirst(args: {
+            where: { workspaceId: string; id: string; deletedAt: null }
+            include?: { tags: { orderBy: { name: 'asc' | 'desc' } } }
+        }): Promise<
+            (StoredTransaction & { tags: StoredTransactionTag[] }) | StoredTransaction | null
+        >
+        updateMany(args: {
+            where: { workspaceId: string; id: string; deletedAt: null }
+            data: {
+                categoryId?: string
+                paymentSourceId?: string | null
+                type?: string
+                amount?: number
+                currency?: string
+                date?: Date
+                notes?: string | null
+                deletedAt?: Date
+            }
+        }): Promise<{ count: number }>
+    }
+    transactionTag: {
+        create(args: {
+            data: {
+                workspaceId: string
+                transactionId: string
+                name: string
+            }
+        }): Promise<StoredTransactionTag>
+        deleteMany(args: {
+            where: { workspaceId: string; transactionId: string }
+        }): Promise<{ count: number }>
+    }
+    auditEvent: {
+        create(args: {
+            data: {
+                action: string
+                userId?: string
+                workspaceId?: string | null
+                entityType?: string | null
+                entityId?: string | null
+                metadata?: Record<string, unknown>
+            }
+        }): Promise<StoredAuditEvent>
+    }
+    $queryRaw<T = unknown>(query: Prisma.Sql): Promise<T>
+    $transaction<T>(callback: (tx: PrismaMock) => Promise<T>): Promise<T>
+    $connect(): Promise<void>
+    $disconnect(): Promise<void>
+}
+
+describe('Transactions endpoints (e2e)', () => {
+    let app: INestApplication<App>
+    let prismaMock: PrismaMock
+    const originalSessionSecret = process.env.SESSION_SECRET
+
+    beforeEach(async () => {
+        prismaMock = createPrismaMock()
+        process.env.SESSION_SECRET = 'test-session-secret'
+
+        await seedTransactionFixture(prismaMock)
+
+        const moduleFixture: TestingModule = await Test.createTestingModule({
+            imports: [AppModule],
+        })
+            .overrideProvider(PrismaService)
+            .useValue(prismaMock)
+            .compile()
+
+        app = moduleFixture.createNestApplication()
+        app.use(
+            session(
+                createSessionOptions({
+                    nodeEnv: 'test',
+                    sessionSecret: process.env.SESSION_SECRET,
+                }),
+            ),
+        )
+        app.setGlobalPrefix('api/v1', {
+            exclude: ['health', 'ready'],
+        })
+        app.useGlobalFilters(new AllExceptionsFilter())
+        await app.init()
+    })
+
+    afterEach(async () => {
+        await app.close()
+    })
+
+    afterAll(() => {
+        process.env.SESSION_SECRET = originalSessionSecret
+    })
+
+    it('creates an expense transaction with tags, cents, and an audit event', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent.post('/api/v1/workspaces/workspace-1/transactions').send({
+            amount: 10.5,
+            date: '2026-03-23',
+            category_id: 'category-1',
+            payment_source_id: 'payment-source-1',
+            notes: 'Lunch with the team',
+            tags: ['Food', 'food', 'Work'],
+        })
+
+        expect(response.status).toBe(201)
+        expect(response.body).toEqual({
+            id: 'transaction-1',
+            workspace_id: 'workspace-1',
+            category_id: 'category-1',
+            payment_source_id: 'payment-source-1',
+            type: 'expense',
+            amount: 10.5,
+            currency: 'USD',
+            date: '2026-03-23T00:00:00.000Z',
+            notes: 'Lunch with the team',
+            tags: ['Food', 'Work'],
+            created_at: '2026-03-24T12:00:00.000Z',
+            updated_at: '2026-03-24T12:00:00.000Z',
+        })
+
+        expect(prismaMock.transactions).toEqual([
+            {
+                id: 'transaction-1',
+                workspaceId: 'workspace-1',
+                categoryId: 'category-1',
+                paymentSourceId: 'payment-source-1',
+                type: 'expense',
+                amount: 1050,
+                currency: 'USD',
+                date: new Date('2026-03-23T00:00:00.000Z'),
+                notes: 'Lunch with the team',
+                createdAt: new Date('2026-03-24T12:00:00.000Z'),
+                updatedAt: new Date('2026-03-24T12:00:00.000Z'),
+                deletedAt: null,
+            },
+        ])
+        expect(prismaMock.transactionTags).toEqual([
+            {
+                id: 'tag-1',
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                name: 'Food',
+                createdAt: new Date('2026-03-24T12:00:01.000Z'),
+                updatedAt: new Date('2026-03-24T12:00:01.000Z'),
+            },
+            {
+                id: 'tag-2',
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                name: 'Work',
+                createdAt: new Date('2026-03-24T12:00:02.000Z'),
+                updatedAt: new Date('2026-03-24T12:00:02.000Z'),
+            },
+        ])
+        expect(prismaMock.auditEvents).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    action: 'TRANSACTION_CREATED',
+                    userId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    entityType: 'TRANSACTION',
+                    entityId: 'transaction-1',
+                    metadata: {
+                        type: 'expense',
+                        amount: 1050,
+                        currency: 'USD',
+                        date: '2026-03-23T00:00:00.000Z',
+                        category_id: 'category-1',
+                        payment_source_id: 'payment-source-1',
+                        notes: 'Lunch with the team',
+                        tags: ['Food', 'Work'],
+                    },
+                }),
+            ]),
+        )
+    })
+
+    it('supports a create-get-update-delete transaction flow and hides the soft-deleted record', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const createResponse = await agent
+            .post('/api/v1/workspaces/workspace-1/transactions')
+            .send({
+                amount: 18.99,
+                date: '2026-03-24',
+                category_id: 'category-1',
+                payment_source_id: 'payment-source-1',
+                notes: 'Household items',
+                tags: ['Home', 'Errands'],
+            })
+
+        expect(createResponse.status).toBe(201)
+
+        const transactionId = createResponse.body.id as string
+
+        await expect(
+            agent.get(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`),
+        ).resolves.toMatchObject({
+            status: 200,
+            body: {
+                id: transactionId,
+                workspace_id: 'workspace-1',
+                category_id: 'category-1',
+                payment_source_id: 'payment-source-1',
+                type: 'expense',
+                amount: 18.99,
+                currency: 'USD',
+                date: '2026-03-24T00:00:00.000Z',
+                notes: 'Household items',
+                tags: ['Errands', 'Home'],
+                created_at: '2026-03-24T12:00:00.000Z',
+                updated_at: '2026-03-24T12:00:00.000Z',
+            },
+        })
+
+        const updateResponse = await agent
+            .put(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`)
+            .send({
+                amount: 12.75,
+                date: '2026-03-24T08:30:00Z',
+                category_id: 'category-2',
+                payment_source_id: 'payment-source-2',
+                notes: 'Bus pass',
+                tags: ['Travel', 'travel', 'Work'],
+            })
+
+        expect(updateResponse.status).toBe(200)
+        expect(updateResponse.body).toEqual({
+            id: transactionId,
+            workspace_id: 'workspace-1',
+            category_id: 'category-2',
+            payment_source_id: 'payment-source-2',
+            type: 'expense',
+            amount: 12.75,
+            currency: 'USD',
+            date: '2026-03-24T08:30:00.000Z',
+            notes: 'Bus pass',
+            tags: ['Travel', 'Work'],
+            created_at: '2026-03-24T12:00:00.000Z',
+            updated_at: '2026-03-24T12:30:00.000Z',
+        })
+
+        await expect(
+            agent.get(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`),
+        ).resolves.toMatchObject({
+            status: 200,
+            body: {
+                id: transactionId,
+                workspace_id: 'workspace-1',
+                category_id: 'category-2',
+                payment_source_id: 'payment-source-2',
+                type: 'expense',
+                amount: 12.75,
+                currency: 'USD',
+                date: '2026-03-24T08:30:00.000Z',
+                notes: 'Bus pass',
+                tags: ['Travel', 'Work'],
+                created_at: '2026-03-24T12:00:00.000Z',
+                updated_at: '2026-03-24T12:30:00.000Z',
+            },
+        })
+
+        await agent
+            .delete(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`)
+            .expect(204)
+
+        expect(
+            prismaMock.transactions.find(
+                (transaction) =>
+                    transaction.workspaceId === 'workspace-1' && transaction.id === transactionId,
+            ),
+        ).toEqual(
+            expect.objectContaining({
+                id: transactionId,
+                categoryId: 'category-2',
+                paymentSourceId: 'payment-source-2',
+                amount: 1275,
+                notes: 'Bus pass',
+                deletedAt: expect.any(Date),
+            }),
+        )
+        expect(
+            prismaMock.transactionTags
+                .filter(
+                    (tag) =>
+                        tag.workspaceId === 'workspace-1' && tag.transactionId === transactionId,
+                )
+                .map((tag) => tag.name),
+        ).toEqual(['Travel', 'Work'])
+        expect(prismaMock.auditEvents).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    action: 'TRANSACTION_DELETED',
+                    userId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    entityType: 'TRANSACTION',
+                    entityId: transactionId,
+                    metadata: {
+                        id: transactionId,
+                        workspace_id: 'workspace-1',
+                        category_id: 'category-2',
+                        payment_source_id: 'payment-source-2',
+                        type: 'expense',
+                        amount: 1275,
+                        currency: 'USD',
+                        date: '2026-03-24T08:30:00.000Z',
+                        notes: 'Bus pass',
+                        tags: ['Travel', 'Work'],
+                        created_at: '2026-03-24T12:00:00.000Z',
+                        updated_at: '2026-03-24T12:30:00.000Z',
+                    },
+                }),
+            ]),
+        )
+
+        await agent.get(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`).expect(404)
+    })
+
+    it('rejects archived payment sources', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent.post('/api/v1/workspaces/workspace-1/transactions').send({
+            amount: 4.25,
+            date: '2026-03-23T08:30:00Z',
+            category_id: 'category-1',
+            payment_source_id: 'payment-source-archived',
+        })
+
+        expect(response.status).toBe(404)
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 404,
+                message: 'Payment source not found',
+                error: 'Not Found',
+            }),
+        )
+        expect(prismaMock.transactions).toHaveLength(0)
+        expect(prismaMock.transactionTags).toHaveLength(0)
+        expect(
+            prismaMock.auditEvents.filter(
+                (auditEvent) => auditEvent.action === 'TRANSACTION_CREATED',
+            ),
+        ).toHaveLength(0)
+    })
+
+    it('returns 404 for a missing transaction id', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/transactions/transaction-missing')
+            .expect(404)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 404,
+                message: 'Transaction not found',
+                error: 'Not Found',
+            }),
+        )
+    })
+
+    it('forbids non-members from accessing workspace transactions', async () => {
+        seedExistingTransactions(prismaMock)
+        prismaMock.users.push(
+            await createStoredUser({
+                id: 'user-2',
+                email: 'grace@example.com',
+                password: 'CopperAtlas!1234',
+                emailVerified: true,
+                name: 'Grace Hopper',
+            }),
+        )
+
+        const agent = await authenticateAs(app, 'grace@example.com', 'CopperAtlas!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/transactions/transaction-existing-1')
+            .expect(403)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 403,
+                message: 'Forbidden',
+                error: 'Forbidden',
+            }),
+        )
+    })
+
+    it('lists transactions newest first with tags, total count, pagination, and no soft-deleted rows', async () => {
+        seedExistingTransactions(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/transactions?limit=2&offset=1')
+            .expect(200)
+
+        expect(response.body).toEqual({
+            data: [
+                {
+                    id: 'transaction-existing-2',
+                    workspace_id: 'workspace-1',
+                    category_id: 'category-1',
+                    payment_source_id: 'payment-source-1',
+                    type: 'expense',
+                    amount: 20.5,
+                    currency: 'USD',
+                    date: '2026-03-24T12:00:00.000Z',
+                    notes: 'Weekly groceries',
+                    tags: ['Groceries'],
+                    created_at: '2026-03-24T12:00:00.000Z',
+                    updated_at: '2026-03-24T12:00:00.000Z',
+                },
+                {
+                    id: 'transaction-existing-3',
+                    workspace_id: 'workspace-1',
+                    category_id: 'category-2',
+                    payment_source_id: 'payment-source-2',
+                    type: 'expense',
+                    amount: 30.5,
+                    currency: 'USD',
+                    date: '2026-03-23T11:00:00.000Z',
+                    notes: 'Train tickets',
+                    tags: ['Travel'],
+                    created_at: '2026-03-23T11:00:00.000Z',
+                    updated_at: '2026-03-23T11:00:00.000Z',
+                },
+            ],
+            total: 6,
+            limit: 2,
+            offset: 1,
+        })
+    })
+
+    it('filters transactions by category, tag, payment source, and date range using case-insensitive tag matching', async () => {
+        seedExistingTransactions(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get(
+                '/api/v1/workspaces/workspace-1/transactions?category_id=category-1&tag=FOOD&payment_source_id=payment-source-2&date_from=2026-03-21&date_to=2026-03-22',
+            )
+            .expect(200)
+
+        expect(response.body).toEqual({
+            data: [
+                {
+                    id: 'transaction-existing-4',
+                    workspace_id: 'workspace-1',
+                    category_id: 'category-1',
+                    payment_source_id: 'payment-source-2',
+                    type: 'expense',
+                    amount: 40.5,
+                    currency: 'USD',
+                    date: '2026-03-22T09:30:00.000Z',
+                    notes: 'Commute snacks',
+                    tags: ['commute', 'food'],
+                    created_at: '2026-03-22T10:00:00.000Z',
+                    updated_at: '2026-03-22T10:00:00.000Z',
+                },
+            ],
+            total: 1,
+            limit: 20,
+            offset: 0,
+        })
+    })
+
+    it('rejects invalid list query params with a 400 response', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get(
+                '/api/v1/workspaces/workspace-1/transactions?tag=%20%20%20&date_from=2026-03-24&date_to=2026-03-23&limit=0&offset=-1',
+            )
+            .expect(400)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 400,
+                message: expect.arrayContaining([
+                    'Tag must be a non-empty string',
+                    'Date from must be less than or equal to date to',
+                    'Limit must be an integer between 1 and 100',
+                    'Offset must be a non-negative integer',
+                ]),
+                error: 'Bad Request',
+            }),
+        )
+    })
+
+    it('returns an empty tag list for a workspace with no transaction tags', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent.get('/api/v1/workspaces/workspace-1/tags').expect(200)
+
+        expect(response.body).toEqual([])
+    })
+
+    it('lists distinct workspace tags from non-deleted transactions', async () => {
+        seedExistingTransactions(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent.get('/api/v1/workspaces/workspace-1/tags').expect(200)
+
+        expect(response.body).toHaveLength(8)
+        expect(response.body).toEqual(
+            expect.arrayContaining([
+                'Bills',
+                'Food',
+                'Groceries',
+                'Home',
+                'Travel',
+                'Work',
+                'commute',
+                'food',
+            ]),
+        )
+        expect(response.body).not.toContain('DeletedOnly')
+    })
+
+    it('exports 10 non-deleted transactions as a CSV attachment with headers and display amounts', async () => {
+        seedTransactionsForExport(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=csv')
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('text/csv; charset=utf-8')
+        expect(response.headers['content-disposition']).toMatch(
+            /^attachment; filename="transactions-export-\d{4}-\d{2}-\d{2}\.csv"$/,
+        )
+
+        const lines = response.text.trimEnd().split('\n')
+
+        expect(lines).toHaveLength(11)
+        expect(lines[0]).toBe('date,amount,category,notes,tags,payment_source')
+        expect(lines[1]).toBe(
+            '2026-03-19T08:00:00.000Z,19.50,Transport,Export expense 10,Travel,Transit Card',
+        )
+        expect(lines[10]).toBe(
+            '2026-03-10T08:00:00.000Z,10.50,Food,Export expense 1,Recurring,Main Card',
+        )
+        expect(response.text).not.toContain('Hidden export transaction')
+        expect(response.text).not.toContain('99.50')
+    })
+
+    it('returns a CSV attachment with only headers when the workspace has no transactions', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=csv')
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('text/csv; charset=utf-8')
+        expect(response.text).toBe('date,amount,category,notes,tags,payment_source\n')
+    })
+
+    it('exports filtered transactions as a JSON attachment', async () => {
+        seedTransactionsForExport(prismaMock)
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get(
+                '/api/v1/workspaces/workspace-1/export?format=json&date_from=2026-03-12&date_to=2026-03-14',
+            )
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('application/json; charset=utf-8')
+        expect(response.headers['content-disposition']).toMatch(
+            /^attachment; filename="transactions-export-\d{4}-\d{2}-\d{2}\.json"$/,
+        )
+
+        const body = JSON.parse(response.text) as Array<{
+            date: string
+            amount: string
+            category: string
+            notes: string | null
+            tags: string[]
+            payment_source: string | null
+        }>
+
+        expect(body).toEqual([
+            {
+                date: '2026-03-14T08:00:00.000Z',
+                amount: '14.50',
+                category: 'Food',
+                notes: 'Export expense 5',
+                tags: ['Recurring'],
+                payment_source: 'Main Card',
+            },
+            {
+                date: '2026-03-13T08:00:00.000Z',
+                amount: '13.50',
+                category: 'Transport',
+                notes: 'Export expense 4',
+                tags: ['Travel'],
+                payment_source: 'Transit Card',
+            },
+            {
+                date: '2026-03-12T08:00:00.000Z',
+                amount: '12.50',
+                category: 'Food',
+                notes: 'Export expense 3',
+                tags: ['Recurring'],
+                payment_source: 'Main Card',
+            },
+        ])
+    })
+
+    it('returns an empty JSON attachment when the workspace has no transactions', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=json')
+            .expect(200)
+
+        expect(response.headers['content-type']).toContain('application/json; charset=utf-8')
+        expect(response.text).toBe('[]')
+    })
+
+    it('sanitizes formula-like CSV values in exported fields', async () => {
+        seedTransactionsForExport(prismaMock)
+        prismaMock.transactions.push({
+            id: 'transaction-export-formula',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-formula',
+            paymentSourceId: 'payment-source-formula',
+            type: 'expense',
+            amount: 1234,
+            currency: 'USD',
+            date: new Date('2026-03-20T08:00:00.000Z'),
+            notes: '=HYPERLINK("https://example.com","click")',
+            createdAt: new Date('2026-03-20T08:15:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:15:00.000Z'),
+            deletedAt: null,
+        })
+        prismaMock.categories.push({
+            id: 'category-formula',
+            workspaceId: 'workspace-1',
+            name: '+Category',
+            parentId: null,
+            color: null,
+            icon: null,
+            createdAt: new Date('2026-03-20T08:00:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:00:00.000Z'),
+        })
+        prismaMock.paymentSources.push({
+            id: 'payment-source-formula',
+            workspaceId: 'workspace-1',
+            name: '@Wallet',
+            type: 'cash',
+            createdAt: new Date('2026-03-20T08:00:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:00:00.000Z'),
+            deletedAt: null,
+        })
+        prismaMock.transactionTags.push(
+            createStoredTransactionTag(
+                'tag-export-formula',
+                'workspace-1',
+                'transaction-export-formula',
+                '-unsafe',
+            ),
+        )
+
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=csv')
+            .expect(200)
+
+        expect(response.text).toContain(
+            `2026-03-20T08:00:00.000Z,12.34,'+Category,"'=HYPERLINK(""https://example.com"",""click"")",'-unsafe,'@Wallet`,
+        )
+    })
+
+    it('rejects unsupported export formats with a 400 response', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+
+        const response = await agent
+            .get('/api/v1/workspaces/workspace-1/export?format=xml')
+            .expect(400)
+
+        expect(response.body).toEqual(
+            expect.objectContaining({
+                statusCode: 400,
+                message: ['Format must be one of: csv, json'],
+                error: 'Bad Request',
+            }),
+        )
+    })
+})
+
+function createPrismaMock(): PrismaMock {
+    const users: StoredUser[] = []
+    const workspaces: StoredWorkspace[] = []
+    const workspaceMemberships: StoredWorkspaceMembership[] = []
+    const categories: StoredCategory[] = []
+    const paymentSources: StoredPaymentSource[] = []
+    const transactions: StoredTransaction[] = []
+    const transactionTags: StoredTransactionTag[] = []
+    const auditEvents: StoredAuditEvent[] = []
+    let transactionCounter = 0
+    let tagCounter = 0
+    let auditEventCounter = 0
+
+    const prismaMock: PrismaMock = {
+        users,
+        workspaces,
+        workspaceMemberships,
+        categories,
+        paymentSources,
+        transactions,
+        transactionTags,
+        auditEvents,
+        user: {
+            findUnique: async ({ where }) => {
+                if (where.email) {
+                    return users.find((user) => user.email === where.email) ?? null
+                }
+
+                if (where.id) {
+                    return users.find((user) => user.id === where.id) ?? null
+                }
+
+                return null
+            },
+        },
+        workspace: {
+            findUnique: async ({ where }) =>
+                workspaces.find((workspace) => workspace.id === where.id) ?? null,
+        },
+        workspaceMembership: {
+            findFirst: async ({ where }) =>
+                workspaceMemberships
+                    .filter(
+                        (membership) =>
+                            membership.userId === where.userId &&
+                            membership.workspaceId === where.workspaceId,
+                    )
+                    .map((membership) => ({
+                        role: membership.role,
+                        workspace: {
+                            id: membership.workspaceId,
+                        },
+                    }))[0] ?? null,
+        },
+        category: {
+            findFirst: async ({ where }) =>
+                categories.find(
+                    (category) =>
+                        category.workspaceId === where.workspaceId && category.id === where.id,
+                ) ?? null,
+        },
+        paymentSource: {
+            findFirst: async ({ where }) =>
+                paymentSources.find(
+                    (paymentSource) =>
+                        paymentSource.workspaceId === where.workspaceId &&
+                        paymentSource.id === where.id &&
+                        paymentSource.deletedAt === where.deletedAt,
+                ) ?? null,
+        },
+        transaction: {
+            create: async ({ data }) => {
+                transactionCounter += 1
+
+                const transaction: StoredTransaction = {
+                    id: `transaction-${transactionCounter}`,
+                    workspaceId: data.workspaceId,
+                    categoryId: data.categoryId,
+                    paymentSourceId: data.paymentSourceId,
+                    type: data.type,
+                    amount: data.amount,
+                    currency: data.currency,
+                    date: data.date,
+                    notes: data.notes,
+                    createdAt: new Date('2026-03-24T12:00:00.000Z'),
+                    updatedAt: new Date('2026-03-24T12:00:00.000Z'),
+                    deletedAt: null,
+                }
+
+                transactions.push(transaction)
+                return transaction
+            },
+            findFirst: async ({ where, include }) => {
+                const transaction = transactions.find(
+                    (entry) =>
+                        entry.workspaceId === where.workspaceId &&
+                        entry.id === where.id &&
+                        entry.deletedAt === where.deletedAt,
+                )
+
+                if (!transaction) {
+                    return null
+                }
+
+                if (!include?.tags) {
+                    return transaction
+                }
+
+                return {
+                    ...transaction,
+                    tags: transactionTags
+                        .filter(
+                            (tag) =>
+                                tag.workspaceId === transaction.workspaceId &&
+                                tag.transactionId === transaction.id,
+                        )
+                        .sort((left, right) => left.name.localeCompare(right.name)),
+                }
+            },
+            updateMany: async ({ where, data }) => {
+                let count = 0
+
+                for (const transaction of transactions) {
+                    if (
+                        transaction.workspaceId !== where.workspaceId ||
+                        transaction.id !== where.id ||
+                        transaction.deletedAt !== where.deletedAt
+                    ) {
+                        continue
+                    }
+
+                    if (data.categoryId !== undefined) {
+                        transaction.categoryId = data.categoryId
+                    }
+
+                    if (data.paymentSourceId !== undefined) {
+                        transaction.paymentSourceId = data.paymentSourceId
+                    }
+
+                    if (data.type !== undefined) {
+                        transaction.type = data.type
+                    }
+
+                    if (data.amount !== undefined) {
+                        transaction.amount = data.amount
+                    }
+
+                    if (data.currency !== undefined) {
+                        transaction.currency = data.currency
+                    }
+
+                    if (data.date !== undefined) {
+                        transaction.date = data.date
+                    }
+
+                    if (data.notes !== undefined) {
+                        transaction.notes = data.notes
+                    }
+
+                    if (data.deletedAt !== undefined) {
+                        transaction.deletedAt = data.deletedAt
+                        transaction.updatedAt = data.deletedAt
+                    } else {
+                        transaction.updatedAt = new Date('2026-03-24T12:30:00.000Z')
+                    }
+
+                    count += 1
+                }
+
+                return { count }
+            },
+        },
+        transactionTag: {
+            create: async ({ data }) => {
+                tagCounter += 1
+
+                const createdAt = new Date(Date.parse(`2026-03-24T12:00:0${tagCounter}.000Z`))
+                const tag: StoredTransactionTag = {
+                    id: `tag-${tagCounter}`,
+                    workspaceId: data.workspaceId,
+                    transactionId: data.transactionId,
+                    name: data.name,
+                    createdAt,
+                    updatedAt: createdAt,
+                }
+
+                transactionTags.push(tag)
+                return tag
+            },
+            deleteMany: async ({ where }) => {
+                const remainingTags = transactionTags.filter(
+                    (tag) =>
+                        !(
+                            tag.workspaceId === where.workspaceId &&
+                            tag.transactionId === where.transactionId
+                        ),
+                )
+                const deletedCount = transactionTags.length - remainingTags.length
+
+                transactionTags.splice(0, transactionTags.length, ...remainingTags)
+
+                return { count: deletedCount }
+            },
+        },
+        auditEvent: {
+            create: async ({ data }) => {
+                auditEventCounter += 1
+
+                const createdAt = new Date('2026-03-24T12:00:01.000Z')
+                const auditEvent: StoredAuditEvent = {
+                    id: `audit-event-${auditEventCounter}`,
+                    action: data.action,
+                    userId: data.userId ?? null,
+                    workspaceId: data.workspaceId ?? null,
+                    entityType: data.entityType ?? null,
+                    entityId: data.entityId ?? null,
+                    metadata: data.metadata ?? null,
+                    createdAt,
+                    updatedAt: createdAt,
+                }
+
+                auditEvents.push(auditEvent)
+                return auditEvent
+            },
+        },
+        $queryRaw: async <T>(query: Prisma.Sql) => {
+            const renderedQuery = query.strings.join(' ')
+
+            if (renderedQuery.includes('WITH input_tags')) {
+                return normalizeInputTags(query) as T
+            }
+
+            if (renderedQuery.includes('SELECT COUNT(*)::INT AS "total"')) {
+                return [{ total: filterTransactionsFromQuery(query, prismaMock).length }] as T
+            }
+
+            if (renderedQuery.includes('SELECT DISTINCT BTRIM(tt."name") AS "name"')) {
+                return listWorkspaceTagsFromQuery(query, prismaMock) as T
+            }
+
+            if (renderedQuery.includes('c."name" AS "category"')) {
+                return listTransactionsForExportFromQuery(query, prismaMock) as T
+            }
+
+            if (renderedQuery.includes('ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name")')) {
+                return listTransactionsFromQuery(query, prismaMock) as T
+            }
+
+            return [] as T
+        },
+        $transaction: async <T>(callback: (tx: PrismaMock) => Promise<T>) => callback(prismaMock),
+        $connect: async () => undefined,
+        $disconnect: async () => undefined,
+    }
+
+    return prismaMock
+}
+
+function normalizeInputTags(query: Prisma.Sql): Array<{ name: string }> {
+    const names: string[] = []
+
+    for (let index = 1; index < query.values.length; index += 2) {
+        const tagValue = query.values[index]
+
+        if (typeof tagValue === 'string') {
+            names.push(tagValue)
+        }
+    }
+
+    const seenTags = new Set<string>()
+
+    return names.flatMap((name) => {
+        const trimmedName = name.trim()
+
+        if (trimmedName.length === 0) {
+            return []
+        }
+
+        const loweredName = trimmedName.toLowerCase()
+
+        if (seenTags.has(loweredName)) {
+            return []
+        }
+
+        seenTags.add(loweredName)
+
+        return [{ name: trimmedName }]
+    })
+}
+
+function listTransactionsFromQuery(query: Prisma.Sql, prismaMock: PrismaMock) {
+    const filteredTransactions = filterTransactionsFromQuery(query, prismaMock)
+    const { limit, offset } = extractPaginationFromQuery(query)
+
+    return filteredTransactions.slice(offset, offset + limit).map((transaction) => ({
+        id: transaction.id,
+        workspace_id: transaction.workspaceId,
+        category_id: transaction.categoryId,
+        payment_source_id: transaction.paymentSourceId,
+        type: transaction.type,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        date: transaction.date,
+        notes: transaction.notes,
+        created_at: transaction.createdAt,
+        updated_at: transaction.updatedAt,
+        tags: prismaMock.transactionTags
+            .filter(
+                (tag) =>
+                    tag.workspaceId === transaction.workspaceId &&
+                    tag.transactionId === transaction.id,
+            )
+            .map((tag) => tag.name)
+            .sort((left, right) => left.localeCompare(right)),
+    }))
+}
+
+function listWorkspaceTagsFromQuery(query: Prisma.Sql, prismaMock: PrismaMock) {
+    const workspaceId = query.values[0]
+
+    if (typeof workspaceId !== 'string') {
+        return []
+    }
+
+    const names = prismaMock.transactionTags
+        .filter((tag) => {
+            const transaction = prismaMock.transactions.find(
+                (entry) => entry.workspaceId === tag.workspaceId && entry.id === tag.transactionId,
+            )
+
+            return (
+                tag.workspaceId === workspaceId &&
+                tag.name.trim().length > 0 &&
+                transaction?.deletedAt === null
+            )
+        })
+        .map((tag) => tag.name.trim())
+
+    return Array.from(new Set(names))
+        .sort((left, right) => left.localeCompare(right))
+        .map((name) => ({ name }))
+}
+
+function listTransactionsForExportFromQuery(query: Prisma.Sql, prismaMock: PrismaMock) {
+    const filteredTransactions = filterTransactionsFromQuery(query, prismaMock)
+    const { limit, offset } = extractPaginationFromQuery(query)
+
+    return filteredTransactions.slice(offset, offset + limit).map((transaction) => ({
+        date: transaction.date,
+        amount: transaction.amount,
+        category:
+            prismaMock.categories.find(
+                (category) =>
+                    category.workspaceId === transaction.workspaceId &&
+                    category.id === transaction.categoryId,
+            )?.name ?? null,
+        notes: transaction.notes,
+        tags: prismaMock.transactionTags
+            .filter(
+                (tag) =>
+                    tag.workspaceId === transaction.workspaceId &&
+                    tag.transactionId === transaction.id,
+            )
+            .map((tag) => tag.name)
+            .sort((left, right) => left.localeCompare(right)),
+        payment_source:
+            prismaMock.paymentSources.find(
+                (paymentSource) =>
+                    paymentSource.workspaceId === transaction.workspaceId &&
+                    paymentSource.id === transaction.paymentSourceId,
+            )?.name ?? null,
+    }))
+}
+
+function filterTransactionsFromQuery(
+    query: Prisma.Sql,
+    prismaMock: PrismaMock,
+): StoredTransaction[] {
+    const renderedQuery = query.strings.join(' ')
+    let valueIndex = 0
+
+    const workspaceId = query.values[valueIndex]
+    valueIndex += 1
+
+    if (typeof workspaceId !== 'string') {
+        return []
+    }
+
+    let filteredTransactions = prismaMock.transactions.filter(
+        (transaction) => transaction.workspaceId === workspaceId && transaction.deletedAt === null,
+    )
+
+    if (renderedQuery.includes('t."category_id" =')) {
+        const categoryId = query.values[valueIndex]
+        valueIndex += 1
+
+        if (typeof categoryId === 'string') {
+            filteredTransactions = filteredTransactions.filter(
+                (transaction) => transaction.categoryId === categoryId,
+            )
+        }
+    }
+
+    if (renderedQuery.includes('t."payment_source_id" =')) {
+        const paymentSourceId = query.values[valueIndex]
+        valueIndex += 1
+
+        if (typeof paymentSourceId === 'string') {
+            filteredTransactions = filteredTransactions.filter(
+                (transaction) => transaction.paymentSourceId === paymentSourceId,
+            )
+        }
+    }
+
+    if (renderedQuery.includes('LOWER(BTRIM(tt_filter."name")) = LOWER(BTRIM(')) {
+        const tagFilter = query.values[valueIndex]
+        valueIndex += 1
+
+        if (typeof tagFilter === 'string') {
+            const normalizedTagFilter = tagFilter.trim().toLowerCase()
+
+            filteredTransactions = filteredTransactions.filter((transaction) =>
+                prismaMock.transactionTags.some(
+                    (tag) =>
+                        tag.workspaceId === transaction.workspaceId &&
+                        tag.transactionId === transaction.id &&
+                        tag.name.trim().toLowerCase() === normalizedTagFilter,
+                ),
+            )
+        }
+    }
+
+    if (renderedQuery.includes('t."date" >=')) {
+        const dateFrom = query.values[valueIndex]
+        valueIndex += 1
+
+        if (dateFrom instanceof Date) {
+            filteredTransactions = filteredTransactions.filter(
+                (transaction) => transaction.date.getTime() >= dateFrom.getTime(),
+            )
+        }
+    }
+
+    if (renderedQuery.includes('t."date" <=')) {
+        const dateTo = query.values[valueIndex]
+        valueIndex += 1
+
+        if (dateTo instanceof Date) {
+            filteredTransactions = filteredTransactions.filter(
+                (transaction) => transaction.date.getTime() <= dateTo.getTime(),
+            )
+        }
+    }
+
+    return filteredTransactions.sort((left, right) => {
+        const dateDifference = right.date.getTime() - left.date.getTime()
+
+        if (dateDifference !== 0) {
+            return dateDifference
+        }
+
+        const createdAtDifference = right.createdAt.getTime() - left.createdAt.getTime()
+
+        if (createdAtDifference !== 0) {
+            return createdAtDifference
+        }
+
+        return right.id.localeCompare(left.id)
+    })
+}
+
+function extractPaginationFromQuery(query: Prisma.Sql): { limit: number; offset: number } {
+    const renderedQuery = query.strings.join(' ')
+
+    if (!renderedQuery.includes('LIMIT') || !renderedQuery.includes('OFFSET')) {
+        return {
+            limit: 0,
+            offset: 0,
+        }
+    }
+
+    const limitValue = query.values[query.values.length - 2]
+    const offsetValue = query.values[query.values.length - 1]
+
+    return {
+        limit: typeof limitValue === 'number' ? limitValue : 0,
+        offset: typeof offsetValue === 'number' ? offsetValue : 0,
+    }
+}
+
+function seedExistingTransactions(prismaMock: PrismaMock): void {
+    prismaMock.transactions.push(
+        {
+            id: 'transaction-existing-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 1050,
+            currency: 'USD',
+            date: new Date('2026-03-25T10:00:00.000Z'),
+            notes: 'Team lunch',
+            createdAt: new Date('2026-03-25T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-25T10:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'transaction-existing-2',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 2050,
+            currency: 'USD',
+            date: new Date('2026-03-24T12:00:00.000Z'),
+            notes: 'Weekly groceries',
+            createdAt: new Date('2026-03-24T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-24T12:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'transaction-existing-3',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-2',
+            paymentSourceId: 'payment-source-2',
+            type: 'expense',
+            amount: 3050,
+            currency: 'USD',
+            date: new Date('2026-03-23T11:00:00.000Z'),
+            notes: 'Train tickets',
+            createdAt: new Date('2026-03-23T11:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T11:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'transaction-existing-4',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-2',
+            type: 'expense',
+            amount: 4050,
+            currency: 'USD',
+            date: new Date('2026-03-22T09:30:00.000Z'),
+            notes: 'Commute snacks',
+            createdAt: new Date('2026-03-22T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-22T10:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'transaction-existing-5',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-2',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 5050,
+            currency: 'USD',
+            date: new Date('2026-03-21T08:00:00.000Z'),
+            notes: 'Utility bill',
+            createdAt: new Date('2026-03-21T09:00:00.000Z'),
+            updatedAt: new Date('2026-03-21T09:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'transaction-existing-6',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: null,
+            type: 'expense',
+            amount: 6050,
+            currency: 'USD',
+            date: new Date('2026-03-20T07:30:00.000Z'),
+            notes: 'Cash coffee',
+            createdAt: new Date('2026-03-20T08:00:00.000Z'),
+            updatedAt: new Date('2026-03-20T08:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'transaction-deleted-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 7050,
+            currency: 'USD',
+            date: new Date('2026-03-26T10:00:00.000Z'),
+            notes: 'Should stay hidden',
+            createdAt: new Date('2026-03-26T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-26T10:00:00.000Z'),
+            deletedAt: new Date('2026-03-27T10:00:00.000Z'),
+        },
+    )
+
+    prismaMock.transactionTags.push(
+        createStoredTransactionTag(
+            'tag-existing-1',
+            'workspace-1',
+            'transaction-existing-1',
+            'Food',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-2',
+            'workspace-1',
+            'transaction-existing-1',
+            'Work',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-3',
+            'workspace-1',
+            'transaction-existing-2',
+            'Groceries',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-4',
+            'workspace-1',
+            'transaction-existing-3',
+            'Travel',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-5',
+            'workspace-1',
+            'transaction-existing-4',
+            'food',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-6',
+            'workspace-1',
+            'transaction-existing-4',
+            'commute',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-7',
+            'workspace-1',
+            'transaction-existing-5',
+            'Bills',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-8',
+            'workspace-1',
+            'transaction-existing-5',
+            'Home',
+        ),
+        createStoredTransactionTag(
+            'tag-existing-9',
+            'workspace-1',
+            'transaction-deleted-1',
+            'DeletedOnly',
+        ),
+    )
+}
+
+function seedTransactionsForExport(prismaMock: PrismaMock): void {
+    for (let index = 0; index < 10; index += 1) {
+        const transactionId = `transaction-export-${index + 1}`
+        const day = 10 + index
+        const categoryId = index % 2 === 0 ? 'category-1' : 'category-2'
+        const paymentSourceId = index % 2 === 0 ? 'payment-source-1' : 'payment-source-2'
+
+        prismaMock.transactions.push({
+            id: transactionId,
+            workspaceId: 'workspace-1',
+            categoryId,
+            paymentSourceId,
+            type: 'expense',
+            amount: (10 + index) * 100 + 50,
+            currency: 'USD',
+            date: new Date(`2026-03-${String(day).padStart(2, '0')}T08:00:00.000Z`),
+            notes: `Export expense ${index + 1}`,
+            createdAt: new Date(`2026-03-${String(day).padStart(2, '0')}T08:15:00.000Z`),
+            updatedAt: new Date(`2026-03-${String(day).padStart(2, '0')}T08:15:00.000Z`),
+            deletedAt: null,
+        })
+
+        prismaMock.transactionTags.push(
+            createStoredTransactionTag(
+                `tag-export-${index + 1}`,
+                'workspace-1',
+                transactionId,
+                index % 2 === 0 ? 'Recurring' : 'Travel',
+            ),
+        )
+    }
+
+    prismaMock.transactions.push({
+        id: 'transaction-export-deleted',
+        workspaceId: 'workspace-1',
+        categoryId: 'category-1',
+        paymentSourceId: 'payment-source-1',
+        type: 'expense',
+        amount: 9950,
+        currency: 'USD',
+        date: new Date('2026-03-20T08:00:00.000Z'),
+        notes: 'Hidden export transaction',
+        createdAt: new Date('2026-03-20T08:15:00.000Z'),
+        updatedAt: new Date('2026-03-20T08:15:00.000Z'),
+        deletedAt: new Date('2026-03-21T08:15:00.000Z'),
+    })
+    prismaMock.transactionTags.push(
+        createStoredTransactionTag(
+            'tag-export-deleted',
+            'workspace-1',
+            'transaction-export-deleted',
+            'DeletedOnly',
+        ),
+    )
+}
+
+function createStoredTransactionTag(
+    id: string,
+    workspaceId: string,
+    transactionId: string,
+    name: string,
+): StoredTransactionTag {
+    const createdAt = new Date('2026-03-24T12:30:00.000Z')
+
+    return {
+        id,
+        workspaceId,
+        transactionId,
+        name,
+        createdAt,
+        updatedAt: createdAt,
+    }
+}
+
+async function seedTransactionFixture(prismaMock: PrismaMock): Promise<void> {
+    prismaMock.users.push(
+        await createStoredUser({
+            id: 'user-1',
+            email: 'ada@example.com',
+            password: 'GraniteHarbor!1234',
+            emailVerified: true,
+        }),
+    )
+
+    prismaMock.workspaces.push({
+        id: 'workspace-1',
+        name: "Ada Lovelace's Finances",
+        type: 'personal',
+        timezone: 'UTC',
+        createdAt: new Date('2026-03-23T10:00:00.000Z'),
+        updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+    })
+
+    prismaMock.workspaceMemberships.push({
+        id: 'membership-1',
+        userId: 'user-1',
+        workspaceId: 'workspace-1',
+        role: 'owner',
+        createdAt: new Date('2026-03-23T10:00:00.000Z'),
+        updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+    })
+
+    prismaMock.categories.push(
+        {
+            id: 'category-1',
+            workspaceId: 'workspace-1',
+            parentId: null,
+            name: 'Food',
+            color: null,
+            icon: null,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        },
+        {
+            id: 'category-2',
+            workspaceId: 'workspace-1',
+            parentId: null,
+            name: 'Transport',
+            color: null,
+            icon: null,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        },
+    )
+
+    prismaMock.paymentSources.push(
+        {
+            id: 'payment-source-1',
+            workspaceId: 'workspace-1',
+            name: 'Main Card',
+            type: 'credit_card',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'payment-source-2',
+            workspaceId: 'workspace-1',
+            name: 'Transit Card',
+            type: 'debit_card',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+            deletedAt: null,
+        },
+        {
+            id: 'payment-source-archived',
+            workspaceId: 'workspace-1',
+            name: 'Old Card',
+            type: 'debit_card',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+            deletedAt: new Date('2026-03-20T08:00:00.000Z'),
+        },
+    )
+}
+
+async function createStoredUser(input: {
+    id: string
+    email: string
+    password: string
+    emailVerified: boolean
+    name?: string
+}): Promise<StoredUser> {
+    const passwordHash = await argon2.hash(input.password, {
+        type: argon2.argon2id,
+    })
+
+    return {
+        id: input.id,
+        email: input.email,
+        name: input.name ?? 'Ada Lovelace',
+        passwordHash,
+        emailVerified: input.emailVerified,
+        sessionVersion: 0,
+        createdAt: new Date('2026-03-23T09:00:00.000Z'),
+        updatedAt: new Date('2026-03-23T09:00:00.000Z'),
+    }
+}
+
+async function authenticateAs(app: INestApplication<App>, email: string, password: string) {
+    const agent = request.agent(app.getHttpServer())
+
+    await agent
+        .post('/api/v1/auth/login')
+        .send({
+            email,
+            password,
+        })
+        .expect(200)
+
+    return agent
+}

@@ -1,0 +1,380 @@
+import { WorkspaceRepository } from './workspace.repository'
+import { WorkspaceService } from './workspace.service'
+
+describe('WorkspaceService', () => {
+    let service: WorkspaceService
+    let transactionClient: object
+    let prisma: {
+        $transaction: jest.Mock
+    }
+    let workspaceRepository: jest.Mocked<
+        Pick<
+            WorkspaceRepository,
+            | 'checkMembership'
+            | 'createWorkspace'
+            | 'createWorkspaceMembership'
+            | 'createDefaultCashPaymentSource'
+            | 'findWorkspaceById'
+            | 'findWorkspacesByUserId'
+            | 'seedDefaultCategories'
+            | 'updateWorkspaceSettings'
+        >
+    >
+
+    beforeEach(() => {
+        transactionClient = {}
+        prisma = {
+            $transaction: jest.fn(async (callback: (tx: object) => Promise<unknown>) =>
+                callback(transactionClient),
+            ),
+        }
+        workspaceRepository = {
+            checkMembership: jest.fn(),
+            createWorkspace: jest.fn(),
+            createWorkspaceMembership: jest.fn(),
+            createDefaultCashPaymentSource: jest.fn(),
+            findWorkspaceById: jest.fn(),
+            findWorkspacesByUserId: jest.fn(),
+            seedDefaultCategories: jest.fn(),
+            updateWorkspaceSettings: jest.fn(),
+        }
+
+        workspaceRepository.createDefaultCashPaymentSource.mockResolvedValue({
+            id: 'cash-1',
+        } as never)
+
+        service = new WorkspaceService(
+            prisma as never,
+            workspaceRepository as unknown as WorkspaceRepository,
+        )
+    })
+
+    it('creates a personal workspace, owner membership, and default categories in one transaction', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+
+        workspaceRepository.createWorkspace.mockResolvedValue(workspace as never)
+        workspaceRepository.createWorkspaceMembership.mockResolvedValue({
+            id: 'membership-1',
+            userId: 'user-1',
+            workspaceId: 'workspace-1',
+            role: 'owner',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        } as never)
+        workspaceRepository.seedDefaultCategories.mockResolvedValue(undefined)
+
+        await expect(
+            service.createPersonalWorkspace(' user-1 ', ' Ada Lovelace '),
+        ).resolves.toEqual(workspace)
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+        expect(workspaceRepository.createWorkspace).toHaveBeenCalledWith(
+            {
+                name: "Ada Lovelace's Finances",
+                type: 'personal',
+                timezone: 'UTC',
+            },
+            transactionClient,
+        )
+        expect(workspaceRepository.createDefaultCashPaymentSource).toHaveBeenCalledWith(
+            'workspace-1',
+            transactionClient,
+        )
+        expect(workspaceRepository.createWorkspaceMembership).toHaveBeenCalledWith(
+            {
+                userId: 'user-1',
+                workspaceId: 'workspace-1',
+                role: 'owner',
+                lastPaymentSourceId: 'cash-1',
+            },
+            transactionClient,
+        )
+        expect(workspaceRepository.seedDefaultCategories).toHaveBeenCalledWith(
+            'workspace-1',
+            transactionClient,
+        )
+    })
+
+    it('reuses an existing transaction client when provided', async () => {
+        const providedTransactionClient = {}
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+
+        workspaceRepository.createWorkspace.mockResolvedValue(workspace as never)
+        workspaceRepository.createWorkspaceMembership.mockResolvedValue({
+            id: 'membership-1',
+            userId: 'user-1',
+            workspaceId: 'workspace-1',
+            role: 'owner',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        } as never)
+        workspaceRepository.seedDefaultCategories.mockResolvedValue(undefined)
+
+        await expect(
+            service.createPersonalWorkspace(
+                'user-1',
+                'Ada Lovelace',
+                providedTransactionClient as never,
+            ),
+        ).resolves.toEqual(workspace)
+
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+        expect(workspaceRepository.createWorkspace).toHaveBeenCalledWith(
+            {
+                name: "Ada Lovelace's Finances",
+                type: 'personal',
+                timezone: 'UTC',
+            },
+            providedTransactionClient,
+        )
+    })
+
+    it('lists workspaces for a user', async () => {
+        const workspaces = [
+            {
+                id: 'workspace-1',
+                name: "Ada Lovelace's Finances",
+                type: 'personal',
+                timezone: 'UTC',
+                createdAt: new Date('2026-03-23T10:00:00.000Z'),
+                updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+            },
+        ]
+
+        workspaceRepository.findWorkspacesByUserId.mockResolvedValue(workspaces as never)
+
+        await expect(service.listUserWorkspaces(' user-1 ')).resolves.toEqual(workspaces)
+        expect(workspaceRepository.findWorkspacesByUserId).toHaveBeenCalledWith('user-1')
+    })
+
+    it('returns workspace details by id', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+
+        workspaceRepository.findWorkspaceById.mockResolvedValue(workspace as never)
+
+        await expect(service.getWorkspaceById(' workspace-1 ')).resolves.toEqual(workspace)
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+    })
+
+    it('updates and normalizes workspace settings including its name', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'Europe/Warsaw',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-05-01T10:00:00.000Z'),
+        }
+
+        workspaceRepository.findWorkspaceById.mockResolvedValue({
+            ...workspace,
+            timezone: 'UTC',
+        } as never)
+        workspaceRepository.updateWorkspaceSettings.mockResolvedValue(workspace as never)
+
+        await expect(
+            service.updateWorkspaceSettings(' workspace-1 ', {
+                name: ' Household budget ',
+                timezone: ' Europe/Warsaw ',
+            }),
+        ).resolves.toEqual(workspace)
+
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith(
+            'workspace-1',
+            transactionClient,
+        )
+        expect(workspaceRepository.updateWorkspaceSettings).toHaveBeenCalledWith(
+            {
+                workspaceId: 'workspace-1',
+                name: 'Household budget',
+                timezone: 'Europe/Warsaw',
+            },
+            transactionClient,
+        )
+    })
+
+    it('rejects changing base currency after financial data exists', async () => {
+        workspaceRepository.findWorkspaceById.mockResolvedValue({
+            id: 'workspace-1',
+            name: 'Household',
+            type: 'personal',
+            timezone: 'UTC',
+            baseCurrency: 'PLN',
+            baseCurrencyLocked: true,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        })
+
+        await expect(
+            service.updateWorkspaceSettings('workspace-1', {
+                timezone: 'UTC',
+                baseCurrency: 'EUR',
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                code: 'WORKSPACE_BASE_CURRENCY_LOCKED',
+            },
+        })
+
+        expect(workspaceRepository.updateWorkspaceSettings).not.toHaveBeenCalled()
+    })
+
+    it('allows resubmitting the current currency when it is locked', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: 'Household',
+            type: 'personal',
+            timezone: 'Europe/Warsaw',
+            baseCurrency: 'PLN',
+            baseCurrencyLocked: true,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+        workspaceRepository.findWorkspaceById.mockResolvedValue(workspace)
+        workspaceRepository.updateWorkspaceSettings.mockResolvedValue(workspace)
+
+        await expect(
+            service.updateWorkspaceSettings('workspace-1', {
+                timezone: 'Europe/Warsaw',
+                baseCurrency: 'PLN',
+            }),
+        ).resolves.toMatchObject({ baseCurrency: 'PLN', baseCurrencyLocked: true })
+    })
+
+    it('rejects an invalid workspace name before writing', async () => {
+        await expect(
+            service.updateWorkspaceSettings('workspace-1', {
+                name: ' ',
+                timezone: 'UTC',
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                message: ['Workspace name must be at least 2 characters'],
+            },
+        })
+
+        expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+        expect(workspaceRepository.updateWorkspaceSettings).not.toHaveBeenCalled()
+    })
+
+    it('rejects invalid workspace timezone settings before writing', async () => {
+        try {
+            await service.updateWorkspaceSettings('workspace-1', {
+                timezone: 'Not/A_Timezone',
+            })
+            fail('Expected updateWorkspaceSettings to throw')
+        } catch (error) {
+            expect(
+                (error as { getResponse: () => { message: string[] } }).getResponse().message,
+            ).toEqual(['Timezone must be a valid IANA timezone'])
+        }
+
+        expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+        expect(workspaceRepository.updateWorkspaceSettings).not.toHaveBeenCalled()
+    })
+
+    it('returns workspace details when the user is a member', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: "Ada Lovelace's Finances",
+            type: 'personal',
+            timezone: 'UTC',
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+
+        workspaceRepository.checkMembership.mockResolvedValue(true)
+        workspaceRepository.findWorkspaceById.mockResolvedValue(workspace as never)
+
+        await expect(service.getWorkspaceForUser(' user-1 ', ' workspace-1 ')).resolves.toEqual(
+            workspace,
+        )
+        expect(workspaceRepository.checkMembership).toHaveBeenCalledWith('user-1', 'workspace-1')
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+    })
+
+    it('rejects workspace details when the user is not a member', async () => {
+        workspaceRepository.checkMembership.mockResolvedValue(false)
+
+        await expect(service.getWorkspaceForUser('user-1', 'workspace-2')).rejects.toThrow(
+            'Forbidden',
+        )
+
+        expect(workspaceRepository.checkMembership).toHaveBeenCalledWith('user-1', 'workspace-2')
+        expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+    })
+
+    it('rejects missing workspace details by id', async () => {
+        workspaceRepository.findWorkspaceById.mockResolvedValue(null)
+
+        await expect(service.getWorkspaceById('workspace-2')).rejects.toThrow('Workspace not found')
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-2')
+    })
+
+    it('exports membership checks for other modules', async () => {
+        workspaceRepository.checkMembership.mockResolvedValue(true)
+
+        await expect(service.checkMembership(' user-1 ', ' workspace-1 ')).resolves.toBe(true)
+        expect(workspaceRepository.checkMembership).toHaveBeenCalledWith('user-1', 'workspace-1')
+    })
+
+    it('propagates workspace repository errors and skips later onboarding steps', async () => {
+        workspaceRepository.createWorkspace.mockRejectedValue(new Error('Workspace insert failed'))
+
+        await expect(service.createPersonalWorkspace('user-1', 'Ada Lovelace')).rejects.toThrow(
+            'Workspace insert failed',
+        )
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+        expect(workspaceRepository.createWorkspaceMembership).not.toHaveBeenCalled()
+        expect(workspaceRepository.seedDefaultCategories).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        [
+            'blank user id for workspace creation',
+            () => service.createPersonalWorkspace('   ', 'Ada Lovelace'),
+            'User id is required',
+        ],
+        [
+            'blank user name for workspace creation',
+            () => service.createPersonalWorkspace('user-1', '   '),
+            'User name is required',
+        ],
+        [
+            'blank user id for workspace listing',
+            () => service.listUserWorkspaces('   '),
+            'User id is required',
+        ],
+        [
+            'blank workspace id for membership checks',
+            () => service.checkMembership('user-1', '   '),
+            'Workspace id is required',
+        ],
+    ])('rejects %s', async (_, runAssertion, errorMessage) => {
+        await expect(runAssertion()).rejects.toThrow(errorMessage)
+
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
+})

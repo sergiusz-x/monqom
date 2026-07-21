@@ -1,0 +1,24 @@
+meta {
+  name: Update Budget
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/budgets/{{budgetId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "amount": 755.25,
+    "category_id": "{{categoryId}}",
+    "year": 2026,
+    "month": 4
+  }
+}

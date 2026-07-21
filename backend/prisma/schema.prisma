@@ -1,0 +1,260 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  name                String
+  locale              String   @default("en")
+  passwordHash        String   @map("password_hash")
+  emailVerified       Boolean  @default(false) @map("email_verified")
+  sessionVersion      Int      @default(0) @map("session_version")
+  failedLoginCount   Int      @default(0) @map("failed_login_count")
+  lockedUntil        DateTime? @map("locked_until")
+  totpEnabled         Boolean  @default(false) @map("totp_enabled")
+  totpSecretEncrypted String?  @map("totp_secret_encrypted")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  memberships             WorkspaceMembership[]
+  auditEvents             AuditEvent[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  recoveryCodes           TwoFactorRecoveryCode[]
+
+  @@map("users")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model TwoFactorRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factor_recovery_codes")
+}
+
+model Workspace {
+  id           String   @id @default(uuid())
+  name         String
+  type         String   @default("personal")
+  timezone     String   @default("UTC")
+  baseCurrency String   @default("USD") @map("base_currency")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships     WorkspaceMembership[]
+  categories      Category[]
+  paymentSources  PaymentSource[]
+  transactions    Transaction[]
+  budgets         Budget[]
+  auditEvents     AuditEvent[]
+  transactionTags TransactionTag[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMembership {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+  workspaceId         String   @map("workspace_id")
+  role                String   @default("member") // owner, admin, member
+  lastPaymentSourceId String   @map("last_payment_source_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lastPaymentSource PaymentSource @relation(fields: [workspaceId, lastPaymentSourceId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@map("workspace_memberships")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  workspaceId String    @map("workspace_id")
+  parentId    String?   @map("parent_id")
+  name        String
+  systemKey   String?   @map("system_key")
+  color       String?
+  icon        String?
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent       Category?     @relation("ParentChild", fields: [workspaceId, parentId], references: [workspaceId, id])
+  children     Category[]    @relation("ParentChild")
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId])
+  @@index([workspaceId, parentId])
+  @@map("categories")
+}
+
+model PaymentSource {
+  id          String    @id @default(uuid())
+  workspaceId String    @map("workspace_id")
+  name        String
+  type        String // cash, debit_card, credit_card, bank, other
+  systemKey   String?   @map("system_key")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  workspace              Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transactions           Transaction[]
+  preferredByMemberships WorkspaceMembership[]
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, systemKey])
+  @@index([workspaceId])
+  @@map("payment_sources")
+}
+
+model Transaction {
+  id              String @id @default(uuid())
+  workspaceId     String @map("workspace_id")
+  categoryId      String @map("category_id")
+  paymentSourceId String @map("payment_source_id")
+
+  type       String   @default("expense")
+  amount     Int // stored as integer minor units (cents)
+  currency   String
+  baseAmount Int      @default(0) @map("base_amount")
+  fxRate     Decimal  @default(1) @map("fx_rate") @db.Decimal(20, 10)
+  fxRateDate DateTime @default(now()) @map("fx_rate_date")
+  fxSource   String   @default("legacy") @map("fx_source")
+  date        DateTime @db.Date
+  description String
+  notes       String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category      Category         @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+  paymentSource PaymentSource    @relation(fields: [workspaceId, paymentSourceId], references: [workspaceId, id], onDelete: Restrict)
+  tags          TransactionTag[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId])
+  @@index([workspaceId, categoryId])
+  @@index([workspaceId, paymentSourceId])
+  @@index([categoryId])
+  @@index([date])
+  @@map("transactions")
+}
+
+model TransactionTag {
+  id            String   @id @default(uuid())
+  workspaceId   String   @map("workspace_id")
+  transactionId String   @map("transaction_id")
+  name          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [workspaceId, transactionId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId])
+  @@index([transactionId])
+  @@map("transaction_tags")
+}
+
+model Budget {
+  id          String  @id @default(uuid())
+  workspaceId String  @map("workspace_id")
+  categoryId  String? @map("category_id")
+
+  amount     Int // stored as integer minor units (cents)
+  currency   String
+  baseAmount Int      @default(0) @map("base_amount")
+  fxRate     Decimal  @default(1) @map("fx_rate") @db.Decimal(20, 10)
+  fxRateDate DateTime @default(now()) @map("fx_rate_date")
+  fxSource   String   @default("legacy") @map("fx_source")
+  year       Int
+  month      Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category  Category? @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+
+  @@unique([workspaceId, categoryId, year, month])
+  @@index([workspaceId])
+  @@index([workspaceId, categoryId])
+  @@map("budgets")
+}
+
+model AuditEvent {
+  id          String  @id @default(uuid())
+  workspaceId String? @map("workspace_id")
+  userId      String? @map("user_id")
+
+  action     String // e.g. TRANSACTION_DELETED, USER_LOGGED_IN
+  entityType String? @map("entity_type")
+  entityId   String? @map("entity_id")
+  metadata   Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("audit_events")
+}

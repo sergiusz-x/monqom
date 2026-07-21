@@ -1,0 +1,14 @@
+meta {
+  name: List Transactions
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/transactions?limit=20&offset=0&category_id={{categoryId}}&payment_source_id={{paymentSourceId}}&tag=Food&date_from=2026-03-01&date_to=2026-03-31
+  body: none
+  auth: none
+}
+
+headers {
+}

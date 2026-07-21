@@ -1,0 +1,14 @@
+meta {
+  name: List Workspace Tags
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/tags
+  body: none
+  auth: none
+}
+
+headers {
+}

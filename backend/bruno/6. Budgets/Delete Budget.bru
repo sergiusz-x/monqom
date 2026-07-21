@@ -1,0 +1,14 @@
+meta {
+  name: Delete Budget
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/budgets/{{budgetId}}
+  body: none
+  auth: none
+}
+
+headers {
+}

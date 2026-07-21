@@ -1,0 +1,21 @@
+meta {
+  name: Resend Verification
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/resend-verification
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "name.surname@monqom.com"
+  }
+}

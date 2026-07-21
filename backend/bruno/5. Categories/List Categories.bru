@@ -1,0 +1,14 @@
+meta {
+  name: List Categories
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/categories?include_archived=false
+  body: none
+  auth: none
+}
+
+headers {
+}

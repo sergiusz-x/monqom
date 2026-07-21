@@ -1,0 +1,21 @@
+meta {
+  name: 2FA Disable
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/2fa/disable
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "currentPassword": "MonqomMonqom!1234"
+  }
+}

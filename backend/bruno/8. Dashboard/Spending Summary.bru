@@ -1,0 +1,14 @@
+meta {
+  name: Spending Summary
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/workspaces/{{workspaceId}}/dashboard/spending-summary?month=2026-03
+  body: none
+  auth: none
+}
+
+headers {
+}

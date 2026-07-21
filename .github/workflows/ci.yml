@@ -1,0 +1,39 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: backend}}
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env: {POSTGRES_USER: monqom, POSTGRES_PASSWORD: monqom, POSTGRES_DB: monqom_ci}
+        ports: ["5432:5432"]
+    env: {NODE_ENV: test, DATABASE_URL: postgresql://monqom:monqom@127.0.0.1:5432/monqom_ci}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json}
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run format:check && npm run lint && npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run migrate:deploy && npm run test:e2e:smoke && npm run build
+      - run: npm audit --omit=dev --audit-level=high
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: frontend}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: npm ci
+      - run: npm run format:check && npm run lint && npm test && npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm audit --omit=dev --audit-level=high

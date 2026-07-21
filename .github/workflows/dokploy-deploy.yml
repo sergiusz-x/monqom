@@ -1,0 +1,16 @@
+name: Deploy release to Dokploy
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  deploy:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: ${{ github.event.release.tag_name }}, fetch-depth: 0}
+      - run: test "$(git describe --exact-match --tags HEAD)" = "${{ github.event.release.tag_name }}"
+      - env: {DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}}
+        run: test -n "$DOKPLOY_WEBHOOK_URL" && curl --fail-with-body --request POST "$DOKPLOY_WEBHOOK_URL"
