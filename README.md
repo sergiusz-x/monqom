@@ -1,5 +1,7 @@
 # Monqom
 
+Monqom is a self-hostable personal-finance application. See the [release policy](docs/releases.md) for the supported release and deployment model.
+
 ## Local development
 
 Start backend + PostgreSQL with a single command:
