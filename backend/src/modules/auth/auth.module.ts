@@ -1,12 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { AuthController } from './auth.controller'
-import { AuthRepository } from './auth.repository'
 import { UsersController } from './users.controller'
 import { AuthRateLimitMiddleware } from '../../shared/middleware/authRateLimit'
 import { AUTH_BASE_ROUTE, AUTH_ROUTES } from './auth.routes'
 import { AuthService } from './auth.service'
-import { SessionGuard } from '../../shared/guards/session.guard'
+import { AuthCoreModule } from './auth-core.module'
 import { WorkspaceModule } from '../workspace/workspace.module'
 import { TwoFactorService } from './twoFactor.service'
 
@@ -26,9 +25,10 @@ const AUTH_LOGIN_RATE_LIMIT_MESSAGE = 'Too many login attempts. Please try again
             ],
         }),
         WorkspaceModule,
+        AuthCoreModule,
     ],
     controllers: [AuthController, UsersController],
-    providers: [AuthService, AuthRepository, SessionGuard, TwoFactorService],
+    providers: [AuthService, TwoFactorService],
 })
 export class AuthModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {

@@ -7,6 +7,7 @@ import {
     HttpStatus,
     Param,
     Post,
+    Query,
     Put,
     Req,
     UseGuards,
@@ -20,6 +21,7 @@ import {
     ListTransactionsResponse,
     TransactionsService,
 } from './transactions.service'
+import { ListTransactionsQueryDto, TransactionBodyDto } from './transactions.dto'
 
 @Controller(TRANSACTIONS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -28,9 +30,23 @@ export class TransactionsController {
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    async listTransactions(@Req() req: Request): Promise<ListTransactionsResponse> {
+    async listTransactions(
+        @Query() query: ListTransactionsQueryDto,
+        @Req() req: Request,
+    ): Promise<ListTransactionsResponse> {
         return this.transactionsService.listTransactions(
-            req.query as Record<string, unknown>,
+            {
+                categoryId: query.category_id,
+                categoryIds: query.category_ids,
+                sortBy: query.sort_by,
+                sortDirection: query.sort_direction,
+                paymentSourceId: query.payment_source_id,
+                tag: query.tag,
+                dateFrom: query.date_from,
+                dateTo: query.date_to,
+                limit: query.limit,
+                offset: query.offset,
+            },
             req.workspace!.workspaceId,
         )
     }
@@ -50,11 +66,11 @@ export class TransactionsController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     async createTransaction(
-        @Body() body: Record<string, unknown>,
+        @Body() body: TransactionBodyDto,
         @Req() req: Request,
     ): Promise<CreateTransactionResponse> {
         return this.transactionsService.createTransaction(
-            body,
+            toTransactionCommand(body),
             req.workspace!.workspaceId,
             req.session.auth!.userId,
         )
@@ -64,13 +80,14 @@ export class TransactionsController {
     @HttpCode(HttpStatus.OK)
     async updateTransaction(
         @Param('id') transactionId: string,
-        @Body() body: Record<string, unknown>,
+        @Body() body: TransactionBodyDto,
         @Req() req: Request,
     ): Promise<CreateTransactionResponse> {
         return this.transactionsService.updateTransaction(
-            body,
+            toTransactionCommand(body),
             transactionId,
             req.workspace!.workspaceId,
+            req.session.auth!.userId,
         )
     }
 
@@ -85,6 +102,19 @@ export class TransactionsController {
             req.workspace!.workspaceId,
             req.session.auth!.userId,
         )
+    }
+}
+
+function toTransactionCommand(body: TransactionBodyDto) {
+    return {
+        amount: body.amount,
+        currency: body.currency,
+        date: body.date,
+        description: body.description,
+        categoryId: body.category_id,
+        notes: body.notes,
+        tags: body.tags,
+        paymentSourceId: body.payment_source_id,
     }
 }
 

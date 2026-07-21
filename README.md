@@ -1,6 +1,6 @@
 # Monqom
 
-## Local development stack (Docker Compose)
+## Local development
 
 Start backend + PostgreSQL with a single command:
 

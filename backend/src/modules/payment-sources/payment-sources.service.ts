@@ -1,18 +1,26 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common'
 import { PaymentSource } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { PaymentSourcesRepository } from './payment-sources.repository'
 
 const PAYMENT_SOURCE_NOT_FOUND_MESSAGE = 'Payment source not found'
+const PAYMENT_SOURCE_NAME_CONFLICT_MESSAGE =
+    'An active payment source with this name already exists'
+const SYSTEM_CASH_PROTECTED_MESSAGE = 'The system cash payment source cannot be changed or archived'
 const PAYMENT_SOURCE_TYPES = ['cash', 'debit_card', 'credit_card', 'bank', 'other'] as const
 
-export interface PaymentSourceRequestInput {
-    name?: unknown
-    type?: unknown
+export interface PaymentSourceCommand {
+    name: string
+    type: (typeof PAYMENT_SOURCE_TYPES)[number]
 }
 
-export interface ListPaymentSourcesRequestInput {
-    include_archived?: unknown
+export interface ListPaymentSourcesCommand {
+    includeArchived?: boolean
 }
 
 export interface PaymentSourceResponse {
@@ -20,6 +28,7 @@ export interface PaymentSourceResponse {
     workspace_id: string
     name: string
     type: string
+    system_key: string | null
     is_archived: boolean
     archived_at: Date | null
     created_at: Date
@@ -28,7 +37,7 @@ export interface PaymentSourceResponse {
 
 interface ValidatedPaymentSourceInput {
     name?: string
-    type?: string
+    type?: PaymentSourceCommand['type']
     errors: string[]
 }
 
@@ -40,11 +49,11 @@ export class PaymentSourcesService {
     ) {}
 
     async listPaymentSources(
-        input: ListPaymentSourcesRequestInput,
+        input: ListPaymentSourcesCommand,
         workspaceId: string,
     ): Promise<PaymentSourceResponse[]> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
-        const includeArchived = parseIncludeArchivedValue(input.include_archived)
+        const includeArchived = input.includeArchived ?? false
         const paymentSources = await this.paymentSourcesRepository.listPaymentSourcesByWorkspace(
             normalizedWorkspaceId,
             includeArchived,
@@ -55,7 +64,7 @@ export class PaymentSourcesService {
     }
 
     async createPaymentSource(
-        input: PaymentSourceRequestInput,
+        input: PaymentSourceCommand,
         workspaceId: string,
         userId: string,
     ): Promise<PaymentSourceResponse> {
@@ -65,6 +74,16 @@ export class PaymentSourcesService {
 
         if (validatedInput.errors.length > 0 || !validatedInput.name || !validatedInput.type) {
             throw new BadRequestException(validatedInput.errors)
+        }
+
+        const duplicate = await this.paymentSourcesRepository.findActivePaymentSourceByName(
+            normalizedWorkspaceId,
+            validatedInput.name,
+            undefined,
+            this.prisma,
+        )
+        if (duplicate) {
+            throw new ConflictException(PAYMENT_SOURCE_NAME_CONFLICT_MESSAGE)
         }
 
         const paymentSource = await this.paymentSourcesRepository.createPaymentSource(
@@ -81,7 +100,7 @@ export class PaymentSourcesService {
     }
 
     async updatePaymentSource(
-        input: PaymentSourceRequestInput,
+        input: PaymentSourceCommand,
         paymentSourceId: string,
         workspaceId: string,
         userId: string,
@@ -110,6 +129,19 @@ export class PaymentSourcesService {
 
             if (!existingPaymentSource) {
                 throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
+            }
+            if (existingPaymentSource.systemKey === 'cash') {
+                throw new ConflictException(SYSTEM_CASH_PROTECTED_MESSAGE)
+            }
+
+            const duplicate = await this.paymentSourcesRepository.findActivePaymentSourceByName(
+                normalizedWorkspaceId,
+                name,
+                normalizedPaymentSourceId,
+                tx,
+            )
+            if (duplicate) {
+                throw new ConflictException(PAYMENT_SOURCE_NAME_CONFLICT_MESSAGE)
             }
 
             const updatedPaymentSource = await this.paymentSourcesRepository.updatePaymentSource(
@@ -155,6 +187,18 @@ export class PaymentSourcesService {
             if (!existingPaymentSource) {
                 throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
             }
+            if (existingPaymentSource.systemKey === 'cash') {
+                throw new ConflictException(SYSTEM_CASH_PROTECTED_MESSAGE)
+            }
+
+            const cashPaymentSource =
+                await this.paymentSourcesRepository.findSystemCashPaymentSource(
+                    normalizedWorkspaceId,
+                    tx,
+                )
+            if (!cashPaymentSource) {
+                throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
+            }
 
             const archivedAt = new Date()
             const wasArchived = await this.paymentSourcesRepository.archivePaymentSource(
@@ -172,6 +216,13 @@ export class PaymentSourcesService {
                 throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
             }
 
+            await this.paymentSourcesRepository.resetLastPaymentSourcePreferences(
+                normalizedWorkspaceId,
+                normalizedPaymentSourceId,
+                cashPaymentSource.id,
+                tx,
+            )
+
             return mapPaymentSourceResponse({
                 ...existingPaymentSource,
                 deletedAt: archivedAt,
@@ -181,65 +232,28 @@ export class PaymentSourcesService {
     }
 }
 
-function validatePaymentSourceInput(input: PaymentSourceRequestInput): ValidatedPaymentSourceInput {
+function validatePaymentSourceInput(input: PaymentSourceCommand): ValidatedPaymentSourceInput {
     const errors: string[] = []
 
     return {
         name: validateNameValue(input.name, errors),
-        type: validateTypeValue(input.type, errors),
+        type: input.type,
         errors,
     }
 }
 
-function validateNameValue(value: unknown, errors: string[]): string | undefined {
-    if (typeof value !== 'string' || value.trim().length === 0) {
+function validateNameValue(value: string, errors: string[]): string | undefined {
+    if (value.trim().length === 0) {
         errors.push('Name is required')
         return undefined
     }
 
-    return value.trim()
-}
-
-function validateTypeValue(value: unknown, errors: string[]): string | undefined {
-    if (typeof value !== 'string' || value.trim().length === 0) {
-        errors.push('Type is required')
+    const normalized = value.trim()
+    if (normalized.length > 100) {
+        errors.push('Name must be 100 characters or fewer')
         return undefined
     }
-
-    const normalizedValue = value.trim()
-
-    if (!PAYMENT_SOURCE_TYPES.includes(normalizedValue as (typeof PAYMENT_SOURCE_TYPES)[number])) {
-        errors.push(`Type must be one of: ${PAYMENT_SOURCE_TYPES.join(', ')}`)
-        return undefined
-    }
-
-    return normalizedValue
-}
-
-function parseIncludeArchivedValue(value: unknown): boolean {
-    if (value === undefined || value === null) {
-        return false
-    }
-
-    if (typeof value === 'boolean') {
-        return value
-    }
-
-    if (typeof value !== 'string') {
-        throw new BadRequestException('include_archived must be true or false')
-    }
-
-    const normalizedValue = value.trim().toLowerCase()
-
-    if (normalizedValue === 'true') {
-        return true
-    }
-
-    if (normalizedValue === 'false') {
-        return false
-    }
-
-    throw new BadRequestException('include_archived must be true or false')
+    return normalized
 }
 
 function normalizeRequiredValue(value: string, fieldName: string): string {
@@ -258,6 +272,7 @@ function mapPaymentSourceResponse(paymentSource: PaymentSource): PaymentSourceRe
         workspace_id: paymentSource.workspaceId,
         name: paymentSource.name,
         type: paymentSource.type,
+        system_key: paymentSource.systemKey,
         is_archived: paymentSource.deletedAt !== null,
         archived_at: paymentSource.deletedAt,
         created_at: paymentSource.createdAt,

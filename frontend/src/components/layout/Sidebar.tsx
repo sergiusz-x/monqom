@@ -1,44 +1,110 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Receipt,
   PiggyBank,
+  WalletCards,
   Settings,
   Plus,
+  Monitor,
   Sun,
   Moon,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDarkMode } from "@/hooks/useDarkMode";
+import { useTheme, type ThemeMode } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
+import MonqomLogo from "@/components/MonqomLogo";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
+import { useState } from "react";
+import { useToast } from "@/hooks/useToast";
+import { PendingButton } from "@/components/ui/pending-button";
+import type { AppTranslationKey } from "@/i18n";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/transactions", label: "Transactions", icon: Receipt },
-  { to: "/budgets", label: "Budgets", icon: PiggyBank },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
+  {
+    to: "/dashboard",
+    label: "nav.dashboard",
+    icon: LayoutDashboard,
+    end: true,
+  },
+  { to: "/transactions", label: "nav.transactions", icon: Receipt, end: false },
+  { to: "/budgets", label: "nav.budgets", icon: PiggyBank, end: false },
+  {
+    to: "/payment-sources",
+    label: "paymentSources.title",
+    icon: WalletCards,
+    end: false,
+  },
+  { to: "/settings", label: "nav.settings", icon: Settings, end: false },
+] as const;
+
+const themeOptions: Record<
+  ThemeMode,
+  {
+    next: ThemeMode;
+    label: AppTranslationKey;
+    icon: typeof Monitor;
+  }
+> = {
+  system: {
+    next: "light",
+    label: "publicPreferences.system",
+    icon: Monitor,
+  },
+  light: {
+    next: "dark",
+    label: "publicPreferences.light",
+    icon: Sun,
+  },
+  dark: {
+    next: "system",
+    label: "publicPreferences.dark",
+    icon: Moon,
+  },
+};
 
 interface SidebarProps {
   onAddTransaction: () => void;
 }
 
 export default function Sidebar({ onAddTransaction }: SidebarProps) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
-  const { isDark, toggle } = useDarkMode();
+  const { mode, setMode } = useTheme();
+  const currentTheme = themeOptions[mode];
+  const ThemeIcon = currentTheme.icon;
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { showToast } = useToast(6000);
+
+  async function handleLogout() {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      showToast(t("apiErrors.logoutFailed"), "error");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
 
   return (
     <aside
       className="w-56 shrink-0 border-r border-border flex flex-col bg-sidebar"
-      aria-label="Main navigation"
+      aria-label={t("nav.main")}
     >
-      <div className="h-14 flex items-center px-4 border-b border-border">
-        <span className="font-semibold text-lg tracking-tight text-sidebar-foreground">
-          Monqom
-        </span>
-      </div>
+      <Link
+        to="/dashboard"
+        className="flex h-14 items-center gap-2 border-b border-border px-4 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        aria-label={t("nav.goToDashboard")}
+      >
+        <MonqomLogo size={22} />
+        <span className="text-lg font-semibold tracking-tight">Monqom</span>
+      </Link>
+
+      <WorkspaceSwitcher className="mx-3 mt-3 text-sidebar-foreground" />
 
       <nav className="flex-1 px-2 py-4 space-y-1">
         {navItems.map(({ to, label, icon: Icon, end }) => (
@@ -56,7 +122,7 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
             }
           >
             <Icon size={16} aria-hidden="true" />
-            {label}
+            {t(label)}
           </NavLink>
         ))}
       </nav>
@@ -68,7 +134,7 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
           onClick={onAddTransaction}
         >
           <Plus size={16} aria-hidden="true" />
-          Add Transaction
+          {t("nav.addTransaction")}
         </Button>
 
         <div className="border-t border-border pt-3">
@@ -84,30 +150,29 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
           )}
           <div className="flex items-center gap-2">
             <Button
+              type="button"
               variant="ghost"
               size="icon"
-              onClick={toggle}
-              aria-label={
-                isDark ? "Switch to light mode" : "Switch to dark mode"
-              }
+              className="shrink-0"
+              aria-label={t("publicPreferences.cycleTheme", {
+                theme: t(currentTheme.label),
+              })}
+              title={t(currentTheme.label)}
+              onClick={() => setMode(currentTheme.next)}
             >
-              {isDark ? (
-                <Sun size={16} aria-hidden="true" />
-              ) : (
-                <Moon size={16} aria-hidden="true" />
-              )}
+              <ThemeIcon size={16} aria-hidden="true" />
             </Button>
-            <Button
+            <PendingButton
               variant="ghost"
               size="sm"
-              onClick={() => {
-                logout().catch(() => {});
-              }}
+              onClick={() => void handleLogout()}
+              isPending={isLoggingOut}
+              pendingLabel={t("auth.loggingOut")}
               className="flex-1 justify-start gap-2 text-muted-foreground hover:text-foreground"
             >
               <LogOut size={16} aria-hidden="true" />
-              Log out
-            </Button>
+              {t("nav.logout")}
+            </PendingButton>
           </div>
         </div>
       </div>

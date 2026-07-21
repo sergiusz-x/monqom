@@ -69,7 +69,13 @@ describe("LoginPage form validation", () => {
 
   it("shows server error on login failure", async () => {
     mockLogin.mockRejectedValueOnce({
-      response: { data: { message: "Invalid email or password" } },
+      response: {
+        status: 401,
+        data: {
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid email or password",
+        },
+      },
     });
     renderWithAuth(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/email/i), "user@example.com");

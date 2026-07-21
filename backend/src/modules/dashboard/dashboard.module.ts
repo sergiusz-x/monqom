@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common'
-import { AuthRepository } from '../auth/auth.repository'
+import { AuthCoreModule } from '../auth/auth-core.module'
 import { WorkspaceModule } from '../workspace/workspace.module'
-import { SessionGuard } from '../../shared/guards/session.guard'
 import { DashboardController } from './dashboard.controller'
 import { DashboardRepository } from './dashboard.repository'
 import { DashboardService } from './dashboard.service'
+import { TransactionsModule } from '../transactions/transactions.module'
 
 @Module({
-    imports: [WorkspaceModule],
+    imports: [AuthCoreModule, WorkspaceModule, TransactionsModule],
     controllers: [DashboardController],
-    providers: [DashboardService, DashboardRepository, AuthRepository, SessionGuard],
+    providers: [DashboardService, DashboardRepository],
 })
 export class DashboardModule {}

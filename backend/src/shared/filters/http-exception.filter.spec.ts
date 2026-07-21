@@ -54,6 +54,7 @@ describe('AllExceptionsFilter', () => {
                 statusCode: HttpStatus.NOT_FOUND,
                 message: 'Not Found',
                 error: 'HttpException',
+                code: 'RESOURCE_NOT_FOUND',
             }),
         )
         expect(logger.error).not.toHaveBeenCalled()
@@ -75,6 +76,24 @@ describe('AllExceptionsFilter', () => {
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: ['a should not be empty'],
                 error: 'Bad Request',
+                code: 'VALIDATION_ERROR',
+            }),
+        )
+    })
+
+    it('preserves a stable application error code', () => {
+        const exception = new HttpException(
+            { code: 'WORKSPACE_BASE_CURRENCY_LOCKED', message: 'Currency is locked' },
+            HttpStatus.CONFLICT,
+        )
+
+        filter.catch(exception, mockArgumentsHost as ArgumentsHost)
+
+        expect(mockResponse.json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                statusCode: HttpStatus.CONFLICT,
+                code: 'WORKSPACE_BASE_CURRENCY_LOCKED',
+                message: 'Currency is locked',
             }),
         )
     })
@@ -90,6 +109,7 @@ describe('AllExceptionsFilter', () => {
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: 'Internal server error',
                 error: 'Internal Server Error',
+                code: 'INTERNAL_ERROR',
             }),
         )
         expect(logger.error).toHaveBeenCalledWith(

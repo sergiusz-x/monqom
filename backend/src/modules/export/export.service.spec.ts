@@ -34,16 +34,16 @@ describe('ExportService', () => {
         const exportFile = await service.exportTransactions(
             {
                 format: 'csv',
-                date_from: '2026-03-21',
-                date_to: '2026-03-22',
+                dateFrom: '2026-03-21',
+                dateTo: '2026-03-22',
             },
             ' workspace-1 ',
         )
 
         await expect(readExportChunks(exportFile.chunks)).resolves.toBe(
             [
-                'date,amount,category,notes,tags,payment_source',
-                '2026-03-22T09:30:00.000Z,40.50,Food,"Lunch, with team","commute, food",Main Card',
+                'date,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
+                '2026-03-22,40.50,EUR,44.10,USD,1.0888888889,2026-03-21,frankfurter,Food,Team lunch,"Lunch, with team","commute, food",Main Card',
                 '',
             ].join('\n'),
         )
@@ -54,7 +54,7 @@ describe('ExportService', () => {
         expect(transactionsRepository.listTransactionsForExport).toHaveBeenCalledWith({
             workspaceId: 'workspace-1',
             dateFrom: new Date('2026-03-21T00:00:00.000Z'),
-            dateTo: new Date('2026-03-22T23:59:59.999Z'),
+            dateTo: new Date('2026-03-22T00:00:00.000Z'),
             limit: 500,
             offset: 0,
         })
@@ -74,8 +74,8 @@ describe('ExportService', () => {
 
         await expect(readExportChunks(exportFile.chunks)).resolves.toBe(
             [
-                'date,amount,category,notes,tags,payment_source',
-                `2026-03-22T09:30:00.000Z,40.50,'=Category,' +SUM(A1:A2),"'-unsafe,  @meta",'=Wallet`,
+                'date,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
+                `2026-03-22,40.50,EUR,44.10,USD,1.0888888889,2026-03-21,frankfurter,"'=Category",Team lunch,"' +SUM(A1:A2)","'-unsafe,  @meta","'=Wallet"`,
                 '',
             ].join('\n'),
         )
@@ -142,13 +142,13 @@ describe('ExportService', () => {
         })
     })
 
-    it('rejects invalid export query params before hitting the repository', async () => {
+    it('rejects an inverted export date range before hitting the repository', async () => {
         await expect(
             service.exportTransactions(
                 {
-                    format: 'xml',
-                    date_from: '2026-03-24',
-                    date_to: '2026-03-23',
+                    format: 'csv',
+                    dateFrom: '2026-03-24',
+                    dateTo: '2026-03-23',
                 },
                 'workspace-1',
             ),
@@ -164,7 +164,14 @@ function createExportTransactionRecord(
     return {
         date: new Date('2026-03-22T09:30:00.000Z'),
         amount: 4050,
+        currency: 'EUR',
+        base_amount: 4410,
+        base_currency: 'USD',
+        fx_rate: 1.0888888889,
+        fx_rate_date: new Date('2026-03-21T00:00:00.000Z'),
+        fx_source: 'frankfurter',
         category: 'Food',
+        description: 'Team lunch',
         notes: 'Lunch',
         tags: ['commute', 'food'],
         payment_source: 'Main Card',

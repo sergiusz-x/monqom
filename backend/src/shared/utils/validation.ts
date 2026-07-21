@@ -14,31 +14,31 @@ const COMMON_PASSWORD_PATTERNS = [
 ] as const
 
 export interface RegistrationValidationInput {
-    email?: unknown
-    name?: unknown
-    password?: unknown
+    email: string
+    name: string
+    password: string
 }
 
 export interface EmailValidationInput {
-    email?: unknown
+    email: string
 }
 
 export interface LoginValidationInput {
-    email?: unknown
-    password?: unknown
+    email: string
+    password: string
 }
 
 export interface VerificationTokenValidationInput {
-    token?: unknown
+    token: string
 }
 
 export interface ResetPasswordValidationInput {
-    token?: unknown
-    newPassword?: unknown
+    token: string
+    newPassword: string
 }
 
 export interface CurrentPasswordValidationInput {
-    currentPassword?: unknown
+    currentPassword: string
 }
 
 export interface RegistrationValidationResult {
@@ -125,7 +125,7 @@ export function validateLoginInput(input: LoginValidationInput): LoginValidation
     const email = validateEmailValue(input.email, errors)
 
     let password: string | undefined
-    if (typeof input.password !== 'string' || input.password.length === 0) {
+    if (input.password.length === 0) {
         errors.push('Password is required')
     } else {
         password = input.password
@@ -144,7 +144,7 @@ export function validateVerificationTokenInput(
     const errors: string[] = []
 
     let token: string | undefined
-    if (typeof input.token !== 'string' || input.token.trim().length === 0) {
+    if (input.token.trim().length === 0) {
         errors.push('Token is required')
     } else {
         token = input.token.trim()
@@ -162,7 +162,7 @@ export function validateResetPasswordInput(
     const { token, errors } = validateVerificationTokenInput(input)
 
     let newPassword: string | undefined
-    if (typeof input.newPassword !== 'string' || input.newPassword.length === 0) {
+    if (input.newPassword.length === 0) {
         errors.push('New password is required')
     } else {
         newPassword = input.newPassword
@@ -182,7 +182,7 @@ export function validateCurrentPasswordInput(
     const errors: string[] = []
 
     let currentPassword: string | undefined
-    if (typeof input.currentPassword !== 'string' || input.currentPassword.length === 0) {
+    if (input.currentPassword.length === 0) {
         errors.push('Current password is required')
     } else {
         currentPassword = input.currentPassword
@@ -202,7 +202,7 @@ export function validateRegistrationInput(
     const email = validateEmailValue(input.email, errors)
 
     let name: string | undefined
-    if (typeof input.name !== 'string' || input.name.trim().length === 0) {
+    if (input.name.trim().length === 0) {
         errors.push('Name is required')
     } else {
         name = input.name.trim()
@@ -215,7 +215,7 @@ export function validateRegistrationInput(
     }
 
     let password: string | undefined
-    if (typeof input.password !== 'string' || input.password.length === 0) {
+    if (input.password.length === 0) {
         errors.push('Password is required')
     } else {
         password = input.password
@@ -289,8 +289,8 @@ export function validateMoneyAmountValue(
     return amountCents
 }
 
-function validateEmailValue(input: unknown, errors: string[]): string | undefined {
-    if (typeof input !== 'string' || input.trim().length === 0) {
+function validateEmailValue(input: string, errors: string[]): string | undefined {
+    if (input.trim().length === 0) {
         errors.push('Email is required')
         return undefined
     }

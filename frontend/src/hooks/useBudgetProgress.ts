@@ -1,62 +1,27 @@
-import { useEffect, useReducer } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { BudgetProgressItem } from "@/types/budget";
+import { queryKeys } from "@/lib/query-client";
+import type { ApiBudgetProgressItem } from "@/types/api-contracts";
+import { mapBudgetProgressItem } from "@/lib/api-mappers";
+import { getApiErrorMessage } from "@/lib/api-errors";
 
-interface State {
-  items: BudgetProgressItem[];
-  isLoading: boolean;
-  error: string | null;
-}
-
-type Action =
-  | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: BudgetProgressItem[] }
-  | { type: "FETCH_ERROR" };
-
-function reducer(_state: State, action: Action): State {
-  switch (action.type) {
-    case "FETCH_START":
-      return { items: [], isLoading: true, error: null };
-    case "FETCH_SUCCESS":
-      return { items: action.payload, isLoading: false, error: null };
-    case "FETCH_ERROR":
-      return {
-        items: [],
-        isLoading: false,
-        error: "Failed to load budget progress",
-      };
-  }
-}
-
-const initialState: State = { items: [], isLoading: false, error: null };
-
-export function useBudgetProgress(workspaceId: string, month: string): State {
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  useEffect(() => {
-    if (!workspaceId || !month) return;
-
-    let cancelled = false;
-    dispatch({ type: "FETCH_START" });
-
-    api
-      .get<BudgetProgressItem[]>(
+export function useBudgetProgress(workspaceId: string, month: string) {
+  const query = useQuery({
+    queryKey: [...queryKeys.budgets(workspaceId), "progress", month],
+    enabled: Boolean(workspaceId && month),
+    queryFn: async ({ signal }) => {
+      const response = await api.get<ApiBudgetProgressItem[]>(
         `/workspaces/${workspaceId}/budgets/progress`,
-        {
-          params: { month },
-        },
-      )
-      .then((res) => {
-        if (!cancelled) dispatch({ type: "FETCH_SUCCESS", payload: res.data });
-      })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: "FETCH_ERROR" });
-      });
+        { params: { month }, signal },
+      );
+      return response.data.map(mapBudgetProgressItem);
+    },
+  });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId, month]);
-
-  return state;
+  return {
+    items: query.data ?? [],
+    isLoading: query.isPending,
+    error: query.isError ? getApiErrorMessage(query.error) : null,
+    retry: query.refetch,
+  };
 }

@@ -64,7 +64,7 @@ describe('BudgetsService', () => {
         ] as never)
 
         await expect(
-            service.listBudgets({ year: '2026', month: '3' }, ' workspace-1 '),
+            service.listBudgets({ year: 2026, month: 3 }, ' workspace-1 '),
         ).resolves.toEqual([
             {
                 id: 'budget-1',
@@ -85,14 +85,6 @@ describe('BudgetsService', () => {
             3,
             prisma,
         )
-    })
-
-    it('rejects invalid month and year filters when listing budgets', async () => {
-        await expect(
-            service.listBudgets({ year: '0', month: '13' }, 'workspace-1'),
-        ).rejects.toBeInstanceOf(BadRequestException)
-
-        expect(budgetsRepository.listBudgetsByMonth).not.toHaveBeenCalled()
     })
 
     it('returns progress rows for budgets and no-budget spending categories', async () => {
@@ -162,6 +154,7 @@ describe('BudgetsService', () => {
             {
                 category_id: 'category-parent-food',
                 category_name: 'Food',
+                category_system_key: null,
                 budget_amount: null,
                 limit: null,
                 spent: 620,
@@ -171,6 +164,7 @@ describe('BudgetsService', () => {
             {
                 category_id: 'category-child-dining',
                 category_name: 'Dining Out',
+                category_system_key: null,
                 budget_amount: null,
                 limit: null,
                 spent: 120,
@@ -180,6 +174,7 @@ describe('BudgetsService', () => {
             {
                 category_id: 'category-child-groceries',
                 category_name: 'Groceries',
+                category_system_key: null,
                 budget_amount: 800,
                 limit: 800,
                 spent: 500,
@@ -189,6 +184,7 @@ describe('BudgetsService', () => {
             {
                 category_id: 'category-parent-utilities',
                 category_name: 'Utilities',
+                category_system_key: null,
                 budget_amount: null,
                 limit: null,
                 spent: 65,
@@ -198,6 +194,7 @@ describe('BudgetsService', () => {
             {
                 category_id: 'category-child-internet',
                 category_name: 'Internet',
+                category_system_key: null,
                 budget_amount: null,
                 limit: null,
                 spent: 65,
@@ -255,10 +252,10 @@ describe('BudgetsService', () => {
         await expect(
             service.createBudget(
                 {
-                    amount: '800',
-                    category_id: ' category-child-groceries ',
-                    year: '2026',
-                    month: '3',
+                    amount: 800,
+                    categoryId: ' category-child-groceries ',
+                    year: 2026,
+                    month: 3,
                 },
                 ' workspace-1 ',
                 ' user-1 ',
@@ -313,7 +310,7 @@ describe('BudgetsService', () => {
             service.createBudget(
                 {
                     amount: 125,
-                    category_id: 'category-parent-food',
+                    categoryId: 'category-parent-food',
                     year: 2026,
                     month: 3,
                 },
@@ -338,7 +335,7 @@ describe('BudgetsService', () => {
             service.createBudget(
                 {
                     amount: 125,
-                    category_id: 'category-child-groceries',
+                    categoryId: 'category-child-groceries',
                     year: 2026,
                     month: 3,
                 },
@@ -350,14 +347,14 @@ describe('BudgetsService', () => {
         expect(budgetsRepository.createBudget).not.toHaveBeenCalled()
     })
 
-    it('rejects decimal years, invalid months, and non-positive amounts when creating a budget', async () => {
+    it('rejects a non-positive amount before creating a budget', async () => {
         await expect(
             service.createBudget(
                 {
-                    amount: '0',
-                    category_id: 'category-child-groceries',
-                    year: '2026.5',
-                    month: '0',
+                    amount: 0,
+                    categoryId: 'category-child-groceries',
+                    year: 2026,
+                    month: 3,
                 },
                 'workspace-1',
                 'user-1',
@@ -373,8 +370,8 @@ describe('BudgetsService', () => {
         await expect(
             service.createBudget(
                 {
-                    amount: '21474836.48',
-                    category_id: 'category-child-groceries',
+                    amount: 21474836.48,
+                    categoryId: 'category-child-groceries',
                     year: 2026,
                     month: 3,
                 },
@@ -419,7 +416,7 @@ describe('BudgetsService', () => {
             service.updateBudget(
                 {
                     amount: 75.5,
-                    category_id: 'category-child-transport',
+                    categoryId: 'category-child-transport',
                     year: 2026,
                     month: 4,
                 },
@@ -460,7 +457,7 @@ describe('BudgetsService', () => {
             service.updateBudget(
                 {
                     amount: 21474836.48,
-                    category_id: 'category-child-groceries',
+                    categoryId: 'category-child-groceries',
                     year: 2026,
                     month: 3,
                 },

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { CategorySelector } from "@/components/CategorySelector";
-import type { Category } from "@/types/category";
+import type { ApiCategory } from "@/types/api-contracts";
 
 vi.mock("@/lib/api", () => ({
   default: {
@@ -14,7 +15,7 @@ vi.mock("@/lib/api", () => ({
 import api from "@/lib/api";
 const mockApi = api as unknown as { get: ReturnType<typeof vi.fn> };
 
-const mockCategories: Category[] = [
+const mockCategories: ApiCategory[] = [
   {
     id: "food",
     name: "Food",
@@ -117,6 +118,14 @@ describe("CategorySelector open/close", () => {
     renderSelector();
     await userEvent.click(screen.getByRole("combobox"));
     expect(screen.getByRole("listbox")).toBeInTheDocument();
+    expect(screen.getByRole("listbox").parentElement).toHaveAttribute(
+      "data-slot",
+      "category-dropdown",
+    );
+    expect(
+      screen.getByRole("listbox").closest("[data-base-ui-portal]")
+        ?.parentElement,
+    ).toBe(document.body);
   });
 
   it("closes dropdown when trigger is clicked again", async () => {
@@ -128,9 +137,25 @@ describe("CategorySelector open/close", () => {
 
   it("closes on Escape key", async () => {
     renderSelector();
-    await userEvent.click(screen.getByRole("combobox"));
+    const trigger = screen.getByRole("combobox");
+    await userEvent.click(trigger);
     expect(screen.getByRole("listbox")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes when focus moves through a click outside", async () => {
+    render(
+      <>
+        <CategorySelector workspaceId="ws-1" value={null} onChange={vi.fn()} />
+        <button type="button">Outside</button>
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole("combobox"));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Outside" }));
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
@@ -244,7 +269,7 @@ describe("CategorySelector search", () => {
 
     await userEvent.type(screen.getByLabelText("Search categories"), "zzz");
 
-    expect(screen.getByText("No categories found")).toBeInTheDocument();
+    expect(screen.getByText("No categories found.")).toBeInTheDocument();
   });
 
   it("resets search when dropdown closes", async () => {
@@ -371,7 +396,7 @@ describe("CategorySelector loading and error", () => {
     mockApi.get.mockReturnValue(new Promise(() => {}));
     renderSelector();
     await userEvent.click(screen.getByRole("combobox"));
-    expect(screen.getByText("Loading categories…")).toBeInTheDocument();
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("shows error message when API request fails", async () => {
@@ -379,7 +404,12 @@ describe("CategorySelector loading and error", () => {
     renderSelector();
     await userEvent.click(screen.getByRole("combobox"));
     await waitFor(() => {
-      expect(screen.getByText("Failed to load categories")).toBeInTheDocument();
+      expect(
+        screen.getByText("Something went wrong. Please try again."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Try again" }),
+      ).toBeInTheDocument();
     });
   });
 });

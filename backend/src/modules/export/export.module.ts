@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common'
-import { AuthRepository } from '../auth/auth.repository'
+import { AuthCoreModule } from '../auth/auth-core.module'
 import { TransactionsModule } from '../transactions/transactions.module'
 import { WorkspaceModule } from '../workspace/workspace.module'
-import { SessionGuard } from '../../shared/guards/session.guard'
 import { ExportController } from './export.controller'
 import { ExportService } from './export.service'
 
 @Module({
-    imports: [WorkspaceModule, TransactionsModule],
+    imports: [AuthCoreModule, WorkspaceModule, TransactionsModule],
     controllers: [ExportController],
-    providers: [ExportService, AuthRepository, SessionGuard],
+    providers: [ExportService],
 })
 export class ExportModule {}

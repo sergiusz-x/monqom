@@ -1,80 +1,126 @@
-import { useEffect, useReducer } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { queryKeys } from "@/lib/query-client";
+import { getApiErrorMessage } from "@/lib/api-errors";
 
 export interface WorkspaceInfo {
   id: string;
   name: string;
   timezone: string;
+  baseCurrency: string;
+  lastPaymentSourceId: string | null;
+  baseCurrencyLocked: boolean;
 }
 
-interface State {
+interface WorkspaceContextValue {
+  workspaces: WorkspaceInfo[];
   workspaceId: string | null;
   workspace: WorkspaceInfo | null;
   isLoading: boolean;
   error: string | null;
+  refetch: () => Promise<void>;
+  patchWorkspace: (patch: Partial<WorkspaceInfo>) => void;
+  setActiveWorkspace: (workspaceId: string) => void;
 }
 
-type Action =
-  | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: WorkspaceInfo | null }
-  | { type: "FETCH_ERROR" };
+const ACTIVE_WORKSPACE_STORAGE_KEY = "monqom-active-workspace";
+const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+const EMPTY_WORKSPACES: WorkspaceInfo[] = [];
 
-function reducer(_state: State, action: Action): State {
-  switch (action.type) {
-    case "FETCH_START":
-      return {
-        workspaceId: null,
-        workspace: null,
-        isLoading: true,
-        error: null,
-      };
-    case "FETCH_SUCCESS":
-      return {
-        workspaceId: action.payload?.id ?? null,
-        workspace: action.payload,
-        isLoading: false,
-        error: null,
-      };
-    case "FETCH_ERROR":
-      return {
-        workspaceId: null,
-        workspace: null,
-        isLoading: false,
-        error: "Failed to load workspace",
-      };
-  }
+function readStoredWorkspaceId(): string | null {
+  return localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
 }
 
-const initialState: State = {
-  workspaceId: null,
-  workspace: null,
-  isLoading: false,
-  error: null,
-};
-
-export function useWorkspace(): State {
-  const [state, dispatch] = useReducer(reducer, initialState);
+export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(
+    readStoredWorkspaceId,
+  );
+  const query = useQuery({
+    queryKey: queryKeys.workspaces,
+    queryFn: async ({ signal }) => {
+      const response = await api.get<WorkspaceInfo[]>("/workspaces", {
+        signal,
+      });
+      return response.data;
+    },
+  });
+  const workspaces = query.data ?? EMPTY_WORKSPACES;
+  const workspace = useMemo(
+    () =>
+      workspaces.find((item) => item.id === activeWorkspaceId) ??
+      workspaces.at(0) ??
+      null,
+    [activeWorkspaceId, workspaces],
+  );
+  const workspaceId = workspace?.id ?? null;
 
   useEffect(() => {
-    let cancelled = false;
-    dispatch({ type: "FETCH_START" });
+    if (!query.isSuccess) return;
+    if (workspaceId) {
+      localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspaceId);
+    } else {
+      localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+    }
+  }, [query.isSuccess, workspaceId]);
 
-    api
-      .get<WorkspaceInfo[]>("/workspaces")
-      .then((res) => {
-        if (!cancelled) {
-          const first = res.data[0];
-          dispatch({ type: "FETCH_SUCCESS", payload: first ?? null });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: "FETCH_ERROR" });
-      });
+  const patchWorkspace = useCallback(
+    (patch: Partial<WorkspaceInfo>) => {
+      if (!workspaceId) return;
+      queryClient.setQueryData<WorkspaceInfo[]>(
+        queryKeys.workspaces,
+        (current = []) =>
+          current.map((item) =>
+            item.id === workspaceId ? { ...item, ...patch } : item,
+          ),
+      );
+    },
+    [queryClient, workspaceId],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const setActiveWorkspace = useCallback(
+    (nextWorkspaceId: string) => {
+      if (!workspaces.some((item) => item.id === nextWorkspaceId)) return;
+      localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, nextWorkspaceId);
+      setActiveWorkspaceId(nextWorkspaceId);
+    },
+    [workspaces],
+  );
+
+  const refetch = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
+
+  const value: WorkspaceContextValue = {
+    workspaces,
+    workspaceId,
+    workspace,
+    isLoading: query.isPending,
+    error: query.isError ? getApiErrorMessage(query.error) : null,
+    refetch,
+    patchWorkspace,
+    setActiveWorkspace,
+  };
+
+  return createElement(WorkspaceContext.Provider, { value }, children);
+}
+
+export function useWorkspace(): WorkspaceContextValue {
+  const state = useContext(WorkspaceContext);
+
+  if (!state) {
+    throw new Error("useWorkspace must be used within WorkspaceProvider");
+  }
 
   return state;
 }

@@ -1,27 +1,15 @@
-import type { TransactionItem } from "@/types/transaction";
+import type { Transaction } from "@/types/transaction";
+import { formatCurrency } from "@/lib/money";
+import { useTranslation } from "react-i18next";
+import { formatShortDate } from "@/lib/date-only";
+import { Button } from "@/components/ui/button";
+import { cardVariants } from "@/components/ui/card";
 
 interface TransactionCardsProps {
-  transactions: TransactionItem[];
+  transactions: Transaction[];
   categoryMap: Record<string, string>;
   paymentSourceMap: Record<string, string>;
   onOpen: (transactionId: string) => void;
-}
-
-function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export function TransactionCards({
@@ -30,32 +18,35 @@ export function TransactionCards({
   paymentSourceMap,
   onOpen,
 }: TransactionCardsProps) {
+  const { t } = useTranslation();
   return (
     <div data-testid="transaction-cards" className="space-y-3 md:hidden">
       {transactions.map((transaction) => {
-        const paymentSourceLabel = transaction.payment_source_id
-          ? (paymentSourceMap[transaction.payment_source_id] ??
-            transaction.payment_source_id)
-          : "None";
+        const paymentSourceLabel = transaction.paymentSourceId
+          ? (paymentSourceMap[transaction.paymentSourceId] ??
+            transaction.paymentSourceId)
+          : t("common.none");
 
         return (
-          <button
+          <Button
             key={transaction.id}
             type="button"
             onClick={() => onOpen(transaction.id)}
-            className="w-full rounded-lg border border-border bg-card p-4 text-left"
+            variant="ghost"
+            className={cardVariants({
+              className:
+                "h-auto w-full flex-col items-stretch text-left hover:bg-muted/30",
+            })}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-medium">
-                {categoryMap[transaction.category_id] ??
-                  transaction.category_id}
-              </p>
+              <p className="font-medium">{transaction.description}</p>
               <p className="font-semibold">
-                {formatAmount(transaction.amount, transaction.currency)}
+                {formatCurrency(transaction.amount, transaction.currency)}
               </p>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              {formatDate(transaction.date)}
+              {formatShortDate(transaction.date)} &middot;{" "}
+              {categoryMap[transaction.categoryId] ?? transaction.categoryId}
             </p>
             {transaction.notes && (
               <p className="mt-2 text-sm text-muted-foreground">
@@ -65,7 +56,7 @@ export function TransactionCards({
             <p className="mt-2 text-xs text-muted-foreground">
               {paymentSourceLabel}
             </p>
-          </button>
+          </Button>
         );
       })}
     </div>

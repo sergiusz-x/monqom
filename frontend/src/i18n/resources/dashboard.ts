@@ -1,0 +1,71 @@
+import type { TranslationShape } from "./types";
+
+export const enDashboard = {
+  dashboard: {
+    title: "Dashboard",
+    loading: "Loading dashboard",
+    totalSpending: "Total spending",
+    summary: "Monthly spending summary",
+    monthSelector: "Month selector",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    change: "Change",
+    noPrevious: "No previous month data",
+    noChange: "No change from previous month",
+    changeVsPrevious: "{{value}}% {{direction}} vs previous month",
+    up: "up",
+    down: "down",
+    trend: "Spending trend",
+    trendDescription: "Monthly spending for the last 6 months",
+    monthlyAmounts: "Monthly spending amounts",
+    spendingLabel: "{{month}} spending {{amount}}",
+    byCategory: "Spending by category",
+    total: "{{amount}} total",
+    noCategory: "No category spending yet",
+    noCategoryDescription:
+      "Add expenses for this month to see your category breakdown.",
+    spendingShare: "{{category}} spending share {{percentage}}",
+    categoryBreakdownLabel: "{{category}}: {{amount}}, {{percentage}}",
+    recent: "Recent transactions",
+    viewAll: "View all",
+    noTransactions: "No transactions yet",
+    noTransactionsDescription:
+      "Add your first transaction to start tracking monthly spending.",
+    uncategorized: "Uncategorized",
+  },
+} as const;
+
+export const plDashboard = {
+  dashboard: {
+    title: "Pulpit",
+    loading: "Ładowanie pulpitu",
+    totalSpending: "Łączne wydatki",
+    summary: "Podsumowanie miesięcznych wydatków",
+    monthSelector: "Wybór miesiąca",
+    previousMonth: "Poprzedni miesiąc",
+    nextMonth: "Następny miesiąc",
+    change: "Zmiana",
+    noPrevious: "Brak danych z poprzedniego miesiąca",
+    noChange: "Bez zmian względem poprzedniego miesiąca",
+    changeVsPrevious: "{{value}}% {{direction}} względem poprzedniego miesiąca",
+    up: "więcej",
+    down: "mniej",
+    trend: "Trend wydatków",
+    trendDescription: "Miesięczne wydatki z ostatnich 6 miesięcy",
+    monthlyAmounts: "Miesięczne kwoty wydatków",
+    spendingLabel: "Wydatki w {{month}}: {{amount}}",
+    byCategory: "Wydatki według kategorii",
+    total: "Łącznie {{amount}}",
+    noCategory: "Brak wydatków w kategoriach",
+    noCategoryDescription:
+      "Dodaj wydatki w tym miesiącu, aby zobaczyć podział na kategorie.",
+    spendingShare: "Udział wydatków {{category}}: {{percentage}}",
+    categoryBreakdownLabel: "{{category}}: {{amount}}, {{percentage}}",
+    recent: "Ostatnie transakcje",
+    viewAll: "Zobacz wszystkie",
+    noTransactions: "Brak transakcji",
+    noTransactionsDescription:
+      "Dodaj pierwszą transakcję, aby zacząć śledzić miesięczne wydatki.",
+    uncategorized: "Bez kategorii",
+  },
+} as const satisfies TranslationShape<typeof enDashboard>;

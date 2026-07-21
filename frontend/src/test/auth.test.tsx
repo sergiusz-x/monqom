@@ -10,6 +10,8 @@ import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ResendVerificationPage from "@/pages/ResendVerificationPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { ToastProvider } from "@/contexts/ToastContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock the api module
 vi.mock("@/lib/api", () => {
@@ -32,6 +34,12 @@ import api from "@/lib/api";
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
+  interceptors: {
+    response: {
+      use: ReturnType<typeof vi.fn>;
+      eject: ReturnType<typeof vi.fn>;
+    };
+  };
 };
 
 const testUser: User = {
@@ -47,6 +55,21 @@ const testUser: User = {
 function renderWithRouter(element: React.ReactNode, initialPath = "/") {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>{element}</MemoryRouter>,
+  );
+}
+
+function renderAuthProvider(children: React.ReactNode) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <MemoryRouter>
+          <AuthProvider>{children}</AuthProvider>
+        </MemoryRouter>
+      </ToastProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -79,16 +102,10 @@ describe("AuthProvider", () => {
   it("calls /auth/me on mount and sets user on success", async () => {
     mockApi.get.mockResolvedValueOnce({ data: testUser });
 
-    render(
-      <MemoryRouter>
-        <AuthProvider>
-          <AuthContext.Consumer>
-            {(ctx) => (
-              <span data-testid="name">{ctx?.user?.name ?? "none"}</span>
-            )}
-          </AuthContext.Consumer>
-        </AuthProvider>
-      </MemoryRouter>,
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="name">{ctx?.user?.name ?? "none"}</span>}
+      </AuthContext.Consumer>,
     );
 
     await waitFor(() => {
@@ -100,16 +117,10 @@ describe("AuthProvider", () => {
   it("sets user to null when /auth/me returns 401", async () => {
     mockApi.get.mockRejectedValueOnce({ response: { status: 401 } });
 
-    render(
-      <MemoryRouter>
-        <AuthProvider>
-          <AuthContext.Consumer>
-            {(ctx) => (
-              <span data-testid="name">{ctx?.user?.name ?? "none"}</span>
-            )}
-          </AuthContext.Consumer>
-        </AuthProvider>
-      </MemoryRouter>,
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="name">{ctx?.user?.name ?? "none"}</span>}
+      </AuthContext.Consumer>,
     );
 
     await waitFor(() => {
@@ -120,21 +131,41 @@ describe("AuthProvider", () => {
   it("transitions isLoading from true to false after mount check", async () => {
     mockApi.get.mockResolvedValueOnce({ data: testUser });
 
-    render(
-      <MemoryRouter>
-        <AuthProvider>
-          <AuthContext.Consumer>
-            {(ctx) => (
-              <span data-testid="loading">{String(ctx?.isLoading)}</span>
-            )}
-          </AuthContext.Consumer>
-        </AuthProvider>
-      </MemoryRouter>,
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="loading">{String(ctx?.isLoading)}</span>}
+      </AuthContext.Consumer>,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("loading").textContent).toBe("false");
     });
+  });
+
+  it("clears an active session and announces expiry after a protected 401", async () => {
+    mockApi.get.mockResolvedValueOnce({ data: testUser });
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="name">{ctx?.user?.name ?? "none"}</span>}
+      </AuthContext.Consumer>,
+    );
+    await screen.findByText("Test User");
+
+    const rejectHandler =
+      mockApi.interceptors.response.use.mock.calls.at(-1)?.[1];
+    await expect(
+      rejectHandler({
+        response: { status: 401 },
+        config: { url: "/workspaces" },
+      }),
+    ).rejects.toBeDefined();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("name")).toHaveTextContent("none"),
+    );
+    expect(
+      screen.getByText("Your session has expired. Sign in again."),
+    ).toBeInTheDocument();
   });
 });
 
@@ -148,7 +179,7 @@ describe("ProtectedRoute", () => {
 
   it("redirects to /login when user is null", () => {
     renderWithAuth(<ProtectedRoute />, { user: null, isLoading: false });
-    // ProtectedRoute renders Navigate to /login — loading spinner must not appear
+    // ProtectedRoute renders Navigate to /login - loading spinner must not appear
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
   });
 });

@@ -9,6 +9,8 @@ import { validateMoneyAmountValue } from '../../shared/utils/validation'
 import { Budget } from '@prisma/client'
 import { BudgetsPersistenceClient, BudgetsRepository } from './budgets.repository'
 import { calculateBudgetProgress } from './budget-progress.calculator'
+import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
+import { WorkspaceService } from '../workspace/workspace.service'
 
 const BUDGET_ALREADY_EXISTS_MESSAGE = 'Budget already exists for category and month'
 const BUDGET_CATEGORY_CHILD_REQUIRED_MESSAGE = 'Budget category must be a child category'
@@ -16,22 +18,22 @@ const BUDGET_MAX_AMOUNT_CENTS = 2147483647
 const BUDGET_MAX_AMOUNT_MESSAGE = 'Amount must be less than or equal to 21474836.47'
 const BUDGET_NOT_FOUND_MESSAGE = 'Budget not found'
 const CATEGORY_NOT_FOUND_MESSAGE = 'Category not found'
-const DEFAULT_BUDGET_CURRENCY = 'USD'
 
-export interface BudgetRequestInput {
-    amount?: unknown
-    category_id?: unknown
-    year?: unknown
-    month?: unknown
+export interface BudgetCommand {
+    amount: number
+    currency?: string
+    categoryId: string
+    year: number
+    month: number
 }
 
-export interface ListBudgetsRequestInput {
-    year?: unknown
-    month?: unknown
+export interface ListBudgetsCommand {
+    year: number
+    month: number
 }
 
-export interface ListBudgetProgressRequestInput {
-    month?: unknown
+export interface ListBudgetProgressCommand {
+    month: string
 }
 
 export interface BudgetResponse {
@@ -49,6 +51,7 @@ export interface BudgetResponse {
 export interface BudgetProgressResponse {
     category_id: string
     category_name: string
+    category_system_key: string | null
     budget_amount: number | null
     limit: number | null
     spent: number
@@ -76,12 +79,11 @@ export class BudgetsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly budgetsRepository: BudgetsRepository,
+        private readonly currencyService?: CurrencyService,
+        private readonly workspaceService?: WorkspaceService,
     ) {}
 
-    async listBudgets(
-        input: ListBudgetsRequestInput,
-        workspaceId: string,
-    ): Promise<BudgetResponse[]> {
+    async listBudgets(input: ListBudgetsCommand, workspaceId: string): Promise<BudgetResponse[]> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const validatedInput = validateBudgetInput(input)
 
@@ -104,7 +106,7 @@ export class BudgetsService {
     }
 
     async listBudgetProgress(
-        input: ListBudgetProgressRequestInput,
+        input: ListBudgetProgressCommand,
         workspaceId: string,
     ): Promise<BudgetProgressResponse[]> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
@@ -134,7 +136,7 @@ export class BudgetsService {
     }
 
     async createBudget(
-        input: BudgetRequestInput,
+        input: BudgetCommand,
         workspaceId: string,
         userId: string,
     ): Promise<BudgetResponse> {
@@ -151,6 +153,20 @@ export class BudgetsService {
         ) {
             throw new BadRequestException(validatedInput.errors)
         }
+
+        const currency = normalizeCurrency(input.currency ?? 'USD')
+        const workspace = this.workspaceService
+            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : ({ baseCurrency: 'USD' } as const)
+        const rateDate = new Date(Date.UTC(validatedInput.year!, validatedInput.month! - 1, 1))
+        const fx = this.currencyService
+            ? await this.currencyService.getHistoricalQuote(
+                  currency,
+                  workspace.baseCurrency,
+                  rateDate,
+              )
+            : { rate: 1, rateDate, source: 'legacy' as const }
+        const baseAmount = Math.round(validatedInput.amountCents! * fx.rate)
 
         return this.prisma.$transaction(async (tx) => {
             await this.assertValidBudgetCategory(
@@ -178,7 +194,15 @@ export class BudgetsService {
                         userId: normalizedUserId,
                         categoryId: validatedInput.categoryId!,
                         amount: validatedInput.amountCents!,
-                        currency: DEFAULT_BUDGET_CURRENCY,
+                        currency,
+                        ...(this.currencyService
+                            ? {
+                                  baseAmount,
+                                  fxRate: fx.rate,
+                                  fxRateDate: fx.rateDate,
+                                  fxSource: fx.source,
+                              }
+                            : {}),
                         year: validatedInput.year!,
                         month: validatedInput.month!,
                     },
@@ -197,7 +221,7 @@ export class BudgetsService {
     }
 
     async updateBudget(
-        input: BudgetRequestInput,
+        input: BudgetCommand,
         budgetId: string,
         workspaceId: string,
         userId: string,
@@ -216,6 +240,20 @@ export class BudgetsService {
         ) {
             throw new BadRequestException(validatedInput.errors)
         }
+
+        const currency = normalizeCurrency(input.currency ?? 'USD')
+        const workspace = this.workspaceService
+            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : ({ baseCurrency: 'USD' } as const)
+        const rateDate = new Date(Date.UTC(validatedInput.year!, validatedInput.month! - 1, 1))
+        const fx = this.currencyService
+            ? await this.currencyService.getHistoricalQuote(
+                  currency,
+                  workspace.baseCurrency,
+                  rateDate,
+              )
+            : { rate: 1, rateDate, source: 'legacy' as const }
+        const baseAmount = Math.round(validatedInput.amountCents! * fx.rate)
 
         return this.prisma.$transaction(async (tx) => {
             const existingBudget = await this.budgetsRepository.findBudgetById(
@@ -254,7 +292,15 @@ export class BudgetsService {
                         userId: normalizedUserId,
                         categoryId: validatedInput.categoryId!,
                         amount: validatedInput.amountCents!,
-                        currency: DEFAULT_BUDGET_CURRENCY,
+                        currency,
+                        ...(this.currencyService
+                            ? {
+                                  baseAmount,
+                                  fxRate: fx.rate,
+                                  fxRateDate: fx.rateDate,
+                                  fxSource: fx.source,
+                              }
+                            : {}),
                         year: validatedInput.year!,
                         month: validatedInput.month!,
                         previousBudget: existingBudget,
@@ -330,27 +376,25 @@ export class BudgetsService {
     }
 }
 
-function validateBudgetInput(
-    input: BudgetRequestInput | ListBudgetsRequestInput,
-): ValidatedBudgetInput {
+function validateBudgetInput(input: BudgetCommand | ListBudgetsCommand): ValidatedBudgetInput {
     const errors: string[] = []
 
     return {
         amountCents: 'amount' in input ? validateAmountValue(input.amount, errors) : undefined,
         categoryId:
-            'category_id' in input
-                ? validateRequiredIdValue(input.category_id, 'Category id', errors)
+            'categoryId' in input
+                ? validateRequiredIdValue(input.categoryId, 'Category id', errors)
                 : undefined,
-        year: validateYearValue(input.year, errors),
-        month: validateMonthValue(input.month, errors),
+        year: input.year,
+        month: input.month,
         errors,
     }
 }
 
 function validateBudgetProgressMonthInput(
-    input: ListBudgetProgressRequestInput,
+    input: ListBudgetProgressCommand,
 ): ValidatedBudgetProgressMonth {
-    if (typeof input.month !== 'string' || input.month.trim().length === 0) {
+    if (input.month.trim().length === 0) {
         throw new BadRequestException(['Month is required'])
     }
 
@@ -372,7 +416,7 @@ function validateBudgetProgressMonthInput(
     }
 }
 
-function validateAmountValue(value: unknown, errors: string[]): number | undefined {
+function validateAmountValue(value: number, errors: string[]): number | undefined {
     return validateMoneyAmountValue(value, errors, {
         maxAmountCents: BUDGET_MAX_AMOUNT_CENTS,
         maxAmountMessage: BUDGET_MAX_AMOUNT_MESSAGE,
@@ -380,80 +424,16 @@ function validateAmountValue(value: unknown, errors: string[]): number | undefin
 }
 
 function validateRequiredIdValue(
-    value: unknown,
+    value: string,
     fieldName: string,
     errors: string[],
 ): string | undefined {
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (value.trim().length === 0) {
         errors.push(`${fieldName} is required`)
         return undefined
     }
 
     return value.trim()
-}
-
-function validateYearValue(value: unknown, errors: string[]): number | undefined {
-    if (value === undefined || value === null) {
-        errors.push('Year is required')
-        return undefined
-    }
-
-    const normalizedValue = normalizeNumericValue(value)
-
-    if (!normalizedValue || !/^\d+$/.test(normalizedValue)) {
-        errors.push('Year must be an integer between 1 and 9999')
-        return undefined
-    }
-
-    const year = Number.parseInt(normalizedValue, 10)
-
-    if (year < 1 || year > 9999) {
-        errors.push('Year must be an integer between 1 and 9999')
-        return undefined
-    }
-
-    return year
-}
-
-function validateMonthValue(value: unknown, errors: string[]): number | undefined {
-    if (value === undefined || value === null) {
-        errors.push('Month is required')
-        return undefined
-    }
-
-    const normalizedValue = normalizeNumericValue(value)
-
-    if (!normalizedValue || !/^\d+$/.test(normalizedValue)) {
-        errors.push('Month must be an integer between 1 and 12')
-        return undefined
-    }
-
-    const month = Number.parseInt(normalizedValue, 10)
-
-    if (month < 1 || month > 12) {
-        errors.push('Month must be an integer between 1 and 12')
-        return undefined
-    }
-
-    return month
-}
-
-function normalizeNumericValue(value: unknown): string | null {
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value) || !Number.isInteger(value)) {
-            return null
-        }
-
-        return value.toString()
-    }
-
-    if (typeof value !== 'string') {
-        return null
-    }
-
-    const normalizedValue = value.trim()
-
-    return normalizedValue.length > 0 ? normalizedValue : null
 }
 
 function normalizeRequiredValue(value: string, fieldName: string): string {
@@ -483,6 +463,7 @@ function mapBudgetResponse(budget: Budget): BudgetResponse {
 function mapBudgetProgressResponse(progress: {
     categoryId: string
     categoryName: string
+    categorySystemKey: string | null
     budgetAmountCents: number | null
     spentCents: number
     remainingCents: number | null
@@ -496,6 +477,7 @@ function mapBudgetProgressResponse(progress: {
     return {
         category_id: progress.categoryId,
         category_name: progress.categoryName,
+        category_system_key: progress.categorySystemKey,
         budget_amount: budgetAmount,
         limit: budgetAmount,
         spent: convertAmountToDisplayValue(progress.spentCents),

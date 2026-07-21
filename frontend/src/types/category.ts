@@ -1,8 +1,9 @@
 export interface Category {
   id: string;
   name: string;
+  systemKey?: string | null;
   icon: string | null;
-  parent_id: string | null;
-  sort_order: number;
+  parentId: string | null;
+  sortOrder: number;
   children: Category[];
 }

@@ -2,15 +2,20 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import api from "@/lib/api";
+import i18n from "@/i18n";
+import { useToast } from "@/hooks/useToast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface User {
   id: string;
   email: string;
   name: string;
+  locale?: "en" | "pl";
   emailVerified: boolean;
   totpEnabled: boolean;
   createdAt: string;
@@ -34,14 +39,28 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userRef = useRef<User | null>(null);
+  const sessionExpiredRef = useRef(false);
+  const { showToast } = useToast(6000);
+  const queryClient = useQueryClient();
+
+  function updateUser(nextUser: User | null) {
+    userRef.current = nextUser;
+    if (nextUser) sessionExpiredRef.current = false;
+    setUser(nextUser);
+  }
 
   useEffect(() => {
     api
       .get<User>("/auth/me")
-      .then((res) => setUser(res.data))
-      .catch(() => setUser(null))
+      .then((res) => updateUser(res.data))
+      .catch(() => updateUser(null))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (user?.locale) void i18n.changeLanguage(user.locale);
+  }, [user?.locale]);
 
   useEffect(() => {
     const id = api.interceptors.response.use(
@@ -49,44 +68,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (error) => {
         if (
           error.response?.status === 401 &&
-          !error.config?.url?.includes("/auth/me")
+          userRef.current &&
+          !sessionExpiredRef.current &&
+          !isPublicAuthRequest(error.config?.url)
         ) {
-          setUser(null);
+          sessionExpiredRef.current = true;
+          updateUser(null);
+          queryClient.clear();
+          showToast(i18n.t("apiErrors.authenticationRequired"), "error");
         }
         return Promise.reject(error);
       },
     );
     return () => api.interceptors.response.eject(id);
-  }, []);
+  }, [queryClient, showToast]);
 
   async function login(email: string, password: string): Promise<LoginResult> {
-    const res = await api.post<User | { requiresTwoFactor: true; message: string }>(
-      "/auth/login",
-      {
-        email,
-        password,
-      },
-    );
+    const res = await api.post<
+      User | { requiresTwoFactor: true; message: string }
+    >("/auth/login", {
+      email,
+      password,
+    });
 
     if ("requiresTwoFactor" in res.data && res.data.requiresTwoFactor) {
       return { type: "two_factor_required" };
     }
 
     const userData = res.data as User;
-    setUser(userData);
+    updateUser(userData);
     return { type: "authenticated", user: userData };
   }
 
   async function logout(): Promise<void> {
     await api.post("/auth/logout");
-    setUser(null);
+    updateUser(null);
+    queryClient.clear();
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, setUser }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, logout, setUser: updateUser }}
+    >
       {children}
     </AuthContext.Provider>
   );
+}
+
+function isPublicAuthRequest(url?: string): boolean {
+  return [
+    "/auth/me",
+    "/auth/login",
+    "/auth/2fa/verify",
+    "/auth/register",
+    "/auth/verify-email",
+    "/auth/resend-verification",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ].some((path) => url?.includes(path));
 }
 
 export function useAuth(): AuthContextValue {

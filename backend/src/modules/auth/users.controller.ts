@@ -17,6 +17,7 @@ import {
     SESSION_COOKIE_NAME,
 } from '../../shared/session/session.config'
 import { AuthActionResponse, AuthenticatedUserResponse, AuthService } from './auth.service'
+import { UpdateUserProfileDto } from './auth.dto'
 
 @Controller('users')
 @UseGuards(SessionGuard)
@@ -30,9 +31,12 @@ export class UsersController {
     @HttpCode(HttpStatus.OK)
     async updateMe(
         @Req() req: Request,
-        @Body() body: Record<string, unknown>,
+        @Body() body: UpdateUserProfileDto,
     ): Promise<AuthenticatedUserResponse> {
-        return this.authService.updateAuthenticatedUser(req.session.auth!.userId, body)
+        return this.authService.updateAuthenticatedUser(req.session.auth!.userId, {
+            name: body.name,
+            locale: body.locale as 'en' | 'pl' | undefined,
+        })
     }
 
     @Delete('me')

@@ -2,6 +2,7 @@ export interface BudgetProgressCategoryInput {
     id: string
     parentId: string | null
     name: string
+    systemKey?: string | null
 }
 
 export interface BudgetProgressBudgetInput {
@@ -17,6 +18,7 @@ export interface BudgetProgressSpendingInput {
 export interface CalculatedBudgetProgress {
     categoryId: string
     categoryName: string
+    categorySystemKey: string | null
     budgetAmountCents: number | null
     spentCents: number
     remainingCents: number | null
@@ -107,6 +109,7 @@ export function calculateBudgetProgress(
             return {
                 categoryId: category.id,
                 categoryName: category.name,
+                categorySystemKey: category.systemKey ?? null,
                 budgetAmountCents,
                 spentCents,
                 remainingCents: budgetAmountCents === null ? null : budgetAmountCents - spentCents,

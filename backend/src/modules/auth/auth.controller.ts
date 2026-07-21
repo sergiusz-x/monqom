@@ -15,6 +15,15 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { Request, Response } from 'express'
 import { AUTH_BASE_ROUTE, AUTH_ROUTES } from './auth.routes'
 import {
+    ChangePasswordDto,
+    CurrentPasswordDto,
+    EmailDto,
+    LoginDto,
+    RegisterDto,
+    ResetPasswordDto,
+    TokenDto,
+} from './auth.dto'
+import {
     AuthActionResponse,
     AuthService,
     AuthenticatedUserResponse,
@@ -26,6 +35,8 @@ import {
     SESSION_COOKIE_NAME,
 } from '../../shared/session/session.config'
 import { SessionGuard } from '../../shared/guards/session.guard'
+import { getOrCreateCsrfToken } from '../../shared/security/csrf'
+import { verifyTurnstileToken } from '../../shared/security/turnstile'
 import {
     TwoFactorLoginVerificationResponse,
     TwoFactorService,
@@ -35,6 +46,7 @@ import {
 
 const AUTH_LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 const AUTH_LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5
+const CSRF_TOKEN_RATE_LIMIT_MAX_REQUESTS = 60
 const LOGOUT_SUCCESS_MESSAGE = 'Logged out successfully'
 const TWO_FACTOR_REQUIRED_MESSAGE = 'Two-factor authentication required'
 const TWO_FACTOR_CHALLENGE_REQUIRED_MESSAGE = 'Two-factor authentication challenge required'
@@ -57,10 +69,32 @@ export class AuthController {
         private readonly configService: ConfigService,
     ) {}
 
+    @Get(AUTH_ROUTES.csrfToken)
+    @UseGuards(ThrottlerGuard)
+    @Throttle({
+        default: {
+            limit: CSRF_TOKEN_RATE_LIMIT_MAX_REQUESTS,
+            ttl: AUTH_LOGIN_RATE_LIMIT_WINDOW_MS,
+        },
+    })
+    getCsrfToken(@Req() req: Request): { csrfToken: string } {
+        return { csrfToken: getOrCreateCsrfToken(req) }
+    }
+
     @Post(AUTH_ROUTES.register)
     @HttpCode(HttpStatus.CREATED)
-    async register(@Body() body: Record<string, unknown>): Promise<RegisteredUserResponse> {
-        return this.authService.register(body)
+    async register(
+        @Body() body: RegisterDto,
+        @Req() req: Request,
+    ): Promise<RegisteredUserResponse> {
+        await verifyTurnstileToken({ token: body.turnstile_token, remoteIp: getRequestIp(req) })
+        return this.authService.register({
+            email: body.email,
+            name: body.name,
+            password: body.password,
+            locale: body.locale as 'en' | 'pl' | undefined,
+            baseCurrency: body.base_currency,
+        })
     }
 
     @Post(AUTH_ROUTES.login)
@@ -73,11 +107,11 @@ export class AuthController {
         },
     })
     @HttpCode(HttpStatus.OK)
-    async login(
-        @Body() body: Record<string, unknown>,
-        @Req() req: Request,
-    ): Promise<LoginResponse> {
-        const loginResult = await this.authService.login(body)
+    async login(@Body() body: LoginDto, @Req() req: Request): Promise<LoginResponse> {
+        const loginResult = await this.authService.login({
+            email: body.email,
+            password: body.password,
+        })
 
         await regenerateSession(req)
 
@@ -117,16 +151,16 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async verifyTwoFactorSetup(
         @Req() req: Request,
-        @Body() body: Record<string, unknown>,
+        @Body() body: TokenDto,
     ): Promise<TwoFactorVerifySetupResponse> {
-        return this.twoFactorService.verifySetup(req.session.auth!.userId, body)
+        return this.twoFactorService.verifySetup(req.session.auth!.userId, { token: body.token })
     }
 
     @Post(AUTH_ROUTES.twoFactorVerify)
     @HttpCode(HttpStatus.OK)
     async verifyTwoFactor(
         @Req() req: Request,
-        @Body() body: Record<string, unknown>,
+        @Body() body: TokenDto,
     ): Promise<TwoFactorLoginResponse> {
         const challenge = req.session.twoFactorChallenge
 
@@ -136,7 +170,7 @@ export class AuthController {
 
         const loginResult = finalizeTwoFactorSession(
             req,
-            await this.twoFactorService.verifyLogin(challenge, body),
+            await this.twoFactorService.verifyLogin(challenge, { token: body.token }),
         )
 
         await this.authService.recordSuccessfulLogin({
@@ -153,9 +187,11 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async disableTwoFactor(
         @Req() req: Request,
-        @Body() body: Record<string, unknown>,
+        @Body() body: CurrentPasswordDto,
     ): Promise<AuthActionResponse> {
-        return this.twoFactorService.disable(req.session.auth!.userId, body)
+        return this.twoFactorService.disable(req.session.auth!.userId, {
+            currentPassword: body.currentPassword,
+        })
     }
 
     @Post(AUTH_ROUTES.logout)
@@ -191,26 +227,26 @@ export class AuthController {
 
     @Post(AUTH_ROUTES.verifyEmail)
     @HttpCode(HttpStatus.OK)
-    async verifyEmail(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
-        return this.authService.verifyEmail(body)
+    async verifyEmail(@Body() body: TokenDto): Promise<AuthActionResponse> {
+        return this.authService.verifyEmail({ token: body.token })
     }
 
     @Post(AUTH_ROUTES.resendVerification)
     @HttpCode(HttpStatus.OK)
-    async resendVerification(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
-        return this.authService.resendVerification(body)
+    async resendVerification(@Body() body: EmailDto): Promise<AuthActionResponse> {
+        return this.authService.resendVerification({ email: body.email })
     }
 
     @Post(AUTH_ROUTES.forgotPassword)
     @HttpCode(HttpStatus.OK)
-    async forgotPassword(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
-        return this.authService.forgotPassword(body)
+    async forgotPassword(@Body() body: EmailDto): Promise<AuthActionResponse> {
+        return this.authService.forgotPassword({ email: body.email })
     }
 
     @Post(AUTH_ROUTES.resetPassword)
     @HttpCode(HttpStatus.OK)
-    async resetPassword(@Body() body: Record<string, unknown>): Promise<AuthActionResponse> {
-        return this.authService.resetPassword(body)
+    async resetPassword(@Body() body: ResetPasswordDto): Promise<AuthActionResponse> {
+        return this.authService.resetPassword({ token: body.token, newPassword: body.newPassword })
     }
 
     @Post(AUTH_ROUTES.changePassword)
@@ -218,9 +254,12 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async changePassword(
         @Req() req: Request,
-        @Body() body: Record<string, unknown>,
+        @Body() body: ChangePasswordDto,
     ): Promise<AuthActionResponse> {
-        return this.authService.changePassword(req.session.auth!.userId, body)
+        return this.authService.changePassword(req.session.auth!.userId, {
+            currentPassword: body.currentPassword,
+            newPassword: body.newPassword,
+        })
     }
 
     private getNodeEnv(): string {
@@ -229,6 +268,8 @@ export class AuthController {
 }
 
 function regenerateSession(req: Request): Promise<void> {
+    const csrfToken = req.session.csrfToken
+
     return new Promise((resolve, reject) => {
         req.session.regenerate((error) => {
             if (error) {
@@ -236,6 +277,7 @@ function regenerateSession(req: Request): Promise<void> {
                 return
             }
 
+            req.session.csrfToken = csrfToken
             resolve()
         })
     })
@@ -285,6 +327,7 @@ function finalizeAuthenticatedSession(
         id: loginResult.user.id,
         email: loginResult.user.email,
         name: loginResult.user.name,
+        locale: loginResult.user.locale,
         emailVerified: loginResult.user.emailVerified,
         totpEnabled: loginResult.user.totpEnabled,
         createdAt: loginResult.user.createdAt,
@@ -312,6 +355,7 @@ function toTwoFactorLoginResponse(
         id: loginResult.id,
         email: loginResult.email,
         name: loginResult.name,
+        locale: loginResult.locale,
         emailVerified: loginResult.emailVerified,
         totpEnabled: loginResult.totpEnabled,
         recoveryCodeUsed: loginResult.recoveryCodeUsed,

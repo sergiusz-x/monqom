@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import DashboardPage from "@/pages/DashboardPage";
 import TransactionsPage from "@/pages/TransactionsPage";
@@ -13,6 +14,9 @@ import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import { AuthContext } from "@/contexts/AuthContext";
 import type { User } from "@/contexts/AuthContext";
+import { WorkspaceProvider } from "@/hooks/useWorkspace";
+import { ToastProvider } from "@/contexts/ToastContext";
+import { RouteLoadingFallback } from "@/components/RouteLoadingFallback";
 
 const mockAuthValue = {
   user: null as User | null,
@@ -29,17 +33,28 @@ function renderAt(path: string, element: React.ReactNode, withAuth = false) {
     element
   );
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path={path} element={content} />
-      </Routes>
-    </MemoryRouter>,
+    <ToastProvider>
+      <WorkspaceProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path={path} element={content} />
+          </Routes>
+        </MemoryRouter>
+      </WorkspaceProvider>
+    </ToastProvider>,
   );
 }
 
 describe("page routing", () => {
-  it("renders DashboardPage at /", () => {
-    renderAt("/", <DashboardPage />);
+  it("provides an accessible and layout-stable route loading fallback", () => {
+    render(<RouteLoadingFallback />);
+    expect(
+      screen.getByRole("status", { name: /loading/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders DashboardPage at /dashboard", () => {
+    renderAt("/dashboard", <DashboardPage />);
     expect(
       screen.getByRole("heading", { name: /dashboard/i }),
     ).toBeInTheDocument();
@@ -54,19 +69,23 @@ describe("page routing", () => {
 
   it("renders TransactionDetailPage at /transactions/:transactionId", () => {
     render(
-      <MemoryRouter initialEntries={["/transactions/tx-1"]}>
-        <Routes>
-          <Route
-            path="/transactions/:transactionId"
-            element={<TransactionDetailPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
+      <ToastProvider>
+        <WorkspaceProvider>
+          <MemoryRouter initialEntries={["/transactions/tx-1"]}>
+            <Routes>
+              <Route
+                path="/transactions/:transactionId"
+                element={<TransactionDetailPage />}
+              />
+            </Routes>
+          </MemoryRouter>
+        </WorkspaceProvider>
+      </ToastProvider>,
     );
+    expect(screen.getByRole("status")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /transaction details/i }),
+      screen.getByText(/loading transaction details/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/transaction id: tx-1/i)).toBeInTheDocument();
   });
 
   it("renders BudgetsPage at /budgets", () => {

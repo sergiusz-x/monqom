@@ -58,6 +58,7 @@ describe('TransactionsService', () => {
             amount: 1050,
             currency: 'USD',
             date: new Date('2026-03-23T00:00:00.000Z'),
+            description: 'Team lunch',
             notes: 'Lunch with the team',
             createdAt: new Date('2026-03-23T12:00:00.000Z'),
             updatedAt: new Date('2026-03-23T12:00:00.000Z'),
@@ -95,8 +96,9 @@ describe('TransactionsService', () => {
                 {
                     amount: 10.5,
                     date: '2026-03-23',
-                    category_id: ' category-1 ',
-                    payment_source_id: ' payment-source-1 ',
+                    description: 'Team lunch',
+                    categoryId: ' category-1 ',
+                    paymentSourceId: ' payment-source-1 ',
                     notes: ' Lunch with the team ',
                     tags: [' Food ', 'food', ' Work '],
                 },
@@ -111,7 +113,8 @@ describe('TransactionsService', () => {
             type: 'expense',
             amount: 10.5,
             currency: 'USD',
-            date: new Date('2026-03-23T00:00:00.000Z'),
+            date: '2026-03-23',
+            description: 'Team lunch',
             notes: 'Lunch with the team',
             tags: ['Food', 'Work'],
             created_at: new Date('2026-03-23T12:00:00.000Z'),
@@ -139,6 +142,7 @@ describe('TransactionsService', () => {
                 amount: 1050,
                 currency: 'USD',
                 date: new Date('2026-03-23T00:00:00.000Z'),
+                description: 'Team lunch',
                 notes: 'Lunch with the team',
                 tags: ['Food', 'food', 'Work'],
             },
@@ -156,6 +160,7 @@ describe('TransactionsService', () => {
             amount: 2575,
             currency: 'USD',
             date: new Date('2026-03-24T08:30:00.000Z'),
+            description: 'Coffee beans',
             notes: 'Coffee beans',
             createdAt: new Date('2026-03-24T08:30:00.000Z'),
             updatedAt: new Date('2026-03-24T08:30:00.000Z'),
@@ -190,7 +195,8 @@ describe('TransactionsService', () => {
             type: 'expense',
             amount: 25.75,
             currency: 'USD',
-            date: new Date('2026-03-24T08:30:00.000Z'),
+            date: '2026-03-24',
+            description: 'Coffee beans',
             notes: 'Coffee beans',
             tags: ['Food', 'Home'],
             created_at: new Date('2026-03-24T08:30:00.000Z'),
@@ -215,6 +221,7 @@ describe('TransactionsService', () => {
             amount: 1050,
             currency: 'USD',
             date: new Date('2026-03-23T00:00:00.000Z'),
+            description: 'Lunch',
             notes: 'Lunch',
             createdAt: new Date('2026-03-23T12:00:00.000Z'),
             updatedAt: new Date('2026-03-23T12:00:00.000Z'),
@@ -234,6 +241,7 @@ describe('TransactionsService', () => {
             amount: 1275,
             currency: 'USD',
             date: new Date('2026-03-24T08:30:00.000Z'),
+            description: 'Bus pass',
             notes: 'Bus pass',
             createdAt: new Date('2026-03-23T12:00:00.000Z'),
             updatedAt: new Date('2026-03-24T09:00:00.000Z'),
@@ -261,10 +269,11 @@ describe('TransactionsService', () => {
         await expect(
             service.updateTransaction(
                 {
-                    amount: '12.75',
-                    date: '2026-03-24T08:30:00Z',
-                    category_id: ' category-2 ',
-                    payment_source_id: ' payment-source-2 ',
+                    amount: 12.75,
+                    date: '2026-03-24',
+                    description: 'Bus pass',
+                    categoryId: ' category-2 ',
+                    paymentSourceId: ' payment-source-2 ',
                     notes: ' Bus pass ',
                     tags: [' Travel ', 'travel', ' Work '],
                 },
@@ -279,7 +288,8 @@ describe('TransactionsService', () => {
             type: 'expense',
             amount: 12.75,
             currency: 'USD',
-            date: new Date('2026-03-24T08:30:00.000Z'),
+            date: '2026-03-24',
+            description: 'Bus pass',
             notes: 'Bus pass',
             tags: ['Travel', 'Work'],
             created_at: new Date('2026-03-23T12:00:00.000Z'),
@@ -311,7 +321,8 @@ describe('TransactionsService', () => {
                 type: 'expense',
                 amount: 1275,
                 currency: 'USD',
-                date: new Date('2026-03-24T08:30:00.000Z'),
+                date: new Date('2026-03-24T00:00:00.000Z'),
+                description: 'Bus pass',
                 notes: 'Bus pass',
                 tags: ['Travel', 'travel', 'Work'],
             },
@@ -381,6 +392,7 @@ describe('TransactionsService', () => {
                 amount: 4050,
                 currency: 'USD',
                 date: new Date('2026-03-22T09:30:00.000Z'),
+                description: 'Train pass',
                 notes: 'Train pass',
                 tags: ['food', 'Travel'],
                 created_at: new Date('2026-03-22T10:00:00.000Z'),
@@ -392,13 +404,15 @@ describe('TransactionsService', () => {
         await expect(
             service.listTransactions(
                 {
-                    category_id: ' category-1 ',
-                    payment_source_id: ' payment-source-2 ',
+                    categoryIds: [' category-1 ', 'category-2'],
+                    sortBy: 'amount',
+                    sortDirection: 'asc',
+                    paymentSourceId: ' payment-source-2 ',
                     tag: ' FOOD ',
-                    date_from: '2026-03-21',
-                    date_to: '2026-03-22',
-                    limit: '1',
-                    offset: '1',
+                    dateFrom: '2026-03-21',
+                    dateTo: '2026-03-22',
+                    limit: 1,
+                    offset: 1,
                 },
                 ' workspace-1 ',
             ),
@@ -412,7 +426,8 @@ describe('TransactionsService', () => {
                     type: 'expense',
                     amount: 40.5,
                     currency: 'USD',
-                    date: new Date('2026-03-22T09:30:00.000Z'),
+                    date: '2026-03-22',
+                    description: 'Train pass',
                     notes: 'Train pass',
                     tags: ['food', 'Travel'],
                     created_at: new Date('2026-03-22T10:00:00.000Z'),
@@ -428,11 +443,13 @@ describe('TransactionsService', () => {
         expect(transactionsRepository.listTransactions).toHaveBeenCalledWith(
             {
                 workspaceId: 'workspace-1',
-                categoryId: 'category-1',
+                categoryIds: ['category-1', 'category-2'],
+                sortBy: 'amount',
+                sortDirection: 'asc',
                 paymentSourceId: 'payment-source-2',
                 tag: 'FOOD',
                 dateFrom: new Date('2026-03-21T00:00:00.000Z'),
-                dateTo: new Date('2026-03-22T23:59:59.999Z'),
+                dateTo: new Date('2026-03-22T00:00:00.000Z'),
                 limit: 1,
                 offset: 1,
             },
@@ -441,11 +458,13 @@ describe('TransactionsService', () => {
         expect(transactionsRepository.countTransactions).toHaveBeenCalledWith(
             {
                 workspaceId: 'workspace-1',
-                categoryId: 'category-1',
+                categoryIds: ['category-1', 'category-2'],
+                sortBy: 'amount',
+                sortDirection: 'asc',
                 paymentSourceId: 'payment-source-2',
                 tag: 'FOOD',
                 dateFrom: new Date('2026-03-21T00:00:00.000Z'),
-                dateTo: new Date('2026-03-22T23:59:59.999Z'),
+                dateTo: new Date('2026-03-22T00:00:00.000Z'),
             },
             prisma,
         )
@@ -476,9 +495,11 @@ describe('TransactionsService', () => {
         try {
             await service.createTransaction(
                 {
-                    amount: '10.505',
+                    amount: 10.505,
                     date: '03/23/2026',
-                    category_id: '   ',
+                    description: 'Invalid transaction',
+                    categoryId: '   ',
+                    paymentSourceId: '   ',
                     tags: new Array(11).fill('tag'),
                 },
                 'workspace-1',
@@ -491,7 +512,7 @@ describe('TransactionsService', () => {
                 expect.objectContaining({
                     message: expect.arrayContaining([
                         'Amount must be a positive number with up to 2 decimal places',
-                        'Date must be a valid ISO 8601 value',
+                        'Date must be a valid calendar date in YYYY-MM-DD format',
                         'Category id is required',
                         'Tags cannot contain more than 10 items',
                     ]),
@@ -504,13 +525,38 @@ describe('TransactionsService', () => {
         expect(transactionsRepository.createTransactionWithTags).not.toHaveBeenCalled()
     })
 
+    it('rejects timestamps for the date-only transaction field', async () => {
+        await expect(
+            service.createTransaction(
+                {
+                    amount: 10,
+                    date: '2026-03-23T23:30:00-07:00',
+                    description: 'Late purchase',
+                    categoryId: 'category-1',
+                    paymentSourceId: 'payment-source-1',
+                },
+                'workspace-1',
+                'user-1',
+            ),
+        ).rejects.toMatchObject({
+            response: {
+                message: expect.arrayContaining([
+                    'Date must be a valid calendar date in YYYY-MM-DD format',
+                ]),
+            },
+        })
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
+
     it('rejects invalid update input before opening a database transaction', async () => {
         await expect(
             service.updateTransaction(
                 {
-                    amount: '0',
+                    amount: 0,
                     date: '03/24/2026',
-                    category_id: '   ',
+                    description: 'Invalid transaction',
+                    categoryId: '   ',
+                    paymentSourceId: '   ',
                     tags: new Array(11).fill('tag'),
                 },
                 'transaction-1',
@@ -520,7 +566,7 @@ describe('TransactionsService', () => {
             response: {
                 message: expect.arrayContaining([
                     'Amount must be greater than 0',
-                    'Date must be a valid ISO 8601 value',
+                    'Date must be a valid calendar date in YYYY-MM-DD format',
                     'Category id is required',
                     'Tags cannot contain more than 10 items',
                 ]),
@@ -532,15 +578,38 @@ describe('TransactionsService', () => {
         expect(transactionsRepository.updateTransactionWithTags).not.toHaveBeenCalled()
     })
 
-    it('rejects invalid list query values before hitting the repository layer', async () => {
+    it('lists transactions without requiring a payment source filter', async () => {
+        transactionsRepository.listTransactions.mockResolvedValue([])
+        transactionsRepository.countTransactions.mockResolvedValue(0)
+
+        await expect(
+            service.listTransactions({ limit: 5, offset: 0 }, 'workspace-1'),
+        ).resolves.toEqual({
+            data: [],
+            total: 0,
+            limit: 5,
+            offset: 0,
+        })
+
+        expect(transactionsRepository.listTransactions).toHaveBeenCalledWith(
+            expect.objectContaining({
+                workspaceId: 'workspace-1',
+                paymentSourceId: undefined,
+                limit: 5,
+                offset: 0,
+            }),
+            prisma,
+        )
+    })
+    it('rejects invalid domain filter relationships before hitting the repository layer', async () => {
         await expect(
             service.listTransactions(
                 {
                     tag: '   ',
-                    date_from: '2026-03-24',
-                    date_to: '2026-03-23',
-                    limit: '0',
-                    offset: '-1',
+                    dateFrom: '2026-03-24',
+                    dateTo: '2026-03-23',
+                    limit: 5,
+                    offset: 0,
                 },
                 'workspace-1',
             ),
@@ -549,8 +618,6 @@ describe('TransactionsService', () => {
                 message: expect.arrayContaining([
                     'Tag must be a non-empty string',
                     'Date from must be less than or equal to date to',
-                    'Limit must be an integer between 1 and 100',
-                    'Offset must be a non-negative integer',
                 ]),
             },
         })
@@ -559,6 +626,23 @@ describe('TransactionsService', () => {
         expect(transactionsRepository.countTransactions).not.toHaveBeenCalled()
     })
 
+    it('rejects a transaction without a payment source', async () => {
+        await expect(
+            service.createTransaction(
+                {
+                    amount: 10.5,
+                    date: '2026-03-23',
+                    description: 'Lunch',
+                    categoryId: 'category-1',
+                    paymentSourceId: '   ',
+                },
+                'workspace-1',
+                'user-1',
+            ),
+        ).rejects.toBeInstanceOf(BadRequestException)
+
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
     it('rejects missing categories inside the workspace', async () => {
         transactionsRepository.findCategoryById.mockResolvedValue(null)
 
@@ -567,7 +651,9 @@ describe('TransactionsService', () => {
                 {
                     amount: 10.5,
                     date: '2026-03-23',
-                    category_id: 'category-9',
+                    description: 'Lunch',
+                    categoryId: 'category-9',
+                    paymentSourceId: 'payment-source-1',
                 },
                 'workspace-1',
                 'user-1',
@@ -586,9 +672,10 @@ describe('TransactionsService', () => {
             service.createTransaction(
                 {
                     amount: 10.5,
-                    date: '2026-03-23T09:30:00Z',
-                    category_id: 'category-1',
-                    payment_source_id: 'payment-source-9',
+                    date: '2026-03-23',
+                    description: 'Lunch',
+                    categoryId: 'category-1',
+                    paymentSourceId: 'payment-source-9',
                 },
                 'workspace-1',
                 'user-1',
@@ -606,7 +693,9 @@ describe('TransactionsService', () => {
                 {
                     amount: 10.5,
                     date: '2026-03-23',
-                    category_id: 'category-1',
+                    description: 'Lunch',
+                    categoryId: 'category-1',
+                    paymentSourceId: 'payment-source-1',
                 },
                 'transaction-404',
                 'workspace-1',
@@ -622,7 +711,7 @@ describe('TransactionsService', () => {
             id: 'transaction-404',
             workspaceId: 'workspace-1',
             categoryId: 'category-1',
-            paymentSourceId: null,
+            paymentSourceId: 'payment-source-1',
             type: 'expense',
             amount: 1050,
             currency: 'USD',
@@ -641,7 +730,9 @@ describe('TransactionsService', () => {
                 {
                     amount: 10.5,
                     date: '2026-03-23',
-                    category_id: 'category-1',
+                    description: 'Lunch',
+                    categoryId: 'category-1',
+                    paymentSourceId: 'payment-source-1',
                 },
                 'transaction-404',
                 'workspace-1',
@@ -682,21 +773,76 @@ describe('TransactionsService', () => {
         ).rejects.toThrow(NotFoundException)
     })
 
-    it('rejects non-string notes values', async () => {
-        await expect(
-            service.createTransaction(
-                {
-                    amount: 10.5,
-                    date: '2026-03-23',
-                    category_id: 'category-1',
-                    notes: 123,
-                },
-                'workspace-1',
-                'user-1',
-            ),
-        ).rejects.toThrow('Bad Request Exception')
+    it('stores an immutable historical FX snapshot in workspace base currency', async () => {
+        const rateDate = new Date('2026-03-20T00:00:00.000Z')
+        const currencyService = {
+            getHistoricalQuote: jest.fn().mockResolvedValue({
+                rate: 4.35,
+                rateDate,
+                source: 'ecb-frankfurter',
+            }),
+        }
+        const workspaceService = {
+            getWorkspaceById: jest.fn().mockResolvedValue({ baseCurrency: 'PLN' }),
+        }
+        service = new TransactionsService(
+            prisma as never,
+            transactionsRepository as unknown as TransactionsRepository,
+            currencyService as never,
+            workspaceService as never,
+        )
+        transactionsRepository.findCategoryById.mockResolvedValue({ id: 'category-1' } as never)
+        transactionsRepository.findActivePaymentSourceById.mockResolvedValue({
+            id: 'payment-source-1',
+        } as never)
+        transactionsRepository.createTransactionWithTags.mockResolvedValue({
+            id: 'transaction-fx',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'expense',
+            amount: 1050,
+            currency: 'EUR',
+            baseAmount: 4568,
+            fxRate: 4.35,
+            fxRateDate: rateDate,
+            fxSource: 'ecb-frankfurter',
+            date: new Date('2026-03-22T00:00:00.000Z'),
+            notes: null,
+            createdAt: new Date('2026-03-22T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-22T12:00:00.000Z'),
+            deletedAt: null,
+            tags: [],
+        } as never)
 
-        expect(prisma.$transaction).not.toHaveBeenCalled()
-        expect(transactionsRepository.createTransactionWithTags).not.toHaveBeenCalled()
+        await service.createTransaction(
+            {
+                amount: 10.5,
+                currency: 'eur',
+                date: '2026-03-22',
+                description: 'Lunch',
+                categoryId: 'category-1',
+                paymentSourceId: 'payment-source-1',
+            },
+            'workspace-1',
+            'user-1',
+        )
+
+        expect(currencyService.getHistoricalQuote).toHaveBeenCalledWith(
+            'EUR',
+            'PLN',
+            new Date('2026-03-22T00:00:00.000Z'),
+        )
+        expect(transactionsRepository.createTransactionWithTags).toHaveBeenCalledWith(
+            expect.objectContaining({
+                amount: 1050,
+                currency: 'EUR',
+                baseAmount: 4568,
+                fxRate: 4.35,
+                fxRateDate: rateDate,
+                fxSource: 'ecb-frankfurter',
+            }),
+            transactionClient,
+        )
     })
 })

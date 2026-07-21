@@ -39,8 +39,8 @@ export interface TwoFactorSetupResponse {
     qrCodeDataUrl: string
 }
 
-export interface TwoFactorTokenRequestInput {
-    token?: unknown
+export interface TwoFactorTokenCommand {
+    token: string
 }
 
 export interface TwoFactorLoginChallengeInput {
@@ -102,7 +102,7 @@ export class TwoFactorService {
 
     async verifySetup(
         userId: string,
-        input: TwoFactorTokenRequestInput,
+        input: TwoFactorTokenCommand,
     ): Promise<TwoFactorVerifySetupResponse> {
         const { token, errors } = validateVerificationTokenInput(input)
 
@@ -148,7 +148,7 @@ export class TwoFactorService {
 
     async verifyLogin(
         challenge: TwoFactorLoginChallengeInput,
-        input: TwoFactorTokenRequestInput,
+        input: TwoFactorTokenCommand,
     ): Promise<TwoFactorLoginVerificationResponse> {
         const { token, errors } = validateVerificationTokenInput(input)
 
@@ -188,7 +188,7 @@ export class TwoFactorService {
         throw new UnauthorizedException(INVALID_TWO_FACTOR_TOKEN_MESSAGE)
     }
 
-    async disable(userId: string, input: Record<string, unknown>): Promise<AuthActionResponse> {
+    async disable(userId: string, input: { currentPassword: string }): Promise<AuthActionResponse> {
         const { currentPassword, errors } = validateCurrentPasswordInput(input)
 
         if (errors.length > 0 || !currentPassword) {
@@ -245,6 +245,7 @@ function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserRespon
         id: user.id,
         email: user.email,
         name: user.name,
+        locale: user.locale,
         emailVerified: user.emailVerified,
         totpEnabled: user.totpEnabled,
         sessionVersion: user.sessionVersion,

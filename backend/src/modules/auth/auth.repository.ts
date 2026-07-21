@@ -23,6 +23,7 @@ export interface CreateUserWithVerificationTokenInput {
     passwordHash: string
     verificationToken: string
     verificationTokenExpiresAt: Date
+    locale?: string
 }
 
 export interface CreateVerificationTokenForUserInput {
@@ -45,7 +46,8 @@ export interface CreateUserAuditEventInput {
 
 export interface UpdateUserProfileInput {
     userId: string
-    name: string
+    name?: string
+    locale?: string
 }
 
 export interface ConsumeVerificationTokensAndMarkEmailVerifiedInput {
@@ -63,6 +65,11 @@ export interface ResetPasswordWithTokenInput {
 export interface ChangePasswordInput {
     userId: string
     passwordHash: string
+}
+export interface FailedLoginAttemptInput {
+    userId: string
+    failedLoginCount: number
+    lockedUntil: Date | null
 }
 
 export interface ReplaceTwoFactorSetupSecretInput {
@@ -108,11 +115,26 @@ export class AuthRepository {
         return this.prisma.user.findUnique({ where: { id } })
     }
 
+    async recordFailedLoginAttempt(input: FailedLoginAttemptInput): Promise<void> {
+        await this.prisma.user.update({
+            where: { id: input.userId },
+            data: { failedLoginCount: input.failedLoginCount, lockedUntil: input.lockedUntil },
+        })
+    }
+
+    async clearFailedLoginAttempts(userId: string): Promise<void> {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { failedLoginCount: 0, lockedUntil: null },
+        })
+    }
+
     async updateUserProfile(input: UpdateUserProfileInput): Promise<User> {
         return this.prisma.user.update({
             where: { id: input.userId },
             data: {
                 name: input.name,
+                locale: input.locale,
             },
         })
     }
@@ -126,6 +148,7 @@ export class AuthRepository {
                 data: {
                     email: input.email,
                     name: input.name,
+                    locale: input.locale,
                     passwordHash: input.passwordHash,
                     emailVerified: false,
                 },
@@ -359,37 +382,67 @@ export class AuthRepository {
     }
 
     async deleteUserAccount(userId: string): Promise<void> {
-        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            const memberships = await tx.workspaceMembership.findMany({
-                where: { userId },
-                select: { workspaceId: true },
-            })
+        await this.prisma.$transaction(
+            async (tx: Prisma.TransactionClient) => {
+                const memberships = await tx.workspaceMembership.findMany({
+                    where: { userId },
+                    select: { workspaceId: true, role: true },
+                })
 
-            await this.auditService.record(
-                {
-                    action: AUDIT_ACTIONS.USER_DELETED,
-                    userId,
-                    entityType: AUDIT_ENTITY_TYPES.USER,
-                    entityId: userId,
-                    metadata: {
-                        source: 'SETTINGS_DATA',
+                for (const membership of memberships) {
+                    const remainingMemberships = await tx.workspaceMembership.findMany({
+                        where: {
+                            workspaceId: membership.workspaceId,
+                            userId: { not: userId },
+                        },
+                        select: { id: true, role: true },
+                        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+                    })
+
+                    if (remainingMemberships.length === 0) {
+                        await tx.workspace.delete({
+                            where: { id: membership.workspaceId },
+                        })
+                        continue
+                    }
+
+                    const hasRemainingOwner = remainingMemberships.some(
+                        (remainingMembership) => remainingMembership.role === 'owner',
+                    )
+
+                    if (membership.role === 'owner' && !hasRemainingOwner) {
+                        const successor =
+                            remainingMemberships.find(
+                                (remainingMembership) => remainingMembership.role === 'admin',
+                            ) ?? remainingMemberships[0]
+
+                        await tx.workspaceMembership.update({
+                            where: { id: successor.id },
+                            data: { role: 'owner' },
+                        })
+                    }
+                }
+
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.USER_DELETED,
+                        userId,
+                        entityType: AUDIT_ENTITY_TYPES.USER,
+                        entityId: userId,
+                        metadata: {
+                            source: 'SETTINGS_DATA',
+                        },
                     },
-                },
-                tx,
-            )
+                    tx,
+                )
 
-            await deleteUserSessions(tx, userId)
-
-            await tx.workspace.deleteMany({
-                where: {
-                    id: {
-                        in: memberships.map((membership) => membership.workspaceId),
-                    },
-                },
-            })
-
-            await tx.user.delete({ where: { id: userId } })
-        })
+                await deleteUserSessions(tx, userId)
+                await tx.user.delete({ where: { id: userId } })
+            },
+            {
+                isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            },
+        )
     }
 
     async replaceTwoFactorSetupSecret(input: ReplaceTwoFactorSetupSecretInput): Promise<void> {

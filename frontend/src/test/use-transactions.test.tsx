@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
+import { renderHookWithQueryClient as renderHook } from "@/test/query-test-utils";
 import { useTransactions } from "@/hooks/useTransactions";
 import api from "@/lib/api";
 
@@ -24,11 +25,13 @@ describe("useTransactions", () => {
       useTransactions(
         "ws-1",
         {
-          categoryId: "cat-1",
+          categoryIds: ["cat-1"],
           tag: "food",
           paymentSourceId: "src-1",
           dateFrom: "2026-04-01",
           dateTo: "2026-04-30",
+          sortBy: "amount",
+          sortDirection: "asc",
         },
         20,
         40,
@@ -37,27 +40,32 @@ describe("useTransactions", () => {
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(1));
 
-    const url = mockGet.mock.calls[0][0] as string;
-    expect(url).toContain("/workspaces/ws-1/transactions?");
-    expect(url).toContain("category_id=cat-1");
-    expect(url).toContain("tag=food");
-    expect(url).toContain("payment_source_id=src-1");
-    expect(url).toContain("date_from=2026-04-01");
-    expect(url).toContain("date_to=2026-04-30");
-    expect(url).toContain("limit=20");
-    expect(url).toContain("offset=40");
+    expect(mockGet.mock.calls[0][0]).toBe("/workspaces/ws-1/transactions");
+    const params = (mockGet.mock.calls[0][1] as { params: URLSearchParams })
+      .params;
+    expect(params.get("category_ids")).toBe("cat-1");
+    expect(params.get("tag")).toBe("food");
+    expect(params.get("payment_source_id")).toBe("src-1");
+    expect(params.get("date_from")).toBe("2026-04-01");
+    expect(params.get("date_to")).toBe("2026-04-30");
+    expect(params.get("limit")).toBe("20");
+    expect(params.get("offset")).toBe("40");
+    expect(params.get("sort_by")).toBe("amount");
+    expect(params.get("sort_direction")).toBe("asc");
   });
 
-  it("relies on backend default date-desc sorting (no explicit sort override)", async () => {
+  it("sends the default date-desc sorting", async () => {
     renderHook(() =>
       useTransactions(
         "ws-1",
         {
-          categoryId: "",
+          categoryIds: [],
           tag: "",
           paymentSourceId: "",
           dateFrom: "",
           dateTo: "",
+          sortBy: "date",
+          sortDirection: "desc",
         },
         20,
         0,
@@ -66,8 +74,9 @@ describe("useTransactions", () => {
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(1));
 
-    const url = mockGet.mock.calls[0][0] as string;
-    expect(url).not.toContain("sort=");
-    expect(url).not.toContain("order=");
+    const params = (mockGet.mock.calls[0][1] as { params: URLSearchParams })
+      .params;
+    expect(params.get("sort_by")).toBe("date");
+    expect(params.get("sort_direction")).toBe("desc");
   });
 });

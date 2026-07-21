@@ -19,6 +19,8 @@ import { PrismaService } from '../../shared/database/prisma.service'
 import { AuthRepository } from './auth.repository'
 import { logger } from '../../shared/utils/logger'
 import { WorkspaceService } from '../workspace/workspace.service'
+import { normalizeCurrency } from '../../shared/currency/currency.service'
+import { sendTransactionalEmail } from '../../shared/email/resend'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
@@ -32,20 +34,24 @@ const PASSWORD_RESET_SUCCESS_MESSAGE = 'Password reset successfully'
 const PASSWORD_CHANGE_SUCCESS_MESSAGE = 'Password changed successfully'
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password'
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address must be verified before logging in'
+const ACCOUNT_LOCKOUT_MS = 15 * 60 * 1000
+const MAX_FAILED_LOGIN_ATTEMPTS = 5
 
-export interface RegisterRequestInput {
-    email?: unknown
-    name?: unknown
-    password?: unknown
+export interface RegisterCommand {
+    email: string
+    name: string
+    password: string
+    locale?: 'en' | 'pl'
+    baseCurrency?: string
 }
 
-export interface VerifyEmailRequestInput {
-    token?: unknown
+export interface VerifyEmailCommand {
+    token: string
 }
 
-export interface LoginRequestInput {
-    email?: unknown
-    password?: unknown
+export interface LoginCommand {
+    email: string
+    password: string
 }
 
 export type LoginServiceResult =
@@ -59,26 +65,27 @@ export type LoginServiceResult =
           sessionVersion: number
       }
 
-export interface ResendVerificationRequestInput {
-    email?: unknown
+export interface ResendVerificationCommand {
+    email: string
 }
 
-export interface ForgotPasswordRequestInput {
-    email?: unknown
+export interface ForgotPasswordCommand {
+    email: string
 }
 
-export interface ResetPasswordRequestInput {
-    token?: unknown
-    newPassword?: unknown
+export interface ResetPasswordCommand {
+    token: string
+    newPassword: string
 }
 
-export interface ChangePasswordRequestInput {
-    currentPassword?: unknown
-    newPassword?: unknown
+export interface ChangePasswordCommand {
+    currentPassword: string
+    newPassword: string
 }
 
-export interface UpdateUserProfileRequestInput {
-    name?: unknown
+export interface UpdateUserProfileCommand {
+    name?: string
+    locale?: 'en' | 'pl'
 }
 
 export interface AuthAuditEventInput {
@@ -94,6 +101,7 @@ export interface RegisteredUserResponse {
     id: string
     email: string
     name: string
+    locale: string
     emailVerified: boolean
     totpEnabled: boolean
     createdAt: Date
@@ -113,17 +121,27 @@ export class AuthService {
         private readonly prisma: PrismaService,
     ) {}
 
-    async register(input: RegisterRequestInput): Promise<RegisteredUserResponse> {
+    async register(input: RegisterCommand): Promise<RegisteredUserResponse> {
         const { email, name, password, errors } = validateRegistrationInput(input)
 
         if (errors.length > 0 || !email || !name || !password) {
             throw new BadRequestException(errors)
         }
 
+        const locale = input.locale === undefined ? 'en' : input.locale
+        if (locale !== 'en' && locale !== 'pl')
+            throw new BadRequestException(['Locale must be one of: en, pl'])
+        const baseCurrency = normalizeCurrency(
+            input.baseCurrency ?? (locale === 'pl' ? 'PLN' : 'USD'),
+        )
+
         const existingUser = await this.authRepository.findUserByEmail(email)
 
         if (existingUser) {
-            throw new ConflictException('A user with this email already exists')
+            throw new ConflictException({
+                code: 'EMAIL_ALREADY_EXISTS',
+                message: 'A user with this email already exists',
+            })
         }
 
         const passwordHash = await argon2.hash(password, {
@@ -141,32 +159,46 @@ export class AuthService {
                         passwordHash,
                         verificationToken: verificationTokenPayload.token,
                         verificationTokenExpiresAt: verificationTokenPayload.expiresAt,
+                        ...(input.locale !== undefined ? { locale } : {}),
                     },
                     tx,
                 )
 
-                await this.workspaceService.createPersonalWorkspace(
-                    createdUser.id,
-                    createdUser.name,
-                    tx,
-                )
+                if (input.baseCurrency !== undefined || input.locale !== undefined) {
+                    await this.workspaceService.createPersonalWorkspace(
+                        createdUser.id,
+                        createdUser.name,
+                        tx,
+                        baseCurrency,
+                    )
+                } else {
+                    await this.workspaceService.createPersonalWorkspace(
+                        createdUser.id,
+                        createdUser.name,
+                        tx,
+                    )
+                }
 
                 return createdUser
             })
 
+            await deliverVerificationEmail(user.email, verificationTokenPayload.token)
             exposeVerificationToken('registration', verificationTokenPayload.token)
 
             return mapRegisteredUser(user)
         } catch (error) {
             if (isUniqueConstraintError(error)) {
-                throw new ConflictException('A user with this email already exists')
+                throw new ConflictException({
+                    code: 'EMAIL_ALREADY_EXISTS',
+                    message: 'A user with this email already exists',
+                })
             }
 
             throw error
         }
     }
 
-    async verifyEmail(input: VerifyEmailRequestInput): Promise<AuthActionResponse> {
+    async verifyEmail(input: VerifyEmailCommand): Promise<AuthActionResponse> {
         const { token, errors } = validateVerificationTokenInput(input)
 
         if (errors.length > 0 || !token) {
@@ -182,7 +214,10 @@ export class AuthService {
             storedToken.user.emailVerified ||
             storedToken.expiresAt.getTime() <= now.getTime()
         ) {
-            throw new BadRequestException(INVALID_EMAIL_VERIFICATION_TOKEN_MESSAGE)
+            throw new BadRequestException({
+                code: 'INVALID_EMAIL_VERIFICATION_TOKEN',
+                message: INVALID_EMAIL_VERIFICATION_TOKEN_MESSAGE,
+            })
         }
 
         const wasVerified = await this.authRepository.consumeVerificationTokensAndMarkEmailVerified(
@@ -193,7 +228,10 @@ export class AuthService {
         )
 
         if (!wasVerified) {
-            throw new BadRequestException(INVALID_EMAIL_VERIFICATION_TOKEN_MESSAGE)
+            throw new BadRequestException({
+                code: 'INVALID_EMAIL_VERIFICATION_TOKEN',
+                message: INVALID_EMAIL_VERIFICATION_TOKEN_MESSAGE,
+            })
         }
 
         return {
@@ -201,7 +239,7 @@ export class AuthService {
         }
     }
 
-    async login(input: LoginRequestInput): Promise<LoginServiceResult> {
+    async login(input: LoginCommand): Promise<LoginServiceResult> {
         const { email, password, errors } = validateLoginInput(input)
 
         if (errors.length > 0 || !email || !password) {
@@ -211,17 +249,43 @@ export class AuthService {
         const user = await this.authRepository.findUserByEmail(email)
 
         if (!user) {
-            throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE)
+            throw new UnauthorizedException({
+                code: 'INVALID_CREDENTIALS',
+                message: INVALID_CREDENTIALS_MESSAGE,
+            })
+        }
+        if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+            throw new UnauthorizedException({
+                code: 'ACCOUNT_TEMPORARILY_LOCKED',
+                message: INVALID_CREDENTIALS_MESSAGE,
+            })
         }
 
         const isPasswordValid = await argon2.verify(user.passwordHash, password)
 
         if (!isPasswordValid) {
-            throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE)
+            const failedLoginCount = user.failedLoginCount + 1
+            const lockedUntil =
+                failedLoginCount >= MAX_FAILED_LOGIN_ATTEMPTS
+                    ? new Date(Date.now() + ACCOUNT_LOCKOUT_MS)
+                    : null
+            await this.authRepository.recordFailedLoginAttempt?.({
+                userId: user.id,
+                failedLoginCount: lockedUntil ? 0 : failedLoginCount,
+                lockedUntil,
+            })
+            throw new UnauthorizedException({
+                code: 'INVALID_CREDENTIALS',
+                message: INVALID_CREDENTIALS_MESSAGE,
+            })
         }
+        await this.authRepository.clearFailedLoginAttempts?.(user.id)
 
         if (!user.emailVerified) {
-            throw new UnauthorizedException(EMAIL_NOT_VERIFIED_MESSAGE)
+            throw new UnauthorizedException({
+                code: 'EMAIL_NOT_VERIFIED',
+                message: EMAIL_NOT_VERIFIED_MESSAGE,
+            })
         }
 
         if (user.totpEnabled) {
@@ -250,11 +314,11 @@ export class AuthService {
 
     async updateAuthenticatedUser(
         userId: string,
-        input: UpdateUserProfileRequestInput,
+        input: UpdateUserProfileCommand,
     ): Promise<AuthenticatedUserResponse> {
-        const { name, errors } = validateUserProfileInput(input)
+        const { name, locale, errors } = validateUserProfileInput(input)
 
-        if (errors.length > 0 || !name) {
+        if (errors.length > 0 || (!name && !locale)) {
             throw new BadRequestException(errors)
         }
 
@@ -263,6 +327,7 @@ export class AuthService {
         const user = await this.authRepository.updateUserProfile({
             userId,
             name,
+            ...(locale !== undefined ? { locale } : {}),
         })
 
         return mapRegisteredUser(user)
@@ -284,7 +349,7 @@ export class AuthService {
         })
     }
 
-    async resendVerification(input: ResendVerificationRequestInput): Promise<AuthActionResponse> {
+    async resendVerification(input: ResendVerificationCommand): Promise<AuthActionResponse> {
         const { email, errors } = validateEmailInput(input)
 
         if (errors.length > 0 || !email) {
@@ -307,6 +372,7 @@ export class AuthService {
             verificationTokenExpiresAt: verificationTokenPayload.expiresAt,
         })
 
+        await deliverVerificationEmail(user.email, verificationTokenPayload.token)
         exposeVerificationToken('resend', verificationTokenPayload.token)
 
         return {
@@ -314,7 +380,7 @@ export class AuthService {
         }
     }
 
-    async forgotPassword(input: ForgotPasswordRequestInput): Promise<AuthActionResponse> {
+    async forgotPassword(input: ForgotPasswordCommand): Promise<AuthActionResponse> {
         const { email, errors } = validateEmailInput(input)
 
         if (errors.length > 0 || !email) {
@@ -337,6 +403,7 @@ export class AuthService {
             passwordResetTokenExpiresAt: passwordResetTokenPayload.expiresAt,
         })
 
+        await deliverPasswordResetEmail(user.email, passwordResetTokenPayload.token)
         exposePasswordResetToken(passwordResetTokenPayload.token)
 
         return {
@@ -344,7 +411,7 @@ export class AuthService {
         }
     }
 
-    async resetPassword(input: ResetPasswordRequestInput): Promise<AuthActionResponse> {
+    async resetPassword(input: ResetPasswordCommand): Promise<AuthActionResponse> {
         const { token, newPassword, errors } = validateResetPasswordInput(input)
 
         if (errors.length > 0 || !token || !newPassword) {
@@ -359,7 +426,10 @@ export class AuthService {
             storedToken.usedAt !== null ||
             storedToken.expiresAt.getTime() <= now.getTime()
         ) {
-            throw new BadRequestException(INVALID_PASSWORD_RESET_TOKEN_MESSAGE)
+            throw new BadRequestException({
+                code: 'INVALID_PASSWORD_RESET_TOKEN',
+                message: INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+            })
         }
 
         const passwordHash = await argon2.hash(newPassword, {
@@ -374,7 +444,10 @@ export class AuthService {
         })
 
         if (!wasReset) {
-            throw new BadRequestException(INVALID_PASSWORD_RESET_TOKEN_MESSAGE)
+            throw new BadRequestException({
+                code: 'INVALID_PASSWORD_RESET_TOKEN',
+                message: INVALID_PASSWORD_RESET_TOKEN_MESSAGE,
+            })
         }
 
         return {
@@ -384,7 +457,7 @@ export class AuthService {
 
     async changePassword(
         userId: string,
-        input: ChangePasswordRequestInput,
+        input: ChangePasswordCommand,
     ): Promise<AuthActionResponse> {
         const { currentPassword, newPassword, errors } = validateChangePasswordInput(input)
 
@@ -500,11 +573,41 @@ function buildEmailVerificationUrl(token: string): string {
     return `${normalizedBaseUrl}/verify-email?token=${encodeURIComponent(token)}`
 }
 
+function buildPasswordResetUrl(token: string): string {
+    const baseUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173'
+    return baseUrl.replace(/\/+$/, '') + '/reset-password?token=' + encodeURIComponent(token)
+}
+
+async function deliverVerificationEmail(email: string, token: string): Promise<void> {
+    const url = buildEmailVerificationUrl(token)
+    await sendTransactionalEmail({
+        to: email,
+        subject: 'Verify your Monqom email address',
+        html:
+            '<p>Verify your email address to activate Monqom.</p><p><a href="' +
+            url +
+            '">Verify email</a></p>',
+    })
+}
+
+async function deliverPasswordResetEmail(email: string, token: string): Promise<void> {
+    const url = buildPasswordResetUrl(token)
+    await sendTransactionalEmail({
+        to: email,
+        subject: 'Reset your Monqom password',
+        html:
+            '<p>Use this link to reset your password.</p><p><a href="' +
+            url +
+            '">Reset password</a></p>',
+    })
+}
+
 function mapRegisteredUser(user: User): RegisteredUserResponse {
     return {
         id: user.id,
         email: user.email,
         name: user.name,
+        locale: user.locale,
         emailVerified: user.emailVerified,
         totpEnabled: user.totpEnabled,
         createdAt: user.createdAt,
@@ -512,7 +615,7 @@ function mapRegisteredUser(user: User): RegisteredUserResponse {
     }
 }
 
-function validateChangePasswordInput(input: ChangePasswordRequestInput): {
+function validateChangePasswordInput(input: ChangePasswordCommand): {
     currentPassword?: string
     newPassword?: string
     errors: string[]
@@ -521,13 +624,13 @@ function validateChangePasswordInput(input: ChangePasswordRequestInput): {
     let currentPassword: string | undefined
     let newPassword: string | undefined
 
-    if (typeof input.currentPassword !== 'string' || input.currentPassword.length === 0) {
+    if (input.currentPassword.length === 0) {
         errors.push('Current password is required')
     } else {
         currentPassword = input.currentPassword
     }
 
-    if (typeof input.newPassword !== 'string' || input.newPassword.length === 0) {
+    if (input.newPassword.length === 0) {
         errors.push('New password is required')
     } else {
         newPassword = input.newPassword
@@ -537,26 +640,26 @@ function validateChangePasswordInput(input: ChangePasswordRequestInput): {
     return { currentPassword, newPassword, errors }
 }
 
-function validateUserProfileInput(input: UpdateUserProfileRequestInput): {
+function validateUserProfileInput(input: UpdateUserProfileCommand): {
     name?: string
+    locale?: 'en' | 'pl'
     errors: string[]
 } {
     const errors: string[] = []
     let name: string | undefined
+    let locale: 'en' | 'pl' | undefined
 
-    if (typeof input.name !== 'string' || input.name.trim().length === 0) {
-        errors.push('Name is required')
-    } else {
+    if (input.name !== undefined) {
         name = input.name.trim()
-        if (name.length < 2) {
-            errors.push('Name must be at least 2 characters long')
-        }
-        if (name.length > 100) {
-            errors.push('Name must be 100 characters or fewer')
-        }
+        if (name.length === 0) errors.push('Name is required')
+        else if (name.length < 2) errors.push('Name must be at least 2 characters long')
+        if (name.length > 100) errors.push('Name must be 100 characters or fewer')
+    }
+    if (input.locale !== undefined) {
+        locale = input.locale
     }
 
-    return { name, errors }
+    return { name, locale, errors }
 }
 
 function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {

@@ -11,17 +11,22 @@ import { AllExceptionsFilter } from './shared/filters/http-exception.filter'
 import { appLogger } from './shared/utils/logger'
 import { createSessionOptions } from './shared/session/session.config'
 import { createCorsOptions } from './shared/http/cors.config'
+import { csrfProtectionMiddleware } from './shared/security/csrf'
+import { createRequestValidationPipe } from './shared/validation/request-validation.pipe'
+import type { RuntimeConfig } from './config/env'
 
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
         logger: appLogger,
     })
 
-    app.use(helmet())
+    app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
     app.use(compression())
 
     const configService = app.get(ConfigService)
-    const nodeEnv = configService.get<string>('env.nodeEnv', 'development')
+    const runtimeConfig = configService.get<RuntimeConfig>('env')
+    if (!runtimeConfig) throw new Error('Runtime configuration is unavailable')
+    const nodeEnv = runtimeConfig.nodeEnv
     const corsAllowedOrigins = configService.get<string[]>('env.corsAllowedOrigins', [])
 
     app.enableCors(
@@ -39,11 +44,12 @@ async function bootstrap() {
         session(
             createSessionOptions({
                 nodeEnv,
-                databaseUrl: configService.get<string>('env.databaseUrl'),
-                sessionSecret: process.env.SESSION_SECRET,
+                databaseUrl: runtimeConfig.databaseUrl,
+                sessionSecret: runtimeConfig.sessionSecret,
             }),
         ),
     )
+    app.use(csrfProtectionMiddleware)
 
     // Apply observability middlewares globally
     app.use(requestIdMiddleware)
@@ -53,10 +59,13 @@ async function bootstrap() {
         exclude: ['health', 'ready'],
     })
 
+    app.useGlobalPipes(createRequestValidationPipe())
+
     app.useGlobalFilters(new AllExceptionsFilter())
 
-    const port = configService.get<number>('env.port', 3000)
+    const port = runtimeConfig.port
 
-    await app.listen(port)
+    app.enableShutdownHooks()
+    await app.listen(port, '0.0.0.0')
 }
 bootstrap()

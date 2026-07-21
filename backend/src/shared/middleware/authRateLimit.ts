@@ -89,14 +89,20 @@ export class AuthRateLimitMiddleware implements NestMiddleware {
 
     use(req: Request, res: Response, next: NextFunction): void {
         const now = Date.now()
-        const ip = getRequestIp(req)
         const policy = getAuthRateLimitPolicy(req)
-        const rateLimitKey = `${policy.key}:${ip}`
-        const recentAttempts = (this.attemptsByIp.get(rateLimitKey) ?? []).filter(
-            (attemptedAt) => now - attemptedAt < AUTH_RATE_LIMIT_WINDOW_MS,
-        )
+        const rateLimitKeys = getRateLimitKeys(req, policy)
+        const attemptsByKey = rateLimitKeys.map((rateLimitKey) => ({
+            rateLimitKey,
+            recentAttempts: (this.attemptsByIp.get(rateLimitKey) ?? []).filter(
+                (attemptedAt) => now - attemptedAt < AUTH_RATE_LIMIT_WINDOW_MS,
+            ),
+        }))
 
-        if (recentAttempts.length >= AUTH_RATE_LIMIT_MAX_ATTEMPTS) {
+        if (
+            attemptsByKey.some(
+                ({ recentAttempts }) => recentAttempts.length >= AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+            )
+        ) {
             res.setHeader('Retry-After', String(Math.ceil(AUTH_RATE_LIMIT_WINDOW_MS / 1000)))
             res.status(429).json({
                 statusCode: 429,
@@ -106,10 +112,29 @@ export class AuthRateLimitMiddleware implements NestMiddleware {
             return
         }
 
-        recentAttempts.push(now)
-        this.attemptsByIp.set(rateLimitKey, recentAttempts)
+        for (const { rateLimitKey, recentAttempts } of attemptsByKey) {
+            recentAttempts.push(now)
+            this.attemptsByIp.set(rateLimitKey, recentAttempts)
+        }
         next()
     }
+}
+
+function getRateLimitKeys(req: Request, policy: AuthRateLimitPolicy): string[] {
+    const keys = [policy.key + ':ip:' + getRequestIp(req)]
+    const email = getRequestEmail(req)
+
+    if (email) keys.push(policy.key + ':email:' + email)
+
+    return keys
+}
+
+function getRequestEmail(req: Request): string | undefined {
+    const email = req.body?.email
+    if (typeof email !== 'string') return undefined
+
+    const normalized = email.trim().toLowerCase()
+    return normalized.length > 0 ? normalized : undefined
 }
 
 function getAuthRateLimitPolicy(req: Request): AuthRateLimitPolicy {

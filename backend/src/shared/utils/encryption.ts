@@ -22,7 +22,10 @@ export function decryptSensitiveValue(payload: string): string {
     }
 
     const iv = decodedPayload.subarray(0, IV_LENGTH_BYTES)
-    const authTag = decodedPayload.subarray(IV_LENGTH_BYTES, IV_LENGTH_BYTES + AUTH_TAG_LENGTH_BYTES)
+    const authTag = decodedPayload.subarray(
+        IV_LENGTH_BYTES,
+        IV_LENGTH_BYTES + AUTH_TAG_LENGTH_BYTES,
+    )
     const encrypted = decodedPayload.subarray(IV_LENGTH_BYTES + AUTH_TAG_LENGTH_BYTES)
     const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, getEncryptionKey(), iv)
 

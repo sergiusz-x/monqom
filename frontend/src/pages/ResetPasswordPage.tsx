@@ -2,31 +2,21 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "@/lib/api";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { PendingButton } from "@/components/ui/pending-button";
+import { getApiErrorMessage } from "@/lib/api-errors";
 
 interface ResetPasswordFormValues {
   newPassword: string;
   confirmPassword: string;
 }
 
-function extractErrorMessage(err: unknown): string {
-  if (
-    err &&
-    typeof err === "object" &&
-    "response" in err &&
-    err.response &&
-    typeof err.response === "object" &&
-    "data" in err.response
-  ) {
-    const data = (err.response as { data: unknown }).data;
-    if (data && typeof data === "object" && "message" in data) {
-      const msg = (data as { message: unknown }).message;
-      return Array.isArray(msg) ? msg.join(", ") : String(msg);
-    }
-  }
-  return "Something went wrong. Please try again.";
-}
-
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const [success, setSuccess] = useState(false);
@@ -40,40 +30,35 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 p-8 border border-border rounded-lg shadow-sm bg-card text-center">
-          <h1 className="text-2xl font-semibold">Invalid link</h1>
-          <p className="text-sm text-muted-foreground">
-            This password reset link is missing a token. Please request a new
-            one.
-          </p>
-          <Link
-            to="/forgot-password"
-            className="text-sm text-primary hover:underline"
-          >
-            Request new link
-          </Link>
-        </div>
-      </div>
+      <AuthCard compact centered>
+        <h1 className="text-2xl font-semibold">{t("auth.invalidLink")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("auth.missingResetToken")}
+        </p>
+        <Link
+          to="/forgot-password"
+          className="text-sm text-primary hover:underline"
+        >
+          {t("auth.requestNewLink")}
+        </Link>
+      </AuthCard>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 p-8 border border-border rounded-lg shadow-sm bg-card text-center">
-          <h1 className="text-2xl font-semibold">Password reset</h1>
-          <p className="text-sm text-muted-foreground">
-            Your password has been reset successfully.
-          </p>
-          <Link
-            to="/login"
-            className="inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Sign in
-          </Link>
-        </div>
-      </div>
+      <AuthCard compact centered>
+        <h1 className="text-2xl font-semibold">{t("auth.resetDone")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("auth.resetSuccessDescription")}
+        </p>
+        <Link
+          to="/login"
+          className="inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          {t("auth.signIn")}
+        </Link>
+      </AuthCard>
     );
   }
 
@@ -86,76 +71,67 @@ export default function ResetPasswordPage() {
       });
       setSuccess(true);
     } catch (err: unknown) {
-      setServerError(extractErrorMessage(err));
+      setServerError(getApiErrorMessage(err));
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg shadow-sm bg-card">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Reset password</h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your new password below.
-          </p>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="newPassword" className="text-sm font-medium">
-              New password
-            </label>
-            <input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="••••••••"
-              {...register("newPassword", {
-                required: "New password is required",
-                minLength: { value: 8, message: "Minimum 8 characters" },
-              })}
-            />
-            {errors.newPassword && (
-              <p className="text-xs text-destructive">
-                {errors.newPassword.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="confirmPassword" className="text-sm font-medium">
-              Confirm new password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="••••••••"
-              {...register("confirmPassword", {
-                required: "Please confirm your password",
-                validate: (value) =>
-                  value === getValues("newPassword") ||
-                  "Passwords do not match",
-              })}
-            />
-            {errors.confirmPassword && (
-              <p className="text-xs text-destructive">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-          {serverError && (
-            <p className="text-xs text-destructive">{serverError}</p>
-          )}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? "Resetting…" : "Reset password"}
-          </button>
-        </form>
+    <AuthCard>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">{t("auth.resetTitle")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("auth.resetDescription")}
+        </p>
       </div>
-    </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          id="newPassword"
+          label={t("auth.newPassword")}
+          error={errors.newPassword?.message}
+          required
+        >
+          <Input
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...register("newPassword", {
+              required: t("auth.requiredNewPassword"),
+              minLength: { value: 8, message: t("auth.minPassword") },
+            })}
+          />
+        </FormField>
+        <FormField
+          id="confirmPassword"
+          label={t("auth.confirmNewPassword")}
+          error={errors.confirmPassword?.message}
+          required
+        >
+          <Input
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...register("confirmPassword", {
+              required: t("auth.confirmRequired"),
+              validate: (value) =>
+                value === getValues("newPassword") ||
+                t("auth.passwordMismatch"),
+            })}
+          />
+        </FormField>
+        {serverError && (
+          <Alert variant="error" compact>
+            {serverError}
+          </Alert>
+        )}
+        <PendingButton
+          type="submit"
+          isPending={isSubmitting}
+          pendingLabel={t("settings.saving")}
+          className="w-full"
+        >
+          {t("auth.resetTitle")}
+        </PendingButton>
+      </form>
+    </AuthCard>
   );
 }

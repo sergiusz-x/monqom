@@ -3,6 +3,13 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { PendingButton } from "@/components/ui/pending-button";
+import { getApiErrorMessage } from "@/lib/api-errors";
 
 interface LoginFormValues {
   email: string;
@@ -14,6 +21,7 @@ interface TwoFactorFormValues {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const { login, setUser } = useAuth();
   const navigate = useNavigate();
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
@@ -29,10 +37,10 @@ export default function LoginPage() {
       if (result.type === "two_factor_required") {
         setTwoFactorRequired(true);
       } else {
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
     } catch (err: unknown) {
-      const msg = extractErrorMessage(err);
+      const msg = getApiErrorMessage(err);
       setServerError(msg);
     }
   }
@@ -50,9 +58,9 @@ export default function LoginPage() {
         updatedAt: string;
       }>("/auth/2fa/verify", { token: data.code });
       setUser(res.data);
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
-      setServerError(extractErrorMessage(err));
+      setServerError(getApiErrorMessage(err));
     }
   }
 
@@ -63,52 +71,43 @@ export default function LoginPage() {
       formState: { errors, isSubmitting },
     } = twoFactorForm;
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg shadow-sm bg-card">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">
-              Two-factor authentication
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Enter the code from your authenticator app.
-            </p>
-          </div>
-          <form
-            onSubmit={handleSubmit(onTwoFactorSubmit)}
-            className="space-y-4"
-          >
-            <div className="space-y-1">
-              <label htmlFor="code" className="text-sm font-medium">
-                Authentication code
-              </label>
-              <input
-                id="code"
-                type="text"
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="000000"
-                {...register("code", { required: "Code is required" })}
-              />
-              {errors.code && (
-                <p className="text-xs text-destructive">
-                  {errors.code.message}
-                </p>
-              )}
-            </div>
-            {serverError && (
-              <p className="text-xs text-destructive">{serverError}</p>
-            )}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? "Verifying…" : "Verify"}
-            </button>
-          </form>
+      <AuthCard>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">{t("auth.twoFactor")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("auth.twoFactorDescription")}
+          </p>
         </div>
-      </div>
+        <form onSubmit={handleSubmit(onTwoFactorSubmit)} className="space-y-4">
+          <FormField
+            id="code"
+            label={t("auth.authenticationCode")}
+            error={errors.code?.message}
+            required
+          >
+            <Input
+              type="text"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              placeholder="000000"
+              {...register("code", { required: t("auth.codeRequired") })}
+            />
+          </FormField>
+          {serverError && (
+            <Alert variant="error" compact>
+              {serverError}
+            </Alert>
+          )}
+          <PendingButton
+            type="submit"
+            isPending={isSubmitting}
+            pendingLabel={t("auth.verifyingAction")}
+            className="w-full"
+          >
+            {t("auth.verify")}
+          </PendingButton>
+        </form>
+      </AuthCard>
     );
   }
 
@@ -118,93 +117,72 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = loginForm;
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg shadow-sm bg-card">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Sign in</h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your credentials to access your workspace.
-          </p>
-        </div>
-        <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="you@example.com"
-              {...register("email", { required: "Email is required" })}
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
+    <AuthCard>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">{t("auth.signIn")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("auth.loginDescription")}
+        </p>
+      </div>
+      <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
+        <FormField
+          id="email"
+          label={t("auth.email")}
+          error={errors.email?.message}
+          required
+        >
+          <Input
+            type="email"
+            autoComplete="email"
+            placeholder={t("auth.emailPlaceholder")}
+            {...register("email", { required: t("auth.requiredEmail") })}
+          />
+        </FormField>
+        <FormField
+          id="password"
+          error={errors.password?.message}
+          required
+          label={
+            <span className="flex items-center justify-between">
+              <span>{t("auth.password")}</span>
               <Link
                 to="/forgot-password"
                 className="text-xs text-primary hover:underline"
               >
-                Forgot password?
+                {t("auth.forgotPassword")}
               </Link>
-            </div>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="••••••••"
-              {...register("password", { required: "Password is required" })}
-            />
-            {errors.password && (
-              <p className="text-xs text-destructive">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-          {serverError && (
-            <p className="text-xs text-destructive">{serverError}</p>
-          )}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-        <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link to="/register" className="text-primary hover:underline">
-            Register
-          </Link>
-        </p>
-      </div>
-    </div>
+            </span>
+          }
+        >
+          <Input
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            {...register("password", {
+              required: t("auth.requiredPassword"),
+            })}
+          />
+        </FormField>
+        {serverError && (
+          <Alert variant="error" compact>
+            {serverError}
+          </Alert>
+        )}
+        <PendingButton
+          type="submit"
+          isPending={isSubmitting}
+          pendingLabel={t("auth.signingIn")}
+          className="w-full"
+        >
+          {t("auth.signIn")}
+        </PendingButton>
+      </form>
+      <p className="text-center text-sm text-muted-foreground">
+        {t("auth.noAccount")}{" "}
+        <Link to="/register" className="text-primary hover:underline">
+          {t("auth.register")}
+        </Link>
+      </p>
+    </AuthCard>
   );
-}
-
-function extractErrorMessage(err: unknown): string {
-  if (
-    err &&
-    typeof err === "object" &&
-    "response" in err &&
-    err.response &&
-    typeof err.response === "object" &&
-    "data" in err.response
-  ) {
-    const data = (err.response as { data: unknown }).data;
-    if (data && typeof data === "object" && "message" in data) {
-      const msg = (data as { message: unknown }).message;
-      return Array.isArray(msg) ? msg.join(", ") : String(msg);
-    }
-  }
-  return "Something went wrong. Please try again.";
 }

@@ -42,6 +42,7 @@ describe('calculateBudgetProgress', () => {
             {
                 categoryId: 'category-parent-food',
                 categoryName: 'Food',
+                categorySystemKey: null,
                 budgetAmountCents: 80000,
                 spentCents: 50000,
                 remainingCents: 30000,
@@ -50,6 +51,7 @@ describe('calculateBudgetProgress', () => {
             {
                 categoryId: 'category-child-groceries',
                 categoryName: 'Groceries',
+                categorySystemKey: null,
                 budgetAmountCents: null,
                 spentCents: 30000,
                 remainingCents: null,
@@ -58,6 +60,7 @@ describe('calculateBudgetProgress', () => {
             {
                 categoryId: 'category-child-dining',
                 categoryName: 'Dining Out',
+                categorySystemKey: null,
                 budgetAmountCents: null,
                 spentCents: 20000,
                 remainingCents: null,

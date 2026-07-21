@@ -10,19 +10,19 @@ function makeBreakdown(
   return {
     month: "2026-04",
     currency: "USD",
-    total_spending: 100,
+    totalSpending: 100,
     categories: [
       {
-        category_id: "cat-small",
-        category_name: "Coffee",
-        category_color: null,
+        categoryId: "cat-small",
+        categoryName: "Coffee",
+        categoryColor: null,
         amount: 20,
         percentage: 20,
       },
       {
-        category_id: "cat-large",
-        category_name: "Groceries",
-        category_color: "#16a34a",
+        categoryId: "cat-large",
+        categoryName: "Groceries",
+        categoryColor: "#16a34a",
         amount: 80,
         percentage: 80,
       },
@@ -70,8 +70,24 @@ describe("SpendingByCategoryChart", () => {
     ).toHaveStyle({ backgroundColor: "#16a34a", width: "80%" });
   });
 
+  it("adds tokenized fallbacks and distinct non-color patterns", () => {
+    renderChart();
+
+    const groceriesBar = screen.getByRole("img", {
+      name: /groceries spending share 80%/i,
+    }).firstElementChild;
+    const coffeeBar = screen.getByRole("img", {
+      name: /coffee spending share 20%/i,
+    }).firstElementChild;
+
+    expect(groceriesBar).toHaveAttribute("data-pattern", "chart-pattern-1");
+    expect(coffeeBar).toHaveAttribute("data-pattern", "chart-pattern-2");
+    expect(coffeeBar).toHaveStyle({ backgroundColor: "var(--chart-2)" });
+    expect(coffeeBar).toHaveClass("border-foreground/20");
+  });
+
   it("handles no spending gracefully", () => {
-    renderChart(makeBreakdown({ total_spending: 0, categories: [] }));
+    renderChart(makeBreakdown({ totalSpending: 0, categories: [] }));
 
     expect(screen.getByText("No category spending yet")).toBeInTheDocument();
     expect(

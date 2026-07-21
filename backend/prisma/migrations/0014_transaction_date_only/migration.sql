@@ -1,0 +1,3 @@
+ALTER TABLE "transactions"
+ALTER COLUMN "date" TYPE DATE
+USING ("date" AT TIME ZONE 'UTC')::DATE;

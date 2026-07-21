@@ -4,6 +4,7 @@ import crypto from 'crypto'
 /**
  * Extend Express Request interface to include id.
  */
+// Express declaration merging requires augmenting its namespace.
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
     namespace Express {

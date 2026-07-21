@@ -4,7 +4,7 @@ import { PrismaService } from '../../shared/database/prisma.service'
 
 export type CategoryRecord = Pick<
     Category,
-    'id' | 'parentId' | 'name' | 'icon' | 'sortOrder' | 'deletedAt'
+    'id' | 'parentId' | 'name' | 'systemKey' | 'icon' | 'sortOrder' | 'deletedAt'
 >
 
 @Injectable()
@@ -24,6 +24,7 @@ export class CategoriesRepository {
                 id: true,
                 parentId: true,
                 name: true,
+                systemKey: true,
                 icon: true,
                 sortOrder: true,
                 deletedAt: true,
@@ -47,6 +48,7 @@ export class CategoriesRepository {
                 id: true,
                 parentId: true,
                 name: true,
+                systemKey: true,
                 icon: true,
                 sortOrder: true,
                 deletedAt: true,

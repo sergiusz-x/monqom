@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import BudgetsPage from "@/pages/BudgetsPage";
 
@@ -65,6 +66,7 @@ const budgetsResponse = [
     id: "budget-1",
     category_id: "cat-1",
     amount: 500,
+    currency: "USD",
     year: 2026,
     month: 4,
   },
@@ -116,7 +118,7 @@ describe("BudgetsPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Add Budget" }));
     await user.click(screen.getByRole("button", { name: "Pick category" }));
-    await user.type(screen.getByLabelText("Amount"), "250");
+    await user.type(screen.getByLabelText("Amount"), "25000");
     await user.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
@@ -125,6 +127,7 @@ describe("BudgetsPage", () => {
       category_id: "cat-1",
       amount: 250,
     });
+    expect(await screen.findByText("Budget created")).toBeInTheDocument();
   });
 
   it("opens edit mode on budget click and supports delete", async () => {
@@ -145,11 +148,18 @@ describe("BudgetsPage", () => {
       screen.getByRole("heading", { name: "Edit budget" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete budget" }));
+    const confirmation = screen.getByRole("dialog", {
+      name: "Delete this budget?",
+    });
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Delete budget" }),
+    );
 
     await waitFor(() => expect(mockApi.delete).toHaveBeenCalledTimes(1));
     expect(mockApi.delete.mock.calls[0][0]).toContain(
       "/workspaces/ws-1/budgets/budget-1",
     );
+    expect(await screen.findByText("Budget deleted")).toBeInTheDocument();
   });
 
   it("shows empty state when no budgets are defined", async () => {

@@ -1,6 +1,7 @@
 export const AUTH_BASE_ROUTE = 'auth'
 
 export const AUTH_ROUTES = {
+    csrfToken: 'csrf-token',
     register: 'register',
     login: 'login',
     twoFactorSetup: '2fa/setup',

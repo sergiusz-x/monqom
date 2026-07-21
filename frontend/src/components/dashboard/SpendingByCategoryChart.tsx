@@ -1,5 +1,11 @@
 import { Link } from "react-router-dom";
 import type { CategoryBreakdown } from "@/types/dashboard";
+import { formatCurrency } from "@/lib/money";
+import { useTranslation } from "react-i18next";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionCard } from "@/components/ui/card";
+import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { cn } from "@/lib/utils";
 
 interface SpendingByCategoryChartProps {
   breakdown: CategoryBreakdown;
@@ -7,23 +13,21 @@ interface SpendingByCategoryChartProps {
 }
 
 const FALLBACK_COLORS = [
-  "#2563eb",
-  "#16a34a",
-  "#f97316",
-  "#9333ea",
-  "#dc2626",
-  "#0891b2",
-  "#ca8a04",
-  "#db2777",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
 ];
-
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
+const CATEGORY_PATTERNS = [
+  "chart-pattern-1",
+  "chart-pattern-2",
+  "chart-pattern-3",
+  "chart-pattern-4",
+] as const;
 
 function formatPercentage(value: number): string {
   return `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`;
@@ -67,60 +71,78 @@ export function SpendingByCategoryChart({
   breakdown,
   month,
 }: SpendingByCategoryChartProps) {
+  const { t } = useTranslation();
+  const categoryLabel = (name: string, systemKey?: string | null) =>
+    translateSystemLabel(t, systemKey, name);
   const categories = [...breakdown.categories].sort((left, right) => {
     if (right.amount !== left.amount) return right.amount - left.amount;
-    return left.category_name.localeCompare(right.category_name);
+    return left.categoryName.localeCompare(right.categoryName);
   });
 
   return (
-    <section
-      className="rounded-2xl border border-border bg-card p-6 shadow-sm"
-      aria-label="Spending by category"
+    <SectionCard
+      padding="spacious"
+      elevation="raised"
+      aria-label={t("dashboard.byCategory")}
     >
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Spending by category</h2>
+          <h2 className="text-lg font-semibold">{t("dashboard.byCategory")}</h2>
           <p className="text-sm text-muted-foreground">
-            {formatCurrency(breakdown.total_spending, breakdown.currency)} total
+            {t("dashboard.total", {
+              amount: formatCurrency(
+                breakdown.totalSpending,
+                breakdown.currency,
+              ),
+            })}
           </p>
         </div>
       </div>
 
       {categories.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
-          <p className="mb-2 font-medium">No category spending yet</p>
-          <p className="text-sm text-muted-foreground">
-            Add expenses for this month to see your category breakdown.
-          </p>
-        </div>
+        <EmptyState
+          title={t("dashboard.noCategory")}
+          description={t("dashboard.noCategoryDescription")}
+          className="min-h-40"
+        />
       ) : (
         <ul className="space-y-3">
-          {categories.map((category) => {
+          {categories.map((category, index) => {
             const color = colorForCategory(
-              category.category_id,
-              category.category_color,
+              category.categoryId,
+              category.categoryColor,
             );
             const percentage = Math.max(0, Math.min(100, category.percentage));
+            const label = categoryLabel(
+              category.categoryName,
+              category.categorySystemKey,
+            );
+            const pattern = CATEGORY_PATTERNS[index % CATEGORY_PATTERNS.length];
 
             return (
-              <li key={category.category_id}>
+              <li key={category.categoryId}>
                 <Link
-                  to={transactionFilterHref(category.category_id, month)}
+                  to={transactionFilterHref(category.categoryId, month)}
                   className="block rounded-lg border border-transparent p-2 hover:border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`${category.category_name}: ${formatCurrency(
-                    category.amount,
-                    breakdown.currency,
-                  )}, ${formatPercentage(category.percentage)}`}
+                  aria-label={t("dashboard.categoryBreakdownLabel", {
+                    category: label,
+                    amount: formatCurrency(category.amount, breakdown.currency),
+                    percentage: formatPercentage(category.percentage),
+                  })}
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
                       <span
-                        className="h-3 w-3 shrink-0 rounded-full"
+                        className={cn(
+                          "h-3 w-3 shrink-0 border border-foreground/30",
+                          index % 2 === 0 ? "rounded-full" : "rounded-sm",
+                          pattern,
+                        )}
                         style={{ backgroundColor: color }}
                         aria-hidden="true"
                       />
                       <span className="truncate text-sm font-medium">
-                        {category.category_name}
+                        {label}
                       </span>
                     </div>
                     <div className="shrink-0 text-right">
@@ -135,12 +157,17 @@ export function SpendingByCategoryChart({
                   <div
                     className="h-2 rounded-full bg-muted"
                     role="img"
-                    aria-label={`${category.category_name} spending share ${formatPercentage(
-                      category.percentage,
-                    )}`}
+                    aria-label={t("dashboard.spendingShare", {
+                      category: label,
+                      percentage: formatPercentage(category.percentage),
+                    })}
                   >
                     <div
-                      className="h-2 rounded-full"
+                      data-pattern={pattern}
+                      className={cn(
+                        "h-2 rounded-full border border-foreground/20",
+                        pattern,
+                      )}
                       style={{
                         width: `${percentage}%`,
                         backgroundColor: color,
@@ -153,6 +180,6 @@ export function SpendingByCategoryChart({
           })}
         </ul>
       )}
-    </section>
+    </SectionCard>
   );
 }

@@ -7,7 +7,15 @@ export interface CategorySpendRecord {
     amount: number
 }
 
-export interface DashboardCategoryRecord extends Pick<Category, 'id' | 'name' | 'color'> {}
+export interface MonthlySpendRecord {
+    month: string
+    amount: number
+}
+
+export interface DashboardCategoryRecord extends Pick<
+    Category,
+    'id' | 'name' | 'color' | 'systemKey'
+> {}
 
 export type DashboardPersistenceClient = Prisma.TransactionClient | PrismaService
 
@@ -32,11 +40,39 @@ export class DashboardRepository {
                 },
             },
             _sum: {
-                amount: true,
+                baseAmount: true,
             },
         })
 
-        return result._sum.amount ?? 0
+        return result._sum.baseAmount ?? 0
+    }
+
+    async listMonthlySpendForRange(
+        workspaceId: string,
+        startDate: Date,
+        endDateExclusive: Date,
+        prisma: DashboardPersistenceClient = this.prisma,
+    ): Promise<MonthlySpendRecord[]> {
+        const rows = await prisma.$queryRaw<Array<{ month: string; amount: bigint | number }>>(
+            Prisma.sql`
+                SELECT
+                    TO_CHAR(DATE_TRUNC('month', "date"), 'YYYY-MM') AS "month",
+                    COALESCE(SUM("base_amount"), 0)::BIGINT AS "amount"
+                FROM "transactions"
+                WHERE "workspace_id" = ${workspaceId}
+                    AND "deleted_at" IS NULL
+                    AND "type" = 'expense'
+                    AND "date" >= ${startDate}
+                    AND "date" < ${endDateExclusive}
+                GROUP BY DATE_TRUNC('month', "date")
+                ORDER BY DATE_TRUNC('month', "date") ASC
+            `,
+        )
+
+        return rows.map((row) => ({
+            month: row.month,
+            amount: Number(row.amount),
+        }))
     }
 
     async listCategorySpendForRange(
@@ -57,13 +93,13 @@ export class DashboardRepository {
                 },
             },
             _sum: {
-                amount: true,
+                baseAmount: true,
             },
         })
 
         return rows.map((row) => ({
             categoryId: row.categoryId,
-            amount: row._sum.amount ?? 0,
+            amount: row._sum.baseAmount ?? 0,
         }))
     }
 
@@ -87,6 +123,7 @@ export class DashboardRepository {
                 id: true,
                 name: true,
                 color: true,
+                systemKey: true,
             },
         })
     }

@@ -1,58 +1,66 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { validateMoneyAmountValue } from '../../shared/utils/validation'
+import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
+import { WorkspaceService } from '../workspace/workspace.service'
 import {
     ListedTransactionRecord,
     ListTransactionsFilters,
+    TransactionSortDirection,
+    TransactionSortField,
     TransactionWithTags,
     TransactionsPersistenceClient,
     TransactionsRepository,
 } from './transactions.repository'
 
 const CATEGORY_NOT_FOUND_MESSAGE = 'Category not found'
-const DEFAULT_TRANSACTION_CURRENCY = 'USD'
 const EXPENSE_TRANSACTION_TYPE = 'expense'
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
-const ISO_DATE_TIME_REGEX =
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/
 const DEFAULT_TRANSACTION_LIST_LIMIT = 20
-const MAX_TRANSACTION_LIST_LIMIT = 100
 const MAX_TAGS_PER_TRANSACTION = 10
+const MAX_CATEGORY_FILTERS = 100
+const MAX_TRANSACTION_DESCRIPTION_LENGTH = 200
 const PAYMENT_SOURCE_NOT_FOUND_MESSAGE = 'Payment source not found'
 const TRANSACTION_NOT_FOUND_MESSAGE = 'Transaction not found'
 
-export interface CreateTransactionRequestInput {
-    amount?: unknown
-    date?: unknown
-    category_id?: unknown
-    notes?: unknown
-    tags?: unknown
-    payment_source_id?: unknown
+export interface CreateTransactionCommand {
+    amount: number
+    currency?: string
+    date: string
+    description: string
+    categoryId: string
+    notes?: string | null
+    tags?: string[]
+    paymentSourceId: string
 }
 
 export interface CreateTransactionResponse {
     id: string
     workspace_id: string
     category_id: string
-    payment_source_id: string | null
+    payment_source_id: string
     type: string
     amount: number
     currency: string
-    date: Date
+    date: string
+    description: string
     notes: string | null
     tags: string[]
     created_at: Date
     updated_at: Date
 }
 
-export interface ListTransactionsRequestInput {
-    category_id?: unknown
-    payment_source_id?: unknown
-    tag?: unknown
-    date_from?: unknown
-    date_to?: unknown
-    limit?: unknown
-    offset?: unknown
+export interface ListTransactionsCommand {
+    categoryId?: string
+    categoryIds?: string[]
+    sortBy?: TransactionSortField
+    sortDirection?: TransactionSortDirection
+    paymentSourceId?: string
+    tag?: string
+    dateFrom?: string
+    dateTo?: string
+    limit?: number
+    offset?: number
 }
 
 export interface ListTransactionsResponse {
@@ -63,7 +71,9 @@ export interface ListTransactionsResponse {
 }
 
 interface ValidatedListTransactionsInput {
-    categoryId?: string
+    categoryIds?: string[]
+    sortBy: TransactionSortField
+    sortDirection: TransactionSortDirection
     paymentSourceId?: string
     tag?: string
     dateFrom?: Date
@@ -82,6 +92,7 @@ interface ValidatedCreateTransactionInput {
     amountCents?: number
     categoryId?: string
     date?: Date
+    description?: string
     notes: string | null
     paymentSourceId?: string
     tags: string[]
@@ -93,10 +104,12 @@ export class TransactionsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly transactionsRepository: TransactionsRepository,
+        private readonly currencyService?: CurrencyService,
+        private readonly workspaceService?: WorkspaceService,
     ) {}
 
     async createTransaction(
-        input: CreateTransactionRequestInput,
+        input: CreateTransactionCommand,
         workspaceId: string,
         userId: string,
     ): Promise<CreateTransactionResponse> {
@@ -108,7 +121,9 @@ export class TransactionsService {
             validatedInput.errors.length > 0 ||
             typeof validatedInput.amountCents !== 'number' ||
             !validatedInput.categoryId ||
-            !validatedInput.date
+            !validatedInput.paymentSourceId ||
+            !validatedInput.date ||
+            !validatedInput.description
         ) {
             throw new BadRequestException(validatedInput.errors)
         }
@@ -116,12 +131,25 @@ export class TransactionsService {
         const amountCents = validatedInput.amountCents
         const categoryId = validatedInput.categoryId
         const transactionDate = validatedInput.date
+        const description = validatedInput.description
+        const currency = normalizeCurrency(input.currency ?? 'USD')
+        const workspace = this.workspaceService
+            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : ({ baseCurrency: 'USD' } as const)
+        const fx = this.currencyService
+            ? await this.currencyService.getHistoricalQuote(
+                  currency,
+                  workspace.baseCurrency,
+                  transactionDate,
+              )
+            : { rate: 1, rateDate: transactionDate, source: 'legacy' as const }
+        const baseAmount = Math.round(amountCents * fx.rate)
 
         return this.prisma.$transaction(async (tx) => {
             await this.assertValidTransactionReferences(
                 normalizedWorkspaceId,
                 categoryId,
-                validatedInput.paymentSourceId,
+                validatedInput.paymentSourceId!,
                 tx,
             )
 
@@ -130,11 +158,20 @@ export class TransactionsService {
                     workspaceId: normalizedWorkspaceId,
                     userId: normalizedUserId,
                     categoryId,
-                    paymentSourceId: validatedInput.paymentSourceId,
+                    paymentSourceId: validatedInput.paymentSourceId!,
                     type: EXPENSE_TRANSACTION_TYPE,
                     amount: amountCents,
-                    currency: DEFAULT_TRANSACTION_CURRENCY,
+                    currency,
+                    ...(this.currencyService
+                        ? {
+                              baseAmount,
+                              fxRate: fx.rate,
+                              fxRateDate: fx.rateDate,
+                              fxSource: fx.source,
+                          }
+                        : {}),
                     date: transactionDate,
+                    description,
                     notes: validatedInput.notes,
                     tags: validatedInput.tags,
                 },
@@ -165,9 +202,10 @@ export class TransactionsService {
     }
 
     async updateTransaction(
-        input: CreateTransactionRequestInput,
+        input: CreateTransactionCommand,
         transactionId: string,
         workspaceId: string,
+        userId?: string,
     ): Promise<CreateTransactionResponse> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const normalizedTransactionId = normalizeRequiredValue(transactionId, 'Transaction id')
@@ -177,7 +215,9 @@ export class TransactionsService {
             validatedInput.errors.length > 0 ||
             typeof validatedInput.amountCents !== 'number' ||
             !validatedInput.categoryId ||
-            !validatedInput.date
+            !validatedInput.paymentSourceId ||
+            !validatedInput.date ||
+            !validatedInput.description
         ) {
             throw new BadRequestException(validatedInput.errors)
         }
@@ -185,6 +225,19 @@ export class TransactionsService {
         const amountCents = validatedInput.amountCents
         const categoryId = validatedInput.categoryId
         const transactionDate = validatedInput.date
+        const description = validatedInput.description
+        const currency = normalizeCurrency(input.currency ?? 'USD')
+        const workspace = this.workspaceService
+            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : ({ baseCurrency: 'USD' } as const)
+        const fx = this.currencyService
+            ? await this.currencyService.getHistoricalQuote(
+                  currency,
+                  workspace.baseCurrency,
+                  transactionDate,
+              )
+            : { rate: 1, rateDate: transactionDate, source: 'legacy' as const }
+        const baseAmount = Math.round(amountCents * fx.rate)
 
         return this.prisma.$transaction(async (tx) => {
             const existingTransaction = await this.transactionsRepository.findTransactionById(
@@ -200,20 +253,36 @@ export class TransactionsService {
             await this.assertValidTransactionReferences(
                 normalizedWorkspaceId,
                 categoryId,
-                validatedInput.paymentSourceId,
+                validatedInput.paymentSourceId!,
                 tx,
+                existingTransaction.paymentSourceId,
             )
 
             const transaction = await this.transactionsRepository.updateTransactionWithTags(
                 {
                     workspaceId: normalizedWorkspaceId,
                     transactionId: normalizedTransactionId,
+                    ...(userId
+                        ? {
+                              userId: normalizeRequiredValue(userId, 'User id'),
+                              previousTransaction: existingTransaction,
+                          }
+                        : {}),
                     categoryId,
-                    paymentSourceId: validatedInput.paymentSourceId,
+                    paymentSourceId: validatedInput.paymentSourceId!,
                     type: EXPENSE_TRANSACTION_TYPE,
                     amount: amountCents,
-                    currency: DEFAULT_TRANSACTION_CURRENCY,
+                    currency,
+                    ...(this.currencyService
+                        ? {
+                              baseAmount,
+                              fxRate: fx.rate,
+                              fxRateDate: fx.rateDate,
+                              fxSource: fx.source,
+                          }
+                        : {}),
                     date: transactionDate,
+                    description,
                     notes: validatedInput.notes,
                     tags: validatedInput.tags,
                 },
@@ -266,7 +335,7 @@ export class TransactionsService {
     }
 
     async listTransactions(
-        input: ListTransactionsRequestInput,
+        input: ListTransactionsCommand,
         workspaceId: string,
     ): Promise<ListTransactionsResponse> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
@@ -278,8 +347,10 @@ export class TransactionsService {
 
         const filters: ListTransactionsFilters = {
             workspaceId: normalizedWorkspaceId,
-            categoryId: validatedInput.categoryId,
-            paymentSourceId: validatedInput.paymentSourceId,
+            categoryIds: validatedInput.categoryIds,
+            sortBy: validatedInput.sortBy,
+            sortDirection: validatedInput.sortDirection,
+            paymentSourceId: validatedInput.paymentSourceId!,
             tag: validatedInput.tag,
             dateFrom: validatedInput.dateFrom,
             dateTo: validatedInput.dateTo,
@@ -314,8 +385,9 @@ export class TransactionsService {
     private async assertValidTransactionReferences(
         workspaceId: string,
         categoryId: string,
-        paymentSourceId: string | undefined,
+        paymentSourceId: string,
         prisma: TransactionsPersistenceClient,
+        allowArchivedPaymentSourceId?: string,
     ): Promise<void> {
         const category = await this.transactionsRepository.findCategoryById(
             workspaceId,
@@ -327,7 +399,7 @@ export class TransactionsService {
             throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
         }
 
-        if (!paymentSourceId) {
+        if (paymentSourceId === allowArchivedPaymentSourceId) {
             return
         }
 
@@ -344,22 +416,17 @@ export class TransactionsService {
 }
 
 function validateCreateTransactionInput(
-    input: CreateTransactionRequestInput,
+    input: CreateTransactionCommand,
 ): ValidatedCreateTransactionInput {
     const errors: string[] = []
-    const notesValidation = validateNotesValue(input.notes)
-
-    if (notesValidation.error) {
-        errors.push(notesValidation.error)
-    }
-
     return {
         amountCents: validateAmountValue(input.amount, errors),
-        categoryId: validateRequiredIdValue(input.category_id, 'Category id', errors),
+        categoryId: validateRequiredIdValue(input.categoryId, 'Category id', errors),
         date: validateDateValue(input.date, errors),
-        notes: notesValidation.notes,
-        paymentSourceId: validateOptionalIdValue(
-            input.payment_source_id,
+        description: validateDescriptionValue(input.description, errors),
+        notes: normalizeNotes(input.notes),
+        paymentSourceId: validateRequiredIdValue(
+            input.paymentSourceId,
             'Payment source id',
             errors,
         ),
@@ -369,14 +436,14 @@ function validateCreateTransactionInput(
 }
 
 function validateListTransactionsInput(
-    input: ListTransactionsRequestInput,
+    input: ListTransactionsCommand,
 ): ValidatedListTransactionsInput {
     const errors: string[] = []
-    const dateFrom = validateDateFilterValue(input.date_from, errors, {
+    const dateFrom = validateDateFilterValue(input.dateFrom, errors, {
         fieldName: 'Date from',
         boundary: 'start',
     })
-    const dateTo = validateDateFilterValue(input.date_to, errors, {
+    const dateTo = validateDateFilterValue(input.dateTo, errors, {
         fieldName: 'Date to',
         boundary: 'end',
     })
@@ -385,28 +452,33 @@ function validateListTransactionsInput(
         errors.push('Date from must be less than or equal to date to')
     }
 
+    const categoryIds = validateCategoryIdsValue(input.categoryIds ?? input.categoryId, errors)
+    const sortBy = validateSortField(input.sortBy)
+
     return {
-        categoryId: validateOptionalIdValue(input.category_id, 'Category id', errors),
+        categoryIds,
+        sortBy,
+        sortDirection: getSortDirection(input.sortDirection, sortBy),
         paymentSourceId: validateOptionalIdValue(
-            input.payment_source_id,
+            input.paymentSourceId,
             'Payment source id',
             errors,
         ),
         tag: validateOptionalFilterValue(input.tag, 'Tag', errors),
         dateFrom,
         dateTo,
-        limit: validateLimitValue(input.limit, errors),
-        offset: validateOffsetValue(input.offset, errors),
+        limit: input.limit ?? DEFAULT_TRANSACTION_LIST_LIMIT,
+        offset: input.offset ?? 0,
         errors,
     }
 }
 
-function validateAmountValue(value: unknown, errors: string[]): number | undefined {
+function validateAmountValue(value: number, errors: string[]): number | undefined {
     return validateMoneyAmountValue(value, errors)
 }
 
-function validateDateValue(value: unknown, errors: string[]): Date | undefined {
-    if (typeof value !== 'string' || value.trim().length === 0) {
+function validateDateValue(value: string, errors: string[]): Date | undefined {
+    if (value.trim().length === 0) {
         errors.push('Date is required')
         return undefined
     }
@@ -425,30 +497,19 @@ function validateDateValue(value: unknown, errors: string[]): Date | undefined {
             date.getUTCMonth() !== month - 1 ||
             date.getUTCDate() !== day
         ) {
-            errors.push('Date must be a valid ISO 8601 value')
+            errors.push('Date must be a valid calendar date in YYYY-MM-DD format')
             return undefined
         }
 
         return date
     }
 
-    if (!ISO_DATE_TIME_REGEX.test(normalizedValue)) {
-        errors.push('Date must be a valid ISO 8601 value')
-        return undefined
-    }
-
-    const date = new Date(normalizedValue)
-
-    if (Number.isNaN(date.getTime())) {
-        errors.push('Date must be a valid ISO 8601 value')
-        return undefined
-    }
-
-    return date
+    errors.push('Date must be a valid calendar date in YYYY-MM-DD format')
+    return undefined
 }
 
 function validateDateFilterValue(
-    value: unknown,
+    value: string | undefined,
     errors: string[],
     options: ParsedDateFilterOptions,
 ): Date | undefined {
@@ -456,8 +517,8 @@ function validateDateFilterValue(
         return undefined
     }
 
-    if (typeof value !== 'string' || value.trim().length === 0) {
-        errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
+    if (value.trim().length === 0) {
+        errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
         return undefined
     }
 
@@ -468,11 +529,7 @@ function validateDateFilterValue(
             .split('-')
             .map((part) => Number.parseInt(part, 10))
 
-        const hour = options.boundary === 'end' ? 23 : 0
-        const minute = options.boundary === 'end' ? 59 : 0
-        const second = options.boundary === 'end' ? 59 : 0
-        const millisecond = options.boundary === 'end' ? 999 : 0
-        const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond))
+        const date = new Date(Date.UTC(year, month - 1, day))
 
         if (
             Number.isNaN(date.getTime()) ||
@@ -480,34 +537,23 @@ function validateDateFilterValue(
             date.getUTCMonth() !== month - 1 ||
             date.getUTCDate() !== day
         ) {
-            errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
+            errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
             return undefined
         }
 
         return date
     }
 
-    if (!ISO_DATE_TIME_REGEX.test(normalizedValue)) {
-        errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
-        return undefined
-    }
-
-    const date = new Date(normalizedValue)
-
-    if (Number.isNaN(date.getTime())) {
-        errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
-        return undefined
-    }
-
-    return date
+    errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
+    return undefined
 }
 
 function validateRequiredIdValue(
-    value: unknown,
+    value: string,
     fieldName: string,
     errors: string[],
 ): string | undefined {
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (value.trim().length === 0) {
         errors.push(`${fieldName} is required`)
         return undefined
     }
@@ -515,8 +561,35 @@ function validateRequiredIdValue(
     return value.trim()
 }
 
+function validateCategoryIdsValue(
+    value: string | string[] | undefined,
+    errors: string[],
+): string[] | undefined {
+    if (value === undefined || value === null) return undefined
+
+    const values = Array.isArray(value) ? value : [value]
+    const normalizedValues = Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)))
+
+    if (normalizedValues.length === 0 || normalizedValues.length > MAX_CATEGORY_FILTERS) {
+        errors.push(`Category ids must contain between 1 and ${MAX_CATEGORY_FILTERS} values`)
+        return undefined
+    }
+
+    return normalizedValues
+}
+
+function validateSortField(value: TransactionSortField | undefined): TransactionSortField {
+    return value ?? 'date'
+}
+
+function getSortDirection(
+    value: TransactionSortDirection | undefined,
+    sortBy: TransactionSortField,
+): TransactionSortDirection {
+    return value ?? (sortBy === 'date' ? 'desc' : 'asc')
+}
 function validateOptionalIdValue(
-    value: unknown,
+    value: string | undefined,
     fieldName: string,
     errors: string[],
 ): string | undefined {
@@ -524,7 +597,7 @@ function validateOptionalIdValue(
         return undefined
     }
 
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (value.trim().length === 0) {
         errors.push(`${fieldName} must be a non-empty string`)
         return undefined
     }
@@ -533,7 +606,7 @@ function validateOptionalIdValue(
 }
 
 function validateOptionalFilterValue(
-    value: unknown,
+    value: string | undefined,
     fieldName: string,
     errors: string[],
 ): string | undefined {
@@ -541,7 +614,7 @@ function validateOptionalFilterValue(
         return undefined
     }
 
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (value.trim().length === 0) {
         errors.push(`${fieldName} must be a non-empty string`)
         return undefined
     }
@@ -549,49 +622,8 @@ function validateOptionalFilterValue(
     return value.trim()
 }
 
-function validateLimitValue(value: unknown, errors: string[]): number {
+function normalizeNotes(value: string | null | undefined): string | null {
     if (value === undefined || value === null) {
-        return DEFAULT_TRANSACTION_LIST_LIMIT
-    }
-
-    const normalizedValue = normalizeNumericQueryValue(value)
-
-    if (!normalizedValue || !/^\d+$/.test(normalizedValue)) {
-        errors.push(`Limit must be an integer between 1 and ${MAX_TRANSACTION_LIST_LIMIT}`)
-        return DEFAULT_TRANSACTION_LIST_LIMIT
-    }
-
-    const limit = Number.parseInt(normalizedValue, 10)
-
-    if (limit < 1 || limit > MAX_TRANSACTION_LIST_LIMIT) {
-        errors.push(`Limit must be an integer between 1 and ${MAX_TRANSACTION_LIST_LIMIT}`)
-        return DEFAULT_TRANSACTION_LIST_LIMIT
-    }
-
-    return limit
-}
-
-function validateOffsetValue(value: unknown, errors: string[]): number {
-    if (value === undefined || value === null) {
-        return 0
-    }
-
-    const normalizedValue = normalizeNumericQueryValue(value)
-
-    if (!normalizedValue || !/^\d+$/.test(normalizedValue)) {
-        errors.push('Offset must be a non-negative integer')
-        return 0
-    }
-
-    return Number.parseInt(normalizedValue, 10)
-}
-
-function normalizeNumericQueryValue(value: unknown): string | null {
-    if (typeof value === 'number') {
-        return Number.isFinite(value) ? value.toString() : null
-    }
-
-    if (typeof value !== 'string') {
         return null
     }
 
@@ -600,34 +632,26 @@ function normalizeNumericQueryValue(value: unknown): string | null {
     return normalizedValue.length > 0 ? normalizedValue : null
 }
 
-function validateNotesValue(value: unknown): { notes: string | null; error?: string } {
-    if (value === undefined || value === null) {
-        return {
-            notes: null,
-        }
-    }
-
-    if (typeof value !== 'string') {
-        return {
-            notes: null,
-            error: 'Notes must be a string',
-        }
-    }
-
+function validateDescriptionValue(value: string, errors: string[]): string | undefined {
     const normalizedValue = value.trim()
 
-    return {
-        notes: normalizedValue.length > 0 ? normalizedValue : null,
+    if (normalizedValue.length === 0) {
+        errors.push('Description is required')
+        return undefined
     }
+
+    if (normalizedValue.length > MAX_TRANSACTION_DESCRIPTION_LENGTH) {
+        errors.push(
+            `Description cannot be longer than ${MAX_TRANSACTION_DESCRIPTION_LENGTH} characters`,
+        )
+        return undefined
+    }
+
+    return normalizedValue
 }
 
-function validateTagsValue(value: unknown, errors: string[]): string[] {
+function validateTagsValue(value: string[] | undefined, errors: string[]): string[] {
     if (value === undefined || value === null) {
-        return []
-    }
-
-    if (!Array.isArray(value)) {
-        errors.push('Tags must be an array of strings')
         return []
     }
 
@@ -638,11 +662,6 @@ function validateTagsValue(value: unknown, errors: string[]): string[] {
     const normalizedTags: string[] = []
 
     for (const entry of value) {
-        if (typeof entry !== 'string') {
-            errors.push('Tags must be an array of strings')
-            continue
-        }
-
         const normalizedValue = entry.trim()
 
         if (normalizedValue.length === 0) {
@@ -675,7 +694,8 @@ function mapCreateTransactionResponse(transaction: TransactionWithTags): CreateT
         type: transaction.type,
         amount: convertAmountToDisplayValue(transaction.amount),
         currency: transaction.currency,
-        date: transaction.date,
+        date: transaction.date.toISOString().slice(0, 10),
+        description: transaction.description,
         notes: transaction.notes,
         tags: transaction.tags.map((tag) => tag.name),
         created_at: transaction.createdAt,
@@ -690,11 +710,12 @@ function mapListedTransactionResponse(
         id: transaction.id,
         workspace_id: transaction.workspace_id,
         category_id: transaction.category_id,
-        payment_source_id: transaction.payment_source_id,
+        payment_source_id: transaction.payment_source_id!,
         type: transaction.type,
         amount: convertAmountToDisplayValue(transaction.amount),
         currency: transaction.currency,
-        date: transaction.date,
+        date: transaction.date.toISOString().slice(0, 10),
+        description: transaction.description,
         notes: transaction.notes,
         tags: transaction.tags,
         created_at: transaction.created_at,

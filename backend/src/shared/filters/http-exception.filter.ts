@@ -12,6 +12,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         let statusCode = HttpStatus.INTERNAL_SERVER_ERROR
         let message: string | string[] = 'Internal server error'
         let error = 'Internal Server Error'
+        let code: string | undefined
 
         if (
             exception instanceof HttpException ||
@@ -25,6 +26,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 const res = exceptionResponse as Record<string, unknown>
                 message = (res.message as string | string[]) || httpException.message
                 error = (res.error as string) || httpException.name
+                code = typeof res.code === 'string' ? res.code : undefined
             } else if (typeof exceptionResponse === 'string') {
                 message = exceptionResponse
                 error = httpException.name
@@ -37,11 +39,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
             // but the original error is available in the 'exception' variable for logging
         }
 
+        code ??= errorCodeForStatus(statusCode)
+
         const responseBody: Record<string, unknown> = {
             statusCode,
             message,
             error,
         }
+
+        responseBody.code = code
 
         if (process.env.NODE_ENV !== 'production' && exception instanceof Error) {
             responseBody.stack = exception.stack
@@ -60,6 +66,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         response.status(statusCode).json(responseBody)
     }
+}
+
+function errorCodeForStatus(status: number): string {
+    const codes: Partial<Record<number, string>> = {
+        [HttpStatus.BAD_REQUEST]: 'VALIDATION_ERROR',
+        [HttpStatus.UNAUTHORIZED]: 'AUTHENTICATION_REQUIRED',
+        [HttpStatus.FORBIDDEN]: 'ACCESS_DENIED',
+        [HttpStatus.NOT_FOUND]: 'RESOURCE_NOT_FOUND',
+        [HttpStatus.CONFLICT]: 'CONFLICT',
+        [HttpStatus.TOO_MANY_REQUESTS]: 'RATE_LIMITED',
+    }
+
+    return codes[status] ?? 'INTERNAL_ERROR'
 }
 
 function formatLogMessage(message: string | string[]): string {

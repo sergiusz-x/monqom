@@ -51,6 +51,42 @@ export class PaymentSourcesRepository {
         })
     }
 
+    async findActivePaymentSourceByName(
+        workspaceId: string,
+        name: string,
+        excludeId?: string,
+        prisma: PaymentSourcesPersistenceClient = this.prisma,
+    ): Promise<PaymentSource | null> {
+        return prisma.paymentSource.findFirst({
+            where: {
+                workspaceId,
+                deletedAt: null,
+                name: { equals: name, mode: 'insensitive' },
+                ...(excludeId ? { id: { not: excludeId } } : {}),
+            },
+        })
+    }
+
+    async findSystemCashPaymentSource(
+        workspaceId: string,
+        prisma: PaymentSourcesPersistenceClient = this.prisma,
+    ): Promise<PaymentSource | null> {
+        return prisma.paymentSource.findFirst({
+            where: { workspaceId, systemKey: 'cash', deletedAt: null },
+        })
+    }
+
+    async resetLastPaymentSourcePreferences(
+        workspaceId: string,
+        archivedPaymentSourceId: string,
+        cashPaymentSourceId: string,
+        prisma: PaymentSourcesPersistenceClient = this.prisma,
+    ): Promise<void> {
+        await prisma.workspaceMembership.updateMany({
+            where: { workspaceId, lastPaymentSourceId: archivedPaymentSourceId },
+            data: { lastPaymentSourceId: cashPaymentSourceId },
+        })
+    }
     async findPaymentSourceById(
         workspaceId: string,
         paymentSourceId: string,
@@ -186,6 +222,7 @@ function mapPaymentSourceAuditMetadata(paymentSource: PaymentSource) {
         workspace_id: paymentSource.workspaceId,
         name: paymentSource.name,
         type: paymentSource.type,
+        system_key: paymentSource.systemKey,
         created_at: paymentSource.createdAt.toISOString(),
         updated_at: paymentSource.updatedAt.toISOString(),
         archived_at: paymentSource.deletedAt?.toISOString() ?? null,

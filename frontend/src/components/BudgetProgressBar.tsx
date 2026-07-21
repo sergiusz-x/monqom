@@ -1,17 +1,13 @@
 import { cn } from "@/lib/utils";
 import type { BudgetProgressItem } from "@/types/budget";
+import { formatCurrency } from "@/lib/money";
+import { useTranslation } from "react-i18next";
+import { Card } from "@/components/ui/card";
+import { translateSystemLabel } from "@/i18n/translate-system-label";
 
 export interface BudgetProgressBarProps {
   item: BudgetProgressItem;
-}
-
-function formatAmount(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  currency?: string;
 }
 
 function getBarColorClass(percentage: number): string {
@@ -20,16 +16,29 @@ function getBarColorClass(percentage: number): string {
   return "bg-red-500";
 }
 
-export function BudgetProgressBar({ item }: BudgetProgressBarProps) {
-  if (item.budget_amount === null) {
+export function BudgetProgressBar({
+  item,
+  currency = "USD",
+}: BudgetProgressBarProps) {
+  const { t } = useTranslation();
+  const categoryName = translateSystemLabel(
+    t,
+    item.categorySystemKey,
+    item.categoryName,
+  );
+  if (item.budgetAmount === null) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4">
+      <Card>
         <div className="flex items-center justify-between">
-          <span className="font-medium">{item.category_name}</span>
-          <span className="font-semibold">{formatAmount(item.spent)}</span>
+          <span className="font-medium">{categoryName}</span>
+          <span className="font-semibold">
+            {formatCurrency(item.spent, currency)}
+          </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">No budget set</p>
-      </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("budgets.noBudget")}
+        </p>
+      </Card>
     );
   }
 
@@ -39,9 +48,9 @@ export function BudgetProgressBar({ item }: BudgetProgressBarProps) {
   const colorClass = getBarColorClass(percentage);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <Card>
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-medium">{item.category_name}</span>
+        <span className="font-medium">{categoryName}</span>
         <span
           className={cn(
             "text-sm font-semibold",
@@ -60,23 +69,31 @@ export function BudgetProgressBar({ item }: BudgetProgressBarProps) {
           aria-valuenow={barWidth}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`${item.category_name} budget progress`}
+          aria-label={t("budgets.progress", { category: categoryName })}
         />
       </div>
 
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          Spent: {formatAmount(item.spent)} of{" "}
-          {formatAmount(item.budget_amount)}
+          {t("budgets.spentOf", {
+            spent: formatCurrency(item.spent, currency),
+            limit: formatCurrency(item.budgetAmount, currency),
+          })}
         </span>
         {isOverBudget ? (
           <span className="font-medium text-red-500">
-            Over by {formatAmount(Math.abs(item.remaining!))}
+            {t("budgets.overBy", {
+              amount: formatCurrency(Math.abs(item.remaining!), currency),
+            })}
           </span>
         ) : (
-          <span>Remaining: {formatAmount(item.remaining!)}</span>
+          <span>
+            {t("budgets.remaining", {
+              amount: formatCurrency(item.remaining!, currency),
+            })}
+          </span>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

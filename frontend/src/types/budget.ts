@@ -1,9 +1,19 @@
 export interface BudgetProgressItem {
-  category_id: string;
-  category_name: string;
-  budget_amount: number | null;
+  categoryId: string;
+  categoryName: string;
+  categorySystemKey?: string | null;
+  budgetAmount: number | null;
   limit: number | null;
   spent: number;
   remaining: number | null;
   percentage: number | null;
+}
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  amount: number;
+  currency: string;
+  year: number;
+  month: number;
 }

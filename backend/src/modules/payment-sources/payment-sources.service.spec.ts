@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { ConflictException, NotFoundException } from '@nestjs/common'
 import { PaymentSourcesRepository } from './payment-sources.repository'
 import { PaymentSourcesService } from './payment-sources.service'
 
@@ -14,6 +14,9 @@ describe('PaymentSourcesService', () => {
             | 'archivePaymentSource'
             | 'createPaymentSource'
             | 'findPaymentSourceById'
+            | 'findActivePaymentSourceByName'
+            | 'findSystemCashPaymentSource'
+            | 'resetLastPaymentSourcePreferences'
             | 'listPaymentSourcesByWorkspace'
             | 'updatePaymentSource'
         >
@@ -30,9 +33,22 @@ describe('PaymentSourcesService', () => {
             archivePaymentSource: jest.fn(),
             createPaymentSource: jest.fn(),
             findPaymentSourceById: jest.fn(),
+            findActivePaymentSourceByName: jest.fn(),
+            findSystemCashPaymentSource: jest.fn(),
+            resetLastPaymentSourcePreferences: jest.fn(),
             listPaymentSourcesByWorkspace: jest.fn(),
             updatePaymentSource: jest.fn(),
         }
+
+        paymentSourcesRepository.findActivePaymentSourceByName.mockResolvedValue(null)
+        paymentSourcesRepository.findSystemCashPaymentSource.mockResolvedValue(
+            createStoredPaymentSource({
+                id: 'cash-1',
+                name: 'Cash',
+                type: 'cash',
+                systemKey: 'cash',
+            }) as never,
+        )
 
         service = new PaymentSourcesService(
             prisma as never,
@@ -55,6 +71,7 @@ describe('PaymentSourcesService', () => {
                 workspace_id: 'workspace-1',
                 name: 'Cash Wallet',
                 type: 'cash',
+                system_key: null,
                 is_archived: false,
                 archived_at: null,
                 created_at: new Date('2026-03-24T10:00:00.000Z'),
@@ -72,19 +89,13 @@ describe('PaymentSourcesService', () => {
     it('includes archived payment sources when include_archived=true', async () => {
         paymentSourcesRepository.listPaymentSourcesByWorkspace.mockResolvedValue([] as never)
 
-        await service.listPaymentSources({ include_archived: 'true' }, 'workspace-1')
+        await service.listPaymentSources({ includeArchived: true }, 'workspace-1')
 
         expect(paymentSourcesRepository.listPaymentSourcesByWorkspace).toHaveBeenCalledWith(
             'workspace-1',
             true,
             prisma as never,
         )
-    })
-
-    it('rejects invalid list filters', async () => {
-        await expect(
-            service.listPaymentSources({ include_archived: 'sometimes' }, 'workspace-1'),
-        ).rejects.toBeInstanceOf(BadRequestException)
     })
 
     it('creates a payment source with trimmed values', async () => {
@@ -100,7 +111,7 @@ describe('PaymentSourcesService', () => {
             service.createPaymentSource(
                 {
                     name: ' Travel Card ',
-                    type: ' debit_card ',
+                    type: 'debit_card',
                 },
                 ' workspace-1 ',
                 ' user-1 ',
@@ -110,6 +121,7 @@ describe('PaymentSourcesService', () => {
             workspace_id: 'workspace-1',
             name: 'Travel Card',
             type: 'debit_card',
+            system_key: null,
             is_archived: false,
             archived_at: null,
             created_at: new Date('2026-03-24T10:00:00.000Z'),
@@ -127,19 +139,17 @@ describe('PaymentSourcesService', () => {
         )
     })
 
-    it('rejects unsupported payment source types', async () => {
-        await expect(
-            service.createPaymentSource(
-                {
-                    name: 'Main Card',
-                    type: 'crypto',
-                },
-                'workspace-1',
-                'user-1',
-            ),
-        ).rejects.toBeInstanceOf(BadRequestException)
-    })
+    it('rejects a duplicate active payment source name case-insensitively', async () => {
+        paymentSourcesRepository.findActivePaymentSourceByName.mockResolvedValue(
+            createStoredPaymentSource({ id: 'existing-1', name: 'Revolut', type: 'bank' }) as never,
+        )
 
+        await expect(
+            service.createPaymentSource({ name: 'revolut', type: 'bank' }, 'workspace-1', 'user-1'),
+        ).rejects.toBeInstanceOf(ConflictException)
+
+        expect(paymentSourcesRepository.createPaymentSource).not.toHaveBeenCalled()
+    })
     it('updates an active payment source', async () => {
         const existingPaymentSource = createStoredPaymentSource({
             id: 'payment-source-1',
@@ -163,7 +173,7 @@ describe('PaymentSourcesService', () => {
             service.updatePaymentSource(
                 {
                     name: ' Main Bank ',
-                    type: ' bank ',
+                    type: 'bank',
                 },
                 ' payment-source-1 ',
                 ' workspace-1 ',
@@ -174,6 +184,7 @@ describe('PaymentSourcesService', () => {
             workspace_id: 'workspace-1',
             name: 'Main Bank',
             type: 'bank',
+            system_key: null,
             is_archived: false,
             archived_at: null,
             created_at: new Date('2026-03-24T10:00:00.000Z'),
@@ -199,6 +210,27 @@ describe('PaymentSourcesService', () => {
         )
     })
 
+    it('protects the system cash payment source from updates', async () => {
+        paymentSourcesRepository.findPaymentSourceById.mockResolvedValue(
+            createStoredPaymentSource({
+                id: 'cash-1',
+                name: 'Cash',
+                type: 'cash',
+                systemKey: 'cash',
+            }) as never,
+        )
+
+        await expect(
+            service.updatePaymentSource(
+                { name: 'Wallet', type: 'cash' },
+                'cash-1',
+                'workspace-1',
+                'user-1',
+            ),
+        ).rejects.toBeInstanceOf(ConflictException)
+
+        expect(paymentSourcesRepository.updatePaymentSource).not.toHaveBeenCalled()
+    })
     it('returns not found when updating a missing payment source', async () => {
         paymentSourcesRepository.findPaymentSourceById.mockResolvedValue(null)
 
@@ -243,6 +275,12 @@ describe('PaymentSourcesService', () => {
             }),
         )
         expect(result.archived_at).toBeInstanceOf(Date)
+        expect(paymentSourcesRepository.resetLastPaymentSourcePreferences).toHaveBeenCalledWith(
+            'workspace-1',
+            'payment-source-1',
+            'cash-1',
+            transactionClient,
+        )
         expect(paymentSourcesRepository.archivePaymentSource).toHaveBeenCalledWith(
             expect.objectContaining({
                 workspaceId: 'workspace-1',
@@ -256,12 +294,18 @@ describe('PaymentSourcesService', () => {
     })
 })
 
-function createStoredPaymentSource(input: { id: string; name: string; type: string }) {
+function createStoredPaymentSource(input: {
+    id: string
+    name: string
+    type: string
+    systemKey?: string
+}) {
     return {
         id: input.id,
         workspaceId: 'workspace-1',
         name: input.name,
         type: input.type,
+        systemKey: input.systemKey ?? null,
         createdAt: new Date('2026-03-24T10:00:00.000Z'),
         updatedAt: new Date('2026-03-24T10:00:00.000Z'),
         deletedAt: null,

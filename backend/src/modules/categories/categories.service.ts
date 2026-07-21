@@ -3,13 +3,14 @@ import { CategoriesRepository, CategoryRecord } from './categories.repository'
 
 const CATEGORY_NOT_FOUND_MESSAGE = 'Category not found'
 
-export interface CategoriesRequestInput {
-    include_archived?: unknown
+export interface ListCategoriesCommand {
+    includeArchived?: boolean
 }
 
 export interface CategoryResponse {
     id: string
     name: string
+    system_key: string | null
     icon: string | null
     parent_id: string | null
     sort_order: number
@@ -21,11 +22,11 @@ export class CategoriesService {
     constructor(private readonly categoriesRepository: CategoriesRepository) {}
 
     async listCategories(
-        input: CategoriesRequestInput,
+        input: ListCategoriesCommand,
         workspaceId: string,
     ): Promise<CategoryResponse[]> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
-        const includeArchived = parseIncludeArchivedValue(input.include_archived)
+        const includeArchived = input.includeArchived ?? false
         const categories = await this.categoriesRepository.listCategoriesByWorkspace(
             normalizedWorkspaceId,
             includeArchived,
@@ -36,12 +37,12 @@ export class CategoriesService {
 
     async getCategoryById(
         categoryId: string,
-        input: CategoriesRequestInput,
+        input: ListCategoriesCommand,
         workspaceId: string,
     ): Promise<CategoryResponse> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const normalizedCategoryId = normalizeRequiredValue(categoryId, 'Category id')
-        const includeArchived = parseIncludeArchivedValue(input.include_archived)
+        const includeArchived = input.includeArchived ?? false
         const category = await this.categoriesRepository.findCategoryById(
             normalizedWorkspaceId,
             normalizedCategoryId,
@@ -114,36 +115,11 @@ function mapCategoryResponse(category: CategoryRecord): Omit<CategoryResponse, '
     return {
         id: category.id,
         name: category.name,
+        system_key: category.systemKey,
         icon: category.icon,
         parent_id: category.parentId,
         sort_order: category.sortOrder,
     }
-}
-
-function parseIncludeArchivedValue(value: unknown): boolean {
-    if (value === undefined || value === null) {
-        return false
-    }
-
-    if (typeof value === 'boolean') {
-        return value
-    }
-
-    if (typeof value !== 'string') {
-        throw new BadRequestException('include_archived must be true or false')
-    }
-
-    const normalizedValue = value.trim().toLowerCase()
-
-    if (normalizedValue === 'true') {
-        return true
-    }
-
-    if (normalizedValue === 'false') {
-        return false
-    }
-
-    throw new BadRequestException('include_archived must be true or false')
 }
 
 function normalizeRequiredValue(value: string, fieldName: string): string {

@@ -1,3 +1,6 @@
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+
 interface TransactionPaginationProps {
   total: number;
   limit: number;
@@ -13,6 +16,7 @@ export function TransactionPagination({
   onPrev,
   onNext,
 }: TransactionPaginationProps) {
+  const { t } = useTranslation();
   const page = Math.floor(offset / limit) + 1;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const canPrev = offset > 0;
@@ -21,25 +25,25 @@ export function TransactionPagination({
   return (
     <div className="flex items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">
-        Page {page} of {totalPages}
+        {t("transactions.page", { page, totalPages })}
       </p>
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
           onClick={onPrev}
           disabled={!canPrev}
-          className="rounded-md border border-input px-3 py-1.5 text-sm disabled:opacity-50"
+          variant="outline"
         >
-          Prev
-        </button>
-        <button
+          {t("common.previous")}
+        </Button>
+        <Button
           type="button"
           onClick={onNext}
           disabled={!canNext}
-          className="rounded-md border border-input px-3 py-1.5 text-sm disabled:opacity-50"
+          variant="outline"
         >
-          Next
-        </button>
+          {t("common.next")}
+        </Button>
       </div>
     </div>
   );

@@ -1,69 +1,88 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useBudgetOverview } from "@/hooks/useBudgetOverview";
 import { CategorySelector } from "@/components/CategorySelector";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 import { Button } from "@/components/ui/button";
-
-interface Budget {
-  id: string;
-  category_id: string;
-  amount: number;
-  year: number;
-  month: number;
-}
+import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
+import { useTranslation } from "react-i18next";
+import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
+import { FieldError } from "@/components/ui/field-error";
+import { AsyncState } from "@/components/ui/async-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
+import { SectionCard } from "@/components/ui/card";
+import { PendingButton } from "@/components/ui/pending-button";
+import { useToast } from "@/hooks/useToast";
+import { FormField } from "@/components/ui/form-field";
+import { MoneyInput } from "@/components/ui/money-input";
+import { Select } from "@/components/ui/select";
+import { useFocusOnError } from "@/hooks/useFocusOnError";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { queryKeys } from "@/lib/query-client";
+import {
+  formatMonth,
+  getMonthInTimeZone,
+  shiftMonth as shiftCalendarMonth,
+} from "@/lib/date-only";
+import {
+  formatCurrency,
+  majorAmountToMinorUnits,
+  minorUnitsToMajorAmount,
+} from "@/lib/money";
+import type { Budget } from "@/types/budget";
 
 interface BudgetFormState {
   categoryId: string | null;
-  amount: string;
-}
-
-function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  amountMinorUnits: number | null;
+  currency: string;
 }
 
 export default function BudgetsPage() {
+  const { t } = useTranslation();
   const {
     workspaceId,
+    workspace,
     isLoading: workspaceLoading,
     error: workspaceError,
+    refetch: retryWorkspace,
   } = useWorkspace();
-  const [month, setMonth] = useState(getCurrentMonth);
-  const [reloadToken, setReloadToken] = useState(0);
-  const { progressItems, budgets, isLoading, error } = useBudgetOverview(
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const month =
+    selectedMonth ??
+    getMonthInTimeZone(new Date(), workspace?.timezone ?? "UTC");
+  const queryClient = useQueryClient();
+  const { showToast } = useToast(3000);
+  const { progressItems, budgets, isLoading, error, retry } = useBudgetOverview(
     workspaceId ?? "",
     month,
-    reloadToken,
   );
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [form, setForm] = useState<BudgetFormState>({
     categoryId: null,
-    amount: "",
+    amountMinorUnits: null,
+    currency: "USD",
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    categoryId?: string;
+    amount?: string;
+  }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const selectedDate = useMemo(() => {
-    const [year, monthPart] = month.split("-").map(Number);
-    return new Date(year, monthPart - 1, 1);
-  }, [month]);
-
-  const monthLabel = useMemo(
-    () =>
-      selectedDate.toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      }),
-    [selectedDate],
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const budgetFormRef = useFocusOnError(
+    fieldErrors.categoryId ?? fieldErrors.amount,
   );
+
+  const monthLabel = useMemo(() => formatMonth(month), [month]);
 
   const budgetByCategoryId = useMemo(() => {
     const map = new Map<string, Budget>();
     for (const budget of budgets) {
-      map.set(budget.category_id, budget);
+      map.set(budget.categoryId, budget);
     }
     return map;
   }, [budgets]);
@@ -79,29 +98,22 @@ export default function BudgetsPage() {
   );
 
   const unbudgetedItems = useMemo(
-    () => progressItems.filter((item) => item.budget_amount === null),
+    () => progressItems.filter((item) => item.budgetAmount === null),
     [progressItems],
   );
 
   const hasAnyBudgets = budgets.length > 0;
 
-  function formatAmount(amount: number): string {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  }
-
-  function toMonthString(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-  }
-
   function resetForm() {
-    setForm({ categoryId: null, amount: "" });
+    setForm({
+      categoryId: null,
+      amountMinorUnits: null,
+      currency: workspace?.baseCurrency ?? "USD",
+    });
     setSubmitError(null);
+    setFieldErrors({});
     setEditingBudgetId(null);
+    setConfirmingDelete(false);
   }
 
   function showCreate() {
@@ -117,42 +129,44 @@ export default function BudgetsPage() {
   function showEditForCategory(categoryId: string) {
     const budget = budgetByCategoryId.get(categoryId);
     if (!budget) return;
-    setForm({ categoryId: budget.category_id, amount: String(budget.amount) });
+    setForm({
+      categoryId: budget.categoryId,
+      amountMinorUnits: majorAmountToMinorUnits(budget.amount),
+      currency: budget.currency,
+    });
     setShowCreateForm(false);
     setEditingBudgetId(budget.id);
     setSubmitError(null);
   }
 
   function shiftMonth(delta: number) {
-    const next = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth() + delta,
-      1,
-    );
-    setMonth(toMonthString(next));
+    setSelectedMonth(shiftCalendarMonth(month, delta));
     hideCreate();
   }
 
   async function handleCreateOrUpdate() {
     if (!workspaceId || !form.categoryId) {
-      setSubmitError("Choose a category first");
+      setFieldErrors({ categoryId: t("budgets.chooseCategory") });
       return;
     }
 
-    const amount = Number(form.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setSubmitError("Amount must be greater than 0");
+    if (form.amountMinorUnits === null || form.amountMinorUnits <= 0) {
+      setFieldErrors({ amount: t("budgets.positiveAmount") });
       return;
     }
+    const amount = minorUnitsToMajorAmount(form.amountMinorUnits);
 
     const [year, monthPart] = month.split("-").map(Number);
     setIsSubmitting(true);
     setSubmitError(null);
+    setFieldErrors({});
 
     try {
+      const wasEditing = Boolean(editingBudgetId);
       if (editingBudgetId) {
         await api.put(`/workspaces/${workspaceId}/budgets/${editingBudgetId}`, {
           amount,
+          currency: form.currency,
           category_id: form.categoryId,
           year,
           month: monthPart,
@@ -160,6 +174,7 @@ export default function BudgetsPage() {
       } else {
         await api.post(`/workspaces/${workspaceId}/budgets`, {
           amount,
+          currency: form.currency,
           category_id: form.categoryId,
           year,
           month: monthPart,
@@ -167,9 +182,14 @@ export default function BudgetsPage() {
       }
 
       hideCreate();
-      setReloadToken((value) => value + 1);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.budgets(workspaceId),
+      });
+      showToast(
+        t(wasEditing ? "budgets.updatedSuccess" : "budgets.createdSuccess"),
+      );
     } catch {
-      setSubmitError("Failed to save budget");
+      setSubmitError(t("budgets.saveError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -182,9 +202,12 @@ export default function BudgetsPage() {
     try {
       await api.delete(`/workspaces/${workspaceId}/budgets/${editingBudgetId}`);
       hideCreate();
-      setReloadToken((value) => value + 1);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.budgets(workspaceId),
+      });
+      showToast(t("budgets.deletedSuccess"));
     } catch {
-      setSubmitError("Failed to delete budget");
+      setSubmitError(t("budgets.deleteError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -193,47 +216,74 @@ export default function BudgetsPage() {
   function renderContent() {
     if (workspaceLoading || isLoading) {
       return (
-        <div className="py-8 text-center text-muted-foreground" role="status">
-          Loading…
-        </div>
+        <AsyncState
+          status="loading"
+          message={t("common.loading")}
+          skeletonRows={4}
+        />
       );
     }
 
-    if (workspaceError || !workspaceId || error) {
+    if (workspaceError || !workspaceId) {
       return (
-        <div className="py-8 text-center text-destructive" role="alert">
-          {workspaceError ?? error ?? "No workspace found."}
-        </div>
+        <WorkspaceErrorState
+          message={workspaceError ?? t("common.noWorkspace")}
+          className="text-center"
+          onRetry={workspaceError ? () => void retryWorkspace() : undefined}
+        />
+      );
+    }
+
+    if (error) {
+      return (
+        <AsyncState
+          status="error"
+          message={error}
+          onRetry={() => void retry()}
+        />
       );
     }
 
     return (
       <div className="space-y-4">
-        <section className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
+        <SectionCard padding="default" className="grid gap-3 sm:grid-cols-2">
           <div>
             <p className="text-xs text-muted-foreground">
-              Total monthly budget
+              {t("budgets.totalBudget")}
             </p>
             <p className="text-xl font-semibold">
-              {formatAmount(totalBudgeted)}
+              {formatCurrency(totalBudgeted, workspace?.baseCurrency ?? "USD")}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Total spending</p>
-            <p className="text-xl font-semibold">{formatAmount(totalSpent)}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("budgets.totalSpending")}
+            </p>
+            <p className="text-xl font-semibold">
+              {formatCurrency(totalSpent, workspace?.baseCurrency ?? "USD")}
+            </p>
           </div>
-        </section>
+        </SectionCard>
 
         {showCreateForm || editingBudgetId ? (
-          <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <SectionCard padding="default" className="space-y-3">
             <h2 className="text-sm font-semibold">
-              {editingBudgetId ? "Edit budget" : "Add budget"}
+              {editingBudgetId ? t("budgets.edit") : t("budgets.add")}
             </h2>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Category
-                </label>
+            <form
+              ref={budgetFormRef}
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleCreateOrUpdate();
+              }}
+            >
+              <FormField
+                id="budget-category"
+                label={t("common.category")}
+                error={fieldErrors.categoryId}
+                required
+              >
                 <CategorySelector
                   workspaceId={workspaceId}
                   value={form.categoryId}
@@ -242,89 +292,111 @@ export default function BudgetsPage() {
                   }
                   disabled={Boolean(editingBudgetId)}
                 />
-              </div>
-              <div>
-                <label
-                  htmlFor="budget-amount"
-                  className="mb-1 block text-xs text-muted-foreground"
-                >
-                  Amount
-                </label>
-                <input
-                  id="budget-amount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={form.amount}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, amount: e.target.value }))
+              </FormField>
+              <FormField
+                id="budget-amount"
+                label={t("common.amount")}
+                error={fieldErrors.amount}
+                required
+              >
+                <MoneyInput
+                  currency={form.currency}
+                  minorUnits={form.amountMinorUnits}
+                  onMinorUnitsChange={(amountMinorUnits) =>
+                    setForm((prev) => ({ ...prev, amountMinorUnits }))
                   }
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 />
-              </div>
-              {submitError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {submitError}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() => void handleCreateOrUpdate()}
-                  disabled={isSubmitting}
+              </FormField>
+              <FormField
+                id="budget-currency"
+                label={t("common.currency")}
+                required
+              >
+                <Select
+                  value={form.currency}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      currency: event.target.value,
+                    }))
+                  }
                 >
-                  {editingBudgetId ? "Save budget" : "Create budget"}
-                </Button>
+                  {SUPPORTED_CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>{" "}
+              <FieldError message={submitError} className="text-sm" />
+              <div className="flex flex-wrap gap-2">
+                <PendingButton
+                  type="submit"
+                  isPending={isSubmitting}
+                  pendingLabel={t("settings.saving")}
+                >
+                  {editingBudgetId ? t("budgets.save") : t("budgets.create")}
+                </PendingButton>
                 {editingBudgetId ? (
                   <Button
+                    type="button"
                     variant="destructive"
-                    onClick={() => void handleDelete()}
+                    onClick={() => setConfirmingDelete(true)}
                     disabled={isSubmitting}
                   >
-                    Delete budget
+                    {t("budgets.delete")}
                   </Button>
                 ) : null}
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={hideCreate}
                   disabled={isSubmitting}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </div>
-            </div>
-          </section>
+            </form>
+          </SectionCard>
         ) : (
-          <Button onClick={showCreate}>Add Budget</Button>
+          <Button onClick={showCreate}>{t("budgets.add")}</Button>
         )}
 
         {!hasAnyBudgets ? (
-          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-5 text-center text-sm text-muted-foreground">
-            No budgets defined for this month yet.
-          </div>
+          <EmptyState
+            title={t("budgets.noneDefined")}
+            description={t("budgets.noActivity")}
+            actionLabel={t("budgets.add")}
+            onAction={showCreate}
+          />
         ) : null}
 
-        {progressItems.length === 0 ? (
+        {progressItems.length === 0 && hasAnyBudgets ? (
           <div className="py-8 text-center text-muted-foreground">
-            No budgets or spending this month.
+            {t("budgets.noActivity")}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             {progressItems.map((item) => {
-              const isBudgeted = item.budget_amount !== null;
+              const isBudgeted = item.budgetAmount !== null;
               return (
-                <button
-                  key={item.category_id}
+                <Button
+                  key={item.categoryId}
                   type="button"
-                  className="w-full text-left"
+                  variant="ghost"
+                  className="h-auto w-full justify-start p-0 text-left hover:bg-transparent"
                   onClick={() => {
                     if (isBudgeted) {
-                      showEditForCategory(item.category_id);
+                      showEditForCategory(item.categoryId);
                     }
                   }}
                   disabled={!isBudgeted}
                 >
-                  <BudgetProgressBar item={item} />
-                </button>
+                  <BudgetProgressBar
+                    item={item}
+                    currency={workspace?.baseCurrency ?? "USD"}
+                  />
+                </Button>
               );
             })}
           </div>
@@ -332,7 +404,7 @@ export default function BudgetsPage() {
 
         {unbudgetedItems.length > 0 ? (
           <p className="text-xs text-muted-foreground">
-            Categories without budgets are shown as unbudgeted spending.
+            {t("budgets.unbudgetedHint")}
           </p>
         ) : null}
       </div>
@@ -340,22 +412,37 @@ export default function BudgetsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Budgets</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)}>
-            Prev
-          </Button>
-          <span className="min-w-28 text-center text-sm text-muted-foreground">
-            {monthLabel}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => shiftMonth(1)}>
-            Next
-          </Button>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t("budgets.title")}
+        className="mb-6"
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)}>
+              {t("common.previous")}
+            </Button>
+            <span className="min-w-28 text-center text-sm text-muted-foreground">
+              {monthLabel}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => shiftMonth(1)}>
+              {t("common.next")}
+            </Button>
+          </>
+        }
+      />
       {renderContent()}
-    </div>
+      <ConfirmationDialog
+        open={confirmingDelete}
+        title={t("budgets.deleteConfirm")}
+        description={t("budgets.deleteDescription")}
+        confirmLabel={t("budgets.delete")}
+        cancelLabel={t("common.cancel")}
+        pendingLabel={t("budgets.deleting")}
+        isPending={isSubmitting}
+        error={submitError}
+        onClose={() => setConfirmingDelete(false)}
+        onConfirm={() => void handleDelete()}
+      />
+    </PageContainer>
   );
 }

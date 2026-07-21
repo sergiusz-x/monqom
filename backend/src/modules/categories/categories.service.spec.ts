@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
 import { CategoriesRepository } from './categories.repository'
 import { CategoriesService } from './categories.service'
 
@@ -98,20 +98,12 @@ describe('CategoriesService', () => {
     it('includes archived categories when include_archived=true', async () => {
         categoriesRepository.listCategoriesByWorkspace.mockResolvedValue([])
 
-        await service.listCategories({ include_archived: 'true' }, 'workspace-1')
+        await service.listCategories({ includeArchived: true }, 'workspace-1')
 
         expect(categoriesRepository.listCategoriesByWorkspace).toHaveBeenCalledWith(
             'workspace-1',
             true,
         )
-    })
-
-    it('rejects invalid include_archived values', async () => {
-        await expect(
-            service.listCategories({ include_archived: 'sometimes' }, 'workspace-1'),
-        ).rejects.toBeInstanceOf(BadRequestException)
-
-        expect(categoriesRepository.listCategoriesByWorkspace).not.toHaveBeenCalled()
     })
 
     it('returns a parent category with its nested children', async () => {

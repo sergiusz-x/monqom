@@ -13,6 +13,7 @@ describe('WorkspaceService', () => {
             | 'checkMembership'
             | 'createWorkspace'
             | 'createWorkspaceMembership'
+            | 'createDefaultCashPaymentSource'
             | 'findWorkspaceById'
             | 'findWorkspacesByUserId'
             | 'seedDefaultCategories'
@@ -31,11 +32,16 @@ describe('WorkspaceService', () => {
             checkMembership: jest.fn(),
             createWorkspace: jest.fn(),
             createWorkspaceMembership: jest.fn(),
+            createDefaultCashPaymentSource: jest.fn(),
             findWorkspaceById: jest.fn(),
             findWorkspacesByUserId: jest.fn(),
             seedDefaultCategories: jest.fn(),
             updateWorkspaceSettings: jest.fn(),
         }
+
+        workspaceRepository.createDefaultCashPaymentSource.mockResolvedValue({
+            id: 'cash-1',
+        } as never)
 
         service = new WorkspaceService(
             prisma as never,
@@ -77,11 +83,16 @@ describe('WorkspaceService', () => {
             },
             transactionClient,
         )
+        expect(workspaceRepository.createDefaultCashPaymentSource).toHaveBeenCalledWith(
+            'workspace-1',
+            transactionClient,
+        )
         expect(workspaceRepository.createWorkspaceMembership).toHaveBeenCalledWith(
             {
                 userId: 'user-1',
                 workspaceId: 'workspace-1',
                 role: 'owner',
+                lastPaymentSourceId: 'cash-1',
             },
             transactionClient,
         )
@@ -166,7 +177,7 @@ describe('WorkspaceService', () => {
         expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
     })
 
-    it('updates workspace timezone settings', async () => {
+    it('updates and normalizes workspace settings including its name', async () => {
         const workspace = {
             id: 'workspace-1',
             name: "Ada Lovelace's Finances",
@@ -184,15 +195,87 @@ describe('WorkspaceService', () => {
 
         await expect(
             service.updateWorkspaceSettings(' workspace-1 ', {
+                name: ' Household budget ',
                 timezone: ' Europe/Warsaw ',
             }),
         ).resolves.toEqual(workspace)
 
-        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
-        expect(workspaceRepository.updateWorkspaceSettings).toHaveBeenCalledWith({
-            workspaceId: 'workspace-1',
-            timezone: 'Europe/Warsaw',
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith(
+            'workspace-1',
+            transactionClient,
+        )
+        expect(workspaceRepository.updateWorkspaceSettings).toHaveBeenCalledWith(
+            {
+                workspaceId: 'workspace-1',
+                name: 'Household budget',
+                timezone: 'Europe/Warsaw',
+            },
+            transactionClient,
+        )
+    })
+
+    it('rejects changing base currency after financial data exists', async () => {
+        workspaceRepository.findWorkspaceById.mockResolvedValue({
+            id: 'workspace-1',
+            name: 'Household',
+            type: 'personal',
+            timezone: 'UTC',
+            baseCurrency: 'PLN',
+            baseCurrencyLocked: true,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
         })
+
+        await expect(
+            service.updateWorkspaceSettings('workspace-1', {
+                timezone: 'UTC',
+                baseCurrency: 'EUR',
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                code: 'WORKSPACE_BASE_CURRENCY_LOCKED',
+            },
+        })
+
+        expect(workspaceRepository.updateWorkspaceSettings).not.toHaveBeenCalled()
+    })
+
+    it('allows resubmitting the current currency when it is locked', async () => {
+        const workspace = {
+            id: 'workspace-1',
+            name: 'Household',
+            type: 'personal',
+            timezone: 'Europe/Warsaw',
+            baseCurrency: 'PLN',
+            baseCurrencyLocked: true,
+            createdAt: new Date('2026-03-23T10:00:00.000Z'),
+            updatedAt: new Date('2026-03-23T10:00:00.000Z'),
+        }
+        workspaceRepository.findWorkspaceById.mockResolvedValue(workspace)
+        workspaceRepository.updateWorkspaceSettings.mockResolvedValue(workspace)
+
+        await expect(
+            service.updateWorkspaceSettings('workspace-1', {
+                timezone: 'Europe/Warsaw',
+                baseCurrency: 'PLN',
+            }),
+        ).resolves.toMatchObject({ baseCurrency: 'PLN', baseCurrencyLocked: true })
+    })
+
+    it('rejects an invalid workspace name before writing', async () => {
+        await expect(
+            service.updateWorkspaceSettings('workspace-1', {
+                name: ' ',
+                timezone: 'UTC',
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                message: ['Workspace name must be at least 2 characters'],
+            },
+        })
+
+        expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+        expect(workspaceRepository.updateWorkspaceSettings).not.toHaveBeenCalled()
     })
 
     it('rejects invalid workspace timezone settings before writing', async () => {

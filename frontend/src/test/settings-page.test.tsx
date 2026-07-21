@@ -21,6 +21,8 @@ vi.mock("@/lib/api", () => ({
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import api from "@/lib/api";
+import i18n from "@/i18n";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const mockApi = api as unknown as {
@@ -29,6 +31,7 @@ const mockApi = api as unknown as {
   put: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
 };
+const patchWorkspace = vi.fn();
 
 const testUser: User = {
   id: "user-1",
@@ -51,25 +54,33 @@ function renderSettings(authOverrides: Partial<AuthContextValue> = {}) {
   };
 
   render(
-    <AuthContext.Provider value={authValue}>
-      <SettingsPage />
-    </AuthContext.Provider>,
+    <ToastProvider>
+      <AuthContext.Provider value={authValue}>
+        <SettingsPage />
+      </AuthContext.Provider>
+    </ToastProvider>,
   );
 
   return authValue;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  await i18n.changeLanguage("en");
   mockUseWorkspace.mockReturnValue({
     workspaceId: "ws-1",
     workspace: {
       id: "ws-1",
       name: "Ada's Finances",
       timezone: "UTC",
+      baseCurrency: "USD",
+      lastPaymentSourceId: "cash-1",
+      baseCurrencyLocked: false,
     },
     isLoading: false,
     error: null,
+    patchWorkspace,
+    refetch: vi.fn(),
   });
 });
 
@@ -88,6 +99,7 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(mockApi.put).toHaveBeenCalledTimes(1));
     expect(mockApi.put).toHaveBeenCalledWith("/users/me", {
       name: "Grace Hopper",
+      locale: "en",
     });
     expect(authValue.setUser).toHaveBeenCalledWith(updatedUser);
     expect(screen.getByRole("status")).toHaveTextContent("Profile saved");
@@ -107,19 +119,22 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("saves workspace timezone and displays workspace name", async () => {
+  it("saves workspace name and timezone", async () => {
     const user = userEvent.setup();
     mockApi.put.mockResolvedValueOnce({
       data: {
         id: "ws-1",
-        name: "Ada's Finances",
+        name: "Household budget",
         timezone: "Europe/Warsaw",
       },
     });
     renderSettings();
 
     await user.click(screen.getByRole("button", { name: "Workspace" }));
-    expect(screen.getByText("Ada's Finances")).toBeInTheDocument();
+    const workspaceName = screen.getByLabelText("Workspace name");
+    expect(workspaceName).toHaveValue("Ada's Finances");
+    await user.clear(workspaceName);
+    await user.type(workspaceName, " Household budget ");
 
     await user.selectOptions(
       screen.getByLabelText("Timezone"),
@@ -129,9 +144,58 @@ describe("SettingsPage", () => {
 
     await waitFor(() => expect(mockApi.put).toHaveBeenCalledTimes(1));
     expect(mockApi.put).toHaveBeenCalledWith("/workspaces/ws-1", {
+      name: "Household budget",
       timezone: "Europe/Warsaw",
+      base_currency: "USD",
     });
     expect(screen.getByRole("status")).toHaveTextContent("Workspace saved");
+    expect(patchWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Household budget" }),
+    );
+  });
+
+  it("validates workspace name before saving", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    await user.click(screen.getByRole("button", { name: "Workspace" }));
+    const workspaceName = screen.getByLabelText("Workspace name");
+    await user.clear(workspaceName);
+    await user.click(screen.getByRole("button", { name: "Save workspace" }));
+
+    expect(mockApi.put).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Workspace name must be at least 2 characters",
+    );
+  });
+
+  it("explains and disables a locked base currency", async () => {
+    const user = userEvent.setup();
+    mockUseWorkspace.mockReturnValue({
+      workspaceId: "ws-1",
+      workspace: {
+        id: "ws-1",
+        name: "Ada's Finances",
+        timezone: "UTC",
+        baseCurrency: "PLN",
+        lastPaymentSourceId: "cash-1",
+        baseCurrencyLocked: true,
+      },
+      isLoading: false,
+      error: null,
+      patchWorkspace,
+      refetch: vi.fn(),
+    });
+    renderSettings();
+
+    await user.click(screen.getByRole("button", { name: "Workspace" }));
+
+    expect(screen.getByLabelText("Workspace base currency")).toBeDisabled();
+    expect(
+      screen.getByText(
+        "The base currency is locked because this workspace already contains a transaction or budget.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("changes password through the security section", async () => {
@@ -140,6 +204,8 @@ describe("SettingsPage", () => {
     renderSettings();
 
     await user.click(screen.getByRole("button", { name: "Security" }));
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Change password" }));
     await user.type(
       screen.getByLabelText("Current password"),
       "CurrentPass123!",

@@ -1,21 +1,33 @@
 import {
     BadRequestException,
+    ConflictException,
     ForbiddenException,
     Injectable,
     NotFoundException,
 } from '@nestjs/common'
 import { Prisma, Workspace } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { WorkspacePersistenceClient, WorkspaceRepository } from './workspace.repository'
+import {
+    UserWorkspaceRecord,
+    WorkspaceDetailsRecord,
+    WorkspacePersistenceClient,
+    WorkspaceRepository,
+} from './workspace.repository'
+import { normalizeCurrency } from '../../shared/currency/currency.service'
 
 const PERSONAL_WORKSPACE_TYPE = 'personal'
 const PERSONAL_WORKSPACE_TIMEZONE = 'UTC'
 const PERSONAL_WORKSPACE_ROLE = 'owner'
 const WORKSPACE_ACCESS_FORBIDDEN_MESSAGE = 'Forbidden'
 const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found'
+export const WORKSPACE_BASE_CURRENCY_LOCKED_CODE = 'WORKSPACE_BASE_CURRENCY_LOCKED'
+const WORKSPACE_BASE_CURRENCY_LOCKED_MESSAGE =
+    'Base currency cannot be changed after a transaction or budget has been created'
 
-export interface UpdateWorkspaceSettingsRequestInput {
-    timezone?: unknown
+export interface UpdateWorkspaceSettingsCommand {
+    name?: string
+    timezone: string
+    baseCurrency?: string
 }
 
 @Injectable()
@@ -25,13 +37,13 @@ export class WorkspaceService {
         private readonly workspaceRepository: WorkspaceRepository,
     ) {}
 
-    async listUserWorkspaces(userId: string): Promise<Workspace[]> {
+    async listUserWorkspaces(userId: string): Promise<UserWorkspaceRecord[]> {
         const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
 
         return this.workspaceRepository.findWorkspacesByUserId(normalizedUserId)
     }
 
-    async getWorkspaceById(workspaceId: string): Promise<Workspace> {
+    async getWorkspaceById(workspaceId: string): Promise<WorkspaceDetailsRecord> {
         const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
 
         const workspace = await this.workspaceRepository.findWorkspaceById(normalizedWorkspaceId)
@@ -61,21 +73,54 @@ export class WorkspaceService {
 
     async updateWorkspaceSettings(
         workspaceId: string,
-        input: UpdateWorkspaceSettingsRequestInput,
+        input: UpdateWorkspaceSettingsCommand,
     ): Promise<Workspace> {
         const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
-        const { timezone, errors } = validateWorkspaceSettingsInput(input)
+        const { name, timezone, baseCurrency, errors } = validateWorkspaceSettingsInput(input)
 
         if (errors.length > 0 || !timezone) {
             throw new BadRequestException(errors)
         }
 
-        await this.getWorkspaceById(normalizedWorkspaceId)
+        return this.prisma.$transaction(
+            async (tx) => {
+                const workspace = await this.workspaceRepository.findWorkspaceById(
+                    normalizedWorkspaceId,
+                    tx,
+                )
 
-        return this.workspaceRepository.updateWorkspaceSettings({
-            workspaceId: normalizedWorkspaceId,
-            timezone,
-        })
+                if (!workspace) {
+                    throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE)
+                }
+
+                if (
+                    baseCurrency !== undefined &&
+                    baseCurrency !== workspace.baseCurrency &&
+                    workspace.baseCurrencyLocked
+                ) {
+                    throw new ConflictException({
+                        code: WORKSPACE_BASE_CURRENCY_LOCKED_CODE,
+                        message: WORKSPACE_BASE_CURRENCY_LOCKED_MESSAGE,
+                    })
+                }
+
+                const updated = await this.workspaceRepository.updateWorkspaceSettings(
+                    {
+                        workspaceId: normalizedWorkspaceId,
+                        ...(name !== undefined ? { name } : {}),
+                        timezone,
+                        baseCurrency,
+                    },
+                    tx,
+                )
+
+                return {
+                    ...updated,
+                    baseCurrencyLocked: workspace.baseCurrencyLocked,
+                }
+            },
+            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        )
     }
 
     async checkMembership(userId: string, workspaceId: string): Promise<boolean> {
@@ -89,6 +134,7 @@ export class WorkspaceService {
         userId: string,
         userName: string,
         prisma: WorkspacePersistenceClient = this.prisma,
+        baseCurrency?: string,
     ): Promise<Workspace> {
         const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
         const normalizedUserName = this.normalizeRequiredValue(userName, 'User name')
@@ -99,7 +145,13 @@ export class WorkspaceService {
                     name: `${normalizedUserName}'s Finances`,
                     type: PERSONAL_WORKSPACE_TYPE,
                     timezone: PERSONAL_WORKSPACE_TIMEZONE,
+                    ...(baseCurrency ? { baseCurrency: normalizeCurrency(baseCurrency) } : {}),
                 },
+                tx,
+            )
+
+            const cashPaymentSource = await this.workspaceRepository.createDefaultCashPaymentSource(
+                workspace.id,
                 tx,
             )
 
@@ -108,6 +160,7 @@ export class WorkspaceService {
                     userId: normalizedUserId,
                     workspaceId: workspace.id,
                     role: PERSONAL_WORKSPACE_ROLE,
+                    lastPaymentSourceId: cashPaymentSource.id,
                 },
                 tx,
             )
@@ -135,14 +188,30 @@ export class WorkspaceService {
     }
 }
 
-function validateWorkspaceSettingsInput(input: UpdateWorkspaceSettingsRequestInput): {
+function validateWorkspaceSettingsInput(input: UpdateWorkspaceSettingsCommand): {
+    name?: string
     timezone?: string
+    baseCurrency?: string
     errors: string[]
 } {
     const errors: string[] = []
+    let name: string | undefined
     let timezone: string | undefined
+    let baseCurrency: string | undefined
 
-    if (typeof input.timezone !== 'string' || input.timezone.trim().length === 0) {
+    if (input.name !== undefined) {
+        const normalizedName = input.name.trim()
+
+        if (normalizedName.length < 2) {
+            errors.push('Workspace name must be at least 2 characters')
+        } else if (normalizedName.length > 100) {
+            errors.push('Workspace name must be 100 characters or fewer')
+        } else {
+            name = normalizedName
+        }
+    }
+
+    if (input.timezone.trim().length === 0) {
         errors.push('Timezone is required')
     } else {
         timezone = input.timezone.trim()
@@ -153,5 +222,13 @@ function validateWorkspaceSettingsInput(input: UpdateWorkspaceSettingsRequestInp
         }
     }
 
-    return { timezone, errors }
+    if (input.baseCurrency !== undefined) {
+        try {
+            baseCurrency = normalizeCurrency(input.baseCurrency)
+        } catch {
+            errors.push('Base currency must be supported')
+        }
+    }
+
+    return { name, timezone, baseCurrency, errors }
 }

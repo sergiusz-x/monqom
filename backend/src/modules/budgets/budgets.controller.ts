@@ -7,6 +7,7 @@ import {
     HttpStatus,
     Param,
     Post,
+    Query,
     Put,
     Req,
     UseGuards,
@@ -16,6 +17,7 @@ import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { BUDGETS_BASE_ROUTE } from './budgets.routes'
 import { BudgetProgressResponse, BudgetResponse, BudgetsService } from './budgets.service'
+import { BudgetBodyDto, BudgetProgressQueryDto, ListBudgetsQueryDto } from './budgets.dto'
 
 @Controller(BUDGETS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -24,30 +26,33 @@ export class BudgetsController {
 
     @Get('progress')
     @HttpCode(HttpStatus.OK)
-    async listBudgetProgress(@Req() req: Request): Promise<BudgetProgressResponse[]> {
+    async listBudgetProgress(
+        @Query() query: BudgetProgressQueryDto,
+        @Req() req: Request,
+    ): Promise<BudgetProgressResponse[]> {
         return this.budgetsService.listBudgetProgress(
-            req.query as Record<string, unknown>,
+            { month: query.month },
             req.workspace!.workspaceId,
         )
     }
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    async listBudgets(@Req() req: Request): Promise<BudgetResponse[]> {
+    async listBudgets(
+        @Query() query: ListBudgetsQueryDto,
+        @Req() req: Request,
+    ): Promise<BudgetResponse[]> {
         return this.budgetsService.listBudgets(
-            req.query as Record<string, unknown>,
+            { year: query.year, month: query.month },
             req.workspace!.workspaceId,
         )
     }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    async createBudget(
-        @Body() body: Record<string, unknown>,
-        @Req() req: Request,
-    ): Promise<BudgetResponse> {
+    async createBudget(@Body() body: BudgetBodyDto, @Req() req: Request): Promise<BudgetResponse> {
         return this.budgetsService.createBudget(
-            body,
+            toBudgetCommand(body),
             req.workspace!.workspaceId,
             req.session.auth!.userId,
         )
@@ -57,11 +62,11 @@ export class BudgetsController {
     @HttpCode(HttpStatus.OK)
     async updateBudget(
         @Param('id') budgetId: string,
-        @Body() body: Record<string, unknown>,
+        @Body() body: BudgetBodyDto,
         @Req() req: Request,
     ): Promise<BudgetResponse> {
         return this.budgetsService.updateBudget(
-            body,
+            toBudgetCommand(body),
             budgetId,
             req.workspace!.workspaceId,
             req.session.auth!.userId,
@@ -76,5 +81,15 @@ export class BudgetsController {
             req.workspace!.workspaceId,
             req.session.auth!.userId,
         )
+    }
+}
+
+function toBudgetCommand(body: BudgetBodyDto) {
+    return {
+        amount: body.amount,
+        currency: body.currency,
+        categoryId: body.category_id,
+        year: body.year,
+        month: body.month,
     }
 }

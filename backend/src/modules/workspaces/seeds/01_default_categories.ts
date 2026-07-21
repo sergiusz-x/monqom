@@ -107,6 +107,7 @@ interface CategorySeedUpsertArgs {
         workspaceId: string
         parentId: string | null
         name: string
+        systemKey: string
         icon: string | null
         sortOrder: number
         deletedAt: null
@@ -116,6 +117,7 @@ interface CategorySeedUpsertArgs {
         workspaceId: string
         parentId: string | null
         name: string
+        systemKey: string
         icon?: string | null
         sortOrder: number
         deletedAt: null
@@ -157,6 +159,7 @@ export async function seedCategoriesForWorkspace(
                 workspaceId,
                 parentId: null,
                 name: parent.name,
+                systemKey: toSystemKey(parent.name),
                 icon: parent.icon ?? null,
                 sortOrder: parent.sort_order,
                 deletedAt: null,
@@ -166,6 +169,7 @@ export async function seedCategoriesForWorkspace(
                 workspaceId,
                 parentId: null,
                 name: parent.name,
+                systemKey: toSystemKey(parent.name),
                 icon: parent.icon,
                 sortOrder: parent.sort_order,
                 deletedAt: null,
@@ -185,6 +189,7 @@ export async function seedCategoriesForWorkspace(
                     workspaceId,
                     parentId: parentId,
                     name: child.name,
+                    systemKey: toSystemKey(child.name),
                     icon: child.icon ?? null,
                     sortOrder: child.sort_order,
                     deletedAt: null,
@@ -194,6 +199,7 @@ export async function seedCategoriesForWorkspace(
                     workspaceId,
                     parentId: parentId,
                     name: child.name,
+                    systemKey: toSystemKey(child.name),
                     icon: child.icon,
                     sortOrder: child.sort_order,
                     deletedAt: null,
@@ -201,4 +207,14 @@ export async function seedCategoriesForWorkspace(
             })
         }
     }
+}
+
+function toSystemKey(name: string): string {
+    return (
+        'categories.' +
+        name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '.')
+            .replace(/^\\.|\\.$/g, '')
+    )
 }

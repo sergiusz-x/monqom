@@ -7,12 +7,10 @@ import {
 
 const DEFAULT_EXPORT_BATCH_SIZE = 500
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
-const ISO_DATE_TIME_REGEX =
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/
 
 export const SUPPORTED_EXPORT_FORMATS = ['csv', 'json'] as const
 
-type ExportFormat = (typeof SUPPORTED_EXPORT_FORMATS)[number]
+export type ExportFormat = (typeof SUPPORTED_EXPORT_FORMATS)[number]
 
 interface ParsedDateFilterOptions {
     fieldName: string
@@ -20,22 +18,29 @@ interface ParsedDateFilterOptions {
 }
 
 interface ValidatedExportTransactionsInput {
-    format?: ExportFormat
+    format: ExportFormat
     dateFrom?: Date
     dateTo?: Date
     errors: string[]
 }
 
-export interface ExportTransactionsRequestInput {
-    format?: unknown
-    date_from?: unknown
-    date_to?: unknown
+export interface ExportTransactionsCommand {
+    format: ExportFormat
+    dateFrom?: string
+    dateTo?: string
 }
 
 export interface ExportedTransaction {
     date: string
     amount: string
+    currency: string
+    base_amount: string
+    base_currency: string
+    fx_rate: string
+    fx_rate_date: string
+    fx_source: string
     category: string
+    description: string
     notes: string | null
     tags: string[]
     payment_source: string | null
@@ -52,7 +57,7 @@ export class ExportService {
     constructor(private readonly transactionsRepository: TransactionsRepository) {}
 
     async exportTransactions(
-        input: ExportTransactionsRequestInput,
+        input: ExportTransactionsCommand,
         workspaceId: string,
     ): Promise<TransactionExportFile> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
@@ -84,7 +89,7 @@ export class ExportService {
     private async *createCsvExportChunks(
         filters: ListTransactionsForExportQuery,
     ): AsyncIterable<string> {
-        yield 'date,amount,category,notes,tags,payment_source\n'
+        yield 'date,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source\n'
 
         for await (const transaction of this.streamTransactions(filters)) {
             yield `${serializeCsvRow(transaction)}\n`
@@ -135,14 +140,14 @@ export class ExportService {
 }
 
 function validateExportTransactionsInput(
-    input: ExportTransactionsRequestInput,
+    input: ExportTransactionsCommand,
 ): ValidatedExportTransactionsInput {
     const errors: string[] = []
-    const dateFrom = validateDateFilterValue(input.date_from, errors, {
+    const dateFrom = validateDateFilterValue(input.dateFrom, errors, {
         fieldName: 'Date from',
         boundary: 'start',
     })
-    const dateTo = validateDateFilterValue(input.date_to, errors, {
+    const dateTo = validateDateFilterValue(input.dateTo, errors, {
         fieldName: 'Date to',
         boundary: 'end',
     })
@@ -152,31 +157,15 @@ function validateExportTransactionsInput(
     }
 
     return {
-        format: validateExportFormatValue(input.format, errors),
+        format: input.format,
         dateFrom,
         dateTo,
         errors,
     }
 }
 
-function validateExportFormatValue(value: unknown, errors: string[]): ExportFormat | undefined {
-    if (typeof value !== 'string' || value.trim().length === 0) {
-        errors.push('Format must be one of: csv, json')
-        return undefined
-    }
-
-    const normalizedValue = value.trim().toLowerCase()
-
-    if (normalizedValue !== 'csv' && normalizedValue !== 'json') {
-        errors.push('Format must be one of: csv, json')
-        return undefined
-    }
-
-    return normalizedValue
-}
-
 function validateDateFilterValue(
-    value: unknown,
+    value: string | undefined,
     errors: string[],
     options: ParsedDateFilterOptions,
 ): Date | undefined {
@@ -184,8 +173,8 @@ function validateDateFilterValue(
         return undefined
     }
 
-    if (typeof value !== 'string' || value.trim().length === 0) {
-        errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
+    if (value.trim().length === 0) {
+        errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
         return undefined
     }
 
@@ -196,11 +185,7 @@ function validateDateFilterValue(
             .split('-')
             .map((part) => Number.parseInt(part, 10))
 
-        const hour = options.boundary === 'end' ? 23 : 0
-        const minute = options.boundary === 'end' ? 59 : 0
-        const second = options.boundary === 'end' ? 59 : 0
-        const millisecond = options.boundary === 'end' ? 999 : 0
-        const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond))
+        const date = new Date(Date.UTC(year, month - 1, day))
 
         if (
             Number.isNaN(date.getTime()) ||
@@ -208,26 +193,15 @@ function validateDateFilterValue(
             date.getUTCMonth() !== month - 1 ||
             date.getUTCDate() !== day
         ) {
-            errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
+            errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
             return undefined
         }
 
         return date
     }
 
-    if (!ISO_DATE_TIME_REGEX.test(normalizedValue)) {
-        errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
-        return undefined
-    }
-
-    const date = new Date(normalizedValue)
-
-    if (Number.isNaN(date.getTime())) {
-        errors.push(`${options.fieldName} must be a valid ISO 8601 value`)
-        return undefined
-    }
-
-    return date
+    errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
+    return undefined
 }
 
 function normalizeRequiredValue(value: string, fieldName: string): string {
@@ -252,9 +226,16 @@ function buildExportFileName(format: ExportFormat): string {
 
 function mapExportTransaction(transaction: ExportTransactionRecord): ExportedTransaction {
     return {
-        date: transaction.date.toISOString(),
+        date: transaction.date.toISOString().slice(0, 10),
         amount: formatAmountFromCents(transaction.amount),
+        currency: transaction.currency,
+        base_amount: formatAmountFromCents(transaction.base_amount),
+        base_currency: transaction.base_currency,
+        fx_rate: transaction.fx_rate.toString(),
+        fx_rate_date: transaction.fx_rate_date.toISOString().slice(0, 10),
+        fx_source: transaction.fx_source,
         category: transaction.category ?? '',
+        description: transaction.description,
         notes: transaction.notes,
         tags: transaction.tags,
         payment_source: transaction.payment_source,
@@ -265,7 +246,14 @@ function serializeCsvRow(transaction: ExportedTransaction): string {
     return [
         transaction.date,
         transaction.amount,
+        transaction.currency,
+        transaction.base_amount,
+        transaction.base_currency,
+        transaction.fx_rate,
+        transaction.fx_rate_date,
+        transaction.fx_source,
         transaction.category,
+        transaction.description,
         transaction.notes ?? '',
         transaction.tags.join(', '),
         transaction.payment_source ?? '',

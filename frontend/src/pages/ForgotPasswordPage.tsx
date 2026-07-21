@@ -2,12 +2,20 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import api from "@/lib/api";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { PendingButton } from "@/components/ui/pending-button";
+import { getApiErrorStatus } from "@/lib/api-errors";
 
 interface ForgotPasswordFormValues {
   email: string;
 }
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState("");
   const {
@@ -24,17 +32,10 @@ export default function ForgotPasswordPage() {
     } catch (err: unknown) {
       // Backend intentionally returns success for unknown emails to prevent enumeration.
       // If an unexpected error occurs, show a generic message.
-      const status =
-        err &&
-        typeof err === "object" &&
-        "response" in err &&
-        err.response &&
-        typeof err.response === "object" &&
-        "status" in err.response
-          ? (err.response as { status: number }).status
-          : 0;
+      const status = getApiErrorStatus(err) ?? 0;
+
       if (status >= 500) {
-        setServerError("Something went wrong. Please try again.");
+        setServerError(t("auth.genericError"));
       } else {
         setSubmitted(true);
       }
@@ -43,65 +44,58 @@ export default function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 p-8 border border-border rounded-lg shadow-sm bg-card text-center">
-          <h1 className="text-2xl font-semibold">Check your email</h1>
-          <p className="text-sm text-muted-foreground">
-            If an account with that email exists, we've sent a password reset
-            link.
-          </p>
-          <Link to="/login" className="text-sm text-primary hover:underline">
-            Back to sign in
-          </Link>
-        </div>
-      </div>
+      <AuthCard compact centered>
+        <h1 className="text-2xl font-semibold">{t("auth.checkEmail")}</h1>
+        <p className="text-sm text-muted-foreground">{t("auth.sentReset")}</p>
+        <Link to="/login" className="text-sm text-primary hover:underline">
+          {t("auth.backToLogin")}
+        </Link>
+      </AuthCard>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg shadow-sm bg-card">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Forgot password</h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your email and we'll send you a reset link.
-          </p>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="you@example.com"
-              {...register("email", { required: "Email is required" })}
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-          {serverError && (
-            <p className="text-xs text-destructive">{serverError}</p>
-          )}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? "Sending…" : "Send reset link"}
-          </button>
-        </form>
-        <p className="text-center text-sm text-muted-foreground">
-          Remembered it?{" "}
-          <Link to="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
+    <AuthCard>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">{t("auth.forgotTitle")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("auth.forgotDescription")}
         </p>
       </div>
-    </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          id="email"
+          label={t("auth.email")}
+          error={errors.email?.message}
+          required
+        >
+          <Input
+            type="email"
+            autoComplete="email"
+            placeholder={t("auth.emailPlaceholder")}
+            {...register("email", { required: t("auth.requiredEmail") })}
+          />
+        </FormField>
+        {serverError && (
+          <Alert variant="error" compact>
+            {serverError}
+          </Alert>
+        )}
+        <PendingButton
+          type="submit"
+          isPending={isSubmitting}
+          pendingLabel={t("auth.sending")}
+          className="w-full"
+        >
+          {t("auth.sendReset")}
+        </PendingButton>
+      </form>
+      <p className="text-center text-sm text-muted-foreground">
+        {t("auth.remembered")}{" "}
+        <Link to="/login" className="text-primary hover:underline">
+          {t("auth.signIn")}
+        </Link>
+      </p>
+    </AuthCard>
   );
 }

@@ -34,9 +34,15 @@ describe("SpendingTrendChart", () => {
   it("highlights the current month", () => {
     renderChart();
 
-    expect(
-      screen.getByRole("button", { name: /may 2026 spending \$100\.00/i }),
-    ).toHaveAttribute("aria-current", "date");
+    const currentMonth = screen.getByRole("button", {
+      name: /may 2026 spending \$100\.00/i,
+    });
+    expect(currentMonth).toHaveAttribute("aria-current", "date");
+    expect(currentMonth).toHaveClass("ring-2", "ring-foreground");
+    expect(screen.getByTestId("spending-bar-2026-05")).toHaveClass(
+      "bg-chart-1",
+      "chart-pattern-1",
+    );
   });
 
   it("shows exact amount when a month is clicked", async () => {
@@ -48,6 +54,13 @@ describe("SpendingTrendChart", () => {
     );
 
     expect(screen.getByText(/february 2026:/i)).toHaveTextContent("$50.00");
+    expect(
+      screen.getByRole("button", { name: /february 2026 spending \$50\.00/i }),
+    ).toHaveClass("outline-dashed");
+    expect(screen.getByTestId("spending-bar-2026-02")).toHaveClass(
+      "bg-chart-2",
+      "chart-pattern-2",
+    );
   });
 
   it("keeps zero-spending months visible", () => {

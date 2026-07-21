@@ -7,22 +7,35 @@ export interface CreateWorkspaceInput {
     name: string
     type: string
     timezone: string
+    baseCurrency?: string
 }
 
 export interface CreateWorkspaceMembershipInput {
     userId: string
     workspaceId: string
     role: string
+    lastPaymentSourceId: string
 }
 
 export interface UpdateWorkspaceSettingsInput {
     workspaceId: string
+    name?: string
     timezone: string
+    baseCurrency?: string
 }
 
 export interface WorkspaceMembershipAccess {
     workspaceId: string
     role: string
+}
+
+export type UserWorkspaceRecord = Workspace & {
+    lastPaymentSourceId: string
+    baseCurrencyLocked: boolean
+}
+
+export type WorkspaceDetailsRecord = Workspace & {
+    baseCurrencyLocked: boolean
 }
 
 export type WorkspacePersistenceClient = Prisma.TransactionClient | PrismaService
@@ -31,12 +44,24 @@ export type WorkspacePersistenceClient = Prisma.TransactionClient | PrismaServic
 export class WorkspaceRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    async findWorkspacesByUserId(userId: string): Promise<Workspace[]> {
-        return this.prisma.workspace.findMany({
+    async findWorkspacesByUserId(userId: string): Promise<UserWorkspaceRecord[]> {
+        const workspaces = await this.prisma.workspace.findMany({
             where: {
                 memberships: {
                     some: {
                         userId,
+                    },
+                },
+            },
+            include: {
+                memberships: {
+                    where: { userId },
+                    select: { lastPaymentSourceId: true },
+                },
+                _count: {
+                    select: {
+                        transactions: true,
+                        budgets: true,
                     },
                 },
             },
@@ -49,23 +74,53 @@ export class WorkspaceRepository {
                 },
             ],
         })
+
+        return workspaces.map(({ memberships, _count, ...workspace }) => ({
+            ...workspace,
+            lastPaymentSourceId: memberships[0].lastPaymentSourceId,
+            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0,
+        }))
     }
 
-    async findWorkspaceById(workspaceId: string): Promise<Workspace | null> {
-        return this.prisma.workspace.findUnique({
+    async findWorkspaceById(
+        workspaceId: string,
+        prisma: WorkspacePersistenceClient = this.prisma,
+    ): Promise<WorkspaceDetailsRecord | null> {
+        const workspace = await prisma.workspace.findUnique({
             where: {
                 id: workspaceId,
             },
+            include: {
+                _count: {
+                    select: {
+                        transactions: true,
+                        budgets: true,
+                    },
+                },
+            },
         })
+
+        if (!workspace) return null
+
+        const { _count, ...details } = workspace
+        return {
+            ...details,
+            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0,
+        }
     }
 
-    async updateWorkspaceSettings(input: UpdateWorkspaceSettingsInput): Promise<Workspace> {
-        return this.prisma.workspace.update({
+    async updateWorkspaceSettings(
+        input: UpdateWorkspaceSettingsInput,
+        prisma: WorkspacePersistenceClient = this.prisma,
+    ): Promise<Workspace> {
+        return prisma.workspace.update({
             where: {
                 id: input.workspaceId,
             },
             data: {
+                name: input.name,
                 timezone: input.timezone,
+                baseCurrency: input.baseCurrency,
             },
         })
     }
@@ -121,6 +176,7 @@ export class WorkspaceRepository {
                 name: input.name,
                 type: input.type,
                 timezone: input.timezone,
+                baseCurrency: input.baseCurrency,
             },
         })
     }
@@ -134,10 +190,24 @@ export class WorkspaceRepository {
                 userId: input.userId,
                 workspaceId: input.workspaceId,
                 role: input.role,
+                lastPaymentSourceId: input.lastPaymentSourceId,
             },
         })
     }
 
+    async createDefaultCashPaymentSource(
+        workspaceId: string,
+        prisma: WorkspacePersistenceClient = this.prisma,
+    ) {
+        return prisma.paymentSource.create({
+            data: {
+                workspaceId,
+                name: 'Cash',
+                type: 'cash',
+                systemKey: 'cash',
+            },
+        })
+    }
     async seedDefaultCategories(
         workspaceId: string,
         prisma: WorkspacePersistenceClient = this.prisma,

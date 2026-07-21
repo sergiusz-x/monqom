@@ -7,6 +7,7 @@ import {
     Param,
     Post,
     Put,
+    Query,
     Req,
     UseGuards,
 } from '@nestjs/common'
@@ -15,6 +16,7 @@ import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { PAYMENT_SOURCES_BASE_ROUTE } from './payment-sources.routes'
 import { PaymentSourceResponse, PaymentSourcesService } from './payment-sources.service'
+import { ListPaymentSourcesQueryDto, PaymentSourceBodyDto } from './payment-sources.dto'
 
 @Controller(PAYMENT_SOURCES_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -23,9 +25,12 @@ export class PaymentSourcesController {
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    async listPaymentSources(@Req() req: Request): Promise<PaymentSourceResponse[]> {
+    async listPaymentSources(
+        @Query() query: ListPaymentSourcesQueryDto,
+        @Req() req: Request,
+    ): Promise<PaymentSourceResponse[]> {
         return this.paymentSourcesService.listPaymentSources(
-            req.query as Record<string, unknown>,
+            { includeArchived: query.include_archived },
             req.workspace!.workspaceId,
         )
     }
@@ -33,11 +38,11 @@ export class PaymentSourcesController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     async createPaymentSource(
-        @Body() body: Record<string, unknown>,
+        @Body() body: PaymentSourceBodyDto,
         @Req() req: Request,
     ): Promise<PaymentSourceResponse> {
         return this.paymentSourcesService.createPaymentSource(
-            body,
+            { name: body.name, type: body.type },
             req.workspace!.workspaceId,
             req.session.auth!.userId,
         )
@@ -47,11 +52,11 @@ export class PaymentSourcesController {
     @HttpCode(HttpStatus.OK)
     async updatePaymentSource(
         @Param('id') paymentSourceId: string,
-        @Body() body: Record<string, unknown>,
+        @Body() body: PaymentSourceBodyDto,
         @Req() req: Request,
     ): Promise<PaymentSourceResponse> {
         return this.paymentSourcesService.updatePaymentSource(
-            body,
+            { name: body.name, type: body.type },
             paymentSourceId,
             req.workspace!.workspaceId,
             req.session.auth!.userId,

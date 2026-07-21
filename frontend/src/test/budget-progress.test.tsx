@@ -15,9 +15,9 @@ function makeItem(
   overrides: Partial<BudgetProgressItem> = {},
 ): BudgetProgressItem {
   return {
-    category_id: "cat-1",
-    category_name: "Groceries",
-    budget_amount: 500,
+    categoryId: "cat-1",
+    categoryName: "Groceries",
+    budgetAmount: 500,
     limit: 500,
     spent: 250,
     remaining: 250,
@@ -30,12 +30,12 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── BudgetProgressBar — basic display ───────────────────────────────────────
+// ─── BudgetProgressBar - basic display ───────────────────────────────────────
 
-describe("BudgetProgressBar — basic display", () => {
+describe("BudgetProgressBar - basic display", () => {
   it("shows category name", () => {
     render(
-      <BudgetProgressBar item={makeItem({ category_name: "Groceries" })} />,
+      <BudgetProgressBar item={makeItem({ categoryName: "Groceries" })} />,
     );
     expect(screen.getByText("Groceries")).toBeInTheDocument();
   });
@@ -47,7 +47,7 @@ describe("BudgetProgressBar — basic display", () => {
 
   it("shows spent and budget amounts", () => {
     render(
-      <BudgetProgressBar item={makeItem({ spent: 250, budget_amount: 500 })} />,
+      <BudgetProgressBar item={makeItem({ spent: 250, budgetAmount: 500 })} />,
     );
     expect(screen.getByText(/\$250\.00.*\$500\.00/)).toBeInTheDocument();
   });
@@ -67,7 +67,7 @@ describe("BudgetProgressBar — basic display", () => {
 
   it("sets aria-label from category name", () => {
     render(
-      <BudgetProgressBar item={makeItem({ category_name: "Transport" })} />,
+      <BudgetProgressBar item={makeItem({ categoryName: "Transport" })} />,
     );
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-label",
@@ -76,11 +76,11 @@ describe("BudgetProgressBar — basic display", () => {
   });
 });
 
-// ─── BudgetProgressBar — no budget ───────────────────────────────────────────
+// ─── BudgetProgressBar - no budget ───────────────────────────────────────────
 
-describe("BudgetProgressBar — no budget", () => {
+describe("BudgetProgressBar - no budget", () => {
   const noBudgetItem = makeItem({
-    budget_amount: null,
+    budgetAmount: null,
     limit: null,
     remaining: null,
     percentage: null,
@@ -103,11 +103,11 @@ describe("BudgetProgressBar — no budget", () => {
   });
 });
 
-// ─── BudgetProgressBar — over budget ─────────────────────────────────────────
+// ─── BudgetProgressBar - over budget ─────────────────────────────────────────
 
-describe("BudgetProgressBar — over budget", () => {
+describe("BudgetProgressBar - over budget", () => {
   const overBudgetItem = makeItem({
-    budget_amount: 100,
+    budgetAmount: 100,
     spent: 150,
     remaining: -50,
     percentage: 150,
@@ -137,9 +137,9 @@ describe("BudgetProgressBar — over budget", () => {
   });
 });
 
-// ─── BudgetProgressBar — color coding ────────────────────────────────────────
+// ─── BudgetProgressBar - color coding ────────────────────────────────────────
 
-describe("BudgetProgressBar — color coding", () => {
+describe("BudgetProgressBar - color coding", () => {
   it("uses green bar when percentage < 75", () => {
     render(<BudgetProgressBar item={makeItem({ percentage: 50 })} />);
     expect(screen.getByRole("progressbar").className).toContain("bg-green-500");
@@ -171,7 +171,7 @@ describe("BudgetProgressBar — color coding", () => {
           percentage: 120,
           remaining: -20,
           spent: 120,
-          budget_amount: 100,
+          budgetAmount: 100,
         })}
       />,
     );
@@ -179,9 +179,9 @@ describe("BudgetProgressBar — color coding", () => {
   });
 });
 
-// ─── BudgetProgressList — states ─────────────────────────────────────────────
+// ─── BudgetProgressList - states ─────────────────────────────────────────────
 
-describe("BudgetProgressList — loading", () => {
+describe("BudgetProgressList - loading", () => {
   it("shows loading status", () => {
     mockUseBudgetProgress.mockReturnValue({
       items: [],
@@ -195,7 +195,7 @@ describe("BudgetProgressList — loading", () => {
   });
 });
 
-describe("BudgetProgressList — error", () => {
+describe("BudgetProgressList - error", () => {
   it("shows error message", () => {
     mockUseBudgetProgress.mockReturnValue({
       items: [],
@@ -209,7 +209,7 @@ describe("BudgetProgressList — error", () => {
   });
 });
 
-describe("BudgetProgressList — empty", () => {
+describe("BudgetProgressList - empty", () => {
   it("shows empty state message", () => {
     mockUseBudgetProgress.mockReturnValue({
       items: [],
@@ -223,16 +223,16 @@ describe("BudgetProgressList — empty", () => {
   });
 });
 
-describe("BudgetProgressList — items", () => {
+describe("BudgetProgressList - items", () => {
   beforeEach(() => {
     mockUseBudgetProgress.mockReturnValue({
       items: [
-        makeItem({ category_id: "c1", category_name: "Groceries" }),
-        makeItem({ category_id: "c2", category_name: "Transport" }),
+        makeItem({ categoryId: "c1", categoryName: "Groceries" }),
+        makeItem({ categoryId: "c2", categoryName: "Transport" }),
         makeItem({
-          category_id: "c3",
-          category_name: "Entertainment",
-          budget_amount: null,
+          categoryId: "c3",
+          categoryName: "Entertainment",
+          budgetAmount: null,
           limit: null,
           remaining: null,
           percentage: null,

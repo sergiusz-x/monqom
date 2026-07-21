@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import i18n from "@/i18n";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { PendingButton } from "@/components/ui/pending-button";
+import { getApiErrorMessage } from "@/lib/api-errors";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 
 interface RegisterFormValues {
   email: string;
@@ -10,27 +19,15 @@ interface RegisterFormValues {
   confirmPassword: string;
 }
 
-function extractErrorMessage(err: unknown): string {
-  if (
-    err &&
-    typeof err === "object" &&
-    "response" in err &&
-    err.response &&
-    typeof err.response === "object" &&
-    "data" in err.response
-  ) {
-    const data = (err.response as { data: unknown }).data;
-    if (data && typeof data === "object" && "message" in data) {
-      const msg = (data as { message: unknown }).message;
-      return Array.isArray(msg) ? msg.join(", ") : String(msg);
-    }
-  }
-  return "Something went wrong. Please try again.";
-}
-
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const onTurnstileTokenChange = useCallback(
+    (token: string | null) => setTurnstileToken(token),
+    [],
+  );
   const {
     register,
     handleSubmit,
@@ -45,116 +42,105 @@ export default function RegisterPage() {
         email: data.email,
         name: data.name,
         password: data.password,
+        locale: i18n.resolvedLanguage === "pl" ? "pl" : "en",
+        base_currency: i18n.resolvedLanguage === "pl" ? "PLN" : "USD",
+        turnstile_token: turnstileToken ?? undefined,
       });
       navigate("/verify-email", { replace: true });
     } catch (err: unknown) {
-      setServerError(extractErrorMessage(err));
+      setServerError(getApiErrorMessage(err));
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg shadow-sm bg-card">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Create account</h1>
-          <p className="text-sm text-muted-foreground">
-            Sign up to start tracking your expenses.
-          </p>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="name" className="text-sm font-medium">
-              Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              autoComplete="name"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Jane Doe"
-              {...register("name", { required: "Name is required" })}
-            />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="you@example.com"
-              {...register("email", { required: "Email is required" })}
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="••••••••"
-              {...register("password", {
-                required: "Password is required",
-                minLength: { value: 8, message: "Minimum 8 characters" },
-              })}
-            />
-            {errors.password && (
-              <p className="text-xs text-destructive">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="confirmPassword" className="text-sm font-medium">
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="••••••••"
-              {...register("confirmPassword", {
-                required: "Please confirm your password",
-                validate: (value) =>
-                  value === getValues("password") || "Passwords do not match",
-              })}
-            />
-            {errors.confirmPassword && (
-              <p className="text-xs text-destructive">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-          {serverError && (
-            <p className="text-xs text-destructive">{serverError}</p>
-          )}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? "Creating account…" : "Create account"}
-          </button>
-        </form>
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link to="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
+    <AuthCard>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">{t("auth.signUp")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {t("auth.registerDescription")}
         </p>
       </div>
-    </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          id="name"
+          label={t("auth.name")}
+          error={errors.name?.message}
+          required
+        >
+          <Input
+            type="text"
+            autoComplete="name"
+            placeholder={t("auth.namePlaceholder")}
+            {...register("name", { required: t("auth.requiredName") })}
+          />
+        </FormField>
+        <FormField
+          id="email"
+          label={t("auth.email")}
+          error={errors.email?.message}
+          required
+        >
+          <Input
+            type="email"
+            autoComplete="email"
+            placeholder={t("auth.emailPlaceholder")}
+            {...register("email", { required: t("auth.requiredEmail") })}
+          />
+        </FormField>
+        <FormField
+          id="password"
+          label={t("auth.password")}
+          error={errors.password?.message}
+          required
+        >
+          <Input
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...register("password", {
+              required: t("auth.requiredPassword"),
+              minLength: { value: 8, message: t("auth.minPassword") },
+            })}
+          />
+        </FormField>
+        <FormField
+          id="confirmPassword"
+          label={t("auth.confirmPassword")}
+          error={errors.confirmPassword?.message}
+          required
+        >
+          <Input
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...register("confirmPassword", {
+              required: t("auth.confirmRequired"),
+              validate: (value) =>
+                value === getValues("password") || t("auth.passwordMismatch"),
+            })}
+          />
+        </FormField>
+        {serverError && (
+          <Alert variant="error" compact>
+            {serverError}
+          </Alert>
+        )}
+        <TurnstileWidget onTokenChange={onTurnstileTokenChange} />
+        <PendingButton
+          type="submit"
+          isPending={isSubmitting}
+          pendingLabel={t("auth.creating")}
+          className="w-full"
+        >
+          {t("auth.signUp")}
+        </PendingButton>
+      </form>
+      <p className="text-center text-sm text-muted-foreground">
+        {t("auth.haveAccount")}{" "}
+        <Link to="/login" className="text-primary hover:underline">
+          {t("auth.signIn")}
+        </Link>
+      </p>
+    </AuthCard>
   );
 }

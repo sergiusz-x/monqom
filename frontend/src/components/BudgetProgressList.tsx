@@ -1,4 +1,7 @@
 import { useBudgetProgress } from "@/hooks/useBudgetProgress";
+import { AsyncState } from "@/components/ui/async-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useTranslation } from "react-i18next";
 import { BudgetProgressBar } from "./BudgetProgressBar";
 
 export interface BudgetProgressListProps {
@@ -10,36 +13,32 @@ export function BudgetProgressList({
   workspaceId,
   month,
 }: BudgetProgressListProps) {
-  const { items, isLoading, error } = useBudgetProgress(workspaceId, month);
+  const { t } = useTranslation();
+  const { items, isLoading, error, retry } = useBudgetProgress(
+    workspaceId,
+    month,
+  );
 
   if (isLoading) {
     return (
-      <div className="py-8 text-center text-muted-foreground" role="status">
-        Loading budget progress…
-      </div>
+      <AsyncState status="loading" message={t("budgets.loadingProgress")} />
     );
   }
 
   if (error) {
     return (
-      <div className="py-8 text-center text-destructive" role="alert">
-        {error}
-      </div>
+      <AsyncState status="error" message={error} onRetry={() => void retry()} />
     );
   }
 
   if (items.length === 0) {
-    return (
-      <div className="py-8 text-center text-muted-foreground">
-        No budgets or spending this month.
-      </div>
-    );
+    return <EmptyState title={t("budgets.noActivity")} />;
   }
 
   return (
     <div className="flex flex-col gap-3">
       {items.map((item) => (
-        <BudgetProgressBar key={item.category_id} item={item} />
+        <BudgetProgressBar key={item.categoryId} item={item} />
       ))}
     </div>
   );

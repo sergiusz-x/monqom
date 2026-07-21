@@ -60,6 +60,7 @@ export async function seed(prisma: PrismaClient) {
                 workspaceId: DEFAULT_WORKSPACE_ID,
                 name: paymentSource.name,
                 type: paymentSource.type,
+                systemKey: paymentSource.type === 'cash' ? 'cash' : null,
                 deletedAt: null,
             },
             create: {
@@ -67,6 +68,7 @@ export async function seed(prisma: PrismaClient) {
                 workspaceId: DEFAULT_WORKSPACE_ID,
                 name: paymentSource.name,
                 type: paymentSource.type,
+                systemKey: paymentSource.type === 'cash' ? 'cash' : null,
             },
         })
     }

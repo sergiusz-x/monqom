@@ -3,6 +3,7 @@ import type { Request } from 'express'
 import type { SessionData } from 'express-session'
 import { AuthRepository } from '../../modules/auth/auth.repository'
 import { SessionGuard } from './session.guard'
+import { createUserFixture } from '../../test-utils/prisma-fixtures'
 
 type SessionRequest = Omit<Partial<Request>, 'session'> & {
     session?: Partial<SessionData>
@@ -21,16 +22,9 @@ describe('SessionGuard', () => {
     })
 
     it('allows requests with a valid session user id and session version', async () => {
-        authRepository.findUserById.mockResolvedValue({
-            id: 'user-1',
-            email: 'test@example.com',
-            name: 'Ada Lovelace',
-            passwordHash: 'hash',
-            emailVerified: true,
-            sessionVersion: 2,
-            createdAt: new Date('2026-03-22T10:00:00.000Z'),
-            updatedAt: new Date('2026-03-22T10:00:00.000Z'),
-        })
+        authRepository.findUserById.mockResolvedValue(
+            createUserFixture({ emailVerified: true, sessionVersion: 2 }),
+        )
 
         const context = createExecutionContext({
             session: {
@@ -55,16 +49,9 @@ describe('SessionGuard', () => {
     })
 
     it('rejects requests when the session version is stale', async () => {
-        authRepository.findUserById.mockResolvedValue({
-            id: 'user-1',
-            email: 'test@example.com',
-            name: 'Ada Lovelace',
-            passwordHash: 'hash',
-            emailVerified: true,
-            sessionVersion: 3,
-            createdAt: new Date('2026-03-22T10:00:00.000Z'),
-            updatedAt: new Date('2026-03-22T10:00:00.000Z'),
-        })
+        authRepository.findUserById.mockResolvedValue(
+            createUserFixture({ emailVerified: true, sessionVersion: 3 }),
+        )
 
         const context = createExecutionContext({
             session: {

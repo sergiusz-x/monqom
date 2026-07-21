@@ -8,11 +8,16 @@ export interface CreateTransactionRecordInput {
     workspaceId: string
     userId: string
     categoryId: string
-    paymentSourceId?: string
+    paymentSourceId: string
     type: string
     amount: number
     currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
     date: Date
+    description: string
     notes: string | null
     tags: string[]
 }
@@ -20,12 +25,19 @@ export interface CreateTransactionRecordInput {
 export interface UpdateTransactionRecordInput {
     workspaceId: string
     transactionId: string
+    userId?: string
+    previousTransaction?: TransactionWithTags
     categoryId: string
-    paymentSourceId?: string
+    paymentSourceId: string
     type: string
     amount: number
     currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
     date: Date
+    description: string
     notes: string | null
     tags: string[]
 }
@@ -38,9 +50,23 @@ export interface SoftDeleteTransactionInput {
     transaction: TransactionWithTags
 }
 
+export type TransactionSortField =
+    | 'date'
+    | 'category'
+    | 'amount'
+    | 'description'
+    | 'notes'
+    | 'tags'
+    | 'payment_source'
+
+export type TransactionSortDirection = 'asc' | 'desc'
+
 export interface ListTransactionsFilters {
     workspaceId: string
     categoryId?: string
+    categoryIds?: string[]
+    sortBy?: TransactionSortField
+    sortDirection?: TransactionSortDirection
     paymentSourceId?: string
     tag?: string
     dateFrom?: Date
@@ -66,11 +92,16 @@ export interface ListedTransactionRecord {
     id: string
     workspace_id: string
     category_id: string
-    payment_source_id: string | null
+    payment_source_id: string
     type: string
     amount: number
     currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
     date: Date
+    description: string
     notes: string | null
     created_at: Date
     updated_at: Date
@@ -80,7 +111,14 @@ export interface ListedTransactionRecord {
 export interface ExportTransactionRecord {
     date: Date
     amount: number
+    currency: string
+    base_amount: number
+    base_currency: string
+    fx_rate: Prisma.Decimal | number
+    fx_rate_date: Date
+    fx_source: string
     category: string | null
+    description: string
     notes: string | null
     tags: string[]
     payment_source: string | null
@@ -145,12 +183,27 @@ export class TransactionsRepository {
                 data: {
                     workspaceId: input.workspaceId,
                     categoryId: input.categoryId,
-                    paymentSourceId: input.paymentSourceId ?? null,
+                    paymentSourceId: input.paymentSourceId,
                     type: input.type,
                     amount: input.amount,
                     currency: input.currency,
+                    baseAmount: input.baseAmount ?? input.amount,
+                    fxRate: input.fxRate ?? 1,
+                    fxRateDate: input.fxRateDate ?? input.date,
+                    fxSource: input.fxSource ?? 'legacy',
                     date: input.date,
+                    description: input.description,
                     notes: input.notes,
+                },
+            })
+
+            await tx.workspaceMembership.updateMany({
+                where: {
+                    userId: input.userId,
+                    workspaceId: input.workspaceId,
+                },
+                data: {
+                    lastPaymentSourceId: input.paymentSourceId ?? null,
                 },
             })
 
@@ -177,7 +230,12 @@ export class TransactionsRepository {
                         type: input.type,
                         amount: input.amount,
                         currency: input.currency,
+                        baseAmount: input.baseAmount ?? input.amount,
+                        fxRate: input.fxRate ?? 1,
+                        fxRateDate: input.fxRateDate ?? input.date,
+                        fxSource: input.fxSource ?? 'legacy',
                         date: input.date.toISOString(),
+                        description: input.description,
                         category_id: input.categoryId,
                         ...(input.paymentSourceId
                             ? {
@@ -246,11 +304,16 @@ export class TransactionsRepository {
                 },
                 data: {
                     categoryId: input.categoryId,
-                    paymentSourceId: input.paymentSourceId ?? null,
+                    paymentSourceId: input.paymentSourceId,
                     type: input.type,
                     amount: input.amount,
                     currency: input.currency,
+                    baseAmount: input.baseAmount ?? input.amount,
+                    fxRate: input.fxRate ?? 1,
+                    fxRateDate: input.fxRateDate ?? input.date,
+                    fxSource: input.fxSource ?? 'legacy',
                     date: input.date,
+                    description: input.description,
                     notes: input.notes,
                 },
             })
@@ -292,10 +355,38 @@ export class TransactionsRepository {
                 return null
             }
 
-            return {
-                ...transaction,
-                tags,
+            const result = { ...transaction, tags }
+
+            if (input.userId) {
+                await tx.workspaceMembership.updateMany({
+                    where: {
+                        userId: input.userId,
+                        workspaceId: input.workspaceId,
+                    },
+                    data: {
+                        lastPaymentSourceId: input.paymentSourceId,
+                    },
+                })
             }
+
+            if (input.userId && input.previousTransaction) {
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.TRANSACTION_UPDATED,
+                        workspaceId: input.workspaceId,
+                        userId: input.userId,
+                        entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                        entityId: transaction.id,
+                        metadata: {
+                            previous: mapTransactionAuditMetadata(input.previousTransaction),
+                            current: mapTransactionAuditMetadata(result),
+                        },
+                    },
+                    tx,
+                )
+            }
+
+            return result
         }
 
         if (prisma === this.prisma) {
@@ -358,6 +449,7 @@ export class TransactionsRepository {
         prisma: TransactionsPersistenceClient = this.prisma,
     ): Promise<ListedTransactionRecord[]> {
         const whereClause = buildTransactionsWhereClause(filters)
+        const orderByClause = buildTransactionsOrderByClause(filters)
 
         return prisma.$queryRaw<ListedTransactionRecord[]>(Prisma.sql`
             SELECT
@@ -369,6 +461,7 @@ export class TransactionsRepository {
                 t."amount",
                 t."currency",
                 t."date",
+                t."description",
                 t."notes",
                 t."created_at",
                 t."updated_at",
@@ -380,6 +473,12 @@ export class TransactionsRepository {
             LEFT JOIN "transaction_tags" tt
                 ON tt."workspace_id" = t."workspace_id"
                 AND tt."transaction_id" = t."id"
+            LEFT JOIN "categories" c_sort
+                ON c_sort."workspace_id" = t."workspace_id"
+                AND c_sort."id" = t."category_id"
+            LEFT JOIN "payment_sources" ps_sort
+                ON ps_sort."workspace_id" = t."workspace_id"
+                AND ps_sort."id" = t."payment_source_id"
             ${whereClause}
             GROUP BY
                 t."id",
@@ -390,10 +489,13 @@ export class TransactionsRepository {
                 t."amount",
                 t."currency",
                 t."date",
+                t."description",
                 t."notes",
                 t."created_at",
-                t."updated_at"
-            ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC
+                t."updated_at",
+                c_sort."name",
+                ps_sort."name"
+            ${orderByClause}
             LIMIT ${filters.limit}
             OFFSET ${filters.offset}
         `)
@@ -423,7 +525,14 @@ export class TransactionsRepository {
             SELECT
                 t."date",
                 t."amount",
+                t."currency",
+                t."base_amount",
+                w."base_currency",
+                t."fx_rate",
+                t."fx_rate_date",
+                t."fx_source",
                 c."name" AS "category",
+                t."description",
                 t."notes",
                 COALESCE(
                     ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name") FILTER (WHERE tt."id" IS NOT NULL),
@@ -431,6 +540,7 @@ export class TransactionsRepository {
                 ) AS "tags",
                 ps."name" AS "payment_source"
             FROM "transactions" t
+            INNER JOIN "workspaces" w ON w."id" = t."workspace_id"
             LEFT JOIN "categories" c
                 ON c."workspace_id" = t."workspace_id"
                 AND c."id" = t."category_id"
@@ -440,12 +550,25 @@ export class TransactionsRepository {
             LEFT JOIN "transaction_tags" tt
                 ON tt."workspace_id" = t."workspace_id"
                 AND tt."transaction_id" = t."id"
+            LEFT JOIN "categories" c_sort
+                ON c_sort."workspace_id" = t."workspace_id"
+                AND c_sort."id" = t."category_id"
+            LEFT JOIN "payment_sources" ps_sort
+                ON ps_sort."workspace_id" = t."workspace_id"
+                AND ps_sort."id" = t."payment_source_id"
             ${whereClause}
             GROUP BY
                 t."id",
                 t."date",
                 t."amount",
+                t."currency",
+                t."base_amount",
+                w."base_currency",
+                t."fx_rate",
+                t."fx_rate_date",
+                t."fx_source",
                 c."name",
+                t."description",
                 t."notes",
                 ps."name",
                 t."created_at"
@@ -504,7 +627,9 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
             AND t."deleted_at" IS NULL
     `
 
-    if (filters.categoryId) {
+    if (filters.categoryIds && filters.categoryIds.length > 0) {
+        whereClause = Prisma.sql`${whereClause} AND t."category_id" IN (${Prisma.join(filters.categoryIds)})`
+    } else if (filters.categoryId) {
         whereClause = Prisma.sql`${whereClause} AND t."category_id" = ${filters.categoryId}`
     }
 
@@ -536,7 +661,42 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
     return whereClause
 }
 
+function buildTransactionsOrderByClause(filters: ListTransactionsFilters): Prisma.Sql {
+    const direction = filters.sortDirection === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`
+    let expression: Prisma.Sql
+
+    switch (filters.sortBy) {
+        case 'category':
+            expression = Prisma.sql`LOWER(COALESCE(c_sort."name", ''))`
+            break
+        case 'amount':
+            expression = Prisma.sql`t."amount"`
+            break
+        case 'description':
+            expression = Prisma.sql`LOWER(t."description")`
+            break
+        case 'notes':
+            expression = Prisma.sql`LOWER(COALESCE(t."notes", ''))`
+            break
+        case 'tags':
+            expression = Prisma.sql`LOWER(COALESCE(MIN(tt."name"), ''))`
+            break
+        case 'payment_source':
+            expression = Prisma.sql`LOWER(COALESCE(ps_sort."name", ''))`
+            break
+        case 'date':
+        default:
+            expression = Prisma.sql`t."date"`
+            break
+    }
+
+    return Prisma.sql`ORDER BY ${expression} ${direction}, t."created_at" DESC, t."id" DESC`
+}
 function mapDeletedTransactionMetadata(transaction: TransactionWithTags) {
+    return mapTransactionAuditMetadata(transaction)
+}
+
+function mapTransactionAuditMetadata(transaction: TransactionWithTags) {
     return {
         id: transaction.id,
         workspace_id: transaction.workspaceId,
@@ -545,7 +705,12 @@ function mapDeletedTransactionMetadata(transaction: TransactionWithTags) {
         type: transaction.type,
         amount: transaction.amount,
         currency: transaction.currency,
-        date: transaction.date.toISOString(),
+        base_amount: transaction.baseAmount ?? transaction.amount,
+        fx_rate: transaction.fxRate?.toString() ?? '1',
+        fx_rate_date: (transaction.fxRateDate ?? transaction.date).toISOString(),
+        fx_source: transaction.fxSource ?? 'legacy',
+        date: transaction.date.toISOString().slice(0, 10),
+        description: transaction.description,
         notes: transaction.notes,
         tags: transaction.tags.map((tag) => tag.name),
         created_at: transaction.createdAt.toISOString(),

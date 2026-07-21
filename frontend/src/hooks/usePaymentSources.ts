@@ -1,65 +1,34 @@
-import { useEffect, useReducer } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { queryKeys } from "@/lib/query-client";
+import { getApiErrorMessage } from "@/lib/api-errors";
+import type { ApiPaymentSource } from "@/types/api-contracts";
+import { mapPaymentSource } from "@/lib/api-mappers";
+export type { PaymentSource, PaymentSourceType } from "@/types/payment-source";
 
-export interface PaymentSource {
-  id: string;
-  name: string;
-}
+export function usePaymentSources(
+  workspaceId: string,
+  includeArchived = false,
+) {
+  const query = useQuery({
+    queryKey: queryKeys.paymentSources(workspaceId, includeArchived),
+    enabled: Boolean(workspaceId),
+    queryFn: async ({ signal }) => {
+      const response = await api.get<ApiPaymentSource[]>(
+        `/workspaces/${workspaceId}/payment-sources`,
+        {
+          params: includeArchived ? { include_archived: true } : undefined,
+          signal,
+        },
+      );
+      return response.data.map(mapPaymentSource);
+    },
+  });
 
-interface State {
-  paymentSources: PaymentSource[];
-  isLoading: boolean;
-  error: string | null;
-}
-
-type Action =
-  | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: PaymentSource[] }
-  | { type: "FETCH_ERROR" };
-
-function reducer(_state: State, action: Action): State {
-  switch (action.type) {
-    case "FETCH_START":
-      return { paymentSources: [], isLoading: true, error: null };
-    case "FETCH_SUCCESS":
-      return { paymentSources: action.payload, isLoading: false, error: null };
-    case "FETCH_ERROR":
-      return {
-        paymentSources: [],
-        isLoading: false,
-        error: "Failed to load payment sources",
-      };
-  }
-}
-
-const initialState: State = {
-  paymentSources: [],
-  isLoading: false,
-  error: null,
-};
-
-export function usePaymentSources(workspaceId: string): State {
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  useEffect(() => {
-    if (!workspaceId) return;
-
-    let cancelled = false;
-    dispatch({ type: "FETCH_START" });
-
-    api
-      .get<PaymentSource[]>(`/workspaces/${workspaceId}/payment-sources`)
-      .then((res) => {
-        if (!cancelled) dispatch({ type: "FETCH_SUCCESS", payload: res.data });
-      })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: "FETCH_ERROR" });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId]);
-
-  return state;
+  return {
+    paymentSources: query.data ?? [],
+    isLoading: query.isPending && query.fetchStatus !== "idle",
+    error: query.isError ? getApiErrorMessage(query.error) : null,
+    retry: query.refetch,
+  };
 }

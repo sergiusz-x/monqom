@@ -1,9 +1,13 @@
+import { useTranslation } from "react-i18next";
+import { AsyncState } from "@/components/ui/async-state";
+
 export function TransactionListSkeleton() {
+  const { t } = useTranslation();
   return (
-    <div className="space-y-3" role="status" aria-label="Loading transactions">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="h-14 animate-pulse rounded-lg bg-muted" />
-      ))}
-    </div>
+    <AsyncState
+      status="loading"
+      message={t("transactions.loading")}
+      skeletonRows={6}
+    />
   );
 }

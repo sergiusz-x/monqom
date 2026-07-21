@@ -12,6 +12,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module'
 import { WorkspaceModule } from './modules/workspace/workspace.module'
 import { AuditModule } from './shared/audit/audit.module'
 import { DatabaseModule } from './shared/database/database.module'
+import { CurrencyModule } from './shared/currency/currency.module'
 
 @Module({
     imports: [
@@ -31,6 +32,7 @@ import { DatabaseModule } from './shared/database/database.module'
         TransactionsModule,
         AuditModule,
         DatabaseModule,
+        CurrencyModule,
     ],
 })
 export class AppModule {}

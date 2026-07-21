@@ -7,7 +7,7 @@ import { PrismaService } from '../../shared/database/prisma.service'
 export interface BudgetCategoryRecord extends Pick<Category, 'id' | 'parentId'> {}
 export interface BudgetProgressCategoryRecord extends Pick<
     Category,
-    'id' | 'parentId' | 'name' | 'sortOrder'
+    'id' | 'parentId' | 'name' | 'sortOrder' | 'systemKey'
 > {}
 export interface BudgetProgressSpendingRecord {
     categoryId: string
@@ -20,6 +20,10 @@ export interface CreateBudgetRecordInput {
     categoryId: string
     amount: number
     currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
     year: number
     month: number
 }
@@ -31,6 +35,10 @@ export interface UpdateBudgetRecordInput {
     categoryId: string
     amount: number
     currency: string
+    baseAmount?: number
+    fxRate?: number
+    fxRateDate?: Date
+    fxSource?: string
     year: number
     month: number
     previousBudget: Budget
@@ -128,6 +136,7 @@ export class BudgetsRepository {
                 id: true,
                 parentId: true,
                 name: true,
+                systemKey: true,
                 sortOrder: true,
             },
             orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
@@ -151,13 +160,13 @@ export class BudgetsRepository {
                 },
             },
             _sum: {
-                amount: true,
+                baseAmount: true,
             },
         })
 
         return rows.map((row) => ({
             categoryId: row.categoryId,
-            amount: row._sum.amount ?? 0,
+            amount: row._sum.baseAmount ?? 0,
         }))
     }
 
@@ -171,6 +180,10 @@ export class BudgetsRepository {
                 categoryId: input.categoryId,
                 amount: input.amount,
                 currency: input.currency,
+                baseAmount: input.baseAmount ?? input.amount,
+                fxRate: input.fxRate ?? 1,
+                fxRateDate: input.fxRateDate ?? new Date(Date.UTC(input.year, input.month - 1, 1)),
+                fxSource: input.fxSource ?? 'legacy',
                 year: input.year,
                 month: input.month,
             },
@@ -204,6 +217,10 @@ export class BudgetsRepository {
                 categoryId: input.categoryId,
                 amount: input.amount,
                 currency: input.currency,
+                baseAmount: input.baseAmount ?? input.amount,
+                fxRate: input.fxRate ?? 1,
+                fxRateDate: input.fxRateDate ?? new Date(Date.UTC(input.year, input.month - 1, 1)),
+                fxSource: input.fxSource ?? 'legacy',
                 year: input.year,
                 month: input.month,
             },

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import DashboardPage from "@/pages/DashboardPage";
@@ -7,8 +8,8 @@ import type {
   CategoryBreakdown,
   SpendingTrendItem,
   SpendingSummary,
-  TransactionItem,
 } from "@/types/dashboard";
+import type { Transaction } from "@/types/transaction";
 import type { Category } from "@/types/category";
 
 vi.mock("@/hooks/useWorkspace", () => ({ useWorkspace: vi.fn() }));
@@ -29,31 +30,30 @@ function makeSummary(
   return {
     month: "2026-04",
     currency: "USD",
-    current_total: 1234.56,
-    previous_total: 1000,
-    change_amount: 234.56,
-    change_percentage: 23.46,
+    currentTotal: 1234.56,
+    previousTotal: 1000,
+    changeAmount: 234.56,
+    changePercentage: 23.46,
     direction: "up",
     ...overrides,
   };
 }
 
-function makeTransaction(
-  overrides: Partial<TransactionItem> = {},
-): TransactionItem {
+function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
   return {
     id: "tx-1",
-    workspace_id: "ws-1",
-    category_id: "cat-1",
-    payment_source_id: null,
+    workspaceId: "ws-1",
+    categoryId: "cat-1",
+    paymentSourceId: null,
     type: "expense",
     amount: 42.5,
     currency: "USD",
     date: "2026-04-18T00:00:00.000Z",
+    description: "Team lunch",
     notes: null,
     tags: [],
-    created_at: "2026-04-18T00:00:00.000Z",
-    updated_at: "2026-04-18T00:00:00.000Z",
+    createdAt: "2026-04-18T00:00:00.000Z",
+    updatedAt: "2026-04-18T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -64,12 +64,12 @@ function makeCategoryBreakdown(
   return {
     month: "2026-04",
     currency: "USD",
-    total_spending: 1234.56,
+    totalSpending: 1234.56,
     categories: [
       {
-        category_id: "cat-1",
-        category_name: "Groceries",
-        category_color: "#16a34a",
+        categoryId: "cat-1",
+        categoryName: "Groceries",
+        categoryColor: "#16a34a",
         amount: 1234.56,
         percentage: 100,
       },
@@ -94,8 +94,8 @@ function makeCategory(overrides: Partial<Category> = {}): Category {
     id: "cat-1",
     name: "Groceries",
     icon: null,
-    parent_id: null,
-    sort_order: 0,
+    parentId: null,
+    sortOrder: 0,
     children: [],
     ...overrides,
   };
@@ -187,13 +187,13 @@ describe("DashboardPage", () => {
   it("shows empty state for new users", () => {
     mockUseDashboardData.mockReturnValue({
       summary: makeSummary({
-        current_total: 0,
-        previous_total: 0,
-        change_amount: 0,
+        currentTotal: 0,
+        previousTotal: 0,
+        changeAmount: 0,
         direction: "flat",
       }),
       categoryBreakdown: makeCategoryBreakdown({
-        total_spending: 0,
+        totalSpending: 0,
         categories: [],
       }),
       spendingTrend: makeSpendingTrend().map((item) => ({ ...item, total: 0 })),
@@ -227,18 +227,5 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Failed to load dashboard",
     );
-  });
-
-  it("refreshes dashboard data when global transaction saved event is fired", async () => {
-    renderPage();
-    const initialCallCount = mockUseDashboardData.mock.calls.length;
-
-    window.dispatchEvent(new Event("monqom:transaction-saved"));
-
-    await waitFor(() => {
-      expect(mockUseDashboardData.mock.calls.length).toBeGreaterThan(
-        initialCallCount,
-      );
-    });
   });
 });

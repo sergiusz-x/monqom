@@ -13,7 +13,11 @@ describe('TransactionsRepository', () => {
         $queryRaw: jest.Mock
         $transaction: jest.Mock
         transaction: {
+            create: jest.Mock
             findFirst: jest.Mock
+            updateMany: jest.Mock
+        }
+        workspaceMembership: {
             updateMany: jest.Mock
         }
         transactionTag: {
@@ -29,7 +33,11 @@ describe('TransactionsRepository', () => {
                 callback(prisma),
             ),
             transaction: {
+                create: jest.fn(),
                 findFirst: jest.fn(),
+                updateMany: jest.fn(),
+            },
+            workspaceMembership: {
                 updateMany: jest.fn(),
             },
             transactionTag: {
@@ -65,12 +73,14 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('ORDER BY LOWER(BTRIM(name)), position ASC')
     })
 
-    it('builds a paginated list query with dynamic filters, tag joins, and newest-first sorting', async () => {
+    it('builds a paginated list query with multiple categories and safe column sorting', async () => {
         prisma.$queryRaw.mockResolvedValue([])
 
         await repository.listTransactions({
             workspaceId: 'workspace-1',
-            categoryId: 'category-1',
+            categoryIds: ['category-1', 'category-2'],
+            sortBy: 'category',
+            sortDirection: 'asc',
             paymentSourceId: 'payment-source-2',
             tag: 'Food',
             dateFrom: new Date('2026-03-21T00:00:00.000Z'),
@@ -88,13 +98,13 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('LEFT JOIN "transaction_tags" tt')
         expect(renderedQuery).toContain('t."workspace_id" =')
         expect(renderedQuery).toContain('t."deleted_at" IS NULL')
-        expect(renderedQuery).toContain('t."category_id" =')
+        expect(renderedQuery).toContain('t."category_id" IN (')
         expect(renderedQuery).toContain('t."payment_source_id" =')
         expect(renderedQuery).toContain('LOWER(BTRIM(tt_filter."name")) = LOWER(BTRIM(')
         expect(renderedQuery).toContain('t."date" >=')
         expect(renderedQuery).toContain('t."date" <=')
         expect(renderedQuery).toContain('ARRAY_AGG(DISTINCT tt."name" ORDER BY tt."name")')
-        expect(renderedQuery).toContain('ORDER BY t."date" DESC, t."created_at" DESC, t."id" DESC')
+        expect(renderedQuery).toContain('ORDER BY LOWER(COALESCE(c_sort."name", \'\')) ASC')
         expect(renderedQuery).toContain('LIMIT')
         expect(renderedQuery).toContain('OFFSET')
     })
@@ -128,11 +138,65 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('OFFSET')
     })
 
+    it('stores the payment source as the user workspace preference when creating a transaction', async () => {
+        const date = new Date('2026-07-19T12:00:00.000Z')
+        const transaction = {
+            id: 'transaction-1',
+            workspaceId: 'workspace-1',
+            categoryIds: ['category-1', 'category-2'],
+            sortBy: 'category',
+            sortDirection: 'asc',
+            paymentSourceId: 'payment-source-2',
+            type: 'expense',
+            amount: 16.19,
+            currency: 'PLN',
+            baseAmount: 16.19,
+            fxRate: 1,
+            fxRateDate: date,
+            fxSource: 'manual',
+            date,
+            notes: null,
+            createdAt: date,
+            updatedAt: date,
+            deletedAt: null,
+        }
+        prisma.$queryRaw.mockResolvedValue([])
+        prisma.transaction.create.mockResolvedValue(transaction)
+        prisma.workspaceMembership.updateMany.mockResolvedValue({ count: 1 })
+
+        await expect(
+            repository.createTransactionWithTags({
+                workspaceId: 'workspace-1',
+                userId: 'user-1',
+                categoryId: 'category-1',
+                paymentSourceId: 'payment-source-2',
+                type: 'expense',
+                amount: 16.19,
+                currency: 'PLN',
+                date,
+                description: 'Groceries',
+                notes: null,
+                tags: [],
+            }),
+        ).resolves.toEqual({ ...transaction, tags: [] })
+
+        expect(prisma.workspaceMembership.updateMany).toHaveBeenCalledWith({
+            where: {
+                userId: 'user-1',
+                workspaceId: 'workspace-1',
+            },
+            data: {
+                lastPaymentSourceId: 'payment-source-2',
+            },
+        })
+    })
     it('loads a single non-deleted transaction scoped to its workspace with ordered tags', async () => {
         const transaction = {
             id: 'transaction-1',
             workspaceId: 'workspace-1',
-            categoryId: 'category-1',
+            categoryIds: ['category-1', 'category-2'],
+            sortBy: 'category',
+            sortDirection: 'asc',
             paymentSourceId: 'payment-source-1',
             type: 'expense',
             amount: 1050,
@@ -212,7 +276,12 @@ describe('TransactionsRepository', () => {
                 type: 'expense',
                 amount: 1275,
                 currency: 'USD',
+                baseAmount: 1275,
+                fxRate: 1,
+                fxRateDate: new Date('2026-03-24T08:30:00.000Z'),
+                fxSource: 'legacy',
                 date: new Date('2026-03-24T08:30:00.000Z'),
+                description: 'Bus pass',
                 notes: 'Bus pass',
                 tags: [' Travel ', 'travel', ' Work '],
             }),
@@ -262,7 +331,12 @@ describe('TransactionsRepository', () => {
                 type: 'expense',
                 amount: 1275,
                 currency: 'USD',
+                baseAmount: 1275,
+                fxRate: 1,
+                fxRateDate: new Date('2026-03-24T08:30:00.000Z'),
+                fxSource: 'legacy',
                 date: new Date('2026-03-24T08:30:00.000Z'),
+                description: 'Bus pass',
                 notes: 'Bus pass',
             },
         })
@@ -300,7 +374,12 @@ describe('TransactionsRepository', () => {
                 type: 'expense',
                 amount: 1275,
                 currency: 'USD',
+                baseAmount: 1275,
+                fxRate: 1,
+                fxRateDate: new Date('2026-03-24T08:30:00.000Z'),
+                fxSource: 'legacy',
                 date: new Date('2026-03-24T08:30:00.000Z'),
+                description: 'Bus pass',
                 notes: 'Bus pass',
                 tags: [' Travel ', 'travel', ' Work '],
             }),
@@ -370,7 +449,12 @@ describe('TransactionsRepository', () => {
                     type: 'expense',
                     amount: 1050,
                     currency: 'USD',
+                    baseAmount: 1050,
+                    fxRate: new Prisma.Decimal(1),
+                    fxRateDate: new Date('2026-03-23T00:00:00.000Z'),
+                    fxSource: 'legacy',
                     date: new Date('2026-03-23T00:00:00.000Z'),
+                    description: 'Lunch',
                     notes: 'Lunch',
                     createdAt: new Date('2026-03-23T12:00:00.000Z'),
                     updatedAt: new Date('2026-03-23T12:00:00.000Z'),
@@ -415,7 +499,12 @@ describe('TransactionsRepository', () => {
                     type: 'expense',
                     amount: 1050,
                     currency: 'USD',
-                    date: '2026-03-23T00:00:00.000Z',
+                    base_amount: 1050,
+                    fx_rate: '1',
+                    fx_rate_date: '2026-03-23T00:00:00.000Z',
+                    fx_source: 'legacy',
+                    date: '2026-03-23',
+                    description: 'Lunch',
                     notes: 'Lunch',
                     tags: ['Food'],
                     created_at: '2026-03-23T12:00:00.000Z',
@@ -443,7 +532,12 @@ describe('TransactionsRepository', () => {
                     type: 'expense',
                     amount: 1050,
                     currency: 'USD',
+                    baseAmount: 1050,
+                    fxRate: new Prisma.Decimal(1),
+                    fxRateDate: new Date('2026-03-23T00:00:00.000Z'),
+                    fxSource: 'legacy',
                     date: new Date('2026-03-23T00:00:00.000Z'),
+                    description: 'Lunch',
                     notes: 'Lunch',
                     createdAt: new Date('2026-03-23T12:00:00.000Z'),
                     updatedAt: new Date('2026-03-23T12:00:00.000Z'),

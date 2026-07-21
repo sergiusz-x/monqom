@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -6,42 +7,44 @@ import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSu
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { SpendingByCategoryChart } from "@/components/dashboard/SpendingByCategoryChart";
 import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
-import { TRANSACTION_SAVED_EVENT } from "@/lib/transaction-refresh";
-
-function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function shiftMonth(value: string, delta: number): string {
-  const [yearPart, monthPart] = value.split("-");
-  const date = new Date(Number(yearPart), Number(monthPart) - 1 + delta, 1);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(value: string): string {
-  const [yearPart, monthPart] = value.split("-");
-  const date = new Date(Number(yearPart), Number(monthPart) - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
+import { useTranslation } from "react-i18next";
+import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
+import { RetryAlert } from "@/components/ui/retry-alert";
+import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
+import { Skeleton } from "@/components/ui/skeleton";
+import { invalidateFinancialData } from "@/lib/query-invalidation";
+import { formatMonth, getMonthInTimeZone, shiftMonth } from "@/lib/date-only";
 
 function LoadingSkeleton() {
+  const { t } = useTranslation();
   return (
-    <div className="space-y-4" role="status" aria-label="Loading dashboard">
-      <div className="h-48 animate-pulse rounded-2xl bg-muted" />
-      <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+    <div
+      className="space-y-4"
+      role="status"
+      aria-label={t("dashboard.loading")}
+    >
+      <Skeleton className="h-48 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl" />
     </div>
   );
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const {
     workspaceId,
+    workspace,
     isLoading: workspaceLoading,
     error: workspaceError,
+    refetch: retryWorkspace,
   } = useWorkspace();
-  const [month, setMonth] = useState(getCurrentMonth);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const currentMonth = getMonthInTimeZone(
+    new Date(),
+    workspace?.timezone ?? "UTC",
+  );
+  const month = selectedMonth ?? currentMonth;
   const { categories } = useCategories(workspaceId ?? "");
   const {
     summary,
@@ -50,92 +53,73 @@ export default function DashboardPage() {
     transactions,
     isLoading,
     error,
-  } = useDashboardData(workspaceId ?? "", month, refreshKey);
+    retry,
+  } = useDashboardData(workspaceId ?? "", month);
 
-  const selectedMonthLabel = useMemo(() => monthLabel(month), [month]);
-
-  useEffect(() => {
-    function handleTransactionSaved() {
-      setRefreshKey((value) => value + 1);
-    }
-
-    window.addEventListener(TRANSACTION_SAVED_EVENT, handleTransactionSaved);
-    return () =>
-      window.removeEventListener(
-        TRANSACTION_SAVED_EVENT,
-        handleTransactionSaved,
-      );
-  }, []);
+  const selectedMonthLabel = useMemo(() => formatMonth(month), [month]);
 
   if (workspaceLoading) {
     return (
-      <div className="p-6">
-        <h1 className="sr-only">Dashboard</h1>
+      <PageContainer>
+        <PageHeader title={t("dashboard.title")} visuallyHidden />
         <LoadingSkeleton />
-      </div>
+      </PageContainer>
     );
   }
 
   if (workspaceError || !workspaceId) {
     return (
-      <div className="p-6">
-        <h1 className="sr-only">Dashboard</h1>
-        <div
-          className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive"
-          role="alert"
-        >
-          {workspaceError ?? "No workspace found."}
-        </div>
-      </div>
+      <PageContainer>
+        <PageHeader title={t("dashboard.title")} visuallyHidden />
+        <WorkspaceErrorState
+          message={workspaceError ?? t("common.noWorkspace")}
+          onRetry={workspaceError ? () => void retryWorkspace() : undefined}
+        />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6">
-        <h1 className="sr-only">Dashboard</h1>
-        <div
-          className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive"
-          role="alert"
-        >
-          {error}
-        </div>
-      </div>
+      <PageContainer>
+        <PageHeader title={t("dashboard.title")} visuallyHidden />
+        <RetryAlert message={error} onRetry={() => void retry()} />
+      </PageContainer>
     );
   }
 
   if (isLoading || !summary || !categoryBreakdown) {
     return (
-      <div className="p-6">
-        <h1 className="sr-only">Dashboard</h1>
+      <PageContainer>
+        <PageHeader title={t("dashboard.title")} visuallyHidden />
         <LoadingSkeleton />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <h1 className="sr-only">Dashboard</h1>
-        <MonthlySpendingSummary
-          summary={summary}
-          monthLabel={selectedMonthLabel}
-          onPreviousMonth={() => setMonth((value) => shiftMonth(value, -1))}
-          onNextMonth={() => setMonth((value) => shiftMonth(value, 1))}
-        />
-        <SpendingTrendChart
-          trend={spendingTrend}
-          currency={summary.currency}
-          currentMonth={getCurrentMonth()}
-        />
-        <SpendingByCategoryChart breakdown={categoryBreakdown} month={month} />
-        <RecentTransactions
-          transactions={transactions}
-          categories={categories}
-          workspaceId={workspaceId}
-          onTransactionSaved={() => setRefreshKey((value) => value + 1)}
-        />
-      </div>
-    </div>
+    <PageContainer className="flex flex-col gap-6">
+      <PageHeader title={t("dashboard.title")} visuallyHidden />
+      <MonthlySpendingSummary
+        summary={summary}
+        monthLabel={selectedMonthLabel}
+        onPreviousMonth={() => setSelectedMonth(shiftMonth(month, -1))}
+        onNextMonth={() => setSelectedMonth(shiftMonth(month, 1))}
+      />
+      <SpendingTrendChart
+        trend={spendingTrend}
+        currency={summary.currency}
+        currentMonth={currentMonth}
+      />
+      <SpendingByCategoryChart breakdown={categoryBreakdown} month={month} />
+      <RecentTransactions
+        transactions={transactions}
+        categories={categories}
+        workspaceId={workspaceId}
+        onTransactionSaved={() => {
+          void invalidateFinancialData(queryClient, workspaceId);
+        }}
+      />
+    </PageContainer>
   );
 }

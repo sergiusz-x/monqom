@@ -3,6 +3,7 @@ import * as argon2 from 'argon2'
 import * as speakeasy from 'speakeasy'
 import { AuthRepository } from './auth.repository'
 import { TwoFactorService } from './twoFactor.service'
+import { createUserFixture } from '../../test-utils/prisma-fixtures'
 
 describe('TwoFactorService', () => {
     let service: TwoFactorService
@@ -169,6 +170,7 @@ describe('TwoFactorService', () => {
             id: 'user-1',
             email: 'test@example.com',
             name: 'Ada Lovelace',
+            locale: 'en',
             emailVerified: true,
             totpEnabled: true,
             sessionVersion: 0,
@@ -303,31 +305,6 @@ describe('TwoFactorService', () => {
     })
 })
 
-function createMockUser(
-    overrides: Partial<{
-        id: string
-        email: string
-        name: string
-        passwordHash: string
-        emailVerified: boolean
-        sessionVersion: number
-        totpEnabled: boolean
-        totpSecretEncrypted: string | null
-        createdAt: Date
-        updatedAt: Date
-    }> = {},
-) {
-    return {
-        id: 'user-1',
-        email: 'test@example.com',
-        name: 'Ada Lovelace',
-        passwordHash: 'hash',
-        emailVerified: true,
-        sessionVersion: 0,
-        totpEnabled: false,
-        totpSecretEncrypted: null,
-        createdAt: new Date('2026-03-22T10:00:00.000Z'),
-        updatedAt: new Date('2026-03-22T10:00:00.000Z'),
-        ...overrides,
-    }
+function createMockUser(overrides: Parameters<typeof createUserFixture>[0] = {}) {
+    return createUserFixture({ emailVerified: true, ...overrides })
 }

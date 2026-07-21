@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act, within } from "@testing-library/react";
-import { renderHook } from "@testing-library/react";
+import { screen, act, within } from "@testing-library/react";
+import {
+  renderWithQueryClient as render,
+  renderHookWithQueryClient as renderHook,
+} from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthContext } from "@/contexts/AuthContext";
@@ -8,10 +11,33 @@ import type { User, AuthContextValue } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
-import { useDarkMode } from "@/hooks/useDarkMode";
+import { ToastProvider } from "@/contexts/ToastContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 
 vi.mock("@/hooks/useWorkspace", () => ({
-  useWorkspace: vi.fn(() => ({ workspaceId: "ws-1" })),
+  useWorkspace: vi.fn(() => ({
+    workspaceId: "ws-1",
+    workspace: {
+      id: "ws-1",
+      name: "Household budget",
+      timezone: "Europe/Warsaw",
+      baseCurrency: "PLN",
+      lastPaymentSourceId: null,
+      baseCurrencyLocked: false,
+    },
+    workspaces: [
+      {
+        id: "ws-1",
+        name: "Household budget",
+        timezone: "Europe/Warsaw",
+        baseCurrency: "PLN",
+        lastPaymentSourceId: null,
+        baseCurrencyLocked: false,
+      },
+    ],
+    patchWorkspace: vi.fn(),
+    setActiveWorkspace: vi.fn(),
+  })),
 }));
 vi.mock("@/components/transactions/TransactionFormModal", () => ({
   TransactionFormModal: ({ open }: { open: boolean }) =>
@@ -55,21 +81,25 @@ function renderWithAuthAndRouter(
   authValue = makeAuthValue(),
 ) {
   return render(
-    <MemoryRouter initialEntries={["/"]}>
-      <AuthContext.Provider value={authValue}>
-        <Routes>
-          <Route element={element}>
-            <Route path="/" element={<div>Dashboard</div>} />
-          </Route>
-        </Routes>
-      </AuthContext.Provider>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/dashboard"]}>
+          <AuthContext.Provider value={authValue}>
+            <Routes>
+              <Route element={element}>
+                <Route path="/dashboard" element={<div>Dashboard</div>} />
+              </Route>
+            </Routes>
+          </AuthContext.Provider>
+        </MemoryRouter>
+      </ToastProvider>
+    </ThemeProvider>,
   );
 }
 
-// ─── useDarkMode ─────────────────────────────────────────────────────────────
+// ─── ThemeProvider ───────────────────────────────────────────────────────────
 
-describe("useDarkMode", () => {
+describe("ThemeProvider", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
@@ -78,44 +108,56 @@ describe("useDarkMode", () => {
   afterEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
+    vi.unstubAllGlobals();
   });
 
-  it("defaults to light mode when localStorage is empty", () => {
-    const { result } = renderHook(() => useDarkMode());
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <ThemeProvider>{children}</ThemeProvider>
+  );
+
+  it("defaults to system mode and follows a light operating system", () => {
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    expect(result.current.mode).toBe("system");
     expect(result.current.isDark).toBe(false);
     expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(document.documentElement.dataset.theme).toBe("system");
+    expect(localStorage.getItem("monqom-theme")).toBe("system");
   });
 
-  it("reads initial state from localStorage", () => {
+  it("migrates the legacy preference once", () => {
     localStorage.setItem("monqom-dark-mode", "true");
-    const { result } = renderHook(() => useDarkMode());
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    expect(result.current.mode).toBe("dark");
     expect(result.current.isDark).toBe(true);
     expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorage.getItem("monqom-theme")).toBe("dark");
+    expect(localStorage.getItem("monqom-dark-mode")).toBeNull();
   });
 
-  it("toggle adds dark class and persists to localStorage", () => {
-    const { result } = renderHook(() => useDarkMode());
+  it("changes mode, DOM metadata, color scheme, and storage atomically", () => {
+    const { result } = renderHook(() => useTheme(), { wrapper });
 
     act(() => {
-      result.current.toggle();
+      result.current.setMode("dark");
     });
 
+    expect(result.current.mode).toBe("dark");
     expect(result.current.isDark).toBe(true);
     expect(document.documentElement.classList.contains("dark")).toBe(true);
-    expect(localStorage.getItem("monqom-dark-mode")).toBe("true");
-  });
-
-  it("toggle removes dark class on second call", () => {
-    localStorage.setItem("monqom-dark-mode", "true");
-    const { result } = renderHook(() => useDarkMode());
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(localStorage.getItem("monqom-theme")).toBe("dark");
 
     act(() => {
-      result.current.toggle();
+      result.current.setMode("light");
     });
 
+    expect(result.current.mode).toBe("light");
     expect(result.current.isDark).toBe(false);
     expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(localStorage.getItem("monqom-dark-mode")).toBe("false");
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(localStorage.getItem("monqom-theme")).toBe("light");
   });
 
   it("falls back to prefers-color-scheme: dark when localStorage is empty", () => {
@@ -130,11 +172,86 @@ describe("useDarkMode", () => {
       dispatchEvent: vi.fn(),
     }));
 
-    const { result } = renderHook(() => useDarkMode());
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    expect(result.current.mode).toBe("system");
     expect(result.current.isDark).toBe(true);
     expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
 
-    vi.unstubAllGlobals();
+  it("reacts to operating-system changes while system mode is active", () => {
+    let handleChange: ((event: MediaQueryListEvent) => void) | undefined;
+    const removeEventListener = vi.fn();
+    const mediaQuery = {
+      matches: false,
+      media: "(prefers-color-scheme: dark)",
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(
+        (_event: string, listener: (event: MediaQueryListEvent) => void) => {
+          handleChange = listener;
+        },
+      ),
+      removeEventListener,
+      dispatchEvent: vi.fn(),
+    };
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => mediaQuery),
+    );
+
+    const { result, unmount } = renderHook(() => useTheme(), { wrapper });
+    act(() => handleChange?.({ matches: true } as MediaQueryListEvent));
+
+    expect(result.current.mode).toBe("system");
+    expect(result.current.isDark).toBe(true);
+    expect(document.documentElement).toHaveClass("dark");
+
+    unmount();
+    expect(removeEventListener).toHaveBeenCalledWith("change", handleChange);
+  });
+
+  it("accepts a preference changed in another browser tab", () => {
+    const { result } = renderHook(() => useTheme(), { wrapper });
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "monqom-theme",
+          newValue: "dark",
+        }),
+      );
+    });
+
+    expect(result.current.mode).toBe("dark");
+    expect(result.current.isDark).toBe(true);
+    expect(document.documentElement).toHaveClass("dark");
+  });
+
+  it("keeps every consumer synchronized through one provider", async () => {
+    function Consumer({ label }: { label: string }) {
+      const { mode, isDark, setMode } = useTheme();
+      return (
+        <button type="button" onClick={() => setMode("dark")}>
+          {label}:{mode}:{String(isDark)}
+        </button>
+      );
+    }
+
+    render(
+      <ThemeProvider>
+        <Consumer label="first" />
+        <Consumer label="second" />
+      </ThemeProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /first:/i }));
+    expect(
+      screen.getByRole("button", { name: "first:dark:true" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "second:dark:true" }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -154,24 +271,30 @@ describe("Sidebar", () => {
   function renderSidebar(authValue = makeAuthValue()) {
     const onAddTransaction = vi.fn();
     const utils = render(
-      <MemoryRouter initialEntries={["/"]}>
-        <AuthContext.Provider value={authValue}>
-          <Sidebar onAddTransaction={onAddTransaction} />
-        </AuthContext.Provider>
-      </MemoryRouter>,
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={["/dashboard"]}>
+            <AuthContext.Provider value={authValue}>
+              <Sidebar onAddTransaction={onAddTransaction} />
+            </AuthContext.Provider>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
     );
     return { ...utils, onAddTransaction };
   }
 
-  it("renders brand name", () => {
+  it("links the brand to the dashboard", () => {
     renderSidebar();
-    expect(screen.getByText("Monqom")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Go to dashboard" }),
+    ).toHaveAttribute("href", "/dashboard");
   });
 
   it("renders all navigation links", () => {
     renderSidebar();
     expect(
-      screen.getByRole("link", { name: /dashboard/i }),
+      screen.getByRole("link", { name: /^dashboard$/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /transactions/i }),
@@ -201,20 +324,52 @@ describe("Sidebar", () => {
     expect(logoutMock).toHaveBeenCalledTimes(1);
   });
 
-  it("renders dark mode toggle button", () => {
-    renderSidebar();
+  it("keeps the user informed when logout fails", async () => {
+    const logoutMock = vi.fn().mockRejectedValue(new Error("network"));
+    renderSidebar(makeAuthValue({ logout: logoutMock }));
+    await userEvent.click(screen.getByRole("button", { name: /log out/i }));
     expect(
-      screen.getByRole("button", { name: /switch to dark mode/i }),
+      await screen.findByText("Could not log out. Please try again."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
   });
 
-  it("dark mode toggle switches label after click", async () => {
+  it("defaults to one theme button in system mode", () => {
     renderSidebar();
-    const btn = screen.getByRole("button", { name: /switch to dark mode/i });
-    await userEvent.click(btn);
+
     expect(
-      screen.getByRole("button", { name: /switch to light mode/i }),
+      screen.getByRole("button", {
+        name: "Current theme: System. Click to change.",
+      }),
     ).toBeInTheDocument();
+    expect(localStorage.getItem("monqom-theme")).toBe("system");
+  });
+
+  it("cycles system, light, dark, and back to system", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Current theme: System. Click to change.",
+      }),
+    );
+    expect(localStorage.getItem("monqom-theme")).toBe("light");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Current theme: Light. Click to change.",
+      }),
+    );
+    expect(document.documentElement).toHaveClass("dark");
+    expect(localStorage.getItem("monqom-theme")).toBe("dark");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Current theme: Dark. Click to change.",
+      }),
+    );
+    expect(localStorage.getItem("monqom-theme")).toBe("system");
   });
 
   it("does not render user info when user is null", () => {
@@ -229,7 +384,7 @@ describe("BottomNav", () => {
   function renderBottomNav() {
     const onAddTransaction = vi.fn();
     const utils = render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <BottomNav onAddTransaction={onAddTransaction} />
       </MemoryRouter>,
     );
@@ -239,7 +394,7 @@ describe("BottomNav", () => {
   it("renders all navigation links", () => {
     renderBottomNav();
     expect(
-      screen.getByRole("link", { name: /dashboard/i }),
+      screen.getByRole("link", { name: /^dashboard$/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /transactions/i }),
@@ -302,17 +457,27 @@ describe("AppLayout", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
+  it("keeps the active workspace identity visible in desktop and mobile chrome", () => {
+    renderWithAuthAndRouter(<AppLayout />);
+
+    expect(screen.getAllByText("Household budget")).toHaveLength(2);
+  });
+
   it("Add Transaction button opens transaction modal", async () => {
     render(
-      <MemoryRouter initialEntries={["/"]}>
-        <AuthContext.Provider value={makeAuthValue()}>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<LocationDisplay />} />
-            </Route>
-          </Routes>
-        </AuthContext.Provider>
-      </MemoryRouter>,
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={["/dashboard"]}>
+            <AuthContext.Provider value={makeAuthValue()}>
+              <Routes>
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={<LocationDisplay />} />
+                </Route>
+              </Routes>
+            </AuthContext.Provider>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
     );
 
     await userEvent.click(

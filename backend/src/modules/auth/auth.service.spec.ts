@@ -5,6 +5,7 @@ import { WorkspaceService } from '../workspace/workspace.service'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 import { logger } from '../../shared/utils/logger'
+import { createUserFixture } from '../../test-utils/prisma-fixtures'
 
 jest.mock('../../shared/utils/logger', () => ({
     logger: {
@@ -141,6 +142,7 @@ describe('AuthService', () => {
             id: 'user-1',
             email: 'test@example.com',
             name: 'Ada Lovelace',
+            locale: 'en',
             emailVerified: false,
             totpEnabled: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
@@ -200,6 +202,31 @@ describe('AuthService', () => {
         })
     })
 
+    it('persists the authenticated user locale', async () => {
+        authRepository.findUserById.mockResolvedValue(createMockUser({ locale: 'en' }))
+        authRepository.updateUserProfile.mockResolvedValue(
+            createMockUser({
+                locale: 'pl',
+                updatedAt: new Date('2026-05-01T10:00:00.000Z'),
+            }),
+        )
+
+        await expect(
+            service.updateAuthenticatedUser('user-1', {
+                name: 'Ada Lovelace',
+                locale: 'pl',
+            }),
+        ).resolves.toMatchObject({
+            id: 'user-1',
+            locale: 'pl',
+        })
+
+        expect(authRepository.updateUserProfile).toHaveBeenCalledWith({
+            userId: 'user-1',
+            name: 'Ada Lovelace',
+            locale: 'pl',
+        })
+    })
     it('rejects invalid profile updates before writing', async () => {
         await expect(
             service.updateAuthenticatedUser('user-1', {
@@ -216,9 +243,12 @@ describe('AuthService', () => {
             id: 'existing-user',
             email: 'test@example.com',
             name: 'Existing User',
+            locale: 'en',
             passwordHash: 'hash',
             emailVerified: false,
             sessionVersion: 0,
+            failedLoginCount: 0,
+            lockedUntil: null,
             totpEnabled: false,
             totpSecretEncrypted: null,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
@@ -353,6 +383,7 @@ describe('AuthService', () => {
                 id: 'user-1',
                 email: 'test@example.com',
                 name: 'Ada Lovelace',
+                locale: 'en',
                 emailVerified: true,
                 sessionVersion: 0,
                 totpEnabled: false,
@@ -476,6 +507,7 @@ describe('AuthService', () => {
             id: 'user-1',
             email: 'test@example.com',
             name: 'Ada Lovelace',
+            locale: 'en',
             emailVerified: true,
             totpEnabled: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
@@ -875,33 +907,8 @@ describe('AuthService', () => {
     })
 })
 
-function createMockUser(
-    overrides: Partial<{
-        id: string
-        email: string
-        name: string
-        passwordHash: string
-        emailVerified: boolean
-        sessionVersion: number
-        createdAt: Date
-        updatedAt: Date
-        totpEnabled: boolean
-        totpSecretEncrypted: string | null
-    }> = {},
-) {
-    return {
-        id: 'user-1',
-        email: 'test@example.com',
-        name: 'Ada Lovelace',
-        passwordHash: 'hash',
-        emailVerified: false,
-        sessionVersion: 0,
-        totpEnabled: false,
-        totpSecretEncrypted: null,
-        createdAt: new Date('2026-03-22T10:00:00.000Z'),
-        updatedAt: new Date('2026-03-22T10:00:00.000Z'),
-        ...overrides,
-    }
+function createMockUser(overrides: Parameters<typeof createUserFixture>[0] = {}) {
+    return createUserFixture(overrides)
 }
 
 function createMockVerificationToken(

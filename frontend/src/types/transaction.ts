@@ -1,29 +1,43 @@
-export interface TransactionItem {
+export interface Transaction {
   id: string;
-  workspace_id: string;
-  category_id: string;
-  payment_source_id: string | null;
+  workspaceId: string;
+  categoryId: string;
+  paymentSourceId: string | null;
   type: "expense";
   amount: number;
   currency: string;
   date: string;
+  description: string;
   notes: string | null;
   tags: string[];
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface TransactionsResponse {
-  data: TransactionItem[];
+export interface TransactionsPage {
+  data: Transaction[];
   total: number;
   limit: number;
   offset: number;
 }
 
+export type TransactionSortField =
+  | "date"
+  | "category"
+  | "amount"
+  | "description"
+  | "notes"
+  | "tags"
+  | "payment_source";
+
+export type TransactionSortDirection = "asc" | "desc";
+
 export interface TransactionFilters {
-  categoryId: string;
+  categoryIds: string[];
   tag: string;
   paymentSourceId: string;
   dateFrom: string;
   dateTo: string;
+  sortBy: TransactionSortField;
+  sortDirection: TransactionSortDirection;
 }

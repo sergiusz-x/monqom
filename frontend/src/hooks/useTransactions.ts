@@ -1,57 +1,32 @@
-import { useEffect, useReducer } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type {
-  TransactionFilters,
-  TransactionsResponse,
-} from "@/types/transaction";
-
-interface State {
-  data: TransactionsResponse | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-type Action =
-  | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: TransactionsResponse }
-  | { type: "FETCH_ERROR" };
-
-function reducer(_state: State, action: Action): State {
-  switch (action.type) {
-    case "FETCH_START":
-      return { data: null, isLoading: true, error: null };
-    case "FETCH_SUCCESS":
-      return { data: action.payload, isLoading: false, error: null };
-    case "FETCH_ERROR":
-      return {
-        data: null,
-        isLoading: false,
-        error: "Failed to load transactions",
-      };
-  }
-}
-
-const initialState: State = { data: null, isLoading: false, error: null };
+import { queryKeys } from "@/lib/query-client";
+import type { TransactionFilters } from "@/types/transaction";
+import type { ApiTransactionsPage } from "@/types/api-contracts";
+import { mapTransactionsPage } from "@/lib/api-mappers";
+import { getApiErrorMessage } from "@/lib/api-errors";
 
 function buildParams(
-  categoryId: string,
-  tag: string,
-  paymentSourceId: string,
-  dateFrom: string,
-  dateTo: string,
+  filters: TransactionFilters,
   limit: number,
   offset: number,
 ): URLSearchParams {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
+    sort_by: filters.sortBy,
+    sort_direction: filters.sortDirection,
   });
 
-  if (categoryId) params.set("category_id", categoryId);
-  if (tag) params.set("tag", tag);
-  if (paymentSourceId) params.set("payment_source_id", paymentSourceId);
-  if (dateFrom) params.set("date_from", dateFrom);
-  if (dateTo) params.set("date_to", dateTo);
+  if (filters.categoryIds.length > 0) {
+    params.set("category_ids", filters.categoryIds.join(","));
+  }
+  if (filters.tag) params.set("tag", filters.tag);
+  if (filters.paymentSourceId) {
+    params.set("payment_source_id", filters.paymentSourceId);
+  }
+  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+  if (filters.dateTo) params.set("date_to", filters.dateTo);
 
   return params;
 }
@@ -61,53 +36,38 @@ export function useTransactions(
   filters: TransactionFilters,
   limit: number,
   offset: number,
-  refreshKey = 0,
-): State {
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const { categoryId, tag, paymentSourceId, dateFrom, dateTo } = filters;
-
-  useEffect(() => {
-    if (!workspaceId) return;
-
-    let cancelled = false;
-    dispatch({ type: "FETCH_START" });
-
-    const params = buildParams(
-      categoryId,
-      tag,
-      paymentSourceId,
-      dateFrom,
-      dateTo,
-      limit,
-      offset,
-    );
-
-    api
-      .get<TransactionsResponse>(
+) {
+  const query = useQuery({
+    queryKey: [
+      ...queryKeys.transactions(workspaceId),
+      "list",
+      {
+        categoryIds: filters.categoryIds,
+        tag: filters.tag,
+        paymentSourceId: filters.paymentSourceId,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        sortBy: filters.sortBy,
+        sortDirection: filters.sortDirection,
+        limit,
+        offset,
+      },
+    ],
+    enabled: Boolean(workspaceId),
+    queryFn: async ({ signal }) => {
+      const response = await api.get<ApiTransactionsPage>(
         `/workspaces/${workspaceId}/transactions`,
-        { params },
-      )
-      .then((res) => {
-        if (!cancelled) dispatch({ type: "FETCH_SUCCESS", payload: res.data });
-      })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: "FETCH_ERROR" });
-      });
+        { params: buildParams(filters, limit, offset), signal },
+      );
+      return mapTransactionsPage(response.data);
+    },
+    placeholderData: (previousData) => previousData,
+  });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    workspaceId,
-    categoryId,
-    tag,
-    paymentSourceId,
-    dateFrom,
-    dateTo,
-    limit,
-    offset,
-    refreshKey,
-  ]);
-
-  return state;
+  return {
+    data: query.data ?? null,
+    isLoading: query.isPending && !query.data,
+    error: query.isError ? getApiErrorMessage(query.error) : null,
+    retry: query.refetch,
+  };
 }

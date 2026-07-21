@@ -1,9 +1,13 @@
-export function TransactionEmptyState() {
+import { useTranslation } from "react-i18next";
+import { EmptyState } from "@/components/ui/empty-state";
+
+export function TransactionEmptyState({ onAdd }: { onAdd: () => void }) {
+  const { t } = useTranslation();
   return (
-    <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-      <p className="text-muted-foreground">
-        No transactions yet. Add your first expense.
-      </p>
-    </div>
+    <EmptyState
+      title={t("transactions.empty")}
+      actionLabel={t("transactions.add")}
+      onAction={onAdd}
+    />
   );
 }

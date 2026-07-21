@@ -79,6 +79,29 @@ describe('AuthRateLimitMiddleware', () => {
         expect(statusMock).not.toHaveBeenCalled()
     })
 
+    it('limits registration attempts by email across different IP addresses', () => {
+        const firstIpRequest = createRequest({
+            ip: '198.51.100.10',
+            path: '/api/v1/auth/register',
+            trustProxy: false,
+            email: 'person@example.com',
+        })
+        const secondIpRequest = createRequest({
+            ip: '198.51.100.11',
+            path: '/api/v1/auth/register',
+            trustProxy: false,
+            email: 'PERSON@example.com',
+        })
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            middleware.use(firstIpRequest, response as Response, nextFunction)
+        }
+        middleware.use(secondIpRequest, response as Response, nextFunction)
+
+        expect(nextFunction).toHaveBeenCalledTimes(5)
+        expect(statusMock).toHaveBeenCalledWith(429)
+    })
+
     it('returns an endpoint-specific message for verification requests', () => {
         const request = createRequest({
             ip: '127.0.0.1',
@@ -151,6 +174,7 @@ function createRequest(input: {
     path: string
     forwardedFor?: string
     trustProxy: boolean
+    email?: string
 }): Request {
     return {
         ip: input.ip,
@@ -165,5 +189,6 @@ function createRequest(input: {
         app: {
             get: jest.fn((key: string) => (key === 'trust proxy' ? input.trustProxy : undefined)),
         },
+        body: input.email ? { email: input.email } : {},
     } as unknown as Request
 }

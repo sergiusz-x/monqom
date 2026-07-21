@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
@@ -12,137 +13,239 @@ import { TransactionEmptyState } from "@/components/transactions/TransactionEmpt
 import { TransactionListSkeleton } from "@/components/transactions/TransactionListSkeleton";
 import { TransactionPagination } from "@/components/transactions/TransactionPagination";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
-import { TRANSACTION_SAVED_EVENT } from "@/lib/transaction-refresh";
-import type { TransactionFilters } from "@/types/transaction";
+import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal";
+import { paymentSourceName } from "@/lib/payment-sources";
+import api from "@/lib/api";
+import type {
+  TransactionFilters,
+  TransactionSortField,
+} from "@/types/transaction";
+import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/useToast";
+import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
+import { Alert } from "@/components/ui/alert";
+import { RetryAlert } from "@/components/ui/retry-alert";
+import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
+import type { TFunction } from "i18next";
+import { invalidateFinancialData } from "@/lib/query-invalidation";
+import { translateSystemLabel } from "@/i18n/translate-system-label";
+import {
+  buildTransactionListParams,
+  DEFAULT_TRANSACTION_FILTERS,
+  hasTransactionListState,
+  loadTransactionPreferences,
+  parseTransactionFilters,
+  parseTransactionPage,
+  saveTransactionPreferences,
+} from "@/lib/transaction-list-state";
 
 const PAGE_SIZE = 20;
-const defaultFilters: TransactionFilters = {
-  categoryId: "",
-  tag: "",
-  paymentSourceId: "",
-  dateFrom: "",
-  dateTo: "",
-};
 
 function buildCategoryMap(
   categories: Array<{
     id: string;
     name: string;
-    children: Array<{ id: string; name: string }>;
+    systemKey?: string | null;
+    children: Array<{ id: string; name: string; systemKey?: string | null }>;
   }>,
+  t: TFunction,
 ): Record<string, string> {
   const map: Record<string, string> = {};
   for (const category of categories) {
-    map[category.id] = category.name;
+    const parentName = translateSystemLabel(
+      t,
+      category.systemKey,
+      category.name,
+    );
+    map[category.id] = parentName;
     for (const child of category.children) {
-      map[child.id] = `${category.name} / ${child.name}`;
+      const childName = translateSystemLabel(t, child.systemKey, child.name);
+      map[child.id] = `${parentName} / ${childName}`;
     }
   }
   return map;
 }
 
 export default function TransactionsPage() {
-  const [searchParams] = useSearchParams();
+  const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     workspaceId,
+    workspace,
     isLoading: workspaceLoading,
     error: workspaceError,
+    patchWorkspace,
+    refetch: retryWorkspace,
   } = useWorkspace();
-  const [filters, setFilters] = useState<TransactionFilters>(() => ({
-    categoryId: searchParams.get("category_id") ?? defaultFilters.categoryId,
-    tag: searchParams.get("tag") ?? defaultFilters.tag,
-    paymentSourceId:
-      searchParams.get("payment_source_id") ?? defaultFilters.paymentSourceId,
-    dateFrom: searchParams.get("date_from") ?? defaultFilters.dateFrom,
-    dateTo: searchParams.get("date_to") ?? defaultFilters.dateTo,
-  }));
-  const [offset, setOffset] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [toast, setToast] = useState<string | null>(null);
+  const filters = useMemo(
+    () => parseTransactionFilters(searchParams),
+    [searchParams],
+  );
+  const page = parseTransactionPage(searchParams);
+  const offset = (page - 1) * PAGE_SIZE;
+  const [hydratedStorageWorkspaceId, setHydratedStorageWorkspaceId] =
+    useState("");
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    string | null
+  >(null);
+  const [isCreatingTransaction, setIsCreatingTransaction] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<
     string | null
   >(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const editWasSavedRef = useRef(false);
   const hasInvalidDateRange = Boolean(
     filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo,
   );
   const requestWorkspaceId = hasInvalidDateRange ? "" : (workspaceId ?? "");
 
+  useEffect(() => {
+    if (!workspaceId || hydratedStorageWorkspaceId === workspaceId) return;
+
+    const hasUrlState = hasTransactionListState(searchParams);
+    const restoredFilters = hasUrlState
+      ? filters
+      : (loadTransactionPreferences(window.localStorage, workspaceId) ??
+        DEFAULT_TRANSACTION_FILTERS);
+    const canonicalParams = buildTransactionListParams(
+      searchParams,
+      restoredFilters,
+      hasUrlState ? page : 1,
+    );
+
+    const hydrationTimer = window.setTimeout(() => {
+      if (canonicalParams.toString() !== searchParams.toString()) {
+        setSearchParams(canonicalParams, { replace: true });
+      }
+      setHydratedStorageWorkspaceId(workspaceId);
+    }, 0);
+
+    return () => window.clearTimeout(hydrationTimer);
+  }, [
+    filters,
+    hydratedStorageWorkspaceId,
+    page,
+    searchParams,
+    setSearchParams,
+    workspaceId,
+  ]);
+
+  useEffect(() => {
+    if (!workspaceId || hydratedStorageWorkspaceId !== workspaceId) return;
+
+    saveTransactionPreferences(window.localStorage, workspaceId, filters);
+  }, [filters, workspaceId, hydratedStorageWorkspaceId]);
+
   const { categories } = useCategories(workspaceId ?? "");
-  const { paymentSources } = usePaymentSources(workspaceId ?? "");
+  const { paymentSources } = usePaymentSources(workspaceId ?? "", true);
   const { tags } = useTags(workspaceId ?? "");
-  const { data, isLoading, error } = useTransactions(
+  const { data, isLoading, error, retry } = useTransactions(
     requestWorkspaceId,
     filters,
     PAGE_SIZE,
     offset,
-    refreshKey,
   );
 
+  const selectedTransaction =
+    data?.data.find((item) => item.id === selectedTransactionId) ?? null;
   const editingTransaction =
     data?.data.find((item) => item.id === editingTransactionId) ?? null;
 
-  const categoryMap = useMemo(() => buildCategoryMap(categories), [categories]);
+  const categoryMap = useMemo(
+    () => buildCategoryMap(categories, t),
+    [categories, t],
+  );
   const paymentSourceMap = useMemo(
     () =>
       Object.fromEntries(
-        paymentSources.map((source) => [source.id, source.name]),
+        paymentSources.map((source) => [
+          source.id,
+          paymentSourceName(source, t),
+        ]),
       ),
-    [paymentSources],
+    [paymentSources, t],
   );
 
   function handleFilterChange(next: TransactionFilters) {
-    setFilters(next);
-    setOffset(0);
+    setSearchParams((current) => buildTransactionListParams(current, next, 1));
   }
 
+  function handleSort(sortBy: TransactionSortField) {
+    const nextFilters: TransactionFilters = {
+      ...filters,
+      sortBy,
+      sortDirection:
+        filters.sortBy === sortBy
+          ? filters.sortDirection === "asc"
+            ? "desc"
+            : "asc"
+          : sortBy === "date"
+            ? "desc"
+            : "asc",
+    };
+    setSearchParams((current) =>
+      buildTransactionListParams(current, nextFilters, 1),
+    );
+  }
   function openTransaction(transactionId: string) {
-    setEditingTransactionId(transactionId);
+    setDeleteError(null);
+    setSelectedTransactionId(transactionId);
   }
 
-  function handleSaved() {
-    setRefreshKey((value) => value + 1);
-    setToast("Transaction saved successfully.");
-    window.setTimeout(() => setToast(null), 2500);
-  }
-
-  useEffect(() => {
-    function handleTransactionSaved() {
-      setRefreshKey((value) => value + 1);
+  function handleSaved(result: { paymentSourceId: string | null }) {
+    editWasSavedRef.current = true;
+    patchWorkspace({ lastPaymentSourceId: result.paymentSourceId });
+    setEditingTransactionId(null);
+    setIsCreatingTransaction(false);
+    if (workspaceId) {
+      void invalidateFinancialData(queryClient, workspaceId);
     }
+    showToast(t("transactions.saved"));
+  }
 
-    window.addEventListener(TRANSACTION_SAVED_EVENT, handleTransactionSaved);
-    return () =>
-      window.removeEventListener(
-        TRANSACTION_SAVED_EVENT,
-        handleTransactionSaved,
+  async function handleDelete() {
+    if (!workspaceId || !selectedTransaction) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.delete(
+        `/workspaces/${workspaceId}/transactions/${selectedTransaction.id}`,
       );
-  }, []);
+      setSelectedTransactionId(null);
+      await invalidateFinancialData(queryClient, workspaceId);
+      showToast(t("transactions.deleted"));
+    } catch {
+      setDeleteError(t("transactions.deleteError"));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   function renderBody() {
     if (workspaceLoading || isLoading) return <TransactionListSkeleton />;
     if (workspaceError || !workspaceId)
       return (
-        <div className="rounded-md bg-destructive/10 p-3 text-destructive">
-          Failed to load workspace
-        </div>
+        <WorkspaceErrorState
+          message={workspaceError ?? t("common.noWorkspace")}
+          onRetry={workspaceError ? () => void retryWorkspace() : undefined}
+        />
       );
     if (hasInvalidDateRange) {
-      return (
-        <div className="rounded-md bg-destructive/10 p-3 text-destructive">
-          Date from must be earlier than or equal to date to.
-        </div>
-      );
+      return <Alert variant="error">{t("transactions.invalidRange")}</Alert>;
     }
     if (error)
-      return (
-        <div className="rounded-md bg-destructive/10 p-3 text-destructive">
-          {error}
-        </div>
-      );
+      return <RetryAlert message={error} onRetry={() => void retry()} />;
 
     const transactions = data?.data ?? [];
 
-    if (transactions.length === 0) return <TransactionEmptyState />;
+    if (transactions.length === 0)
+      return (
+        <TransactionEmptyState onAdd={() => setIsCreatingTransaction(true)} />
+      );
 
     return (
       <>
@@ -150,6 +253,9 @@ export default function TransactionsPage() {
           transactions={transactions}
           categoryMap={categoryMap}
           paymentSourceMap={paymentSourceMap}
+          sortBy={filters.sortBy}
+          sortDirection={filters.sortDirection}
+          onSort={handleSort}
           onOpen={openTransaction}
         />
         <TransactionCards
@@ -163,43 +269,99 @@ export default function TransactionsPage() {
           limit={data?.limit ?? PAGE_SIZE}
           offset={data?.offset ?? offset}
           onPrev={() =>
-            setOffset((current) => Math.max(0, current - PAGE_SIZE))
+            setSearchParams((current) =>
+              buildTransactionListParams(
+                current,
+                filters,
+                Math.max(1, page - 1),
+              ),
+            )
           }
-          onNext={() => setOffset((current) => current + PAGE_SIZE)}
+          onNext={() =>
+            setSearchParams((current) =>
+              buildTransactionListParams(current, filters, page + 1),
+            )
+          }
         />
       </>
     );
   }
 
   return (
-    <div className="p-6">
-      <h1 className="mb-4 text-2xl font-semibold">Transactions</h1>
+    <PageContainer>
+      <PageHeader title={t("transactions.title")} className="mb-4" />
       <div className="space-y-4">
         <TransactionFilterBar
           filters={filters}
           categories={categories}
           tags={tags}
           paymentSources={paymentSources}
+          timeZone={workspace?.timezone ?? "UTC"}
           onChange={handleFilterChange}
         />
         {renderBody()}
       </div>
+      <TransactionDetailsModal
+        key={selectedTransaction?.id ?? "details-modal"}
+        open={Boolean(selectedTransactionId && selectedTransaction)}
+        transaction={selectedTransaction}
+        categoryLabel={
+          selectedTransaction
+            ? (categoryMap[selectedTransaction.categoryId] ??
+              selectedTransaction.categoryId)
+            : ""
+        }
+        paymentSourceLabel={
+          selectedTransaction?.paymentSourceId
+            ? (paymentSourceMap[selectedTransaction.paymentSourceId] ??
+              selectedTransaction.paymentSourceId)
+            : t("common.none")
+        }
+        isDeleting={isDeleting}
+        deleteError={deleteError}
+        onClose={() => {
+          setSelectedTransactionId(null);
+          setDeleteError(null);
+        }}
+        onEdit={() => {
+          if (!selectedTransaction) return;
+          editWasSavedRef.current = false;
+          setEditingTransactionId(selectedTransaction.id);
+          setSelectedTransactionId(null);
+        }}
+        onDelete={() => void handleDelete()}
+      />
       {workspaceId && (
-        <TransactionFormModal
-          key={editingTransaction?.id ?? "edit-modal"}
-          open={Boolean(editingTransactionId && editingTransaction)}
-          mode="edit"
-          workspaceId={workspaceId}
-          transaction={editingTransaction}
-          onClose={() => setEditingTransactionId(null)}
-          onSaved={handleSaved}
-        />
+        <>
+          <TransactionFormModal
+            key={editingTransaction?.id ?? "edit-modal"}
+            open={Boolean(editingTransactionId && editingTransaction)}
+            mode="edit"
+            workspaceId={workspaceId}
+            transaction={editingTransaction}
+            onClose={() => {
+              const cancelledTransactionId = editingTransactionId;
+              setEditingTransactionId(null);
+              if (!editWasSavedRef.current && cancelledTransactionId) {
+                setSelectedTransactionId(cancelledTransactionId);
+              }
+              editWasSavedRef.current = false;
+            }}
+            onSaved={handleSaved}
+          />
+          <TransactionFormModal
+            key={isCreatingTransaction ? "create-open" : "create-closed"}
+            open={isCreatingTransaction}
+            mode="create"
+            workspaceId={workspaceId}
+            defaultCurrency={workspace?.baseCurrency ?? "USD"}
+            defaultPaymentSourceId={workspace?.lastPaymentSourceId ?? null}
+            defaultTimezone={workspace?.timezone ?? "UTC"}
+            onClose={() => setIsCreatingTransaction(false)}
+            onSaved={handleSaved}
+          />
+        </>
       )}
-      {toast && (
-        <div className="fixed top-4 right-4 z-[60] rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,8 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { DashboardRepository } from './dashboard.repository'
+import { WorkspaceService } from '../workspace/workspace.service'
+import {
+    ListedTransactionRecord,
+    TransactionsRepository,
+} from '../transactions/transactions.repository'
+import type { CreateTransactionResponse } from '../transactions/transactions.service'
 
-export interface DashboardMonthRequestInput {
-    month?: unknown
+export interface DashboardMonthCommand {
+    month: string
 }
 
 export interface SpendingSummaryResponse {
@@ -18,6 +24,7 @@ export interface SpendingSummaryResponse {
 export interface CategoryBreakdownItemResponse {
     category_id: string
     category_name: string
+    category_system_key: string | null
     category_color: string | null
     amount: number
     percentage: number
@@ -30,6 +37,18 @@ export interface CategoryBreakdownResponse {
     categories: CategoryBreakdownItemResponse[]
 }
 
+export interface SpendingTrendItemResponse {
+    month: string
+    total: number
+}
+
+export interface DashboardOverviewResponse {
+    summary: SpendingSummaryResponse
+    category_breakdown: CategoryBreakdownResponse
+    spending_trend: SpendingTrendItemResponse[]
+    recent_transactions: CreateTransactionResponse[]
+}
+
 interface ValidatedDashboardMonth {
     month: string
     startDate: Date
@@ -38,18 +57,86 @@ interface ValidatedDashboardMonth {
     previousEndDateExclusive: Date
 }
 
-const DEFAULT_DASHBOARD_CURRENCY = 'USD'
-
 @Injectable()
 export class DashboardService {
-    constructor(private readonly dashboardRepository: DashboardRepository) {}
+    constructor(
+        private readonly dashboardRepository: DashboardRepository,
+        private readonly workspaceService?: WorkspaceService,
+        private readonly transactionsRepository?: TransactionsRepository,
+    ) {}
+
+    async getOverview(
+        input: DashboardMonthCommand,
+        workspaceId: string,
+    ): Promise<DashboardOverviewResponse> {
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const monthRange = validateDashboardMonthInput(input)
+        const trendMonths = getMonthSequence(monthRange.month, 6)
+        const trendStart = parseMonthStart(trendMonths[0])
+        const workspacePromise = this.workspaceService
+            ? this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : Promise.resolve({ baseCurrency: 'USD' } as const)
+        const recentTransactionsPromise = this.transactionsRepository
+            ? this.transactionsRepository.listTransactions({
+                  workspaceId: normalizedWorkspaceId,
+                  limit: 5,
+                  offset: 0,
+                  sortBy: 'date',
+                  sortDirection: 'desc',
+              })
+            : Promise.resolve([])
+
+        const [workspace, monthlySpend, categorySpend, recentTransactions] = await Promise.all([
+            workspacePromise,
+            this.dashboardRepository.listMonthlySpendForRange(
+                normalizedWorkspaceId,
+                trendStart,
+                monthRange.endDateExclusive,
+            ),
+            this.dashboardRepository.listCategorySpendForRange(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+            ),
+            recentTransactionsPromise,
+        ])
+        const totalsByMonth = new Map(monthlySpend.map((item) => [item.month, item.amount]))
+        const currentTotalCents = totalsByMonth.get(monthRange.month) ?? 0
+        const previousMonth = getMonthSequence(monthRange.month, 2)[0]
+        const previousTotalCents = totalsByMonth.get(previousMonth) ?? 0
+        const summary = buildSpendingSummary(
+            monthRange.month,
+            workspace.baseCurrency,
+            currentTotalCents,
+            previousTotalCents,
+        )
+        const categoryBreakdown = await this.buildCategoryBreakdown(
+            normalizedWorkspaceId,
+            monthRange.month,
+            workspace.baseCurrency,
+            categorySpend,
+        )
+
+        return {
+            summary,
+            category_breakdown: categoryBreakdown,
+            spending_trend: trendMonths.map((month) => ({
+                month,
+                total: convertAmountToDisplayValue(totalsByMonth.get(month) ?? 0),
+            })),
+            recent_transactions: recentTransactions.map(mapRecentTransaction),
+        }
+    }
 
     async getSpendingSummary(
-        input: DashboardMonthRequestInput,
+        input: DashboardMonthCommand,
         workspaceId: string,
     ): Promise<SpendingSummaryResponse> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const monthRange = validateDashboardMonthInput(input)
+        const workspace = this.workspaceService
+            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : ({ baseCurrency: 'USD' } as const)
 
         const [currentTotalCents, previousTotalCents] = await Promise.all([
             this.dashboardRepository.getTotalSpendForRange(
@@ -64,51 +151,63 @@ export class DashboardService {
             ),
         ])
 
-        const changeAmountCents = currentTotalCents - previousTotalCents
-
-        return {
-            month: monthRange.month,
-            currency: DEFAULT_DASHBOARD_CURRENCY,
-            current_total: convertAmountToDisplayValue(currentTotalCents),
-            previous_total: convertAmountToDisplayValue(previousTotalCents),
-            change_amount: convertAmountToDisplayValue(changeAmountCents),
-            change_percentage: calculateChangePercentage(currentTotalCents, previousTotalCents),
-            direction: determineDirection(changeAmountCents),
-        }
+        return buildSpendingSummary(
+            monthRange.month,
+            workspace.baseCurrency,
+            currentTotalCents,
+            previousTotalCents,
+        )
     }
 
     async getCategoryBreakdown(
-        input: DashboardMonthRequestInput,
+        input: DashboardMonthCommand,
         workspaceId: string,
     ): Promise<CategoryBreakdownResponse> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const monthRange = validateDashboardMonthInput(input)
+        const workspace = this.workspaceService
+            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
+            : ({ baseCurrency: 'USD' } as const)
         const categorySpend = await this.dashboardRepository.listCategorySpendForRange(
             normalizedWorkspaceId,
             monthRange.startDate,
             monthRange.endDateExclusive,
         )
 
+        return this.buildCategoryBreakdown(
+            normalizedWorkspaceId,
+            monthRange.month,
+            workspace.baseCurrency,
+            categorySpend,
+        )
+    }
+
+    private async buildCategoryBreakdown(
+        workspaceId: string,
+        month: string,
+        currency: string,
+        categorySpend: Array<{ categoryId: string; amount: number }>,
+    ): Promise<CategoryBreakdownResponse> {
         const totalSpendingCents = categorySpend.reduce((sum, category) => sum + category.amount, 0)
 
         if (totalSpendingCents === 0) {
             return {
-                month: monthRange.month,
-                currency: DEFAULT_DASHBOARD_CURRENCY,
+                month,
+                currency,
                 total_spending: 0,
                 categories: [],
             }
         }
 
         const categories = await this.dashboardRepository.listCategoriesByIds(
-            normalizedWorkspaceId,
+            workspaceId,
             categorySpend.map((entry) => entry.categoryId),
         )
         const categoriesById = new Map(categories.map((category) => [category.id, category]))
 
         return {
-            month: monthRange.month,
-            currency: DEFAULT_DASHBOARD_CURRENCY,
+            month,
+            currency,
             total_spending: convertAmountToDisplayValue(totalSpendingCents),
             categories: categorySpend
                 .map((entry) => {
@@ -117,6 +216,7 @@ export class DashboardService {
                     return {
                         category_id: entry.categoryId,
                         category_name: category?.name ?? 'Unknown category',
+                        category_system_key: category?.systemKey ?? null,
                         category_color: category?.color ?? null,
                         amount: convertAmountToDisplayValue(entry.amount),
                         percentage: convertBasisPointsToDisplayValue(
@@ -141,8 +241,61 @@ export class DashboardService {
     }
 }
 
-function validateDashboardMonthInput(input: DashboardMonthRequestInput): ValidatedDashboardMonth {
-    if (typeof input.month !== 'string' || input.month.trim().length === 0) {
+function buildSpendingSummary(
+    month: string,
+    currency: string,
+    currentTotalCents: number,
+    previousTotalCents: number,
+): SpendingSummaryResponse {
+    const changeAmountCents = currentTotalCents - previousTotalCents
+
+    return {
+        month,
+        currency,
+        current_total: convertAmountToDisplayValue(currentTotalCents),
+        previous_total: convertAmountToDisplayValue(previousTotalCents),
+        change_amount: convertAmountToDisplayValue(changeAmountCents),
+        change_percentage: calculateChangePercentage(currentTotalCents, previousTotalCents),
+        direction: determineDirection(changeAmountCents),
+    }
+}
+
+function parseMonthStart(month: string): Date {
+    const [year, monthPart] = month.split('-').map(Number)
+    return new Date(Date.UTC(year, monthPart - 1, 1))
+}
+
+function getMonthSequence(endMonth: string, count: number): string[] {
+    const end = parseMonthStart(endMonth)
+
+    return Array.from({ length: count }, (_, index) => {
+        const value = new Date(
+            Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - count + 1 + index, 1),
+        )
+        return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, '0')}`
+    })
+}
+
+function mapRecentTransaction(transaction: ListedTransactionRecord): CreateTransactionResponse {
+    return {
+        id: transaction.id,
+        workspace_id: transaction.workspace_id,
+        category_id: transaction.category_id,
+        payment_source_id: transaction.payment_source_id!,
+        type: transaction.type,
+        amount: convertAmountToDisplayValue(transaction.amount),
+        currency: transaction.currency,
+        date: transaction.date.toISOString().slice(0, 10),
+        description: transaction.description,
+        notes: transaction.notes,
+        tags: transaction.tags,
+        created_at: transaction.created_at,
+        updated_at: transaction.updated_at,
+    }
+}
+
+function validateDashboardMonthInput(input: DashboardMonthCommand): ValidatedDashboardMonth {
+    if (input.month.trim().length === 0) {
         throw new BadRequestException(['Month is required'])
     }
 

@@ -1,103 +1,45 @@
-import { useEffect, useReducer } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { BudgetProgressItem } from "@/types/budget";
+import { queryKeys } from "@/lib/query-client";
+import type { Budget, BudgetProgressItem } from "@/types/budget";
+import type { ApiBudget, ApiBudgetProgressItem } from "@/types/api-contracts";
+import { mapBudget, mapBudgetProgressItem } from "@/lib/api-mappers";
+import { getApiErrorMessage } from "@/lib/api-errors";
 
-interface Budget {
-  id: string;
-  category_id: string;
-  amount: number;
-  year: number;
-  month: number;
-}
-
-interface State {
+interface BudgetOverview {
   progressItems: BudgetProgressItem[];
   budgets: Budget[];
-  isLoading: boolean;
-  error: string | null;
 }
 
-type Action =
-  | { type: "FETCH_START" }
-  | {
-      type: "FETCH_SUCCESS";
-      payload: { progressItems: BudgetProgressItem[]; budgets: Budget[] };
-    }
-  | { type: "FETCH_ERROR" };
+export function useBudgetOverview(workspaceId: string, month: string) {
+  const query = useQuery({
+    queryKey: [...queryKeys.budgets(workspaceId), "overview", month],
+    enabled: Boolean(workspaceId && month),
+    queryFn: async ({ signal }): Promise<BudgetOverview> => {
+      const [year, monthPart] = month.split("-").map(Number);
+      const [progressResponse, budgetsResponse] = await Promise.all([
+        api.get<ApiBudgetProgressItem[]>(
+          `/workspaces/${workspaceId}/budgets/progress`,
+          { params: { month }, signal },
+        ),
+        api.get<ApiBudget[]>(`/workspaces/${workspaceId}/budgets`, {
+          params: { year, month: monthPart },
+          signal,
+        }),
+      ]);
 
-function reducer(_state: State, action: Action): State {
-  switch (action.type) {
-    case "FETCH_START":
-      return { progressItems: [], budgets: [], isLoading: true, error: null };
-    case "FETCH_SUCCESS":
       return {
-        progressItems: action.payload.progressItems,
-        budgets: action.payload.budgets,
-        isLoading: false,
-        error: null,
+        progressItems: progressResponse.data.map(mapBudgetProgressItem),
+        budgets: budgetsResponse.data.map(mapBudget),
       };
-    case "FETCH_ERROR":
-      return {
-        progressItems: [],
-        budgets: [],
-        isLoading: false,
-        error: "Failed to load budget overview",
-      };
-  }
-}
+    },
+  });
 
-const initialState: State = {
-  progressItems: [],
-  budgets: [],
-  isLoading: false,
-  error: null,
-};
-
-export function useBudgetOverview(
-  workspaceId: string,
-  month: string,
-  reloadToken = 0,
-) {
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  useEffect(() => {
-    if (!workspaceId || !month) return;
-
-    let cancelled = false;
-    dispatch({ type: "FETCH_START" });
-
-    const [year, monthPart] = month.split("-").map(Number);
-
-    Promise.all([
-      api.get<BudgetProgressItem[]>(
-        `/workspaces/${workspaceId}/budgets/progress`,
-        {
-          params: { month },
-        },
-      ),
-      api.get<Budget[]>(`/workspaces/${workspaceId}/budgets`, {
-        params: { year, month: monthPart },
-      }),
-    ])
-      .then(([progressRes, budgetsRes]) => {
-        if (!cancelled) {
-          dispatch({
-            type: "FETCH_SUCCESS",
-            payload: {
-              progressItems: progressRes.data,
-              budgets: budgetsRes.data,
-            },
-          });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: "FETCH_ERROR" });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId, month, reloadToken]);
-
-  return state;
+  return {
+    progressItems: query.data?.progressItems ?? [],
+    budgets: query.data?.budgets ?? [],
+    isLoading: query.isPending,
+    error: query.isError ? getApiErrorMessage(query.error) : null,
+    retry: query.refetch,
+  };
 }
