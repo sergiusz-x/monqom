@@ -23,7 +23,8 @@
         "test:cov": "jest --coverage",
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
         "test:e2e": "jest --config ./test/jest-e2e.json",
-        "test:e2e:smoke": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts"
+        "test:e2e:smoke": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts",
+        "test:e2e:critical": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts test/auth-two-factor.e2e-spec.ts"
     },
     "dependencies": {
         "@nestjs/common": "^11.0.1",
