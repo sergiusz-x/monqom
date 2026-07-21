@@ -20,7 +20,7 @@ async function bootstrap() {
         logger: appLogger,
     })
 
-    app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
+    app.use(helmet({ crossOriginEmbedderPolicy: false }))
     app.use(compression())
 
     const configService = app.get(ConfigService)

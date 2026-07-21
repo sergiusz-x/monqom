@@ -16,6 +16,7 @@ describe('Health endpoints (e2e)', () => {
             .useValue({
                 $connect: jest.fn(),
                 $disconnect: jest.fn(),
+                $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
             })
             .compile()
 
@@ -39,7 +40,9 @@ describe('Health endpoints (e2e)', () => {
         )
     })
 
-    it('/ready (GET)', () => {
-        return request(app.getHttpServer()).get('/ready').expect(200).expect('OK')
+    it('/ready (GET)', async () => {
+        const response = await request(app.getHttpServer()).get('/ready').expect(200)
+
+        expect(response.body).toEqual({ status: 'ready' })
     })
 })

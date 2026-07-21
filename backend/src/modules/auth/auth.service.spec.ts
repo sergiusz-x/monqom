@@ -1,6 +1,5 @@
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common'
 import * as argon2 from 'argon2'
-import { createHash } from 'crypto'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
@@ -336,16 +335,11 @@ describe('AuthService', () => {
         })
 
         const createCall = authRepository.createUserWithVerificationToken.mock.calls[0][0]
-        const expectedFingerprint = createHash('sha256')
-            .update(createCall.verificationToken)
-            .digest('hex')
-
         expect(logger.info).toHaveBeenCalledWith(
             'Email verification token generated for registration',
             expect.objectContaining({
                 context_name: 'AuthService',
                 verification_token_last6: createCall.verificationToken.slice(-6),
-                verification_token_fingerprint: expectedFingerprint,
             }),
         )
 
@@ -726,16 +720,11 @@ describe('AuthService', () => {
         await service.forgotPassword({ email: 'test@example.com' })
 
         const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
-        const expectedFingerprint = createHash('sha256')
-            .update(createCall.passwordResetToken)
-            .digest('hex')
-
         expect(logger.info).toHaveBeenCalledWith(
             'Password reset token generated for forgot-password',
             expect.objectContaining({
                 context_name: 'AuthService',
                 password_reset_token_last6: createCall.passwordResetToken.slice(-6),
-                password_reset_token_fingerprint: expectedFingerprint,
             }),
         )
 

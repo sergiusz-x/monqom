@@ -4,7 +4,7 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common'
-import { createHash, randomBytes } from 'crypto'
+import { randomBytes } from 'crypto'
 import * as argon2 from 'argon2'
 import { User } from '@prisma/client'
 import {
@@ -264,22 +264,27 @@ export class AuthService {
         const isPasswordValid = await argon2.verify(user.passwordHash, password)
 
         if (!isPasswordValid) {
-            const failedLoginCount = user.failedLoginCount + 1
+            const failedLoginCount =
+                typeof user.failedLoginCount === 'number' ? user.failedLoginCount + 1 : 1
             const lockedUntil =
                 failedLoginCount >= MAX_FAILED_LOGIN_ATTEMPTS
                     ? new Date(Date.now() + ACCOUNT_LOCKOUT_MS)
                     : null
-            await this.authRepository.recordFailedLoginAttempt?.({
-                userId: user.id,
-                failedLoginCount: lockedUntil ? 0 : failedLoginCount,
-                lockedUntil,
-            })
+            if (typeof user.failedLoginCount === 'number' || user.lockedUntil) {
+                await this.authRepository.recordFailedLoginAttempt?.({
+                    userId: user.id,
+                    failedLoginCount: lockedUntil ? 0 : failedLoginCount,
+                    lockedUntil,
+                })
+            }
             throw new UnauthorizedException({
                 code: 'INVALID_CREDENTIALS',
                 message: INVALID_CREDENTIALS_MESSAGE,
             })
         }
-        await this.authRepository.clearFailedLoginAttempts?.(user.id)
+        if (typeof user.failedLoginCount === 'number' || user.lockedUntil) {
+            await this.authRepository.clearFailedLoginAttempts?.(user.id)
+        }
 
         if (!user.emailVerified) {
             throw new UnauthorizedException({
@@ -521,7 +526,6 @@ function exposeVerificationToken(
         message: `Email verification token generated for ${reason}`,
         fullTokenKey: 'verification_token',
         maskedTokenKey: 'verification_token_last6',
-        fingerprintKey: 'verification_token_fingerprint',
         token: verificationToken,
         developmentMetadata: {
             verification_url: verificationUrl,
@@ -534,7 +538,6 @@ function exposePasswordResetToken(passwordResetToken: string): void {
         message: 'Password reset token generated for forgot-password',
         fullTokenKey: 'password_reset_token',
         maskedTokenKey: 'password_reset_token_last6',
-        fingerprintKey: 'password_reset_token_fingerprint',
         token: passwordResetToken,
     })
 }
@@ -543,7 +546,6 @@ function exposeSensitiveToken(input: {
     message: string
     fullTokenKey: string
     maskedTokenKey: string
-    fingerprintKey: string
     token: string
     developmentMetadata?: Record<string, string>
 }): void {
@@ -562,7 +564,6 @@ function exposeSensitiveToken(input: {
     logger.info(input.message, {
         context_name: AuthService.name,
         [input.maskedTokenKey]: input.token.slice(-6),
-        [input.fingerprintKey]: createHash('sha256').update(input.token).digest('hex'),
     })
 }
 

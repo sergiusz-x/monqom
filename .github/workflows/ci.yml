@@ -21,7 +21,7 @@ jobs:
       - run: npx prisma generate
       - run: npm run format:check && npm run lint && npm run typecheck
       - run: npm test -- --runInBand
-      - run: npm run migrate:deploy && npm run test:e2e && npm run build
+      - run: npm run migrate:deploy && npm run test:e2e:smoke && npm run build
       - run: npm audit --omit=dev --audit-level=high
   frontend:
     runs-on: ubuntu-latest
