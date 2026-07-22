@@ -6,7 +6,7 @@ RUN npm ci
 
 FROM dependencies AS build
 COPY prisma ./prisma
-COPY nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY prisma.config.ts nest-cli.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
 RUN npx prisma generate && npm run build
 

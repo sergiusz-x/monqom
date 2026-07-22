@@ -82,5 +82,6 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: docker compose -f docker-compose.dokploy.yml config --quiet
       - run: docker build --target migration --tag monqom-backend-migration:ci backend
+      - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/prisma.config.ts'
       - run: docker build --target runtime --tag monqom-backend:ci backend
       - run: docker build --tag monqom-frontend:ci frontend
