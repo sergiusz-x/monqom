@@ -78,13 +78,13 @@ jobs:
           TURNSTILE_ENABLED: "true"
           TURNSTILE_SECRET_KEY: turnstile_test_placeholder
           VITE_TURNSTILE_SITE_KEY: turnstile_site_test_placeholder
-          APP_VERSION: ci
-          GIT_SHA: ${{ github.sha }}
         run: |
           docker compose -f docker-compose.dokploy.yml config --quiet
           docker compose -f docker-compose.dokploy.yml config --format json | jq -e '.services | all(.networks | has("dokploy-network"))'
-      - run: docker build --target migration --tag monqom-backend-migration:ci backend
+      - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target migration --tag monqom-backend-migration:ci --file backend/Dockerfile .
       - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/prisma.config.ts'
-      - run: docker build --target runtime --tag monqom-backend:ci backend
-      - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/dist/main.js'
-      - run: docker build --tag monqom-frontend:ci frontend
+      - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target runtime --tag monqom-backend:ci --file backend/Dockerfile .
+      - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/dist/main.js && grep -q "APP_VERSION=.ci." /app/release.env && grep -q "GIT_SHA=.${{ github.sha }}." /app/release.env'
+      - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --tag monqom-frontend:ci --file frontend/Dockerfile .
+      - run: docker run --rm --add-host backend:127.0.0.1 monqom-frontend:ci nginx -t
+      - run: docker run --rm --entrypoint sh monqom-frontend:ci -c 'grep -q "\"version\":\"ci\"" /usr/share/nginx/html/version.json && grep -q "\"sha\":\"${{ github.sha }}\"" /usr/share/nginx/html/version.json'
