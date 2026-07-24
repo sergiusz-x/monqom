@@ -1,7 +1,7 @@
 # Release Checklist
 
 1. CI is green for the exact release commit.
-2. The release commit has an exact v* tag and supplies version/SHA to deployment.
+2. The release commit has an exact v* tag; production images derive the version and SHA from that checkout.
 3. Dokploy migration completes.
 4. Health, readiness, and version endpoints are healthy through the public domain.
 5. Turnstile registration and Resend verification email are smoke tested.

@@ -1,8 +1,8 @@
 services:
   migrate:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: migration
     environment:
       NODE_ENV: production
@@ -13,8 +13,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: runtime
     environment:
       NODE_ENV: production
@@ -28,8 +28,6 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
       TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-true}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
-      APP_VERSION: ${APP_VERSION}
-      GIT_SHA: ${GIT_SHA}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       migrate:
@@ -42,11 +40,9 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
-        APP_VERSION: ${APP_VERSION}
-        GIT_SHA: ${GIT_SHA}
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY}
     depends_on:
       backend:
