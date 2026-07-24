@@ -86,4 +86,5 @@ jobs:
       - run: docker build --target migration --tag monqom-backend-migration:ci backend
       - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/prisma.config.ts'
       - run: docker build --target runtime --tag monqom-backend:ci backend
+      - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/dist/main.js'
       - run: docker build --tag monqom-frontend:ci frontend
