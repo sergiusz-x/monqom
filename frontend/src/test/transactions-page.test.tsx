@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import TransactionsPage from "@/pages/TransactionsPage";
 import { ToastProvider } from "@/contexts/ToastContext";
 import type {

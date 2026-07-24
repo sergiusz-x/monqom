@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
 import { useWorkspace } from "@/hooks/useWorkspace";

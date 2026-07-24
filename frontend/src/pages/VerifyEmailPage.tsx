@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router";
 import api from "@/lib/api";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";

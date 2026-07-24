@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router";
 import LandingRoute from "@/components/LandingRoute";
 import MarketingLayout from "@/components/layout/MarketingLayout";
 import LandingPage from "@/pages/LandingPage";

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import type { Category } from "@/types/category";
 import type { Transaction } from "@/types/transaction";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { SectionCard } from "@/components/ui/card";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 

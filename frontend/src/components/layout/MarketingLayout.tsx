@@ -1,4 +1,4 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router";
 import MonqomLogo from "@/components/MonqomLogo";
 import PublicPreferences from "./PublicPreferences";
 import { ReleaseVersion } from "@/components/ReleaseVersion";
