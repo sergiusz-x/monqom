@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import i18n from "@/i18n";

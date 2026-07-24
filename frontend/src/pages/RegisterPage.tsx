@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import api from "@/lib/api";
 import i18n from "@/i18n";
 import { AuthCard } from "@/components/auth/AuthCard";

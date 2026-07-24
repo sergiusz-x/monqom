@@ -5,7 +5,7 @@ import {
   renderHookWithQueryClient as renderHook,
 } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation } from "react-router";
 import { AuthContext } from "@/contexts/AuthContext";
 import type { User, AuthContextValue } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
