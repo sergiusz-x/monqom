@@ -18,7 +18,7 @@ The tagged commit is immutable. Build and deploy the exact `v*` tag, not an unta
 1. Work is merged to `main` through a pull request with all required checks green.
 2. Semantic-release evaluates Conventional Commits only after the canonical CI succeeds on a push to `main`.
 3. A published `v*` GitHub Release is the immutable deployment input. The deployment workflow verifies that `HEAD` has that exact tag before it contacts Dokploy.
-4. A normal push or merge to `main` never deploys. Only a published release tag can invoke the Dokploy webhook.
+4. A push or merge to `main` cannot invoke Dokploy directly. After green CI, a newly published `v*` release triggers the webhook from the guarded release workflow; an existing release tag can be redeployed only through the explicit manual recovery workflow.
 5. Before a production rollout, complete [the release checklist](release-checklist.md) against the exact tagged commit.
 
 ## Versioning

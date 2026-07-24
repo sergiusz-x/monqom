@@ -18,8 +18,26 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
-      - uses: cycjimmy/semantic-release-action@v4
+      - id: semantic
+        uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: 24
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify published release tag
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
+          RELEASE_SHA: ${{ steps.semantic.outputs.new_release_git_head }}
+        run: >-
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA" &&
+          test "$RELEASE_SHA" = "$(git rev-list -n 1 "$RELEASE_TAG")"
+      - name: Trigger Dokploy deployment
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
+        run: >-
+          test -n "$DOKPLOY_WEBHOOK_URL" &&
+          curl --fail-with-body --retry 3 --retry-all-errors
+          --connect-timeout 10 --max-time 30
+          --request POST "$DOKPLOY_WEBHOOK_URL"
