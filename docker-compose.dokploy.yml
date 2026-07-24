@@ -7,6 +7,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - dokploy-network
     restart: "no"
 
   backend:
@@ -34,6 +36,8 @@ services:
         condition: service_completed_successfully
     expose:
       - "3000"
+    networks:
+      - dokploy-network
     restart: unless-stopped
 
   frontend:
@@ -49,4 +53,10 @@ services:
         condition: service_healthy
     expose:
       - "8080"
+    networks:
+      - dokploy-network
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
