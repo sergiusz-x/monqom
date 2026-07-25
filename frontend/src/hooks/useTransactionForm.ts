@@ -169,7 +169,7 @@ export function useTransactionForm({
       showToast(t("transactions.saveSuccess") ?? "Transaction saved", "success");
       onSaved({ paymentSourceId: selectedPaymentSourceId });
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = formatApiError(err);
       setSubmitError(errorMessage);
       showToast(errorMessage, "error");

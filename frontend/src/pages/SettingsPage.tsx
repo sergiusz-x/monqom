@@ -47,8 +47,8 @@ export default function SettingsPage() {
               className={`px-3 py-2 sm:px-4 ${
                 activeSection === id
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"`
-              }}
+                  : "text-muted-foreground hover:text-foreground"}`
+              }
               onClick={() => setActiveSection(id)}
             >
               {label}
