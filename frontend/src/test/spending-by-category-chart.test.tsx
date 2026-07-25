@@ -43,9 +43,9 @@ function renderChart(breakdown = makeBreakdown()) {
 describe('SpendingByCategoryChart', () => {
   it('renders bars for each category', () => {
     renderChart();
-    const bars = screen.getAllByRole('img'); // Each bar is an <rect> inside svg, role img?
+    const _bars = screen.getAllByRole('img'); // Each bar is an <rect> inside svg, role img?
     // Actually each bar may not have role; we can count <rect> elements.
-    const rects = screen.getAllByRole('img').map((el) => el.closest('svg')?.querySelectorAll('rect')).flat();
+    const _rects = screen.getAllByRole('img').map((el) => el.closest('svg')?.querySelectorAll('rect')).flat();
     // Simpler: count <rect> elements.
     const rectElements = screen.getAllByRole('img').flatMap((el) => Array.from(el.querySelectorAll('rect')));
     expect(rectElements).toHaveLength(2);

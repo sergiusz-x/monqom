@@ -93,7 +93,7 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
 
   return (
     <aside
-      className="w-56 shrink-0 border-r border-border flex flex-col bg-sidebar"
+      className="w-56 shrink-0 border-r border-border flex flex-col bg-sidebar flex-1"
       aria-label={t("nav.main")}
     >
       <Link
