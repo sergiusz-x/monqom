@@ -191,7 +191,8 @@ export function useTransactionForm({
       amountMinorUnits,
       setAmountMinorUnits: (val: number | null) => {
         setAmountMinorUnits(val);
-        if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
+        if (errors.amount)
+          setErrors((prev) => ({ ...prev, amount: undefined }));
       },
       currency,
       setCurrency,
@@ -203,12 +204,14 @@ export function useTransactionForm({
       description,
       setDescription: (val: string) => {
         setDescription(val);
-        if (errors.description) setErrors((prev) => ({ ...prev, description: undefined }));
+        if (errors.description)
+          setErrors((prev) => ({ ...prev, description: undefined }));
       },
       categoryId,
       setCategoryId: (val: string | null) => {
         setCategoryId(val);
-        if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: undefined }));
+        if (errors.categoryId)
+          setErrors((prev) => ({ ...prev, categoryId: undefined }));
       },
       notes,
       setNotes,
@@ -225,7 +228,8 @@ export function useTransactionForm({
       selectedId: selectedPaymentSourceId,
       setSelectedId: (val: string) => {
         setPaymentSourceId(val);
-        if (errors.paymentSourceId) setErrors((prev) => ({ ...prev, paymentSourceId: undefined }));
+        if (errors.paymentSourceId)
+          setErrors((prev) => ({ ...prev, paymentSourceId: undefined }));
       },
       isLoading: paymentSourcesLoading,
       error: paymentSourcesError,
@@ -234,7 +238,8 @@ export function useTransactionForm({
       selectCreated(source: PaymentSource) {
         setCreatedPaymentSource(source);
         setPaymentSourceId(source.id);
-        if (errors.paymentSourceId) setErrors((prev) => ({ ...prev, paymentSourceId: undefined }));
+        if (errors.paymentSourceId)
+          setErrors((prev) => ({ ...prev, paymentSourceId: undefined }));
       },
     },
   };
