@@ -3,8 +3,9 @@ import { Link, useSearchParams } from "react-router";
 import api from "@/lib/api";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
-import { Alert } from "@/components/ui/alert";
+
 import { getApiErrorMessage } from "@/lib/api-errors";
+import { Alert } from "@monqom/ui";
 
 type Status = "pending" | "loading" | "success" | "error" | "no_token";
 

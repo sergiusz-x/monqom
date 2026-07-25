@@ -1,8 +1,9 @@
 import { useBudgetProgress } from "@/hooks/useBudgetProgress";
-import { AsyncState } from "@/components/ui/async-state";
-import { EmptyState } from "@/components/ui/empty-state";
+
+
 import { useTranslation } from "react-i18next";
 import { BudgetProgressBar } from "./BudgetProgressBar";
+import { AsyncState, EmptyState } from "@monqom/ui";
 
 export interface BudgetProgressListProps {
   workspaceId: string;

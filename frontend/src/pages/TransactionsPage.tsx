@@ -23,8 +23,8 @@ import type {
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/useToast";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
-import { Alert } from "@/components/ui/alert";
-import { RetryAlert } from "@/components/ui/retry-alert";
+
+
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import type { TFunction } from "i18next";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
@@ -38,6 +38,7 @@ import {
   parseTransactionPage,
   saveTransactionPreferences,
 } from "@/lib/transaction-list-state";
+import { Alert, RetryAlert } from "@monqom/ui";
 
 const PAGE_SIZE = 20;
 

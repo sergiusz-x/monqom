@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 import { Languages, Monitor, Moon, Sun } from "lucide-react";
 import i18n from "@/i18n";
 import { useTheme, type ThemeMode } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
+
 import { cn } from "@/lib/utils";
+import { Button } from "@monqom/ui";
 
 const themeOptions = [
   { mode: "system", label: "publicPreferences.system", icon: Monitor },

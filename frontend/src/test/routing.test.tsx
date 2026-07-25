@@ -15,8 +15,9 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import { AuthContext } from "@/contexts/AuthContext";
 import type { User } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/hooks/useWorkspace";
-import { ToastProvider } from "@/contexts/ToastContext";
+
 import { RouteLoadingFallback } from "@/components/RouteLoadingFallback";
+import { ToastProvider } from "@monqom/ui";
 
 const mockAuthValue = {
   user: null as User | null,

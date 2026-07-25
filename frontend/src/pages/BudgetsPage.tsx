@@ -5,22 +5,22 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useBudgetOverview } from "@/hooks/useBudgetOverview";
 import { CategorySelector } from "@/components/CategorySelector";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
-import { Button } from "@/components/ui/button";
+
 import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
 import { useTranslation } from "react-i18next";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
-import { FieldError } from "@/components/ui/field-error";
-import { AsyncState } from "@/components/ui/async-state";
-import { EmptyState } from "@/components/ui/empty-state";
+
+
+
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
-import { SectionCard } from "@/components/ui/card";
-import { PendingButton } from "@/components/ui/pending-button";
+
+
 import { useToast } from "@/hooks/useToast";
-import { FormField } from "@/components/ui/form-field";
-import { MoneyInput } from "@/components/ui/money-input";
-import { Select } from "@/components/ui/select";
+
+
+
 import { useFocusOnError } from "@/hooks/useFocusOnError";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+
 import { queryKeys } from "@/lib/query-client";
 import {
   formatMonth,
@@ -33,6 +33,7 @@ import {
   minorUnitsToMajorAmount,
 } from "@/lib/money";
 import type { Budget } from "@/types/budget";
+import { AsyncState, Button, ConfirmationDialog, EmptyState, FieldError, FormField, MoneyInput, PendingButton, SectionCard, Select } from "@monqom/ui";
 
 interface BudgetFormState {
   categoryId: string | null;

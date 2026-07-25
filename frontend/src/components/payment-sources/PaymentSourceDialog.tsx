@@ -9,15 +9,16 @@ import type { PaymentSource, PaymentSourceType } from "@/types/payment-source";
 import type { ApiPaymentSource } from "@/types/api-contracts";
 import { mapPaymentSource } from "@/lib/api-mappers";
 import { useTranslation } from "react-i18next";
-import { Alert } from "@/components/ui/alert";
-import { Modal } from "@/components/ui/modal";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { PendingButton } from "@/components/ui/pending-button";
+
+
+
+
+
+
+
 import { useFocusOnError } from "@/hooks/useFocusOnError";
 import { queryKeys } from "@/lib/query-client";
+import { Alert, Button, FormField, Input, Modal, PendingButton, Select } from "@monqom/ui";
 
 interface PaymentSourceDialogProps {
   open: boolean;

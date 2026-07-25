@@ -2,14 +2,15 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
 import type { User } from "@/contexts/AuthContext";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
-import { PendingButton } from "@/components/ui/pending-button";
+
+
+
+
+
+
+
 import { useFocusOnError } from "@/hooks/useFocusOnError";
+import { Alert, Button, Card, FormField, Input, Modal, PendingButton } from "@monqom/ui";
 interface SecuritySectionProps {
   user: User | null;
   setUser: (user: User | null) => void;

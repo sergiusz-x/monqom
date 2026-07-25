@@ -4,7 +4,7 @@ import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import TransactionsPage from "@/pages/TransactionsPage";
-import { ToastProvider } from "@/contexts/ToastContext";
+
 import type {
   TransactionFilters,
   TransactionsPage as TransactionsPageData,
@@ -42,6 +42,7 @@ import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useTags } from "@/hooks/useTags";
 import { useTransactions } from "@/hooks/useTransactions";
 import api from "@/lib/api";
+import { ToastProvider } from "@monqom/ui";
 
 const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const patchWorkspace = vi.fn();

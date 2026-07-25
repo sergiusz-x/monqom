@@ -1,0 +1,321 @@
+import React from 'react';
+import { useReactTable, getCoreRowModel, ColumnDef } from '@tanstack/react-table';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import type { Transaction, TransactionSortField } from '@/types/transaction';
+import { formatCurrency } from '@/lib/money';
+import { formatShortDate } from '@/lib/date-only';
+import { useTranslation } from 'react-i18next';
+import { Button, Card } from '@monqom/ui';
+
+interface TransactionTableProps {
+  transactions: Transaction[];
+  categoryMap: Record<string, string>;
+  paymentSourceMap: Record<string, string>;
+  sortBy: TransactionSortField;
+  sortDirection: 'asc' | 'desc';
+  onSort: (field: TransactionSortField) => void;
+  onOpen: (transactionId: string) => void;
+}
+
+export function TransactionTable({
+  transactions,
+  categoryMap,
+  paymentSourceMap,
+  sortBy,
+  sortDirection,
+  onSort,
+  onOpen,
+}: TransactionTableProps) {
+  const { t } = useTranslation();
+
+  const columns = React.useMemo<ColumnDef<Transaction>[]>(() => [
+    {
+      accessorKey: 'date',
+      header: ({ column }) => {
+        const isSorted = column.isSorted;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mx-2"
+            onClick={() => {
+              const nextSortDirection = column.getIsSorted() === 'asc' ? 'desc' : 'asc';
+              onSort('date' as TransactionSortField);
+            }}
+          >
+            {t('common.date')}
+            {isSorted ? (
+              column.getIsSorted() === 'asc' ? (
+                <ArrowUp size={14} className="text-foreground" aria-hidden="true" />
+              ) : (
+                <ArrowDown size={14} className="text-foreground" aria-hidden="true" />
+              )
+            ) : (
+              <ArrowUpDown size={14} className="text-muted-foreground/60" aria-hidden="true" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const date = row.original.date;
+        return <td className="px-3 py-2">{formatShortDate(date)}</td>;
+      },
+    },
+    {
+      accessorKey: 'categoryId',
+      header: ({ column }) => {
+        const isSorted = column.isSorted;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mx-2"
+            onClick={() => {
+              const nextSortDirection = column.getIsSorted() === 'asc' ? 'desc' : 'asc';
+              onSort('category' as TransactionSortField);
+            }}
+          >
+            {t('common.category')}
+            {isSorted ? (
+              column.getIsSorted() === 'asc' ? (
+                <ArrowUp size={14} className="text-foreground" aria-hidden="true" />
+              ) : (
+                <ArrowDown size={14} className="text-foreground" aria-hidden="true" />
+              )
+            ) : (
+              <ArrowUpDown size={14} className="text-muted-foreground/60" aria-hidden="true" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const categoryId = row.original.categoryId;
+        return <td className="px-3 py-2">{categoryMap[categoryId] ?? categoryId}</td>;
+      },
+    },
+    {
+      accessorKey: 'amount',
+      header: ({ column }) => {
+        const isSorted = column.isSorted;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mx-2"
+            onClick={() => {
+              const nextSortDirection = column.getIsSorted() === 'asc' ? 'desc' : 'asc';
+              onSort('amount' as TransactionSortField);
+            }}
+          >
+            {t('common.amount')}
+            {isSorted ? (
+              column.getIsSorted() === 'asc' ? (
+                <ArrowUp size={14} className="text-foreground" aria-hidden="true" />
+              ) : (
+                <ArrowDown size={14} className="text-foreground" aria-hidden="true" />
+              )
+            ) : (
+              <ArrowUpDown size={14} className="text-muted-foreground/60" aria-hidden="true" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const amount = row.original.amount;
+        const currency = row.original.currency;
+        return <td className="px-3 py-2 font-medium">{formatCurrency(amount, currency)}</td>;
+      },
+    },
+    {
+      accessorKey: 'description',
+      header: ({ column }) => {
+        const isSorted = column.isSorted;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mx-2"
+            onClick={() => {
+              const nextSortDirection = column.getIsSorted() === 'asc' ? 'desc' : 'asc';
+              onSort('description' as TransactionSortField);
+            }}
+          >
+            {t('transactions.description')}
+            {isSorted ? (
+              column.getIsSorted() === 'asc' ? (
+                <ArrowUp size={14} className="text-foreground" aria-hidden="true" />
+              ) : (
+                <ArrowDown size={14} className="text-foreground" aria-hidden="true" />
+              )
+            ) : (
+              <ArrowUpDown size={14} className="text-muted-foreground/60" aria-hidden="true" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const description = row.original.description;
+        return <td className="max-w-52 truncate px-3 py-2 text-muted-foreground">{description}</td>;
+      },
+    },
+    {
+      accessorKey: 'tags',
+      header: ({ column }) => {
+        const isSorted = column.isSorted;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mx-2"
+            onClick={() => {
+              const nextSortDirection = column.getIsSorted() === 'asc' ? 'desc' : 'asc';
+              onSort('tags' as TransactionSortField);
+            }}
+          >
+            {t('common.tags')}
+            {isSorted ? (
+              column.getIsSorted() === 'asc' ? (
+                <ArrowUp size={14} className="text-foreground" aria-hidden="true" />
+              ) : (
+                <ArrowDown size={14} className="text-foreground" aria-hidden="true" />
+              )
+            ) : (
+              <ArrowUpDown size={14} className="text-muted-foreground/60" aria-hidden="true" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const tags = row.original.tags;
+        return (
+          <td className="px-3 py-2 text-muted-foreground">
+            {tags.length ? tags.join(', ') : '-'}
+          </td>
+        );
+      },
+    },
+    {
+      accessorKey: 'paymentSourceId',
+      header: ({ column }) => {
+        const isSorted = column.isSorted;
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mx-2"
+            onClick={() => {
+              const nextSortDirection = column.getIsSorted() === 'asc' ? 'desc' : 'asc';
+              onSort('payment_source' as TransactionSortField);
+            }}
+          >
+            {t('common.paymentSource')}
+            {isSorted ? (
+              column.getIsSorted() === 'asc' ? (
+                <ArrowUp size={14} className="text-foreground" aria-hidden="true" />
+              ) : (
+                <ArrowDown size={14} className="text-foreground" aria-hidden="true" />
+              )
+            ) : (
+              <ArrowUpDown size={14} className="text-muted-foreground/60" aria-hidden="true" />
+            )}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const paymentSourceId = row.original.paymentSourceId;
+        return (
+          <td className="px-3 py-2 text-muted-foreground">
+            {paymentSourceId ? (paymentSourceMap[paymentSourceId] ?? paymentSourceId) : t('common.none')}
+          </td>
+        );
+      },
+    },
+  ]);
+
+  const [tableState, setTableState] = React.useState({
+    sorting: [{ id: sortBy, desc: sortDirection === 'desc' }],
+  });
+
+  React.useEffect(() => {
+    setTableState({
+      sorting: [{ id: sortBy, desc: sortDirection === 'desc' }],
+    });
+  }, [sortBy, sortDirection]);
+
+  const {
+    getHeaderGroups,
+    getRowModel,
+  } = useReactTable({
+    data: transactions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    state: tableState,
+    onSortingChange: (updater) => {
+      setTableState((prev) => {
+        let newState: typeof prev;
+        if (typeof updater === 'function') {
+          newState = updater(prev);
+        } else {
+          newState = updater;
+        }
+        // Extract sort info and call onSort
+        const sorting = Array.isArray(newState.sorting) ? newState.sorting : [];
+        if (sorting.length > 0) {
+          const sort = sorting[0];
+          const field = sort.id as TransactionSortField;
+          const direction = sort.desc ? 'desc' : 'asc';
+          onSort(field);
+        }
+        return newState;
+      });
+    },
+  });
+
+  return (
+    <Card
+      padding="none"
+      data-testid="transaction-table"
+      className="hidden overflow-x-auto md:block"
+    >
+      <table className="w-full text-sm">
+        <thead className="bg-muted/30 text-left">
+          {getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  className="px-3 py-2 font-medium"
+                  aria-sort={
+                    header.isSorted
+                      ? header.isSorted === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
+                >
+                  {header.isPlaceholder ? null : header.render()}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {/* TODO: implement row virtualization with @tanstack/react-virtual */}
+          {getRowModel().rows.map((row) => (
+            <tr
+              key={row.id}
+              onClick={() => onOpen(row.original.id)}
+              className="cursor-pointer border-t border-border transition-colors hover:bg-muted/30"
+            >
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} {...cell.getProps()}>
+                  {cell.render('Cell')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
