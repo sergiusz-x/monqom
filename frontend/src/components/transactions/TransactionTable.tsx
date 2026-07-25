@@ -9,8 +9,6 @@ import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button, Card } from "@monqom/ui";
 
-
-
 interface TransactionTableProps {
   transactions: Transaction[];
   categoryMap: Record<string, string>;

@@ -1,3 +1,3 @@
-import { SpendingByCategoryChart } from '@monqom/ui';
+import { SpendingByCategoryChart } from "@monqom/ui";
 
 export { SpendingByCategoryChart };

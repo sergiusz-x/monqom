@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button, cardVariants } from "@monqom/ui";
 
-
-
 interface TransactionCardsProps {
   transactions: Transaction[];
   categoryMap: Record<string, string>;

@@ -6,9 +6,6 @@ import i18n from "@/i18n";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 
-
-
-
 import { getApiErrorMessage } from "@/lib/api-errors";
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 import { Alert, FormField, Input, PendingButton } from "@monqom/ui";

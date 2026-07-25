@@ -7,7 +7,6 @@ import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 
-
 import { useNavigate } from "react-router-dom";
 
 import { translateSystemLabel } from "@/i18n/translate-system-label";

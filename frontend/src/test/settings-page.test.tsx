@@ -24,7 +24,6 @@ import api from "@/lib/api";
 import i18n from "@/i18n";
 import { ToastProvider } from "@monqom/ui";
 
-
 const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>;

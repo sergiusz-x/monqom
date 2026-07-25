@@ -3,14 +3,16 @@ import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
 import type { User } from "@/contexts/AuthContext";
 
-
-
-
-
-
-
 import { useFocusOnError } from "@/hooks/useFocusOnError";
-import { Alert, Button, Card, FormField, Input, Modal, PendingButton } from "@monqom/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  FormField,
+  Input,
+  Modal,
+  PendingButton,
+} from "@monqom/ui";
 interface SecuritySectionProps {
   user: User | null;
   setUser: (user: User | null) => void;

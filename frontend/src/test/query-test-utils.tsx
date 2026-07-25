@@ -8,7 +8,6 @@ import {
 } from "@testing-library/react";
 import { ToastProvider } from "@monqom/ui";
 
-
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {

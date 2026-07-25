@@ -4,7 +4,6 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
 import { Select } from "@monqom/ui";
 
-
 interface WorkspaceSwitcherProps {
   compact?: boolean;
   className?: string;

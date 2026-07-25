@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@monqom/ui";
 
-
 interface TransactionPaginationProps {
   total: number;
   limit: number;

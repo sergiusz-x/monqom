@@ -3,7 +3,6 @@ import MonqomLogo from "@/components/MonqomLogo";
 import { cn } from "@/lib/utils";
 import { Card } from "@monqom/ui";
 
-
 interface AuthCardProps {
   children: ReactNode;
   compact?: boolean;

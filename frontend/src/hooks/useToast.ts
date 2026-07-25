@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import type { ToastVariant } from "@monqom/ui";
 import { useToastContext } from "@monqom/ui";
 
-
 export function useToast(durationMs?: number) {
   const {
     toasts,
