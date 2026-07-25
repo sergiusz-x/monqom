@@ -2,7 +2,8 @@ import { Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
-import { Select } from "@/components/ui/select";
+import { Select } from "@monqom/ui";
+
 
 interface WorkspaceSwitcherProps {
   compact?: boolean;

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@monqom/ui";
+
 
 export function RouteLoadingFallback() {
   const { t } = useTranslation();

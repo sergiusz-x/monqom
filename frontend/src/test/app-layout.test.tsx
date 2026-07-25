@@ -11,8 +11,9 @@ import type { User, AuthContextValue } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
-import { ToastProvider } from "@/contexts/ToastContext";
+
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { ToastProvider } from "@monqom/ui";
 
 vi.mock("@/hooks/useWorkspace", () => ({
   useWorkspace: vi.fn(() => ({

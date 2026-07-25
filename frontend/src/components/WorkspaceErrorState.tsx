@@ -1,4 +1,5 @@
-import { AsyncState } from "@/components/ui/async-state";
+
+import { AsyncState } from "@monqom/ui";
 
 interface WorkspaceErrorStateProps {
   message: string;

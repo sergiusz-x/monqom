@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useToast } from "@/hooks/useToast";
-import { Button } from "@/components/ui/button";
+
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { ProfileSection } from "@/components/settings/ProfileSection";
 import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
-import { ReleaseVersion } from "@/components/ReleaseVersion";
+import { Button } from "@monqom/ui";
 
 type ActiveSection = "profile" | "workspace" | "security" | "data";
 
