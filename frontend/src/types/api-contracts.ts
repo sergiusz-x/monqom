@@ -46,7 +46,11 @@ export interface ApiBudgetProgressItem {
 }
 
 export type ApiPaymentSourceType =
-  "cash" | "debit_card" | "credit_card" | "bank" | "other";
+  | "cash"
+  | "debit_card"
+  | "credit_card"
+  | "bank"
+  | "other";
 
 export interface ApiPaymentSource {
   id: string;
