@@ -17,7 +17,7 @@ const trend: SpendingTrendItem[] = [
 function renderChart(data = trend) {
   return render(
     <MemoryRouter>
-      <SpendingTrendChart trend={data} currency=\"USD\" currentMonth=\"2026-05\" />
+      <SpendingTrendChart trend={data} currency="USD" currentMonth="2026-05" />
     </MemoryRouter>
   );
 }
