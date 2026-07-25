@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import MonqomLogo from "@/components/MonqomLogo";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
+import { Card } from "@monqom/ui";
+
 
 interface AuthCardProps {
   children: ReactNode;

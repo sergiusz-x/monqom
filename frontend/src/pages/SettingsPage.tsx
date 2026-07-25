@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useToast } from "@/hooks/useToast";
-import { Button } from "@/components/ui/button";
+
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { ProfileSection } from "@/components/settings/ProfileSection";
 import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
-import { ReleaseVersion } from "@/components/ReleaseVersion";
+import { Button } from "@monqom/ui";
 
 type ActiveSection = "profile" | "workspace" | "security" | "data";
 
@@ -33,13 +33,7 @@ export default function SettingsPage() {
         <PageHeader
           title={t("settings.title")}
           description={t("settings.description")}
-          actions={
-            <div className="pt-1">
-              <ReleaseVersion />
-            </div>
-          }
         />
-
         <nav
           aria-label={t("settings.title")}
           className="grid grid-cols-2 rounded-lg border border-border bg-muted/40 p-1 sm:grid-cols-4"
@@ -53,8 +47,8 @@ export default function SettingsPage() {
               className={`px-3 py-2 sm:px-4 ${
                 activeSection === id
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  : "text-muted-foreground hover:text-foreground"`
+              }}
               onClick={() => setActiveSection(id)}
             >
               {label}

@@ -7,12 +7,13 @@ import MarketingLayout from "@/components/layout/MarketingLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LandingRoute from "@/components/LandingRoute";
 import { WorkspaceProvider } from "@/hooks/useWorkspace";
-import { ToastProvider } from "@/contexts/ToastContext";
+
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { RouteLoadingFallback } from "@/components/RouteLoadingFallback";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { ToastProvider } from "@monqom/ui";
 
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));

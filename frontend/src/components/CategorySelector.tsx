@@ -4,12 +4,13 @@ import { cn } from "@/lib/utils";
 import type { Category } from "@/types/category";
 import { useCategories } from "@/hooks/useCategories";
 import { useTranslation } from "react-i18next";
-import { Alert } from "@/components/ui/alert";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { StateMessage } from "@/components/ui/state-message";
-import { useFieldControlProps } from "@/components/ui/form-field";
+
+
+
+
 import { Popover } from "@base-ui/react/popover";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { Alert, Button, StateMessage, buttonVariants, useFieldControlProps } from "@monqom/ui";
 
 export interface CategorySelectorProps {
   workspaceId: string;

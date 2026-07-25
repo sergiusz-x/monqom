@@ -6,7 +6,8 @@ import {
   type RenderHookOptions,
   type RenderOptions,
 } from "@testing-library/react";
-import { ToastProvider } from "@/contexts/ToastContext";
+import { ToastProvider } from "@monqom/ui";
+
 
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({

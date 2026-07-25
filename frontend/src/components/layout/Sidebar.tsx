@@ -13,15 +13,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme, type ThemeMode } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
+
 import MonqomLogo from "@/components/MonqomLogo";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 import { useState } from "react";
 import { useToast } from "@/hooks/useToast";
-import { PendingButton } from "@/components/ui/pending-button";
+
 import type { AppTranslationKey } from "@/i18n";
+import { Button, PendingButton } from "@monqom/ui";
 
 const navItems = [
   {

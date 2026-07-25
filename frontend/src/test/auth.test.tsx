@@ -10,7 +10,7 @@ import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ResendVerificationPage from "@/pages/ResendVerificationPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { ToastProvider } from "@/contexts/ToastContext";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock the api module
@@ -31,6 +31,7 @@ vi.mock("@/lib/api", () => {
 });
 
 import api from "@/lib/api";
+import { ToastProvider } from "@monqom/ui";
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
