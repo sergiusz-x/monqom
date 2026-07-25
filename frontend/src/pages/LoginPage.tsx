@@ -17,7 +17,7 @@ interface LoginFormValues {
 }
 
 interface TwoFactorFormValues {
-  code: string;
+  totp: string;
 }
 
 export default function LoginPage() {
@@ -56,7 +56,7 @@ export default function LoginPage() {
         totpEnabled: boolean;
         createdAt: string;
         updatedAt: string;
-      }>("/auth/2fa/verify", { token: data.code });
+      }>("/auth/2fa/verify", { token: data.totp });
       setUser(res.data);
       navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
@@ -80,9 +80,9 @@ export default function LoginPage() {
         </div>
         <form onSubmit={handleSubmit(onTwoFactorSubmit)} className="space-y-4">
           <FormField
-            id="code"
+            id="totp"
             label={t("auth.authenticationCode")}
-            error={errors.code?.message}
+            error={errors.totp?.message}
             required
           >
             <Input
@@ -90,7 +90,7 @@ export default function LoginPage() {
               autoComplete="one-time-code"
               inputMode="numeric"
               placeholder="000000"
-              {...register("code", { required: t("auth.codeRequired") })}
+              {...register("totp", { required: t("auth.codeRequired") })}
             />
           </FormField>
           {serverError && (
