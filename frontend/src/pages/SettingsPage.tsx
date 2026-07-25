@@ -28,62 +28,69 @@ export default function SettingsPage() {
   ];
 
   return (
-    <PageContainer className="space-y-6">
-      <PageHeader
-        title={t("settings.title")}
-        description={t("settings.description")}
-      />
-
-      <div className="grid rounded-lg border border-border bg-muted/40 p-1 sm:w-fit sm:grid-cols-4">
-        {tabs.map(({ id, label }) => (
-          <Button
-            key={id}
-            type="button"
-            variant="ghost"
-            className={`px-4 py-2 ${
-              activeSection === id
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setActiveSection(id)}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
-
-      {activeSection === "profile" ? (
-        <ProfileSection
-          key={user?.id ?? "anonymous"}
-          user={user}
-          setUser={setUser}
-          onSaved={showToast}
+    <PageContainer>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title={t("settings.title")}
+          description={t("settings.description")}
+          actions={
+            <div className="pt-1">
+              <ReleaseVersion />
+            </div>
+          }
         />
-      ) : activeSection === "workspace" ? (
-        <WorkspaceSection
-          key={workspace?.id ?? "missing-workspace"}
-          workspace={workspace}
-          workspaceId={workspaceId}
-          isLoading={isLoading}
-          error={error}
-          onSaved={(nextWorkspace, message) => {
-            patchWorkspace(nextWorkspace);
-            showToast(message);
-          }}
-          onRetry={() => void refetch()}
-        />
-      ) : activeSection === "security" ? (
-        <SecuritySection user={user} setUser={setUser} onSaved={showToast} />
-      ) : (
-        <DataSection
-          workspaceId={workspaceId}
-          setUser={setUser}
-          onSaved={showToast}
-        />
-      )}
 
-      <div className="pt-4 text-center text-sm text-muted-foreground">
-        <ReleaseVersion />
+        <nav
+          aria-label={t("settings.title")}
+          className="grid grid-cols-2 rounded-lg border border-border bg-muted/40 p-1 sm:grid-cols-4"
+        >
+          {tabs.map(({ id, label }) => (
+            <Button
+              key={id}
+              type="button"
+              variant="ghost"
+              aria-pressed={activeSection === id}
+              className={`px-3 py-2 sm:px-4 ${
+                activeSection === id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setActiveSection(id)}
+            >
+              {label}
+            </Button>
+          ))}
+        </nav>
+
+        {activeSection === "profile" ? (
+          <ProfileSection
+            key={user?.id ?? "anonymous"}
+            user={user}
+            setUser={setUser}
+            onSaved={showToast}
+          />
+        ) : activeSection === "workspace" ? (
+          <WorkspaceSection
+            key={workspace?.id ?? "missing-workspace"}
+            workspace={workspace}
+            workspaceId={workspaceId}
+            isLoading={isLoading}
+            error={error}
+            onSaved={(nextWorkspace, message) => {
+              patchWorkspace(nextWorkspace);
+              showToast(message);
+            }}
+            onRetry={() => void refetch()}
+          />
+        ) : activeSection === "security" ? (
+          <SecuritySection user={user} setUser={setUser} onSaved={showToast} />
+        ) : (
+          <DataSection
+            workspaceId={workspaceId}
+            setUser={setUser}
+            onSaved={showToast}
+          />
+        )}
       </div>
     </PageContainer>
   );
