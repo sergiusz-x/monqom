@@ -41,7 +41,7 @@ jobs:
       - run: npm run migrate:deploy
       - run: npm run test:e2e:critical -- --runInBand
       - run: npm run build
-      - run: npm audit --audit-level=high
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

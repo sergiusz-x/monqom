@@ -9,8 +9,6 @@ import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/useToast";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
-import { ReleaseVersion } from "@/components/ReleaseVersion";
-
 export default function AppLayout() {
   const { t } = useTranslation();
   const { workspaceId, workspace, patchWorkspace } = useWorkspace();
@@ -40,9 +38,6 @@ export default function AppLayout() {
           <WorkspaceSwitcher compact />
         </div>
         <Outlet />
-        <div className="px-4 pb-2 text-right">
-          <ReleaseVersion />
-        </div>
       </main>
       <BottomNav onAddTransaction={handleAddTransaction} />
       {workspaceId && (
