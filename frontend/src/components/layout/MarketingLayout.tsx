@@ -1,8 +1,6 @@
 import { Link, Outlet } from "react-router";
 import MonqomLogo from "@/components/MonqomLogo";
 import PublicPreferences from "./PublicPreferences";
-import { ReleaseVersion } from "@/components/ReleaseVersion";
-
 export default function MarketingLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -21,9 +19,6 @@ export default function MarketingLayout() {
       <main className="flex flex-1">
         <Outlet />
       </main>
-      <footer className="px-4 py-2 text-right">
-        <ReleaseVersion />
-      </footer>
     </div>
   );
 }
