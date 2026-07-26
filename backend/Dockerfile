@@ -40,7 +40,7 @@ COPY backend/prisma ./backend/prisma
 COPY backend/prisma.config.ts ./backend/
 RUN pnpm install --frozen-lockfile --prod
 WORKDIR /app/backend
-RUN npx prisma generate
+RUN pnpm dlx prisma@7.8.0 generate
 WORKDIR /app
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=release /release.env ./backend/release.env
