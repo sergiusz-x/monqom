@@ -180,7 +180,7 @@ export function useTransactionForm({
       );
       onSaved({ paymentSourceId: selectedPaymentSourceId });
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = formatApiError(err);
       setSubmitError(errorMessage);
       showToast(errorMessage, "error");

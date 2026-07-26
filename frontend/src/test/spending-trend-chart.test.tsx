@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+
 import { MemoryRouter } from "react-router-dom";
 import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
 import type { SpendingTrendItem } from "@/types/dashboard";
@@ -25,7 +25,7 @@ function renderChart(data = trend) {
 describe("SpendingTrendChart", () => {
   it("renders bars for each month", () => {
     renderChart();
-    const bars = screen.getAllByRole("img"); // each bar is an <rect> with role img?
+
     // We'll just assert that we have at least one svg
     expect(screen.getByRole("img")).toBeInTheDocument();
   });
