@@ -66,6 +66,33 @@ test.beforeEach(async ({ page }) => {
       return;
     }
 
+    if (path.endsWith(`/workspaces/${workspaceId}/transactions/tags`)) {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
+    if (path.endsWith(`/workspaces/${workspaceId}/payment-sources`)) {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
+    if (path.endsWith(`/workspaces/${workspaceId}/transactions`)) {
+      await route.fulfill({
+        json: { data: [], total: 0, limit: 20, offset: 0 },
+      });
+      return;
+    }
+
+    if (path.endsWith(`/workspaces/${workspaceId}/budgets/progress`)) {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
+    if (path.endsWith(`/workspaces/${workspaceId}/budgets`)) {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
     if (path.endsWith(`/workspaces/${workspaceId}/dashboard`)) {
       await route.fulfill({
         json: {
@@ -152,9 +179,16 @@ test("renders a readable dashboard without duplicated chart series", async ({
   });
 });
 
-test("keeps the dashboard usable on a narrow screen", async ({ page }) => {
+test("keeps the dashboard usable on a narrow screen", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dashboard");
+
+  await expect(
+    page.getByRole("button", { name: "Previous month" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next month" })).toBeVisible();
 
   const trend = page.getByRole("list", { name: "Monthly spending amounts" });
   await expect(trend).toBeVisible();
@@ -168,4 +202,31 @@ test("keeps the dashboard usable on a narrow screen", async ({ page }) => {
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   expect(hasHorizontalOverflow).toBe(false);
+  await page.screenshot({
+    path: testInfo.outputPath("dashboard-mobile.png"),
+    fullPage: true,
+  });
+});
+
+test("keeps the remaining authenticated empty states usable on a narrow screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const [path, heading] of [
+    ["/transactions", "Transactions"],
+    ["/budgets", "Budgets"],
+    ["/payment-sources", "Payment sources"],
+    ["/settings", "Settings"],
+  ]) {
+    await page.goto(path);
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      ),
+    ).toBe(false);
+  }
 });
