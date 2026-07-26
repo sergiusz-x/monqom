@@ -27,20 +27,24 @@ jobs:
       DATABASE_URL: postgresql://monqom:monqom@127.0.0.1:5432/monqom_ci
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
       - run: npx prisma generate
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test -- --runInBand
-      - run: npm run migrate:deploy
-      - run: npm run test:e2e:critical -- --runInBand
-      - run: npm run build
+      - run: pnpm run format:check
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test -- --runInBand
+      - run: pnpm run migrate:deploy
+      - run: pnpm run test:e2e:critical -- --runInBand
+      - run: pnpm run build
 
   frontend:
     runs-on: ubuntu-latest
@@ -49,19 +53,24 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: pnpm run format:check
+      - run: pnpm run lint
+      - run: pnpm test
+      - run: pnpm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - run: npm audit --audit-level=high
+      - run: pnpm run test:e2e
+      - run: pnpm audit --audit-level=high
+        working-directory: .
   production-containers:
     runs-on: ubuntu-latest
     steps:
