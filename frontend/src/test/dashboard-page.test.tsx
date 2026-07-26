@@ -15,14 +15,19 @@ import type { Category } from "@/types/category";
 vi.mock("@/hooks/useWorkspace", () => ({ useWorkspace: vi.fn() }));
 vi.mock("@/hooks/useDashboardData", () => ({ useDashboardData: vi.fn() }));
 vi.mock("@/hooks/useCategories", () => ({ useCategories: vi.fn() }));
+vi.mock("@/hooks/usePaymentSources", () => ({
+  usePaymentSources: vi.fn(),
+}));
 
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useCategories } from "@/hooks/useCategories";
+import { usePaymentSources } from "@/hooks/usePaymentSources";
 
 const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const mockUseDashboardData = useDashboardData as ReturnType<typeof vi.fn>;
 const mockUseCategories = useCategories as ReturnType<typeof vi.fn>;
+const mockUsePaymentSources = usePaymentSources as ReturnType<typeof vi.fn>;
 
 function makeSummary(
   overrides: Partial<SpendingSummary> = {},
@@ -121,6 +126,11 @@ beforeEach(() => {
     isLoading: false,
     error: null,
   });
+  mockUsePaymentSources.mockReturnValue({
+    paymentSources: [],
+    isLoading: false,
+    error: null,
+  });
   mockUseDashboardData.mockReturnValue({
     summary: makeSummary(),
     categoryBreakdown: makeCategoryBreakdown(),
@@ -167,15 +177,18 @@ describe("DashboardPage", () => {
     expect(mockUseDashboardData.mock.calls.length).toBeGreaterThan(1);
   });
 
-  it("opens edit transaction modal when recent item is clicked", async () => {
+  it("opens transaction details when a recent item is clicked", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /groceries/i }));
+    await user.click(screen.getByRole("button", { name: /team lunch/i }));
 
     expect(
-      screen.getByRole("dialog", { name: /edit transaction/i }),
+      screen.getByRole("dialog", { name: /transaction details/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: /edit transaction/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows empty state for new users", () => {

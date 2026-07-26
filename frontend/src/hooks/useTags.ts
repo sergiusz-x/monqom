@@ -9,7 +9,7 @@ export function useTags(workspaceId: string) {
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
       const response = await api.get<string[]>(
-        `/workspaces/${workspaceId}/transactions/tags`,
+        `/workspaces/${workspaceId}/tags`,
         { signal },
       );
       return response.data;

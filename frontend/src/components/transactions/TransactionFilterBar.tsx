@@ -90,7 +90,7 @@ export function TransactionFilterBar({
           type="button"
           size="sm"
           variant={isCurrentMonth ? "default" : "outline"}
-          className="gap-1.5"
+          className="gap-1.5 rounded-xl"
           onClick={() =>
             onChange({
               ...filters,
@@ -107,7 +107,7 @@ export function TransactionFilterBar({
             type="button"
             size="sm"
             variant="ghost"
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl"
             onClick={() => onChange({ ...filters, dateFrom: "", dateTo: "" })}
           >
             <X size={14} aria-hidden="true" />
