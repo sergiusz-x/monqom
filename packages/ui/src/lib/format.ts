@@ -1,19 +1,11 @@
 // Format utilities for locale-aware currency, date, and number formatting.
 // Uses Intl APIs and respects workspace locale/timezone settings if available.
 
-declare global {
-  interface Window {
-    __WORKSPACE_SETTINGS__?: {
-      locale?: string;
-      timezone?: string;
-    };
-  }
-}
-
 export function getLocale(): string {
   // If a global workspace settings object is present (e.g., injected by server)
-  if (typeof window !== "undefined" && window.__WORKSPACE_SETTINGS__) {
-    const locale = window.__WORKSPACE_SETTINGS__.locale;
+  const win = typeof window !== "undefined" ? (window as any) : undefined;
+  if (win?.__WORKSPACE_SETTINGS__) {
+    const locale = win.__WORKSPACE_SETTINGS__.locale;
     if (locale) return locale;
   }
   // Otherwise, try the HTML lang attribute (often set by server-side rendering)
@@ -32,8 +24,9 @@ export function getLocale(): string {
  * the environment's timezone.
  */
 export function getTimezone(): string {
-  if (typeof window !== "undefined" && window.__WORKSPACE_SETTINGS__) {
-    const tz = window.__WORKSPACE_SETTINGS__.timezone;
+  const win = typeof window !== "undefined" ? (window as any) : undefined;
+  if (win?.__WORKSPACE_SETTINGS__) {
+    const tz = win.__WORKSPACE_SETTINGS__.timezone;
     if (tz) return tz;
   }
   // Fallback to the environment's timezone

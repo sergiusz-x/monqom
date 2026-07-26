@@ -23,7 +23,6 @@ import {
   shiftMonth as shiftCalendarMonth,
 } from "@/lib/date-only";
 import {
-  formatCurrency,
   majorAmountToMinorUnits,
   minorUnitsToMajorAmount,
 } from "@/lib/money";

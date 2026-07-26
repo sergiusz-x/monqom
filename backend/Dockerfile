@@ -36,9 +36,12 @@ RUN addgroup -S monqom && adduser -S monqom -G monqom
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY backend/package.json ./backend/
 COPY packages/ui/package.json ./packages/ui/
+COPY backend/prisma ./backend/prisma
+COPY backend/prisma.config.ts ./backend/
 RUN pnpm install --frozen-lockfile --prod
-COPY --from=build /app/backend/node_modules/.prisma ./backend/node_modules/.prisma
-COPY --from=build /app/backend/node_modules/.prisma ./node_modules/.prisma
+WORKDIR /app/backend
+RUN npx prisma generate
+WORKDIR /app
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=release /release.env ./backend/release.env
 USER monqom

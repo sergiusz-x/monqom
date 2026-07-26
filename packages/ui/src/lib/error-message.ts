@@ -1,4 +1,4 @@
-interface ApiErrorResponse {
+interface ApiErrorStructure {
   response?: {
     status?: number;
     data?: {
