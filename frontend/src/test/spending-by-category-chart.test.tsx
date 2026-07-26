@@ -60,7 +60,11 @@ describe("SpendingByCategoryChart", () => {
   });
 
   it("handles no spending gracefully", () => {
-    const { container } = renderChart(makeBreakdown({ totalSpending: 0, categories: [] }));
-    expect(container.querySelector(".recharts-responsive-container")).toBeNull();
+    const { container } = renderChart(
+      makeBreakdown({ totalSpending: 0, categories: [] }),
+    );
+    expect(
+      container.querySelector(".recharts-responsive-container"),
+    ).toBeNull();
   });
 });
