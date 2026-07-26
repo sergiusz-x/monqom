@@ -60,7 +60,11 @@ export function renderHookWithQueryClient<Result, Props>(
     ) : (
       children
     );
-    return <QueryClientProvider client={client}>{content}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={client}>
+        <ToastProvider>{content}</ToastProvider>
+      </QueryClientProvider>
+    );
   }
 
   return {

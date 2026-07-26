@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import type { Category } from "@/types/category";
 import type { Transaction } from "@/types/transaction";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
@@ -7,7 +7,7 @@ import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { Button, EmptyState, SectionCard } from "@monqom/ui";

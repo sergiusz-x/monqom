@@ -12,7 +12,8 @@ import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
+import { EmptyState } from "../empty-state";
 
 function monthDateRange(month: string): { dateFrom: string; dateTo: string } {
   const [yearPart, monthPart] = month.split("-");
@@ -60,6 +61,17 @@ export function SpendingByCategoryChart({
     return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
   }
 
+
+  if (categories.length === 0 || breakdown.totalSpending === 0) {
+    return (
+      <EmptyState
+        title={t("dashboard.noCategory")}
+        description={t("dashboard.noCategoryDescription")}
+        className="min-h-48 border-none bg-muted/20"
+      />
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart
@@ -74,7 +86,7 @@ export function SpendingByCategoryChart({
         <YAxis tick={false} axisLine={false} hide={true} />
         <Tooltip
           labelFormatter={() => ""}
-          formatter={(payload) =>
+          formatter={(payload: any) =>
             formatCurrency(payload.value ?? 0, breakdown.currency)
           }
           contentStyle={{

@@ -10,6 +10,7 @@ import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
 import { Button } from "@monqom/ui";
+import { ReleaseVersion } from "@/components/ReleaseVersion";
 
 type ActiveSection = "profile" | "workspace" | "security" | "data";
 

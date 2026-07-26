@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@monqom/ui";
+import { useToast } from "@/hooks/useToast";
 import { formatApiError } from "@monqom/ui/lib/error-message";
 import api from "@/lib/api";
 import { usePaymentSources } from "@/hooks/usePaymentSources";

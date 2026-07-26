@@ -18,7 +18,7 @@ export function majorAmountToMinorUnits(value: number | string): number | null {
         ? value.toFixed(2)
         : ""
       : value.trim();
-  const match = /^(\d+)(?:\\.(\d{1,2}))?$/.exec(normalized);
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(normalized);
   if (!match) return null;
 
   const whole = Number(match[1]);
@@ -45,7 +45,7 @@ export function formatMinorUnits(
   locale?: string,
 ): string {
   if (minorUnits === null) return "";
-  return new Intl.NumberFormat(locale ?? undefined, {
+  return new Intl.NumberFormat(locale ?? "en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: true,
@@ -54,7 +54,7 @@ export function formatMinorUnits(
 
 /** Strip non-digit characters from a string and return the numeric minor units. */
 export function digitsToMinorUnits(value: string): number | null {
-  const digits = value.replace(/\\D/g, "").replace(/^0+(?=\\d)/, "");
+  const digits = value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
   if (!digits) return null;
   const minorUnits = Number(digits);
   return Number.isSafeInteger(minorUnits) ? minorUnits : null;

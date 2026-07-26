@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
 import type { SpendingTrendItem } from "@/types/dashboard";
 
@@ -24,10 +24,9 @@ function renderChart(data = trend) {
 
 describe("SpendingTrendChart", () => {
   it("renders bars for each month", () => {
-    renderChart();
-
-    // We'll just assert that we have at least one svg
-    expect(screen.getByRole("img")).toBeInTheDocument();
+    const { container } = renderChart();
+    const svg = container.querySelector(".recharts-responsive-container");
+    expect(svg).toBeInTheDocument();
   });
 
   it("applies correct fill colors based on selection and current month", () => {

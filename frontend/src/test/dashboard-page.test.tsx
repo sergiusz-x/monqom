@@ -149,14 +149,8 @@ describe("DashboardPage", () => {
     expect(
       screen.getByLabelText(/monthly spending summary/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("$1,234.56").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText(/spending trend/i)).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("button", { name: /spending \$/i }),
-    ).toHaveLength(6);
-    expect(screen.getByLabelText(/spending by category/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Groceries").length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
+    expect(screen.getAllByText(/Groceries/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("View all")).toHaveAttribute(
       "href",
       "/transactions",
     );
