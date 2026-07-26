@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - monqom-pgdata:/var/lib/postgresql
     healthcheck:
@@ -19,8 +19,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: backend/Dockerfile.dev
     restart: always
     depends_on:
       postgres:
@@ -30,11 +30,13 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
     volumes:
-      - ./backend:/app
+      - .:/app
       - monqom-backend-node_modules:/app/node_modules
-    command: sh -c "npx prisma generate && npm run migrate:deploy && npm run start:dev"
+      - monqom-backend-package-node_modules:/app/backend/node_modules
+      - monqom-ui-node_modules:/app/packages/ui/node_modules
+    command: sh -c "CI=true pnpm install --frozen-lockfile && pnpm --dir backend exec prisma generate && pnpm --dir backend run migrate:deploy && pnpm --dir backend run start:dev"
     healthcheck:
       test:
         [
@@ -50,8 +52,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     restart: always
     depends_on:
       backend:
@@ -59,12 +61,18 @@ services:
     environment:
       VITE_API_TARGET: http://backend:3000
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT:-5173}:5173"
     volumes:
-      - ./frontend:/app
+      - .:/app
       - monqom-frontend-node_modules:/app/node_modules
+      - monqom-frontend-package-node_modules:/app/frontend/node_modules
+      - monqom-ui-node_modules:/app/packages/ui/node_modules
+    command: sh -c "CI=true pnpm install --frozen-lockfile && pnpm --dir frontend exec vite --host 0.0.0.0"
 
 volumes:
   monqom-pgdata:
   monqom-backend-node_modules:
   monqom-frontend-node_modules:
+  monqom-backend-package-node_modules:
+  monqom-frontend-package-node_modules:
+  monqom-ui-node_modules:
