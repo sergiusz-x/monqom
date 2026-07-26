@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Button, SectionCard } from "@monqom/ui";
 
-
-
 interface MonthlySpendingSummaryProps {
   summary: SpendingSummary;
   monthLabel: string;

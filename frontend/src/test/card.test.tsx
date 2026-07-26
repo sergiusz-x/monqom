@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Card, SectionCard } from "@monqom/ui";
 
-
 describe("card surfaces", () => {
   it("applies the shared default card surface", () => {
     render(<Card>Balance</Card>);

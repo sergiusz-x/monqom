@@ -13,10 +13,6 @@ import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
-
-
-
-
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import type { Category } from "@/types/category";
 import type { ApiTransaction } from "@/types/api-contracts";
@@ -27,7 +23,16 @@ import { formatLongDate } from "@/lib/date-only";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 
 import { translateSystemLabel } from "@/i18n/translate-system-label";
-import { Alert, AsyncState, Button, ConfirmationDialog, EmptyState, SectionCard, buttonVariants, cardVariants } from "@monqom/ui";
+import {
+  Alert,
+  AsyncState,
+  Button,
+  ConfirmationDialog,
+  EmptyState,
+  SectionCard,
+  buttonVariants,
+  cardVariants,
+} from "@monqom/ui";
 
 function buildCategoryLabels(
   categories: Category[],

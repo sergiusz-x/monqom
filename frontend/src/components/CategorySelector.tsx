@@ -5,12 +5,15 @@ import type { Category } from "@/types/category";
 import { useCategories } from "@/hooks/useCategories";
 import { useTranslation } from "react-i18next";
 
-
-
-
 import { Popover } from "@base-ui/react/popover";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
-import { Alert, Button, StateMessage, buttonVariants, useFieldControlProps } from "@monqom/ui";
+import {
+  Alert,
+  Button,
+  StateMessage,
+  buttonVariants,
+  useFieldControlProps,
+} from "@monqom/ui";
 
 export interface CategorySelectorProps {
   workspaceId: string;

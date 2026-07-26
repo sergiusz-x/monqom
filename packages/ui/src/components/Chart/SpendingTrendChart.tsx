@@ -1,22 +1,38 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { SpendingTrendItem } from '@/types/dashboard';
-import { formatCurrency } from '@/lib/money';
-import { formatMonth, formatShortMonth } from '@/lib/date-only';
-import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import type { SpendingTrendItem } from "@/types/dashboard";
+import { formatCurrency } from "@/lib/money";
+import { formatMonth, formatShortMonth } from "@/lib/date-only";
+import { useTranslation } from "react-i18next";
+import { useState } from "react";
 
 const FALLBACK_COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-6)',
-  'var(--chart-7)',
-  'var(--chart-8)',
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
 ] as const;
 
-export function SpendingTrendChart({ trend, currency, currentMonth }: { trend: SpendingTrendItem[]; currency: string; currentMonth: string }) {
+export function SpendingTrendChart({
+  trend,
+  currency,
+  currentMonth,
+}: {
+  trend: SpendingTrendItem[];
+  currency: string;
+  currentMonth: string;
+}) {
   const { t } = useTranslation();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
@@ -34,9 +50,9 @@ export function SpendingTrendChart({ trend, currency, currentMonth }: { trend: S
   }));
 
   const getBarFill = (month: string): string => {
-    if (month === selectedMonth) return 'var(--chart-2)';
-    if (month === currentMonth) return 'var(--chart-1)';
-    return 'var(--chart-3)';
+    if (month === selectedMonth) return "var(--chart-2)";
+    if (month === currentMonth) return "var(--chart-1)";
+    return "var(--chart-3)";
   };
 
   const getBarOpacity = (month: string): number => {
@@ -49,14 +65,18 @@ export function SpendingTrendChart({ trend, currency, currentMonth }: { trend: S
     <>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{t('dashboard.trend')}</h2>
-          <p className="text-sm text-muted-foreground">{t('dashboard.trendDescription')}</p>
+          <h2 className="text-lg font-semibold">{t("dashboard.trend")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.trendDescription")}
+          </p>
         </div>
-        {(selectedMonth ?? currentMonth) {selectedMonth ?? currentMonth && ({selectedMonth ?? currentMonth && ( (
+        {(selectedMonth ?? currentMonth) && (
           <p className="rounded-full bg-muted px-3 py-1 text-sm font-medium">
-            {formatMonth(selectedMonth ?? currentMonth)}: {formatCurrency(
-              trend.find((i) => i.month === (selectedMonth ?? currentMonth))?.total ?? 0,
-              currency
+            {formatMonth(selectedMonth ?? currentMonth)}:{" "}
+            {formatCurrency(
+              trend.find((i) => i.month === (selectedMonth ?? currentMonth))
+                ?.total ?? 0,
+              currency,
             )}
           </p>
         )}
@@ -64,7 +84,10 @@ export function SpendingTrendChart({ trend, currency, currentMonth }: { trend: S
 
       <div className="grid grid-cols-[auto_1fr] gap-3">
         {/* Vertical axis labels */}
-        <div className="flex h-48 flex-col justify-between text-right text-xs text-muted-foreground" aria-hidden="true">
+        <div
+          className="flex h-48 flex-col justify-between text-right text-xs text-muted-foreground"
+          aria-hidden="true"
+        >
           <span>{formatCurrency(maxTotal, currency)}</span>
           <span>{formatCurrency(maxTotal / 2, currency)}</span>
           <span>{formatCurrency(0, currency)}</span>
@@ -90,21 +113,22 @@ export function SpendingTrendChart({ trend, currency, currentMonth }: { trend: S
                   axisLine={false}
                   tickFormatter={(value) => stringify(value)}
                 />
-                <YAxis
-                  tick={false}
-                  axisLine={false}
-                  hide={true}
-                />
+                <YAxis tick={false} axisLine={false} hide={true} />
                 <Tooltip
-                  labelFormatter={() => ''}
+                  labelFormatter={() => ""}
                   formatter={(payload) => {
                     const value = payload.value ?? 0;
                     const datum = barData.find((d) => d.total === value);
-                    if (!datum) return '';
+                    if (!datum) return "";
                     return `${formatMonth(datum.month)}: ${formatCurrency(value, currency)}`;
                   }}
-                  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff', padding: '4px 8px', borderRadius: '4px' }}
-                  separator={': '}
+                  contentStyle={{
+                    backgroundColor: "rgba(0,0,0,0.7)",
+                    color: "#fff",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                  }}
+                  separator={": "}
                 />
                 <Legend verticalAlign="top" height={36} />
                 {barData.map((entry) => (

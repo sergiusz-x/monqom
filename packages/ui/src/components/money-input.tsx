@@ -4,11 +4,10 @@ import { cn } from "../lib/utils";
 import { digitsToMinorUnits, formatMinorUnits } from "../lib/money";
 import { useTranslation } from "react-i18next";
 
-interface MoneyInputProps
-  extends Omit<
-    InputHTMLAttributes<HTMLInputElement>,
-    "type" | "value" | "defaultValue" | "onChange"
-  > {
+interface MoneyInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type" | "value" | "defaultValue" | "onChange"
+> {
   currency: string;
   minorUnits: number | null;
   onMinorUnitsChange: (minorUnits: number | null) => void;

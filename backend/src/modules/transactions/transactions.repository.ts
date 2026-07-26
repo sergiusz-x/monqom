@@ -51,13 +51,7 @@ export interface SoftDeleteTransactionInput {
 }
 
 export type TransactionSortField =
-    | 'date'
-    | 'category'
-    | 'amount'
-    | 'description'
-    | 'notes'
-    | 'tags'
-    | 'payment_source'
+    'date' | 'category' | 'amount' | 'description' | 'notes' | 'tags' | 'payment_source'
 
 export type TransactionSortDirection = 'asc' | 'desc'
 

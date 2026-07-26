@@ -6,10 +6,6 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 import { Alert, FormField, Input, PendingButton } from "@monqom/ui";
 
-
-
-
-
 interface FormValues {
   email: string;
 }

@@ -3,9 +3,6 @@ import { Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button, Input, Select } from "@monqom/ui";
 
-
-
-
 interface TransactionTagSelectorProps {
   availableTags: string[];
   value: string[];

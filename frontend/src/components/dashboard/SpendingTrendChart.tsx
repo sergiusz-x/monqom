@@ -1,3 +1,3 @@
-import { SpendingTrendChart } from '@monqom/ui';
+import { SpendingTrendChart } from "@monqom/ui";
 
 export { SpendingTrendChart };

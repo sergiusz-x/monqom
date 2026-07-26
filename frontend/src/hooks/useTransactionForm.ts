@@ -52,45 +52,49 @@ export function useTransactionForm({
     error: paymentSourcesError,
   } = usePaymentSources(workspaceId, isEdit);
   const [amountMinorUnits, setAmountMinorUnits] = useState<number | null>(() =>
-    isEdit && transaction ? majorAmountToMinorUnits(transaction.amount) : null
+    isEdit && transaction ? majorAmountToMinorUnits(transaction.amount) : null,
   );
   const [currency, setCurrency] = useState(
-    () => transaction?.currency ?? defaultCurrency
+    () => transaction?.currency ?? defaultCurrency,
   );
   const [date, setDate] = useState(() =>
     isEdit && transaction
       ? (normalizeDateOnly(transaction.date) ?? "")
-      : getDateOnlyInTimeZone(new Date(), defaultTimezone)
+      : getDateOnlyInTimeZone(new Date(), defaultTimezone),
   );
   const [description, setDescription] = useState(() =>
-    isEdit && transaction ? transaction.description : ""
+    isEdit && transaction ? transaction.description : "",
   );
   const [categoryId, setCategoryId] = useState<string | null>(() =>
-    isEdit && transaction ? transaction.categoryId : null
+    isEdit && transaction ? transaction.categoryId : null,
   );
   const [notes, setNotes] = useState(() =>
-    isEdit && transaction ? (transaction.notes ?? "") : ""
+    isEdit && transaction ? (transaction.notes ?? "") : "",
   );
   const [selectedTags, setSelectedTags] = useState<string[]>(() =>
-    transaction?.tags ? [...transaction.tags] : []
+    transaction?.tags ? [...transaction.tags] : [],
   );
   const [paymentSourceId, setPaymentSourceId] = useState(() =>
     isEdit && transaction
       ? (transaction.paymentSourceId ?? "")
-      : (defaultPaymentSourceId ?? "")
+      : (defaultPaymentSourceId ?? ""),
   );
   const [advancedOpen, setAdvancedOpen] = useState(
     Boolean(
       isEdit &&
-        transaction &&
-        (transaction.notes ||
-          transaction.tags.length > 0 ||
-          transaction.currency !== defaultCurrency)
-    )
+      transaction &&
+      (transaction.notes ||
+        transaction.tags.length > 0 ||
+        transaction.currency !== defaultCurrency),
+    ),
   );
   const [errors, setErrors] = useState<TransactionFormErrors>({});
   const formRef = useFocusOnError(
-    errors.amount ?? errors.description ?? errors.date ?? errors.paymentSourceId ?? errors.categoryId
+    errors.amount ??
+      errors.description ??
+      errors.date ??
+      errors.paymentSourceId ??
+      errors.categoryId,
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -100,24 +104,28 @@ export function useTransactionForm({
 
   const availablePaymentSources = createdPaymentSource
     ? [
-        ...paymentSources.filter((source) => source.id !== createdPaymentSource.id),
+        ...paymentSources.filter(
+          (source) => source.id !== createdPaymentSource.id,
+        ),
         createdPaymentSource,
       ]
     : paymentSources;
   const cashPaymentSource = availablePaymentSources.find(
-    (source) => source.systemKey === "cash" && !source.isArchived
+    (source) => source.systemKey === "cash" && !source.isArchived,
   );
   const preferredPaymentSourceId =
     paymentSourceId || defaultPaymentSourceId || cashPaymentSource?.id || "";
   const selectedPaymentSourceId = availablePaymentSources.some(
-    (source) => source.id === preferredPaymentSourceId && !source.isArchived
+    (source) => source.id === preferredPaymentSourceId && !source.isArchived,
   )
     ? preferredPaymentSourceId
     : isEdit &&
         transaction?.paymentSourceId === preferredPaymentSourceId &&
-        availablePaymentSources.some((source) => source.id === preferredPaymentSourceId)
-    ? preferredPaymentSourceId
-    : (cashPaymentSource?.id ?? "");
+        availablePaymentSources.some(
+          (source) => source.id === preferredPaymentSourceId,
+        )
+      ? preferredPaymentSourceId
+      : (cashPaymentSource?.id ?? "");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -161,12 +169,15 @@ export function useTransactionForm({
       if (isEdit && transaction) {
         await api.put(
           `/workspaces/${workspaceId}/transactions/${transaction.id}`,
-          payload
+          payload,
         );
       } else {
         await api.post(`/workspaces/${workspaceId}/transactions`, payload);
       }
-      showToast(t("transactions.saveSuccess") ?? "Transaction saved", "success");
+      showToast(
+        t("transactions.saveSuccess") ?? "Transaction saved",
+        "success",
+      );
       onSaved({ paymentSourceId: selectedPaymentSourceId });
       onClose();
     } catch (err: any) {

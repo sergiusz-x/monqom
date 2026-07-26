@@ -5,9 +5,6 @@ import api from "@/lib/api";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 
-
-
-
 import { getApiErrorStatus } from "@/lib/api-errors";
 import { Alert, FormField, Input, PendingButton } from "@monqom/ui";
 

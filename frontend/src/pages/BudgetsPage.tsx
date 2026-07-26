@@ -10,14 +10,9 @@ import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
 import { useTranslation } from "react-i18next";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 
-
-
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 
-
 import { useToast } from "@/hooks/useToast";
-
-
 
 import { useFocusOnError } from "@/hooks/useFocusOnError";
 
@@ -33,7 +28,18 @@ import {
   minorUnitsToMajorAmount,
 } from "@/lib/money";
 import type { Budget } from "@/types/budget";
-import { AsyncState, Button, ConfirmationDialog, EmptyState, FieldError, FormField, MoneyInput, PendingButton, SectionCard, Select } from "@monqom/ui";
+import {
+  AsyncState,
+  Button,
+  ConfirmationDialog,
+  EmptyState,
+  FieldError,
+  FormField,
+  MoneyInput,
+  PendingButton,
+  SectionCard,
+  Select,
+} from "@monqom/ui";
 
 interface BudgetFormState {
   categoryId: string | null;

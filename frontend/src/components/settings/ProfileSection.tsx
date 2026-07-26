@@ -4,12 +4,14 @@ import api from "@/lib/api";
 import { type User } from "@/contexts/AuthContext";
 import i18n, { type AppTranslationKey } from "@/i18n";
 
-
-
-
-
 import { useFocusOnError } from "@/hooks/useFocusOnError";
-import { FormField, Input, PendingButton, SectionCard, Select } from "@monqom/ui";
+import {
+  FormField,
+  Input,
+  PendingButton,
+  SectionCard,
+  Select,
+} from "@monqom/ui";
 interface ProfileSectionProps {
   user: User | null;
   setUser: (user: User | null) => void;

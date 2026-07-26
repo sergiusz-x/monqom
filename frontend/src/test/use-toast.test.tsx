@@ -10,7 +10,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useToast } from "@/hooks/useToast";
 import { ToastProvider } from "@monqom/ui";
 
-
 function ToastHarness() {
   const { showToast } = useToast();
   return (

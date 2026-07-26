@@ -7,19 +7,19 @@
  */
 export function getLocale(): string {
   // If a global workspace settings object is present (e.g., injected by server)
-  if (typeof window !== 'undefined' && window.__WORKSPACE_SETTINGS__) {
+  if (typeof window !== "undefined" && window.__WORKSPACE_SETTINGS__) {
     const locale = window.__WORKSPACE_SETTINGS__.locale;
     if (locale) return locale;
   }
   // Otherwise, try the HTML lang attribute (often set by server-side rendering)
-  if (typeof document !== 'undefined' && document.documentElement.lang) {
+  if (typeof document !== "undefined" && document.documentElement.lang) {
     return document.documentElement.lang;
   }
   // Fallback to navigator.language
-  if (typeof navigator !== 'undefined' && navigator.language) {
+  if (typeof navigator !== "undefined" && navigator.language) {
     return navigator.language;
   }
-  return 'en-US';
+  return "en-US";
 }
 
 /**
@@ -27,7 +27,7 @@ export function getLocale(): string {
  * the environment's timezone.
  */
 export function getTimezone(): string {
-  if (typeof window !== 'undefined' && window.__WORKSPACE_SETTINGS__) {
+  if (typeof window !== "undefined" && window.__WORKSPACE_SETTINGS__) {
     const tz = window.__WORKSPACE_SETTINGS__.timezone;
     if (tz) return tz;
   }
@@ -44,11 +44,11 @@ export function getTimezone(): string {
  */
 export function formatCurrency(
   value: number,
-  currency: string = 'USD',
-  locale: string = getLocale()
+  currency: string = "USD",
+  locale: string = getLocale(),
 ): string {
   return new Intl.NumberFormat(locale, {
-    style: 'currency',
+    style: "currency",
     currency,
   }).format(value);
 }
@@ -64,10 +64,10 @@ export function formatCurrency(
 export function formatDate(
   date: Date | string | number,
   options: Intl.DateTimeFormatOptions = {},
-  locale: string = getLocale()
+  locale: string = getLocale(),
 ): string {
   const opts = { ...options };
-  if (!('timeZone' in opts)) {
+  if (!("timeZone" in opts)) {
     opts.timeZone = getTimezone();
   }
   return new Intl.DateTimeFormat(locale, opts).format(new Date(date));
@@ -83,7 +83,7 @@ export function formatDate(
 export function formatNumber(
   value: number,
   options: Intl.NumberFormatOptions = {},
-  locale: string = getLocale()
+  locale: string = getLocale(),
 ): string {
   return new Intl.NumberFormat(locale, options).format(value);
 }

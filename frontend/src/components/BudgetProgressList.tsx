@@ -1,6 +1,5 @@
 import { useBudgetProgress } from "@/hooks/useBudgetProgress";
 
-
 import { useTranslation } from "react-i18next";
 import { BudgetProgressBar } from "./BudgetProgressBar";
 import { AsyncState, EmptyState } from "@monqom/ui";

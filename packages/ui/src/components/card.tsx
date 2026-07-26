@@ -32,8 +32,7 @@ const cardVariants = cva("rounded-xl border", {
 type SurfaceVariantProps = VariantProps<typeof cardVariants>;
 
 export interface CardProps
-  extends HTMLAttributes<HTMLDivElement>,
-    SurfaceVariantProps {}
+  extends HTMLAttributes<HTMLDivElement>, SurfaceVariantProps {}
 
 export function Card({
   className,
@@ -52,8 +51,7 @@ export function Card({
 }
 
 export interface SectionCardProps
-  extends HTMLAttributes<HTMLElement>,
-    SurfaceVariantProps {}
+  extends HTMLAttributes<HTMLElement>, SurfaceVariantProps {}
 
 export function SectionCard({
   className,
