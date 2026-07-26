@@ -2,8 +2,7 @@ import type { Transaction } from "@/types/transaction";
 import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
-import { Button } from "@/components/ui/button";
-import { cardVariants } from "@/components/ui/card";
+import { Button, cardVariants } from "@monqom/ui";
 
 interface TransactionCardsProps {
   transactions: Transaction[];

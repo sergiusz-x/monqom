@@ -54,8 +54,7 @@ api.interceptors.response.use(
   },
   async (error: AxiosError<{ code?: string }>) => {
     const config = error.config as
-      | (NonNullable<typeof error.config> & { csrfRetry?: boolean })
-      | undefined;
+      (NonNullable<typeof error.config> & { csrfRetry?: boolean }) | undefined;
 
     if (
       error.response?.status === 403 &&

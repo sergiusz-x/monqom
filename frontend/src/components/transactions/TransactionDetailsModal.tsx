@@ -1,15 +1,18 @@
 import { useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+
 import { formatCurrency } from "@/lib/money";
 import type { Transaction } from "@/types/transaction";
 import { formatLongDate } from "@/lib/date-only";
 import { Menu } from "@base-ui/react/menu";
-import { buttonVariants } from "@/components/ui/button";
-import { cardVariants } from "@/components/ui/card";
+import {
+  Button,
+  ConfirmationDialog,
+  Modal,
+  buttonVariants,
+  cardVariants,
+} from "@monqom/ui";
 
 interface TransactionDetailsModalProps {
   open: boolean;

@@ -1,8 +1,9 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import MonqomLogo from "@/components/MonqomLogo";
-import { buttonVariants } from "@/components/ui/button";
+
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "@monqom/ui";
 
 export default function LandingPage() {
   const { t } = useTranslation();

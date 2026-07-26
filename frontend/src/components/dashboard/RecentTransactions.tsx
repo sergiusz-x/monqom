@@ -6,11 +6,11 @@ import { TransactionFormModal } from "@/components/transactions/TransactionFormM
 import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+
 import { useNavigate } from "react-router";
-import { SectionCard } from "@/components/ui/card";
+
 import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { Button, EmptyState, SectionCard } from "@monqom/ui";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];

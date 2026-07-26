@@ -3,13 +3,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import i18n from "@/i18n";
-import { MoneyInput } from "@/components/ui/money-input";
+
 import {
   digitsToMinorUnits,
   formatMinorUnits,
   majorAmountToMinorUnits,
   minorUnitsToMajorAmount,
 } from "@/lib/money";
+import { MoneyInput } from "@monqom/ui";
 
 function ControlledMoneyInput() {
   const [minorUnits, setMinorUnits] = useState<number | null>(null);

@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Button, Input, Select } from "@monqom/ui";
 
 interface TransactionTagSelectorProps {
   availableTags: string[];

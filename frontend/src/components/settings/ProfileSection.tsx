@@ -3,12 +3,15 @@ import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
 import { type User } from "@/contexts/AuthContext";
 import i18n, { type AppTranslationKey } from "@/i18n";
-import { SectionCard } from "@/components/ui/card";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { PendingButton } from "@/components/ui/pending-button";
-import { Select } from "@/components/ui/select";
+
 import { useFocusOnError } from "@/hooks/useFocusOnError";
+import {
+  FormField,
+  Input,
+  PendingButton,
+  SectionCard,
+  Select,
+} from "@monqom/ui";
 interface ProfileSectionProps {
   user: User | null;
   setUser: (user: User | null) => void;

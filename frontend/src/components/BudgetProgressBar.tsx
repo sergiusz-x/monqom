@@ -2,8 +2,9 @@ import { cn } from "@/lib/utils";
 import type { BudgetProgressItem } from "@/types/budget";
 import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
-import { Card } from "@/components/ui/card";
+
 import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { Card } from "@monqom/ui";
 
 export interface BudgetProgressBarProps {
   item: BudgetProgressItem;
