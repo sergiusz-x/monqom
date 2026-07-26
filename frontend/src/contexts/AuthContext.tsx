@@ -23,8 +23,7 @@ export interface User {
 }
 
 export type LoginResult =
-  | { type: "authenticated"; user: User }
-  | { type: "two_factor_required" };
+  { type: "authenticated"; user: User } | { type: "two_factor_required" };
 
 export interface AuthContextValue {
   user: User | null;
