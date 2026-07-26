@@ -5,7 +5,7 @@
  * All arithmetic is done with integer maths to avoid floating-point errors.
  */
 
-import { formatCurrency } from "./format";
+export { formatCurrency } from "./format";
 
 /**
  * Convert a major-amount string/number (e.g. "12.50" or 12.5) to minor units

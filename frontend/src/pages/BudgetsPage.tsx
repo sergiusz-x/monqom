@@ -22,7 +22,11 @@ import {
   getMonthInTimeZone,
   shiftMonth as shiftCalendarMonth,
 } from "@/lib/date-only";
-import { majorAmountToMinorUnits, minorUnitsToMajorAmount } from "@/lib/money";
+import {
+  formatCurrency,
+  majorAmountToMinorUnits,
+  minorUnitsToMajorAmount,
+} from "@/lib/money";
 import type { Budget } from "@/types/budget";
 import {
   AsyncState,
