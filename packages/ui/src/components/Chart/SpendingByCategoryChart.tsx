@@ -1,28 +1,45 @@
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
-import type { CategoryBreakdown } from "@/types/dashboard";
-import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
-import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { useNavigate } from "react-router";
+import type { CategoryBreakdown } from "@/types/dashboard";
+import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { formatCurrency } from "@/lib/money";
 import { EmptyState } from "../empty-state";
+import { SectionCard } from "../card";
+
+const FALLBACK_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
+];
 
 function monthDateRange(month: string): { dateFrom: string; dateTo: string } {
   const [yearPart, monthPart] = month.split("-");
-  const year = Number(yearPart);
-  const monthIndex = Number(monthPart) - 1;
-  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
-  return {
-    dateFrom: `${month}-01`,
-    dateTo: `${month}-${String(lastDay).padStart(2, "0")}`,
-  };
+  const lastDay = new Date(Number(yearPart), Number(monthPart), 0).getDate();
+  return { dateFrom: `${month}-01`, dateTo: `${month}-${String(lastDay).padStart(2, "0")}` };
+}
+
+function colorForCategory(categoryId: string, color: string | null): string {
+  if (color) return color;
+  const hash = [...categoryId].reduce(
+    (total, character, index) => (total + character.charCodeAt(0) * (index + 1)) % 997,
+    0,
+  );
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
 }
 
 export function SpendingByCategoryChart({
@@ -35,81 +52,97 @@ export function SpendingByCategoryChart({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dateFrom, dateTo } = monthDateRange(month);
-  const categories = [...breakdown.categories].sort((a, b) => {
-    if (b.amount !== a.amount) return b.amount - a.amount;
-    return a.categoryName.localeCompare(b.categoryName);
-  });
-
-  const FALLBACK_COLORS = [
-    "var(--chart-1)",
-    "var(--chart-2)",
-    "var(--chart-3)",
-    "var(--chart-4)",
-    "var(--chart-5)",
-    "var(--chart-6)",
-    "var(--chart-7)",
-    "var(--chart-8)",
-  ];
-
-  function colorForCategory(categoryId: string, color: string | null): string {
-    if (color) return color;
-    let hash = 0;
-    for (let i = 0; i < categoryId.length; i++) {
-      hash = (hash + categoryId.charCodeAt(i) * (i + 1)) % 997;
-    }
-    return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
-  }
-
-  if (categories.length === 0 || breakdown.totalSpending === 0) {
-    return (
-      <EmptyState
-        title={t("dashboard.noCategory")}
-        description={t("dashboard.noCategoryDescription")}
-        className="min-h-48 border-none bg-muted/20"
-      />
-    );
-  }
+  const categories = [...breakdown.categories]
+    .sort((a, b) => b.amount - a.amount || a.categoryName.localeCompare(b.categoryName))
+    .map((category) => ({
+      ...category,
+      name: translateSystemLabel(t, category.categorySystemKey, category.categoryName),
+    }));
+  const hasSpending = categories.length > 0 && breakdown.totalSpending > 0;
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart
-        data={categories.map((c) => ({
-          name: translateSystemLabel(t, c.categorySystemKey, c.categoryName),
-          value: c.amount,
-          ...c,
-        }))}
-        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-      >
-        <XAxis dataKey="name" tickLine={false} tick={false} axisLine={false} />
-        <YAxis tick={false} axisLine={false} hide={true} />
-        <Tooltip
-          labelFormatter={() => ""}
-          formatter={(value: any) =>
-            formatCurrency(Number(value) || 0, breakdown.currency)
-          }
-          contentStyle={{
-            backgroundColor: "rgba(0,0,0,0.7)",
-            color: "#fff",
-            padding: "4px 8px",
-            borderRadius: "4px",
-          }}
-          separator={": "}
+    <SectionCard padding="responsive" elevation="raised">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">{t("dashboard.byCategory")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.categoryDescription")}
+          </p>
+        </div>
+        <p className="w-fit rounded-full bg-muted px-3 py-1 text-sm font-medium tabular-nums">
+          {t("dashboard.total", { amount: formatCurrency(breakdown.totalSpending, breakdown.currency) })}
+        </p>
+      </div>
+
+      {hasSpending ? (
+        <div
+          className="w-full"
+          style={{ height: Math.max(240, categories.length * 44 + 32) }}
+          role="img"
+          aria-label={t("dashboard.byCategory")}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={categories}
+              layout="vertical"
+              margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid horizontal={false} stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                width={112}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--muted)" }}
+                contentStyle={{
+                  backgroundColor: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "0.5rem",
+                  color: "var(--popover-foreground)",
+                }}
+                formatter={(
+                  value: number | string | readonly (number | string)[] | undefined,
+                ) =>
+                  formatCurrency(
+                    Number(Array.isArray(value) ? value[0] : (value ?? 0)),
+                    breakdown.currency,
+                  )
+                }
+              />
+              <Bar
+                dataKey="amount"
+                name={t("dashboard.total", { amount: "" }).trim()}
+                radius={[0, 6, 6, 0]}
+                maxBarSize={24}
+              >
+                {categories.map((category) => (
+                  <Cell
+                    key={category.categoryId}
+                    cursor="pointer"
+                    fill={colorForCategory(category.categoryId, category.categoryColor)}
+                    onClick={() =>
+                      navigate(
+                        `/transactions?category_id=${category.categoryId}&date_from=${dateFrom}&date_to=${dateTo}`,
+                      )
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <EmptyState
+          title={t("dashboard.noCategory")}
+          description={t("dashboard.noCategoryDescription")}
+          className="min-h-64"
         />
-        <Legend verticalAlign="top" height={36} />
-        {categories.map((c) => (
-          <Bar
-            key={c.categoryId}
-            dataKey="value"
-            barSize={20}
-            fill={colorForCategory(c.categoryId, c.categoryColor)}
-            onClick={() => {
-              navigate(
-                `/transactions?category_id=${c.categoryId}&date_from=${dateFrom}&date_to=${dateTo}`,
-              );
-            }}
-          />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
+      )}
+    </SectionCard>
   );
 }
