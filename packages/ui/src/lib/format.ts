@@ -1,10 +1,15 @@
 // Format utilities for locale-aware currency, date, and number formatting.
 // Uses Intl APIs and respects workspace locale/timezone settings if available.
 
-/**
- * Retrieve the locale from workspace settings (if available) or fallback to
- * navigator.language or document.documentElement.lang or en-US.
- */
+declare global {
+  interface Window {
+    __WORKSPACE_SETTINGS__?: {
+      locale?: string;
+      timezone?: string;
+    };
+  }
+}
+
 export function getLocale(): string {
   // If a global workspace settings object is present (e.g., injected by server)
   if (typeof window !== "undefined" && window.__WORKSPACE_SETTINGS__) {

@@ -11,7 +11,6 @@ import type { CategoryBreakdown } from "@/types/dashboard";
 import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
-import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router";
 import { EmptyState } from "../empty-state";
 
@@ -86,8 +85,8 @@ export function SpendingByCategoryChart({
         <YAxis tick={false} axisLine={false} hide={true} />
         <Tooltip
           labelFormatter={() => ""}
-          formatter={(payload: any) =>
-            formatCurrency(payload.value ?? 0, breakdown.currency)
+          formatter={(value: any) =>
+            formatCurrency(Number(value) || 0, breakdown.currency)
           }
           contentStyle={{
             backgroundColor: "rgba(0,0,0,0.7)",

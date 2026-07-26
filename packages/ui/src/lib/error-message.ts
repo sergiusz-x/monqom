@@ -20,7 +20,11 @@ interface ApiErrorResponse {
  * 6. `error.message` — JS Error message
  * 7. Fallback: 'An unknown error occurred'
  */
-export function formatApiError(error: ApiErrorResponse): string {
+export function formatApiError(error: any): string {
+  if (!error || typeof error !== "object") {
+    return typeof error === "string" ? error : "An unknown error occurred";
+  }
+
   if (error.response?.data?.message) {
     return error.response.data.message;
   }

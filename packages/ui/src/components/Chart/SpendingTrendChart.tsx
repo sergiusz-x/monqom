@@ -13,17 +13,6 @@ import { formatMonth, formatShortMonth } from "@/lib/date-only";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 
-const FALLBACK_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-6)",
-  "var(--chart-7)",
-  "var(--chart-8)",
-] as const;
-
 export function SpendingTrendChart({
   trend,
   currency,
@@ -116,11 +105,11 @@ export function SpendingTrendChart({
                 <YAxis tick={false} axisLine={false} hide={true} />
                 <Tooltip
                   labelFormatter={() => ""}
-                  formatter={(payload) => {
-                    const value = payload.value ?? 0;
-                    const datum = barData.find((d) => d.total === value);
+                  formatter={(value: any) => {
+                    const numericVal = Number(value) || 0;
+                    const datum = barData.find((d) => d.total === numericVal);
                     if (!datum) return "";
-                    return `${formatMonth(datum.month)}: ${formatCurrency(value, currency)}`;
+                    return `${formatMonth(datum.month)}: ${formatCurrency(numericVal, currency)}`;
                   }}
                   contentStyle={{
                     backgroundColor: "rgba(0,0,0,0.7)",

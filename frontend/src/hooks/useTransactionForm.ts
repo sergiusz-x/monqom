@@ -175,7 +175,7 @@ export function useTransactionForm({
         await api.post(`/workspaces/${workspaceId}/transactions`, payload);
       }
       showToast(
-        t("transactions.saveSuccess") ?? "Transaction saved",
+        t("transactions.saveSuccess", { defaultValue: "Transaction saved" }),
         "success",
       );
       onSaved({ paymentSourceId: selectedPaymentSourceId });

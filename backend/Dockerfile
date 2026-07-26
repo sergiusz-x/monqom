@@ -37,7 +37,8 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY backend/package.json ./backend/
 COPY packages/ui/package.json ./packages/ui/
 RUN pnpm install --frozen-lockfile --prod
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/backend/node_modules/.prisma ./backend/node_modules/.prisma
+COPY --from=build /app/backend/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=release /release.env ./backend/release.env
 USER monqom
