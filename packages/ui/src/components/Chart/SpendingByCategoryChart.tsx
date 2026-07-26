@@ -60,7 +60,6 @@ export function SpendingByCategoryChart({
     return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
   }
 
-
   if (categories.length === 0 || breakdown.totalSpending === 0) {
     return (
       <EmptyState
