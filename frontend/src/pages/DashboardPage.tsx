@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -12,7 +11,6 @@ import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 
-import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { formatMonth, getMonthInTimeZone, shiftMonth } from "@/lib/date-only";
 import { RetryAlert, Skeleton } from "@monqom/ui";
 
@@ -32,7 +30,6 @@ function LoadingSkeleton() {
 
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const {
     workspaceId,
     workspace,
@@ -114,12 +111,9 @@ export default function DashboardPage() {
       />
       <SpendingByCategoryChart breakdown={categoryBreakdown} month={month} />
       <RecentTransactions
+        workspaceId={workspaceId}
         transactions={transactions}
         categories={categories}
-        workspaceId={workspaceId}
-        onTransactionSaved={() => {
-          void invalidateFinancialData(queryClient, workspaceId);
-        }}
       />
     </PageContainer>
   );

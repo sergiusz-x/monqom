@@ -43,7 +43,7 @@ export default function SettingsPage() {
 
         <nav
           aria-label={t("settings.title")}
-          className="flex flex-col rounded-lg border border-border bg-muted/40 p-1 sm:w-fit sm:flex-row"
+          className="flex w-full flex-col rounded-lg border border-border bg-muted/40 p-1 sm:flex-row"
         >
           {tabs.map(({ id, label }) => (
             <Button
@@ -51,7 +51,7 @@ export default function SettingsPage() {
               type="button"
               variant="ghost"
               aria-pressed={activeSection === id}
-              className={`px-4 py-2 w-full sm:w-auto ${
+              className={`w-full px-4 py-2 sm:flex-1 ${
                 activeSection === id
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"

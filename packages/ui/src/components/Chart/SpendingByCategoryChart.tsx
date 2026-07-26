@@ -105,6 +105,8 @@ export function SpendingByCategoryChart({
                   borderRadius: "0.5rem",
                   color: "var(--popover-foreground)",
                 }}
+                labelStyle={{ color: "var(--popover-foreground)" }}
+                itemStyle={{ color: "var(--popover-foreground)" }}
                 formatter={(
                   value: number | string | readonly (number | string)[] | undefined,
                 ) =>

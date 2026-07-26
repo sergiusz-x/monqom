@@ -66,7 +66,7 @@ test.beforeEach(async ({ page }) => {
       return;
     }
 
-    if (path.endsWith(`/workspaces/${workspaceId}/transactions/tags`)) {
+    if (path.endsWith(`/workspaces/${workspaceId}/tags`)) {
       await route.fulfill({ json: [] });
       return;
     }
@@ -179,6 +179,15 @@ test("renders a readable dashboard without duplicated chart series", async ({
   });
 });
 
+test("opens the transaction form from primary navigation", async ({ page }) => {
+  await page.goto("/dashboard");
+
+  await page.getByRole("button", { name: "Add transaction" }).click();
+
+  await expect(
+    page.getByRole("dialog", { name: "Add transaction" }),
+  ).toBeVisible();
+});
 test("keeps the dashboard usable on a narrow screen", async ({
   page,
 }, testInfo) => {
