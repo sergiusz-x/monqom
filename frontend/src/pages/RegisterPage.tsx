@@ -5,12 +5,10 @@ import api from "@/lib/api";
 import i18n from "@/i18n";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
-import { Alert } from "@/components/ui/alert";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { PendingButton } from "@/components/ui/pending-button";
+
 import { getApiErrorMessage } from "@/lib/api-errors";
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
+import { Alert, FormField, Input, PendingButton } from "@monqom/ui";
 
 interface RegisterFormValues {
   email: string;

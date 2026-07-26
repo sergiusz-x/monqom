@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { MoneyInput } from "@/components/ui/money-input";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { FormField, Input, MoneyInput, Select, Textarea } from "@monqom/ui";
 
 describe("form field primitives", () => {
   it("associates label, hint and error with the control", () => {

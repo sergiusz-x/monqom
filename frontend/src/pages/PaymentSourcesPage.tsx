@@ -2,11 +2,9 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/useToast";
-import { Alert } from "@/components/ui/alert";
-import { AsyncState } from "@/components/ui/async-state";
-import { EmptyState } from "@/components/ui/empty-state";
+
 import api from "@/lib/api";
-import { Button } from "@/components/ui/button";
+
 import { PaymentSourceDialog } from "@/components/payment-sources/PaymentSourceDialog";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import type { PaymentSource } from "@/types/payment-source";
@@ -15,10 +13,18 @@ import {
   paymentSourceName,
   paymentSourceTypeLabel,
 } from "@/lib/payment-sources";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+
 import { queryKeys } from "@/lib/query-client";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
-import { Card, SectionCard } from "@/components/ui/card";
+import {
+  Alert,
+  AsyncState,
+  Button,
+  Card,
+  ConfirmationDialog,
+  EmptyState,
+  SectionCard,
+} from "@monqom/ui";
 
 export default function PaymentSourcesPage() {
   const { t } = useTranslation();

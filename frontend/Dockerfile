@@ -1,12 +1,17 @@
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
-COPY frontend .
+RUN corepack enable pnpm
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY frontend/package.json ./frontend/
+COPY packages/ui/package.json ./packages/ui/
+RUN pnpm install --frozen-lockfile
+COPY frontend ./frontend
+COPY packages/ui ./packages/ui
 ARG VITE_TURNSTILE_SITE_KEY
 ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
-RUN npm run build
+WORKDIR /app/frontend
+RUN pnpm run build
 
 FROM node:22-alpine AS release
 RUN apk add --no-cache git
@@ -21,7 +26,7 @@ RUN --mount=type=bind,source=.git,target=/repo/.git,readonly \
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
 COPY --from=release /version.json /usr/share/nginx/html/version.json
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1

@@ -6,7 +6,7 @@ import {
   type RenderHookOptions,
   type RenderOptions,
 } from "@testing-library/react";
-import { ToastProvider } from "@/contexts/ToastContext";
+import { ToastProvider } from "@monqom/ui";
 
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({
@@ -60,7 +60,11 @@ export function renderHookWithQueryClient<Result, Props>(
     ) : (
       children
     );
-    return <QueryClientProvider client={client}>{content}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={client}>
+        <ToastProvider>{content}</ToastProvider>
+      </QueryClientProvider>
+    );
   }
 
   return {

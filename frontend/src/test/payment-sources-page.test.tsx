@@ -4,7 +4,7 @@ import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import PaymentSourcesPage from "@/pages/PaymentSourcesPage";
 import i18n from "@/i18n";
-import { ToastProvider } from "@/contexts/ToastContext";
+
 import type { PaymentSource } from "@/types/payment-source";
 
 const refetch = vi.fn().mockResolvedValue(undefined);
@@ -44,6 +44,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import api from "@/lib/api";
+import { ToastProvider } from "@monqom/ui";
 const mockPost = api.post as ReturnType<typeof vi.fn>;
 
 describe("PaymentSourcesPage", () => {

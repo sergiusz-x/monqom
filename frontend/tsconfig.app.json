@@ -8,7 +8,9 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@monqom/ui": ["../packages/ui/src"],
+      "@monqom/ui/*": ["../packages/ui/src/*"]
     },
     "ignoreDeprecations": "6.0",
 

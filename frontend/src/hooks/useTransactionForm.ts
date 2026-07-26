@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/useToast";
+import { formatApiError } from "@monqom/ui/lib/error-message";
 import api from "@/lib/api";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useTags } from "@/hooks/useTags";
@@ -41,6 +43,7 @@ export function useTransactionForm({
   onSaved,
 }: UseTransactionFormOptions) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const isEdit = mode === "edit";
   const { tags: workspaceTags } = useTags(workspaceId);
   const {
@@ -171,10 +174,16 @@ export function useTransactionForm({
       } else {
         await api.post(`/workspaces/${workspaceId}/transactions`, payload);
       }
+      showToast(
+        t("transactions.saveSuccess", { defaultValue: "Transaction saved" }),
+        "success",
+      );
       onSaved({ paymentSourceId: selectedPaymentSourceId });
       onClose();
-    } catch {
-      setSubmitError(t("transactions.saveError"));
+    } catch (err: unknown) {
+      const errorMessage = formatApiError(err);
+      setSubmitError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setIsSaving(false);
     }

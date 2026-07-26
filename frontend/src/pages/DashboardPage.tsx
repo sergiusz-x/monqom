@@ -9,11 +9,12 @@ import { SpendingByCategoryChart } from "@/components/dashboard/SpendingByCatego
 import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
 import { useTranslation } from "react-i18next";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
-import { RetryAlert } from "@/components/ui/retry-alert";
+
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { formatMonth, getMonthInTimeZone, shiftMonth } from "@/lib/date-only";
+import { RetryAlert, Skeleton } from "@monqom/ui";
 
 function LoadingSkeleton() {
   const { t } = useTranslation();
