@@ -87,7 +87,7 @@ jobs:
           docker compose -f docker-compose.dokploy.yml config --quiet
           docker compose -f docker-compose.dokploy.yml config --format json | jq -e '.services | all(.networks | has("dokploy-network"))'
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target migration --tag monqom-backend-migration:ci --file backend/Dockerfile .
-      - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/prisma.config.ts'
+      - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/backend/prisma.config.ts'
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target runtime --tag monqom-backend:ci --file backend/Dockerfile .
       - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/dist/main.js && grep -q "APP_VERSION=.ci." /app/release.env && grep -q "GIT_SHA=.${{ github.sha }}." /app/release.env'
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --tag monqom-frontend:ci --file frontend/Dockerfile .
