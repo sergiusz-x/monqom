@@ -1,17 +1,10 @@
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import type { SpendingTrendItem } from "@/types/dashboard";
-import { formatCurrency } from "@/lib/money";
-import { formatMonth, formatShortMonth } from "@/lib/date-only";
-import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { SpendingTrendItem } from "@/types/dashboard";
+import { formatMonth, formatShortMonth } from "@/lib/date-only";
+import { formatCurrency } from "@/lib/money";
+import { EmptyState } from "../empty-state";
+import { SectionCard } from "../card";
 
 export function SpendingTrendChart({
   trend,
@@ -24,141 +17,92 @@ export function SpendingTrendChart({
 }) {
   const { t } = useTranslation();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-
-  if (trend.length === 0) {
-    return null;
-  }
-
-  const maxTotal = Math.max(...trend.map((item) => item.total), 0);
-
-  const barData = trend.map((item) => ({
-    month: item.month,
-    total: item.total,
-    formattedMonth: formatMonth(item.month),
-    shortMonth: formatShortMonth(item.month),
-  }));
-
-  const getBarFill = (month: string): string => {
-    if (month === selectedMonth) return "var(--chart-2)";
-    if (month === currentMonth) return "var(--chart-1)";
-    return "var(--chart-3)";
-  };
-
-  const getBarOpacity = (month: string): number => {
-    if (month === selectedMonth) return 1;
-    if (month === currentMonth) return 1;
-    return 0.7; // matches bg-chart-3/70
-  };
+  const hasSpending = trend.some((item) => item.total > 0);
+  const maxAmount = Math.max(...trend.map((item) => item.total), 0);
+  const selectedItem = trend.find(
+    (item) => item.month === (selectedMonth ?? currentMonth),
+  );
 
   return (
-    <>
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <SectionCard padding="responsive" elevation="raised">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{t("dashboard.trend")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("dashboard.trendDescription")}
           </p>
         </div>
-        {(selectedMonth ?? currentMonth) && (
-          <p className="rounded-full bg-muted px-3 py-1 text-sm font-medium">
-            {formatMonth(selectedMonth ?? currentMonth)}:{" "}
-            {formatCurrency(
-              trend.find((i) => i.month === (selectedMonth ?? currentMonth))
-                ?.total ?? 0,
-              currency,
-            )}
+        {selectedItem ? (
+          <p className="w-fit rounded-full bg-muted px-3 py-1 text-sm font-medium tabular-nums">
+            {formatMonth(selectedItem.month)}: {" "}
+            {formatCurrency(selectedItem.total, currency)}
           </p>
-        )}
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-[auto_1fr] gap-3">
-        {/* Vertical axis labels */}
-        <div
-          className="flex h-48 flex-col justify-between text-right text-xs text-muted-foreground"
-          aria-hidden="true"
-        >
-          <span>{formatCurrency(maxTotal, currency)}</span>
-          <span>{formatCurrency(maxTotal / 2, currency)}</span>
-          <span>{formatCurrency(0, currency)}</span>
-        </div>
+      {hasSpending ? (
+        <div className="space-y-3" role="list" aria-label={t("dashboard.monthlyAmounts")}>
+          {trend.map((item) => {
+            const isCurrent = item.month === currentMonth;
+            const isSelected = item.month === selectedMonth;
+            const width = maxAmount === 0 ? 0 : (item.total / maxAmount) * 100;
 
-        {/* Chart container */}
-        <div className="min-w-0 relative">
-          {/* The chart with role=list and aria-label for accessibility */}
-          <div
-            role="list"
-            aria-label={t("dashboard.monthlyAmounts")}
-            className="h-48 w-full"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={barData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+            return (
+              <button
+                key={item.month}
+                type="button"
+                role="listitem"
+                className="group grid w-full items-center gap-3 text-left"
+                style={{ gridTemplateColumns: "2.5rem minmax(0, 1fr) auto" }}
+                aria-pressed={isSelected}
+                aria-label={t("dashboard.spendingLabel", {
+                  month: formatMonth(item.month),
+                  amount: formatCurrency(item.total, currency),
+                })}
+                onClick={() => setSelectedMonth(item.month)}
               >
-                <XAxis
-                  dataKey="shortMonth"
-                  tickLine={false}
-                  tick={false}
-                  axisLine={false}
-                  tickFormatter={(value) => stringify(value)}
-                />
-                <YAxis tick={false} axisLine={false} hide={true} />
-                <Tooltip
-                  labelFormatter={() => ""}
-                  formatter={(value: any) => {
-                    const numericVal = Number(value) || 0;
-                    const datum = barData.find((d) => d.total === numericVal);
-                    if (!datum) return "";
-                    return `${formatMonth(datum.month)}: ${formatCurrency(numericVal, currency)}`;
-                  }}
-                  contentStyle={{
-                    backgroundColor: "rgba(0,0,0,0.7)",
-                    color: "#fff",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                  }}
-                  separator={": "}
-                />
-                <Legend verticalAlign="top" height={36} />
-                {barData.map((entry) => (
-                  <Bar
-                    key={entry.month}
-                    dataKey="total"
-                    barSize={20}
-                    fill={getBarFill(entry.month)}
-                    opacity={getBarOpacity(entry.month)}
-                    onClick={() => setSelectedMonth(entry.month)}
+                <span
+                  className={
+                    isCurrent ? "text-sm font-semibold text-foreground" : "text-sm text-muted-foreground"
+                  }
+                >
+                  {formatShortMonth(item.month)}
+                </span>
+                <span
+                  className="overflow-hidden rounded-md bg-muted/70"
+                  style={{ display: "block", height: "2rem" }}
+                >
+                  <span
+                    className={
+                      "block h-full rounded-md transition-[width,opacity] duration-200 " +
+                      (isSelected || isCurrent ? "" : "opacity-75 group-hover:opacity-100")
+                    }
+                    style={{
+                      display: "block",
+                      height: "100%",
+                      width: `${width}%`,
+                      backgroundColor: isSelected
+                        ? "var(--chart-2)"
+                        : isCurrent
+                          ? "var(--chart-1)"
+                          : "var(--chart-3)",
+                    }}
                   />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Month labels below chart */}
-          <div className="mt-2 grid grid-cols-6 gap-2 px-2 text-center text-xs text-muted-foreground sm:gap-4">
-            {barData.map((entry) => (
-              <span
-                key={entry.month}
-                className={
-                  entry.month === currentMonth
-                    ? "font-semibold text-foreground"
-                    : ""
-                }
-              >
-                {entry.month === currentMonth ? (
-                  <span aria-hidden="true">● </span>
-                ) : null}
-                {entry.shortMonth}
-              </span>
-            ))}
-          </div>
+                </span>
+                <span className="text-right text-sm font-medium tabular-nums text-foreground">
+                  {formatCurrency(item.total, currency)}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      </div>
-    </>
+      ) : (
+        <EmptyState
+          title={t("dashboard.noTrend")}
+          description={t("dashboard.noTrendDescription")}
+          className="min-h-64"
+        />
+      )}
+    </SectionCard>
   );
-}
-
-// Helper to ensure value is string for tickFormatter
-function stringify(value: unknown): string {
-  return String(value);
 }

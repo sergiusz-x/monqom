@@ -47,7 +47,7 @@ export function MonthlySpendingSummary({
       elevation="raised"
       aria-label={t("dashboard.summary")}
     >
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
             {t("dashboard.totalSpending")}
@@ -57,7 +57,7 @@ export function MonthlySpendingSummary({
           </h1>
         </div>
         <div
-          className="flex items-center gap-2"
+          className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start"
           aria-label={t("dashboard.monthSelector")}
         >
           <Button

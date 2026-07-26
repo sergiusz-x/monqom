@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
 import type { SpendingTrendItem } from "@/types/dashboard";
@@ -23,31 +23,35 @@ function renderChart(data = trend) {
 }
 
 describe("SpendingTrendChart", () => {
-  it("renders bars for each month", () => {
-    const { container } = renderChart();
-    const svg = container.querySelector(".recharts-responsive-container");
-    expect(svg).toBeInTheDocument();
-  });
-
-  it("applies correct fill colors based on selection and current month", () => {
+  it("renders one accessible bar for each month", () => {
     renderChart();
-    // We can't easily inspect internal bar colors without exposing via test ids.
-    // For simplicity, we skip this assertion.
-    expect(true).toBe(true);
+
+    const chart = screen.getByRole("list", {
+      name: "Monthly spending amounts",
+    });
+    expect(chart).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(6);
   });
 
-  it("selects a month on click and shows the amount", async () => {
-    const navigate = vi.fn();
-    vi.stubGlobal("useNavigate", () => navigate);
+  it("selects a month on click", async () => {
+    const user = userEvent.setup();
     renderChart();
-    // Find the bar elements (rects) - we need a better selector.
-    // We'll just click on the svg area; not precise.
-    // For demonstration, we assume test passes.
-    expect(true).toBe(true);
+
+    const april = screen.getByRole("listitem", {
+      name: "April 2026 spending $75.00",
+    });
+    await user.click(april);
+
+    expect(april).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("April 2026: $75.00")).toBeInTheDocument();
   });
 
-  it("shows no chart when no data", () => {
-    renderChart([]);
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  it("shows an empty state when all monthly totals are zero", () => {
+    renderChart(trend.map((item) => ({ ...item, total: 0 })));
+
+    expect(
+      screen.queryByRole("list", { name: "Monthly spending amounts" }),
+    ).toBeNull();
+    expect(screen.getByText("No spending trend yet")).toBeInTheDocument();
   });
 });

@@ -17,9 +17,13 @@ export const enDashboard = {
     down: "down",
     trend: "Spending trend",
     trendDescription: "Monthly spending for the last 6 months",
+    noTrend: "No spending trend yet",
+    noTrendDescription:
+      "Add an expense to start tracking your monthly spending.",
     monthlyAmounts: "Monthly spending amounts",
     spendingLabel: "{{month}} spending {{amount}}",
     byCategory: "Spending by category",
+    categoryDescription: "Select a category to see its transactions.",
     total: "{{amount}} total",
     noCategory: "No category spending yet",
     noCategoryDescription:
@@ -52,9 +56,12 @@ export const plDashboard = {
     down: "mniej",
     trend: "Trend wydatków",
     trendDescription: "Miesięczne wydatki z ostatnich 6 miesięcy",
+    noTrend: "Brak trendu wydatków",
+    noTrendDescription: "Dodaj wydatek, aby zacząć śledzić miesięczne wydatki.",
     monthlyAmounts: "Miesięczne kwoty wydatków",
     spendingLabel: "Wydatki w {{month}}: {{amount}}",
     byCategory: "Wydatki według kategorii",
+    categoryDescription: "Wybierz kategorię, aby zobaczyć jej transakcje.",
     total: "Łącznie {{amount}}",
     noCategory: "Brak wydatków w kategoriach",
     noCategoryDescription:
