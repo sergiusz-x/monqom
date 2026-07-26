@@ -1,6 +1,7 @@
 {
   "name": "monqom-root",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",

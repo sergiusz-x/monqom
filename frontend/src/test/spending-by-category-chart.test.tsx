@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SpendingByCategoryChart } from "@/components/dashboard/SpendingByCategoryChart";
 import type { CategoryBreakdown } from "@/types/dashboard";
