@@ -24,7 +24,9 @@
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
         "test:e2e": "jest --config ./test/jest-e2e.json",
         "test:e2e:smoke": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts",
-        "test:e2e:critical": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts test/auth-two-factor.e2e-spec.ts"
+        "test:e2e:critical": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts test/auth-two-factor.e2e-spec.ts",
+        "openapi:generate": "ts-node src/main-doc.ts",
+        "client:generate": "openapi-generator-cli generate -i ./spec/openapi.json -g typescript-axios -o ../frontend/src/api/client --additional-properties=withSeparateModelsAndApi=true,modelPropertyNaming=original"
     },
     "dependencies": {
         "@nestjs/common": "^11.0.1",
@@ -54,7 +56,9 @@
     "devDependencies": {
         "@nestjs/cli": "^11.0.0",
         "@nestjs/schematics": "^11.0.0",
+        "@nestjs/swagger": "^11.4.6",
         "@nestjs/testing": "^11.0.1",
+        "@openapitools/openapi-generator-cli": "^2.40.1",
         "@types/compression": "^1.8.1",
         "@types/express": "^5.0.0",
         "@types/jest": "^30.0.0",
@@ -62,6 +66,7 @@
         "@types/qrcode": "^1.5.6",
         "@types/speakeasy": "^2.0.10",
         "@types/supertest": "^6.0.2",
+        "@types/swagger-ui-express": "^4.1.8",
         "@typescript-eslint/eslint-plugin": "^7.0.0",
         "@typescript-eslint/parser": "^7.0.0",
         "eslint": "^8.57.0",
