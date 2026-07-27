@@ -1,8 +1,14 @@
+# Branch protection rules: see BRANCH_PROTECTION.md for details
 name: CI
+# Branch protection rules:
+#   - Require pull request reviews before merging
+#   - Require status checks to pass before merging
+#   - Require branches to be up to date before merging
+#   - Include administrators
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
+  pull_request:
 permissions:
   contents: read
 concurrency:
@@ -40,9 +46,16 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test -- --runInBand
-      - run: pnpm run migrate:deploy
+      - run: pnpm run migrate:dev
       - run: pnpm run test:e2e:critical -- --runInBand
       - run: pnpm run build
+      - name: OpenAPI drift check
+        run: |
+          if [ -f "./scripts/check-openapi-drift.sh" ]; then
+            ./scripts/check-openapi-drift.sh
+          else
+            echo "OpenAPI drift check script not found - skipping (placeholder for MONQ-054)"
+          fi
 
   frontend:
     runs-on: ubuntu-latest

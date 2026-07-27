@@ -1,5 +1,7 @@
 # Monqom
 
+![CI](https://github.com/sergiusz-x/monqom/actions/workflows/ci.yml/badge.svg)
+
 Monqom is a self-hostable personal-finance application. See the [release policy](docs/releases.md) for the supported release and deployment model.
 
 ## Local development
