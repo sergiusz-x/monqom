@@ -13,6 +13,8 @@ import { useNavigate } from "react-router";
 import type { CategoryBreakdown } from "@/types/dashboard";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { formatCurrency } from "@/lib/money";
+import { formatMonth } from "@/lib/date-only";
+import { useMemo } from "react";
 import { EmptyState, SectionCard } from "@monqom/ui";
 
 const FALLBACK_COLORS = [
@@ -69,12 +71,13 @@ export function SpendingByCategoryChart({
       ),
     }));
   const hasSpending = categories.length > 0 && breakdown.totalSpending > 0;
+  const monthLabel = useMemo(() => formatMonth(month), [month]);
 
   return (
     <SectionCard padding="responsive" elevation="raised">
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{t("dashboard.byCategory")}</h2>
+          <h2 className="text-lg font-semibold">{t("dashboard.byCategory")} - {monthLabel}</h2>
           <p className="text-sm text-muted-foreground">
             {t("dashboard.categoryDescription")}
           </p>
