@@ -268,7 +268,9 @@ export class AuthController {
     }
 
     @Get(AUTH_ROUTES.sessions)
-    getSessions() { return []; }
+    getSessions() {
+        return []
+    }
 
     @Delete(AUTH_ROUTES.revokeSession)
     revokeSession() {}

@@ -11,7 +11,6 @@ import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
 import { Button } from "@monqom/ui";
 
-
 type ActiveSection = "profile" | "workspace" | "security" | "data";
 
 export default function SettingsPage() {

@@ -1,1102 +1,998 @@
 {
-  "openapi": "3.0.0",
-  "paths": {
-    "/health": {
-      "get": {
-        "operationId": "HealthController_checkHealth",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "The Health Check is successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "ok"
-                    },
-                    "info": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
+    "openapi": "3.0.0",
+    "paths": {
+        "/health": {
+            "get": {
+                "operationId": "HealthController_checkHealth",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "The Health Check is successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "ok"
+                                        },
+                                        "info": {
+                                            "type": "object",
+                                            "example": {
+                                                "database": {
+                                                    "status": "up"
+                                                }
+                                            },
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "required": ["status"],
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "additionalProperties": true
+                                            },
+                                            "nullable": true
+                                        },
+                                        "error": {
+                                            "type": "object",
+                                            "example": {},
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "required": ["status"],
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "additionalProperties": true
+                                            },
+                                            "nullable": true
+                                        },
+                                        "details": {
+                                            "type": "object",
+                                            "example": {
+                                                "database": {
+                                                    "status": "up"
+                                                }
+                                            },
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "required": ["status"],
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "additionalProperties": true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
                     },
-                    "error": {
-                      "type": "object",
-                      "example": {},
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "details": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
+                    "503": {
+                        "description": "The Health Check is not successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "info": {
+                                            "type": "object",
+                                            "example": {
+                                                "database": {
+                                                    "status": "up"
+                                                }
+                                            },
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "required": ["status"],
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "additionalProperties": true
+                                            },
+                                            "nullable": true
+                                        },
+                                        "error": {
+                                            "type": "object",
+                                            "example": {
+                                                "redis": {
+                                                    "status": "down",
+                                                    "message": "Could not connect"
+                                                }
+                                            },
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "required": ["status"],
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "additionalProperties": true
+                                            },
+                                            "nullable": true
+                                        },
+                                        "details": {
+                                            "type": "object",
+                                            "example": {
+                                                "database": {
+                                                    "status": "up"
+                                                },
+                                                "redis": {
+                                                    "status": "down",
+                                                    "message": "Could not connect"
+                                                }
+                                            },
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "required": ["status"],
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "additionalProperties": true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      }
                     }
-                  }
-                }
-              }
+                },
+                "tags": ["Health"]
             }
-          },
-          "503": {
-            "description": "The Health Check is not successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "info": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "error": {
-                      "type": "object",
-                      "example": {
-                        "redis": {
-                          "status": "down",
-                          "message": "Could not connect"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "details": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
-                        },
-                        "redis": {
-                          "status": "down",
-                          "message": "Could not connect"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      }
+        },
+        "/ready": {
+            "get": {
+                "operationId": "HealthController_checkReady",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
                     }
-                  }
-                }
-              }
+                },
+                "tags": ["Health"]
             }
-          }
         },
-        "tags": [
-          "Health"
-        ]
-      }
-    },
-    "/ready": {
-      "get": {
-        "operationId": "HealthController_checkReady",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Health"
-        ]
-      }
-    },
-    "/version.json": {
-      "get": {
-        "operationId": "HealthController_version",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Health"
-        ]
-      }
-    },
-    "/auth/csrf-token": {
-      "get": {
-        "operationId": "AuthController_getCsrfToken",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/register": {
-      "post": {
-        "operationId": "AuthController_register",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterDto"
-              }
+        "/version.json": {
+            "get": {
+                "operationId": "HealthController_version",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Health"]
             }
-          }
         },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/login": {
-      "post": {
-        "operationId": "AuthController_login",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginDto"
-              }
+        "/auth/csrf-token": {
+            "get": {
+                "operationId": "AuthController_getCsrfToken",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/2fa/setup": {
-      "post": {
-        "operationId": "AuthController_setupTwoFactor",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/2fa/verify-setup": {
-      "post": {
-        "operationId": "AuthController_verifyTwoFactorSetup",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenDto"
-              }
+        "/auth/register": {
+            "post": {
+                "operationId": "AuthController_register",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/2fa/verify": {
-      "post": {
-        "operationId": "AuthController_verifyTwoFactor",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenDto"
-              }
+        "/auth/login": {
+            "post": {
+                "operationId": "AuthController_login",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/2fa/disable": {
-      "post": {
-        "operationId": "AuthController_disableTwoFactor",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CurrentPasswordDto"
-              }
+        "/auth/2fa/setup": {
+            "post": {
+                "operationId": "AuthController_setupTwoFactor",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/logout": {
-      "post": {
-        "operationId": "AuthController_logout",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/me": {
-      "get": {
-        "operationId": "AuthController_me",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/verify-email": {
-      "post": {
-        "operationId": "AuthController_verifyEmail",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenDto"
-              }
+        "/auth/2fa/verify-setup": {
+            "post": {
+                "operationId": "AuthController_verifyTwoFactorSetup",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/resend-verification": {
-      "post": {
-        "operationId": "AuthController_resendVerification",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmailDto"
-              }
+        "/auth/2fa/verify": {
+            "post": {
+                "operationId": "AuthController_verifyTwoFactor",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/forgot-password": {
-      "post": {
-        "operationId": "AuthController_forgotPassword",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmailDto"
-              }
+        "/auth/2fa/disable": {
+            "post": {
+                "operationId": "AuthController_disableTwoFactor",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CurrentPasswordDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/reset-password": {
-      "post": {
-        "operationId": "AuthController_resetPassword",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResetPasswordDto"
-              }
+        "/auth/logout": {
+            "post": {
+                "operationId": "AuthController_logout",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/change-password": {
-      "post": {
-        "operationId": "AuthController_changePassword",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangePasswordDto"
-              }
+        "/auth/me": {
+            "get": {
+                "operationId": "AuthController_me",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/sessions": {
-      "get": {
-        "operationId": "AuthController_getSessions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      },
-      "delete": {
-        "operationId": "AuthController_revokeAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/sessions/{id}": {
-      "delete": {
-        "operationId": "AuthController_revokeSession",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/users/me": {
-      "put": {
-        "operationId": "UsersController_updateMe",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserProfileDto"
-              }
+        "/auth/verify-email": {
+            "post": {
+                "operationId": "AuthController_verifyEmail",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Users"
-        ]
-      },
-      "delete": {
-        "operationId": "UsersController_deleteMe",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Users"
-        ]
-      }
-    },
-    "/workspaces": {
-      "get": {
-        "operationId": "WorkspaceController_listWorkspaces",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Workspace"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}": {
-      "get": {
-        "operationId": "WorkspaceScopedController_getWorkspace",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "WorkspaceScoped"
-        ]
-      },
-      "put": {
-        "operationId": "WorkspaceScopedController_updateWorkspace",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateWorkspaceDto"
-              }
+        "/auth/resend-verification": {
+            "post": {
+                "operationId": "AuthController_resendVerification",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmailDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "WorkspaceScoped"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/categories": {
-      "get": {
-        "operationId": "CategoriesController_listCategories",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Categories"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/categories/{id}": {
-      "get": {
-        "operationId": "CategoriesController_getCategory",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
+        "/auth/forgot-password": {
+            "post": {
+                "operationId": "AuthController_forgotPassword",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmailDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
         },
-        "tags": [
-          "Categories"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/budgets/progress": {
-      "get": {
-        "operationId": "BudgetsController_listBudgetProgress",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Budgets"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/budgets": {
-      "get": {
-        "operationId": "BudgetsController_listBudgets",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Budgets"
-        ]
-      },
-      "post": {
-        "operationId": "BudgetsController_createBudget",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BudgetBodyDto"
-              }
+        "/auth/reset-password": {
+            "post": {
+                "operationId": "AuthController_resetPassword",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
             }
-          }
         },
-        "responses": {
-          "201": {
-            "description": ""
-          }
+        "/auth/change-password": {
+            "post": {
+                "operationId": "AuthController_changePassword",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
+            }
         },
-        "tags": [
-          "Budgets"
-        ]
-      }
+        "/auth/sessions": {
+            "get": {
+                "operationId": "AuthController_getSessions",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
+            },
+            "delete": {
+                "operationId": "AuthController_revokeAll",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
+            }
+        },
+        "/auth/sessions/{id}": {
+            "delete": {
+                "operationId": "AuthController_revokeSession",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Auth"]
+            }
+        },
+        "/users/me": {
+            "put": {
+                "operationId": "UsersController_updateMe",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserProfileDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Users"]
+            },
+            "delete": {
+                "operationId": "UsersController_deleteMe",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Users"]
+            }
+        },
+        "/workspaces": {
+            "get": {
+                "operationId": "WorkspaceController_listWorkspaces",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Workspace"]
+            }
+        },
+        "/workspaces/{workspaceId}": {
+            "get": {
+                "operationId": "WorkspaceScopedController_getWorkspace",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["WorkspaceScoped"]
+            },
+            "put": {
+                "operationId": "WorkspaceScopedController_updateWorkspace",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateWorkspaceDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["WorkspaceScoped"]
+            }
+        },
+        "/workspaces/{workspaceId}/categories": {
+            "get": {
+                "operationId": "CategoriesController_listCategories",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
+            }
+        },
+        "/workspaces/{workspaceId}/categories/{id}": {
+            "get": {
+                "operationId": "CategoriesController_getCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
+            }
+        },
+        "/workspaces/{workspaceId}/budgets/progress": {
+            "get": {
+                "operationId": "BudgetsController_listBudgetProgress",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            }
+        },
+        "/workspaces/{workspaceId}/budgets": {
+            "get": {
+                "operationId": "BudgetsController_listBudgets",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            },
+            "post": {
+                "operationId": "BudgetsController_createBudget",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BudgetBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            }
+        },
+        "/workspaces/{workspaceId}/budgets/{id}": {
+            "put": {
+                "operationId": "BudgetsController_updateBudget",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BudgetBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            },
+            "delete": {
+                "operationId": "BudgetsController_deleteBudget",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            }
+        },
+        "/workspaces/{workspaceId}/dashboard": {
+            "get": {
+                "operationId": "DashboardController_getOverview",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Dashboard"]
+            }
+        },
+        "/workspaces/{workspaceId}/dashboard/spending-summary": {
+            "get": {
+                "operationId": "DashboardController_getSpendingSummary",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Dashboard"]
+            }
+        },
+        "/workspaces/{workspaceId}/dashboard/category-breakdown": {
+            "get": {
+                "operationId": "DashboardController_getCategoryBreakdown",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Dashboard"]
+            }
+        },
+        "/workspaces/{workspaceId}/transactions": {
+            "get": {
+                "operationId": "TransactionsController_listTransactions",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Transactions"]
+            },
+            "post": {
+                "operationId": "TransactionsController_createTransaction",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TransactionBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Transactions"]
+            }
+        },
+        "/workspaces/{workspaceId}/transactions/{id}": {
+            "get": {
+                "operationId": "TransactionsController_getTransaction",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Transactions"]
+            },
+            "put": {
+                "operationId": "TransactionsController_updateTransaction",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TransactionBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Transactions"]
+            },
+            "delete": {
+                "operationId": "TransactionsController_deleteTransaction",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Transactions"]
+            }
+        },
+        "/workspaces/{workspaceId}/tags": {
+            "get": {
+                "operationId": "TransactionTagsController_listWorkspaceTags",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["TransactionTags"]
+            }
+        },
+        "/workspaces/{workspaceId}/export": {
+            "get": {
+                "operationId": "ExportController_exportTransactions",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Export"]
+            }
+        },
+        "/workspaces/{workspaceId}/payment-sources": {
+            "get": {
+                "operationId": "PaymentSourcesController_listPaymentSources",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["PaymentSources"]
+            },
+            "post": {
+                "operationId": "PaymentSourcesController_createPaymentSource",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentSourceBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["PaymentSources"]
+            }
+        },
+        "/workspaces/{workspaceId}/payment-sources/{id}": {
+            "put": {
+                "operationId": "PaymentSourcesController_updatePaymentSource",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentSourceBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["PaymentSources"]
+            }
+        },
+        "/workspaces/{workspaceId}/payment-sources/{id}/archive": {
+            "post": {
+                "operationId": "PaymentSourcesController_archivePaymentSource",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["PaymentSources"]
+            }
+        }
     },
-    "/workspaces/{workspaceId}/budgets/{id}": {
-      "put": {
-        "operationId": "BudgetsController_updateBudget",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BudgetBodyDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Budgets"
-        ]
-      },
-      "delete": {
-        "operationId": "BudgetsController_deleteBudget",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Budgets"
-        ]
-      }
+    "info": {
+        "title": "Monqom API",
+        "description": "The Monqom API description",
+        "version": "1.0",
+        "contact": {}
     },
-    "/workspaces/{workspaceId}/dashboard": {
-      "get": {
-        "operationId": "DashboardController_getOverview",
-        "parameters": [],
-        "responses": {
-          "200": {
+    "tags": [
+        {
+            "name": "monqom",
             "description": ""
-          }
-        },
-        "tags": [
-          "Dashboard"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/dashboard/spending-summary": {
-      "get": {
-        "operationId": "DashboardController_getSpendingSummary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Dashboard"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/dashboard/category-breakdown": {
-      "get": {
-        "operationId": "DashboardController_getCategoryBreakdown",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Dashboard"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/transactions": {
-      "get": {
-        "operationId": "TransactionsController_listTransactions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Transactions"
-        ]
-      },
-      "post": {
-        "operationId": "TransactionsController_createTransaction",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TransactionBodyDto"
-              }
+        }
+    ],
+    "servers": [],
+    "components": {
+        "schemas": {
+            "RegisterDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "LoginDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "TokenDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "CurrentPasswordDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "EmailDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "ResetPasswordDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "ChangePasswordDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "UpdateUserProfileDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "UpdateWorkspaceDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "BudgetBodyDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "TransactionBodyDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "PaymentSourceBodyDto": {
+                "type": "object",
+                "properties": {}
             }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Transactions"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/transactions/{id}": {
-      "get": {
-        "operationId": "TransactionsController_getTransaction",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Transactions"
-        ]
-      },
-      "put": {
-        "operationId": "TransactionsController_updateTransaction",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TransactionBodyDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Transactions"
-        ]
-      },
-      "delete": {
-        "operationId": "TransactionsController_deleteTransaction",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Transactions"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/tags": {
-      "get": {
-        "operationId": "TransactionTagsController_listWorkspaceTags",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TransactionTags"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/export": {
-      "get": {
-        "operationId": "ExportController_exportTransactions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Export"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/payment-sources": {
-      "get": {
-        "operationId": "PaymentSourcesController_listPaymentSources",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "PaymentSources"
-        ]
-      },
-      "post": {
-        "operationId": "PaymentSourcesController_createPaymentSource",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PaymentSourceBodyDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "PaymentSources"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/payment-sources/{id}": {
-      "put": {
-        "operationId": "PaymentSourcesController_updatePaymentSource",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PaymentSourceBodyDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "PaymentSources"
-        ]
-      }
-    },
-    "/workspaces/{workspaceId}/payment-sources/{id}/archive": {
-      "post": {
-        "operationId": "PaymentSourcesController_archivePaymentSource",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "PaymentSources"
-        ]
-      }
+        }
     }
-  },
-  "info": {
-    "title": "Monqom API",
-    "description": "The Monqom API description",
-    "version": "1.0",
-    "contact": {}
-  },
-  "tags": [
-    {
-      "name": "monqom",
-      "description": ""
-    }
-  ],
-  "servers": [],
-  "components": {
-    "schemas": {
-      "RegisterDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "LoginDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "TokenDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CurrentPasswordDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "EmailDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "ResetPasswordDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "ChangePasswordDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateUserProfileDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateWorkspaceDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "BudgetBodyDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "TransactionBodyDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "PaymentSourceBodyDto": {
-        "type": "object",
-        "properties": {}
-      }
-    }
-  }
 }

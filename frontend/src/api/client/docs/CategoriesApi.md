@@ -2,39 +2,33 @@
 
 All URIs are relative to *http://localhost*
 
-|Method | HTTP request | Description|
-|------------- | ------------- | -------------|
-|[**categoriesControllerGetCategory**](#categoriescontrollergetcategory) | **GET** /workspaces/{workspaceId}/categories/{id} | |
-|[**categoriesControllerListCategories**](#categoriescontrollerlistcategories) | **GET** /workspaces/{workspaceId}/categories | |
+| Method                                                                        | HTTP request                                      | Description |
+| ----------------------------------------------------------------------------- | ------------------------------------------------- | ----------- |
+| [**categoriesControllerGetCategory**](#categoriescontrollergetcategory)       | **GET** /workspaces/{workspaceId}/categories/{id} |             |
+| [**categoriesControllerListCategories**](#categoriescontrollerlistcategories) | **GET** /workspaces/{workspaceId}/categories      |             |
 
 # **categoriesControllerGetCategory**
-> categoriesControllerGetCategory()
 
+> categoriesControllerGetCategory()
 
 ### Example
 
 ```typescript
-import {
-    CategoriesApi,
-    Configuration
-} from './api';
+import { CategoriesApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new CategoriesApi(configuration);
 
 let id: string; // (default to undefined)
 
-const { status, data } = await apiInstance.categoriesControllerGetCategory(
-    id
-);
+const { status, data } = await apiInstance.categoriesControllerGetCategory(id);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] |  | defaults to undefined|
-
+| Name   | Type         | Description | Notes                 |
+| ------ | ------------ | ----------- | --------------------- |
+| **id** | [**string**] |             | defaults to undefined |
 
 ### Return type
 
@@ -46,28 +40,25 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **categoriesControllerListCategories**
-> categoriesControllerListCategories()
 
+> categoriesControllerListCategories()
 
 ### Example
 
 ```typescript
-import {
-    CategoriesApi,
-    Configuration
-} from './api';
+import { CategoriesApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new CategoriesApi(configuration);
@@ -76,8 +67,8 @@ const { status, data } = await apiInstance.categoriesControllerListCategories();
 ```
 
 ### Parameters
-This endpoint does not have any parameters.
 
+This endpoint does not have any parameters.
 
 ### Return type
 
@@ -89,14 +80,13 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

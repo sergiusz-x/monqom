@@ -1,19 +1,18 @@
 # HealthControllerCheckHealth200ResponseInfoValue
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**status** | **string** |  | [default to undefined]
+| Name       | Type       | Description | Notes                  |
+| ---------- | ---------- | ----------- | ---------------------- |
+| **status** | **string** |             | [default to undefined] |
 
 ## Example
 
 ```typescript
-import { HealthControllerCheckHealth200ResponseInfoValue } from './api';
+import { HealthControllerCheckHealth200ResponseInfoValue } from "./api";
 
 const instance: HealthControllerCheckHealth200ResponseInfoValue = {
-    status,
+  status,
 };
 ```
 

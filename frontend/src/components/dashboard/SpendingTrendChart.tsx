@@ -33,14 +33,18 @@ export function SpendingTrendChart({
         </div>
         {selectedItem ? (
           <p className="w-fit rounded-full bg-muted px-3 py-1 text-sm font-medium tabular-nums">
-            {formatMonth(selectedItem.month)}: {" "}
+            {formatMonth(selectedItem.month)}:{" "}
             {formatCurrency(selectedItem.total, currency)}
           </p>
         ) : null}
       </div>
 
       {hasSpending ? (
-        <div className="space-y-3" role="list" aria-label={t("dashboard.monthlyAmounts")}>
+        <div
+          className="space-y-3"
+          role="list"
+          aria-label={t("dashboard.monthlyAmounts")}
+        >
           {trend.map((item) => {
             const isCurrent = item.month === currentMonth;
             const isSelected = item.month === selectedMonth;
@@ -62,7 +66,9 @@ export function SpendingTrendChart({
               >
                 <span
                   className={
-                    isCurrent ? "text-sm font-semibold text-foreground" : "text-sm text-muted-foreground"
+                    isCurrent
+                      ? "text-sm font-semibold text-foreground"
+                      : "text-sm text-muted-foreground"
                   }
                 >
                   {formatShortMonth(item.month)}
@@ -74,7 +80,9 @@ export function SpendingTrendChart({
                   <span
                     className={
                       "block h-full rounded-md transition-[width,opacity] duration-200 " +
-                      (isSelected || isCurrent ? "" : "opacity-75 group-hover:opacity-100")
+                      (isSelected || isCurrent
+                        ? ""
+                        : "opacity-75 group-hover:opacity-100")
                     }
                     style={{
                       display: "block",

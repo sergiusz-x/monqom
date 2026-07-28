@@ -2,42 +2,36 @@
 
 All URIs are relative to *http://localhost*
 
-|Method | HTTP request | Description|
-|------------- | ------------- | -------------|
-|[**budgetsControllerCreateBudget**](#budgetscontrollercreatebudget) | **POST** /workspaces/{workspaceId}/budgets | |
-|[**budgetsControllerDeleteBudget**](#budgetscontrollerdeletebudget) | **DELETE** /workspaces/{workspaceId}/budgets/{id} | |
-|[**budgetsControllerListBudgetProgress**](#budgetscontrollerlistbudgetprogress) | **GET** /workspaces/{workspaceId}/budgets/progress | |
-|[**budgetsControllerListBudgets**](#budgetscontrollerlistbudgets) | **GET** /workspaces/{workspaceId}/budgets | |
-|[**budgetsControllerUpdateBudget**](#budgetscontrollerupdatebudget) | **PUT** /workspaces/{workspaceId}/budgets/{id} | |
+| Method                                                                          | HTTP request                                       | Description |
+| ------------------------------------------------------------------------------- | -------------------------------------------------- | ----------- |
+| [**budgetsControllerCreateBudget**](#budgetscontrollercreatebudget)             | **POST** /workspaces/{workspaceId}/budgets         |             |
+| [**budgetsControllerDeleteBudget**](#budgetscontrollerdeletebudget)             | **DELETE** /workspaces/{workspaceId}/budgets/{id}  |             |
+| [**budgetsControllerListBudgetProgress**](#budgetscontrollerlistbudgetprogress) | **GET** /workspaces/{workspaceId}/budgets/progress |             |
+| [**budgetsControllerListBudgets**](#budgetscontrollerlistbudgets)               | **GET** /workspaces/{workspaceId}/budgets          |             |
+| [**budgetsControllerUpdateBudget**](#budgetscontrollerupdatebudget)             | **PUT** /workspaces/{workspaceId}/budgets/{id}     |             |
 
 # **budgetsControllerCreateBudget**
-> budgetsControllerCreateBudget(body)
 
+> budgetsControllerCreateBudget(body)
 
 ### Example
 
 ```typescript
-import {
-    BudgetsApi,
-    Configuration
-} from './api';
+import { BudgetsApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new BudgetsApi(configuration);
 
 let body: object; //
 
-const { status, data } = await apiInstance.budgetsControllerCreateBudget(
-    body
-);
+const { status, data } = await apiInstance.budgetsControllerCreateBudget(body);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **body** | **object**|  | |
-
+| Name     | Type       | Description | Notes |
+| -------- | ---------- | ----------- | ----- |
+| **body** | **object** |             |       |
 
 ### Return type
 
@@ -49,45 +43,39 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: Not defined
-
+- **Content-Type**: application/json
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**201** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **budgetsControllerDeleteBudget**
-> budgetsControllerDeleteBudget()
 
+> budgetsControllerDeleteBudget()
 
 ### Example
 
 ```typescript
-import {
-    BudgetsApi,
-    Configuration
-} from './api';
+import { BudgetsApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new BudgetsApi(configuration);
 
 let id: string; // (default to undefined)
 
-const { status, data } = await apiInstance.budgetsControllerDeleteBudget(
-    id
-);
+const { status, data } = await apiInstance.budgetsControllerDeleteBudget(id);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] |  | defaults to undefined|
-
+| Name   | Type         | Description | Notes                 |
+| ------ | ------------ | ----------- | --------------------- |
+| **id** | [**string**] |             | defaults to undefined |
 
 ### Return type
 
@@ -99,38 +87,36 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**204** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **204**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **budgetsControllerListBudgetProgress**
-> budgetsControllerListBudgetProgress()
 
+> budgetsControllerListBudgetProgress()
 
 ### Example
 
 ```typescript
-import {
-    BudgetsApi,
-    Configuration
-} from './api';
+import { BudgetsApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new BudgetsApi(configuration);
 
-const { status, data } = await apiInstance.budgetsControllerListBudgetProgress();
+const { status, data } =
+  await apiInstance.budgetsControllerListBudgetProgress();
 ```
 
 ### Parameters
-This endpoint does not have any parameters.
 
+This endpoint does not have any parameters.
 
 ### Return type
 
@@ -142,28 +128,25 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **budgetsControllerListBudgets**
-> budgetsControllerListBudgets()
 
+> budgetsControllerListBudgets()
 
 ### Example
 
 ```typescript
-import {
-    BudgetsApi,
-    Configuration
-} from './api';
+import { BudgetsApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new BudgetsApi(configuration);
@@ -172,8 +155,8 @@ const { status, data } = await apiInstance.budgetsControllerListBudgets();
 ```
 
 ### Parameters
-This endpoint does not have any parameters.
 
+This endpoint does not have any parameters.
 
 ### Return type
 
@@ -185,28 +168,25 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
-
+- **Content-Type**: Not defined
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **budgetsControllerUpdateBudget**
-> budgetsControllerUpdateBudget(body)
 
+> budgetsControllerUpdateBudget(body)
 
 ### Example
 
 ```typescript
-import {
-    BudgetsApi,
-    Configuration
-} from './api';
+import { BudgetsApi, Configuration } from "./api";
 
 const configuration = new Configuration();
 const apiInstance = new BudgetsApi(configuration);
@@ -215,18 +195,17 @@ let id: string; // (default to undefined)
 let body: object; //
 
 const { status, data } = await apiInstance.budgetsControllerUpdateBudget(
-    id,
-    body
+  id,
+  body,
 );
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **body** | **object**|  | |
-| **id** | [**string**] |  | defaults to undefined|
-
+| Name     | Type         | Description | Notes                 |
+| -------- | ------------ | ----------- | --------------------- |
+| **body** | **object**   |             |                       |
+| **id**   | [**string**] |             | defaults to undefined |
 
 ### Return type
 
@@ -238,14 +217,13 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: Not defined
-
+- **Content-Type**: application/json
+- **Accept**: Not defined
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

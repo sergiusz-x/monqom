@@ -1,25 +1,24 @@
 # HealthControllerCheckHealth503Response
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**status** | **string** |  | [optional] [default to undefined]
-**info** | [**{ [key: string]: HealthControllerCheckHealth200ResponseInfoValue; }**](HealthControllerCheckHealth200ResponseInfoValue.md) |  | [optional] [default to undefined]
-**error** | [**{ [key: string]: HealthControllerCheckHealth200ResponseInfoValue; }**](HealthControllerCheckHealth200ResponseInfoValue.md) |  | [optional] [default to undefined]
-**details** | [**{ [key: string]: HealthControllerCheckHealth200ResponseInfoValue; }**](HealthControllerCheckHealth200ResponseInfoValue.md) |  | [optional] [default to undefined]
+| Name        | Type                                                                                                                          | Description | Notes                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **status**  | **string**                                                                                                                    |             | [optional] [default to undefined] |
+| **info**    | [**{ [key: string]: HealthControllerCheckHealth200ResponseInfoValue; }**](HealthControllerCheckHealth200ResponseInfoValue.md) |             | [optional] [default to undefined] |
+| **error**   | [**{ [key: string]: HealthControllerCheckHealth200ResponseInfoValue; }**](HealthControllerCheckHealth200ResponseInfoValue.md) |             | [optional] [default to undefined] |
+| **details** | [**{ [key: string]: HealthControllerCheckHealth200ResponseInfoValue; }**](HealthControllerCheckHealth200ResponseInfoValue.md) |             | [optional] [default to undefined] |
 
 ## Example
 
 ```typescript
-import { HealthControllerCheckHealth503Response } from './api';
+import { HealthControllerCheckHealth503Response } from "./api";
 
 const instance: HealthControllerCheckHealth503Response = {
-    status,
-    info,
-    error,
-    details,
+  status,
+  info,
+  error,
+  details,
 };
 ```
 
