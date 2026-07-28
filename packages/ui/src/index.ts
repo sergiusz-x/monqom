@@ -20,12 +20,12 @@ export { Skeleton } from "./components/skeleton";
 export { StateMessage } from "./components/state-message";
 export { Textarea } from "./components/textarea";
 
-export { ToastViewport } from "./components/toast";
+export { ToastViewport } from "./toast/toast-viewport";
 export { useToast } from "./toast/use-toast";
 
 // Contexts
-export type { ToastVariant, ToastMessage } from "./contexts/ToastContext";
-export { ToastProvider, useToastContext } from "./contexts/ToastContext";
+export type { ToastVariant, ToastMessage } from "./toast/toast-context";
+export { ToastProvider, useToastContext } from "./toast/toast-context";
 
 // Lib
 export { formatApiError } from "./lib/error-message";
