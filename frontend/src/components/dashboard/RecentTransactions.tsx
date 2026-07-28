@@ -74,7 +74,6 @@ export function RecentTransactions({
     editWasSavedRef.current = true;
     setEditingTransaction(null);
     void invalidateFinancialData(queryClient, workspaceId);
-    showToast(t("transactions.saved"));
   }
 
   async function handleDelete() {

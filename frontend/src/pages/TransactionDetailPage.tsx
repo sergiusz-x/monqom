@@ -306,7 +306,6 @@ export default function TransactionDetailPage() {
           patchWorkspace({ lastPaymentSourceId: result.paymentSourceId });
           setIsEditing(false);
           void invalidateFinancialData(queryClient, workspaceId);
-          showToast(t("transactions.saved"));
         }}
       />
     </PageContainer>

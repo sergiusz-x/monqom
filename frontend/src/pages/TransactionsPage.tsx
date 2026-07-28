@@ -203,7 +203,6 @@ export default function TransactionsPage() {
     if (workspaceId) {
       void invalidateFinancialData(queryClient, workspaceId);
     }
-    showToast(t("transactions.saved"));
   }
 
   async function handleDelete() {
