@@ -21,3 +21,19 @@ Stop the stack:
 ```bash
 docker compose -f docker-compose.dev.yml down
 ```
+
+## Generating OpenAPI client
+
+Whenever the backend API changes, regenerate the OpenAPI spec and the TypeScript client:
+
+```bash
+# Generate OpenAPI spec from NestJS app
+pnpm --filter backend run openapi:generate
+
+# Generate TypeScript client (axios) from the spec
+pnpm --filter backend run client:generate
+```
+
+The generated client will be placed under `frontend/src/api/client/`. Commit the generated files.
+
+Make sure to commit both `backend/spec/openapi.json` and the client files.
