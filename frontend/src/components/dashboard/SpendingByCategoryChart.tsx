@@ -77,7 +77,9 @@ export function SpendingByCategoryChart({
     <SectionCard padding="responsive" elevation="raised">
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{t("dashboard.byCategory")} - {monthLabel}</h2>
+          <h2 className="text-lg font-semibold">
+            {t("dashboard.byCategory")} - {monthLabel}
+          </h2>
           <p className="text-sm text-muted-foreground">
             {t("dashboard.categoryDescription")}
           </p>
