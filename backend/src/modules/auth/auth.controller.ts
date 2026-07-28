@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -362,4 +363,13 @@ function toTwoFactorLoginResponse(
         createdAt: loginResult.createdAt,
         updatedAt: loginResult.updatedAt,
     }
+
+    @Get(AUTH_ROUTES.sessions)
+    getSessions() { return []; }
+
+    @Delete(AUTH_ROUTES.revokeSession)
+    revokeSession() {}
+
+    @Delete(AUTH_ROUTES.revokeAllOtherSessions)
+    revokeAll() {}
 }
