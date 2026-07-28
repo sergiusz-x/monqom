@@ -159,7 +159,7 @@ describe("format.ts", () => {
       // @ts-ignore
       window.__WORKSPACE_SETTINGS__ = { timezone: "UTC" };
       const date = new Date("2024-01-15T10:30:00Z");
-      const options = {
+      const options: Intl.DateTimeFormatOptions = {
         timeZone: "Asia/Tokyo",
         day: "2-digit",
         month: "2-digit",

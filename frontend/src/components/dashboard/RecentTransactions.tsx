@@ -15,6 +15,7 @@ import { paymentSourceName } from "@/lib/payment-sources";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import type { Category } from "@/types/category";
 import type { Transaction } from "@/types/transaction";
+
 import { Button, EmptyState, SectionCard } from "@monqom/ui";
 
 interface RecentTransactionsProps {
@@ -73,7 +74,6 @@ export function RecentTransactions({
     editWasSavedRef.current = true;
     setEditingTransaction(null);
     void invalidateFinancialData(queryClient, workspaceId);
-    showToast(t("transactions.saved"));
   }
 
   async function handleDelete() {

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@/hooks/useToast";
+import { useToast } from "@monqom/ui";
 import { formatApiError } from "@monqom/ui/lib/error-message";
 import api from "@/lib/api";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
@@ -175,7 +175,7 @@ export function useTransactionForm({
         await api.post(`/workspaces/${workspaceId}/transactions`, payload);
       }
       showToast(
-        t("transactions.saveSuccess", { defaultValue: "Transaction saved" }),
+        t("transactions.saved", { defaultValue: "Transaction saved" }),
         "success",
       );
       onSaved({ paymentSourceId: selectedPaymentSourceId });

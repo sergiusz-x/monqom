@@ -10,7 +10,6 @@ import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
 import { Button } from "@monqom/ui";
-import { ReleaseVersion } from "@/components/ReleaseVersion";
 
 type ActiveSection = "profile" | "workspace" | "security" | "data";
 
@@ -34,13 +33,7 @@ export default function SettingsPage() {
         <PageHeader
           title={t("settings.title")}
           description={t("settings.description")}
-          actions={
-            <div className="pt-1">
-              <ReleaseVersion />
-            </div>
-          }
         />
-
         <nav
           aria-label={t("settings.title")}
           className="flex w-full flex-col rounded-lg border border-border bg-muted/40 p-1 sm:flex-row"

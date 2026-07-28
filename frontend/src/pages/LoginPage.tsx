@@ -87,6 +87,9 @@ export default function LoginPage() {
               type="text"
               autoComplete="one-time-code"
               inputMode="numeric"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               placeholder="000000"
               {...register("totp", { required: t("auth.codeRequired") })}
             />

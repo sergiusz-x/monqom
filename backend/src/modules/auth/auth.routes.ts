@@ -15,4 +15,7 @@ export const AUTH_ROUTES = {
     me: 'me',
     verifyEmail: 'verify-email',
     resendVerification: 'resend-verification',
+    sessions: 'sessions',
+    revokeSession: 'sessions/:id',
+    revokeAllOtherSessions: 'sessions',
 } as const

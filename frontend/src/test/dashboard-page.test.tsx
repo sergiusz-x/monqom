@@ -106,11 +106,15 @@ function makeCategory(overrides: Partial<Category> = {}): Category {
   };
 }
 
+import { ToastProvider } from "@monqom/ui/toast";
+
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <DashboardPage />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    </ToastProvider>,
   );
 }
 
