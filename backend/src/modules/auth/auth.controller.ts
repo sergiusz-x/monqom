@@ -266,6 +266,15 @@ export class AuthController {
     private getNodeEnv(): string {
         return this.configService.get<string>('env.nodeEnv', 'development')
     }
+
+    @Get(AUTH_ROUTES.sessions)
+    getSessions() { return []; }
+
+    @Delete(AUTH_ROUTES.revokeSession)
+    revokeSession() {}
+
+    @Delete(AUTH_ROUTES.revokeAllOtherSessions)
+    revokeAll() {}
 }
 
 function regenerateSession(req: Request): Promise<void> {
@@ -363,13 +372,4 @@ function toTwoFactorLoginResponse(
         createdAt: loginResult.createdAt,
         updatedAt: loginResult.updatedAt,
     }
-
-    @Get(AUTH_ROUTES.sessions)
-    getSessions() { return []; }
-
-    @Delete(AUTH_ROUTES.revokeSession)
-    revokeSession() {}
-
-    @Delete(AUTH_ROUTES.revokeAllOtherSessions)
-    revokeAll() {}
 }
