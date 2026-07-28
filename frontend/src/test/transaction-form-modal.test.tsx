@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
+import { ToastProvider } from "@monqom/ui/toast";
 
 vi.mock("@/lib/api", () => ({
   default: { post: vi.fn(), put: vi.fn() },
@@ -61,13 +62,15 @@ describe("TransactionFormModal", () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const { container } = render(
-      <TransactionFormModal
-        open
-        mode="create"
-        workspaceId="ws-1"
-        onClose={onClose}
-        onSaved={vi.fn()}
-      />,
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          onClose={onClose}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
     );
     const backdrop = container.ownerDocument.querySelector(
       '[data-slot="modal-backdrop"]',
@@ -84,13 +87,15 @@ describe("TransactionFormModal", () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     render(
-      <TransactionFormModal
-        open
-        mode="create"
-        workspaceId="ws-1"
-        onClose={onClose}
-        onSaved={vi.fn()}
-      />,
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          onClose={onClose}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
     );
 
     await user.click(screen.getByLabelText("Amount"));
@@ -106,13 +111,15 @@ describe("TransactionFormModal", () => {
     async (digits, displayed, amount) => {
       const user = userEvent.setup();
       render(
-        <TransactionFormModal
-          open
-          mode="create"
-          workspaceId="ws-1"
-          onClose={vi.fn()}
-          onSaved={vi.fn()}
-        />,
+        <ToastProvider>
+          <TransactionFormModal
+            open
+            mode="create"
+            workspaceId="ws-1"
+            onClose={vi.fn()}
+            onSaved={vi.fn()}
+          />
+        </ToastProvider>,
       );
 
       const amountInput = screen.getByLabelText("Amount");
@@ -134,15 +141,17 @@ describe("TransactionFormModal", () => {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     render(
-      <TransactionFormModal
-        open
-        mode="create"
-        workspaceId="ws-1"
-        defaultCurrency="PLN"
-        defaultPaymentSourceId="ps-2"
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-      />,
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          defaultCurrency="PLN"
+          defaultPaymentSourceId="ps-2"
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
     );
 
     expect(screen.getByLabelText("Date")).toHaveValue(today);
@@ -177,28 +186,30 @@ describe("TransactionFormModal", () => {
   it("prefills and updates transaction in edit mode", async () => {
     const user = userEvent.setup();
     render(
-      <TransactionFormModal
-        open
-        mode="edit"
-        workspaceId="ws-1"
-        transaction={{
-          id: "tx-1",
-          amount: 20.5,
-          currency: "PLN",
-          date: "2026-04-20T00:00:00.000Z",
-          description: "Team lunch",
-          workspaceId: "ws-1",
-          categoryId: "cat-1",
-          notes: "Lunch",
-          tags: ["Food"],
-          paymentSourceId: "ps-1",
-          type: "expense",
-          createdAt: "2026-04-20T00:00:00.000Z",
-          updatedAt: "2026-04-20T00:00:00.000Z",
-        }}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-      />,
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="edit"
+          workspaceId="ws-1"
+          transaction={{
+            id: "tx-1",
+            amount: 20.5,
+            currency: "PLN",
+            date: "2026-04-20T00:00:00.000Z",
+            description: "Team lunch",
+            workspaceId: "ws-1",
+            categoryId: "cat-1",
+            notes: "Lunch",
+            tags: ["Food"],
+            paymentSourceId: "ps-1",
+            type: "expense",
+            createdAt: "2026-04-20T00:00:00.000Z",
+            updatedAt: "2026-04-20T00:00:00.000Z",
+          }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
     );
 
     expect(screen.getByLabelText("Amount")).toHaveValue("20.50");
