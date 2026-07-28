@@ -6,10 +6,8 @@ import BottomNav from "./BottomNav";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
-import { useTranslation } from "react-i18next";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 export default function AppLayout() {
-  const { t } = useTranslation();
   const { workspaceId, workspace, patchWorkspace } = useWorkspace();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const queryClient = useQueryClient();
