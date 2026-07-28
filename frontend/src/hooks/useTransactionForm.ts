@@ -1,10 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-<<<<<<< HEAD
-import { useToast } from "@/hooks/useToast";
-=======
 import { useToast } from "@monqom/ui";
->>>>>>> origin/feature/monqom-api-client
 import { formatApiError } from "@monqom/ui/lib/error-message";
 import api from "@/lib/api";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
@@ -179,11 +175,7 @@ export function useTransactionForm({
         await api.post(`/workspaces/${workspaceId}/transactions`, payload);
       }
       showToast(
-<<<<<<< HEAD
         t("transactions.saveSuccess", { defaultValue: "Transaction saved" }),
-=======
-        t("transactions.saveSuccess") ?? "Transaction saved",
->>>>>>> origin/feature/monqom-api-client
         "success",
       );
       onSaved({ paymentSourceId: selectedPaymentSourceId });

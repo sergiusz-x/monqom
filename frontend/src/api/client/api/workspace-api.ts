@@ -14,15 +14,16 @@
 
 
 import type { Configuration } from '../configuration';
-import type { AxiosPromise, AxiosInstance, RawAxiosRequestConfig } from 'axios';
+import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from 'axios';
 import globalAxios from 'axios';
 // Some imports not used depending on template conditions
 // @ts-ignore
-import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction, replaceWithSerializableTypeIfNeeded } from '../common';
+import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction } from '../common';
 // @ts-ignore
-import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError, operationServerMap } from '../base';
+import { BASE_PATH, COLLECTION_FORMATS, RequestArgs, BaseAPI, RequiredError } from '../base';
 /**
  * WorkspaceApi - axios parameter creator
+ * @export
  */
 export const WorkspaceApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -31,7 +32,7 @@ export const WorkspaceApiAxiosParamCreator = function (configuration?: Configura
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        workspaceControllerListWorkspaces: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        workspaceControllerListWorkspaces: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/workspaces`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -45,6 +46,7 @@ export const WorkspaceApiAxiosParamCreator = function (configuration?: Configura
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -59,6 +61,7 @@ export const WorkspaceApiAxiosParamCreator = function (configuration?: Configura
 
 /**
  * WorkspaceApi - functional programming interface
+ * @export
  */
 export const WorkspaceApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = WorkspaceApiAxiosParamCreator(configuration)
@@ -68,17 +71,16 @@ export const WorkspaceApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async workspaceControllerListWorkspaces(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async workspaceControllerListWorkspaces(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.workspaceControllerListWorkspaces(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['WorkspaceApi.workspaceControllerListWorkspaces']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
 };
 
 /**
  * WorkspaceApi - factory interface
+ * @export
  */
 export const WorkspaceApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = WorkspaceApiFp(configuration)
@@ -88,7 +90,7 @@ export const WorkspaceApiFactory = function (configuration?: Configuration, base
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        workspaceControllerListWorkspaces(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        workspaceControllerListWorkspaces(options?: any): AxiosPromise<void> {
             return localVarFp.workspaceControllerListWorkspaces(options).then((request) => request(axios, basePath));
         },
     };
@@ -96,15 +98,18 @@ export const WorkspaceApiFactory = function (configuration?: Configuration, base
 
 /**
  * WorkspaceApi - object-oriented interface
+ * @export
+ * @class WorkspaceApi
+ * @extends {BaseAPI}
  */
 export class WorkspaceApi extends BaseAPI {
     /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof WorkspaceApi
      */
-    public workspaceControllerListWorkspaces(options?: RawAxiosRequestConfig) {
+    public workspaceControllerListWorkspaces(options?: AxiosRequestConfig) {
         return WorkspaceApiFp(this.configuration).workspaceControllerListWorkspaces(options).then((request) => request(this.axios, this.basePath));
     }
 }
-

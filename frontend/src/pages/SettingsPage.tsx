@@ -10,10 +10,7 @@ import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
 import { Button } from "@monqom/ui";
-<<<<<<< HEAD
-import { ReleaseVersion } from "@/components/ReleaseVersion";
-=======
->>>>>>> origin/feature/monqom-api-client
+
 
 type ActiveSection = "profile" | "workspace" | "security" | "data";
 

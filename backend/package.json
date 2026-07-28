@@ -25,8 +25,8 @@
         "test:e2e": "jest --config ./test/jest-e2e.json",
         "test:e2e:smoke": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts",
         "test:e2e:critical": "jest --config ./test/jest-e2e.json test/app.e2e-spec.ts test/auth-two-factor.e2e-spec.ts",
-        "openapi:generate": "ts-node src/main-doc.ts",
-        "client:generate": "openapi-generator-cli generate -i ./spec/openapi.json -g typescript-axios -o ../frontend/src/api/client --additional-properties=withSeparateModelsAndApi=true,modelPropertyNaming=original"
+        "openapi:generate": "ts-node --files src/main-doc.ts",
+        "client:generate": "openapi-generator-cli generate -i ./spec/openapi.json -g typescript-axios -o ../frontend/src/api/client --additional-properties=withSeparateModelsAndApi=true,modelPropertyNaming=original,apiPackage=api,modelPackage=model --skip-validate-spec"
     },
     "dependencies": {
         "@nestjs/common": "^11.0.1",

@@ -19,8 +19,7 @@ export { Select } from "./components/select";
 export { Skeleton } from "./components/skeleton";
 export { StateMessage } from "./components/state-message";
 export { Textarea } from "./components/textarea";
-export { SpendingByCategoryChart } from "./components/Chart/SpendingByCategoryChart";
-export { SpendingTrendChart } from "./components/Chart/SpendingTrendChart";
+
 export { ToastViewport } from "./components/toast";
 export { useToast } from "./toast/use-toast";
 

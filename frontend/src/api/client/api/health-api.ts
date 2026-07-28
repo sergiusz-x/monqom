@@ -14,19 +14,20 @@
 
 
 import type { Configuration } from '../configuration';
-import type { AxiosPromise, AxiosInstance, RawAxiosRequestConfig } from 'axios';
+import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from 'axios';
 import globalAxios from 'axios';
 // Some imports not used depending on template conditions
 // @ts-ignore
-import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction, replaceWithSerializableTypeIfNeeded } from '../common';
+import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction } from '../common';
 // @ts-ignore
-import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError, operationServerMap } from '../base';
+import { BASE_PATH, COLLECTION_FORMATS, RequestArgs, BaseAPI, RequiredError } from '../base';
 // @ts-ignore
-import type { HealthControllerCheckHealth200Response } from '../models';
+import { HealthControllerCheckHealth200Response } from '../model';
 // @ts-ignore
-import type { HealthControllerCheckHealth503Response } from '../models';
+import { HealthControllerCheckHealth503Response } from '../model';
 /**
  * HealthApi - axios parameter creator
+ * @export
  */
 export const HealthApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -35,7 +36,7 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        healthControllerCheckHealth: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        healthControllerCheckHealth: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/health`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -48,8 +49,8 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-            localVarHeaderParameter['Accept'] = 'application/json';
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -64,7 +65,7 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        healthControllerCheckReady: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        healthControllerCheckReady: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/ready`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -78,6 +79,7 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -92,7 +94,7 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        healthControllerVersion: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        healthControllerVersion: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/version.json`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -106,6 +108,7 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -120,6 +123,7 @@ export const HealthApiAxiosParamCreator = function (configuration?: Configuratio
 
 /**
  * HealthApi - functional programming interface
+ * @export
  */
 export const HealthApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = HealthApiAxiosParamCreator(configuration)
@@ -129,39 +133,34 @@ export const HealthApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async healthControllerCheckHealth(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HealthControllerCheckHealth200Response>> {
+        async healthControllerCheckHealth(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HealthControllerCheckHealth200Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.healthControllerCheckHealth(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['HealthApi.healthControllerCheckHealth']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async healthControllerCheckReady(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async healthControllerCheckReady(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.healthControllerCheckReady(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['HealthApi.healthControllerCheckReady']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async healthControllerVersion(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async healthControllerVersion(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.healthControllerVersion(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['HealthApi.healthControllerVersion']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
 };
 
 /**
  * HealthApi - factory interface
+ * @export
  */
 export const HealthApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = HealthApiFp(configuration)
@@ -171,7 +170,7 @@ export const HealthApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        healthControllerCheckHealth(options?: RawAxiosRequestConfig): AxiosPromise<HealthControllerCheckHealth200Response> {
+        healthControllerCheckHealth(options?: any): AxiosPromise<HealthControllerCheckHealth200Response> {
             return localVarFp.healthControllerCheckHealth(options).then((request) => request(axios, basePath));
         },
         /**
@@ -179,7 +178,7 @@ export const HealthApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        healthControllerCheckReady(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        healthControllerCheckReady(options?: any): AxiosPromise<void> {
             return localVarFp.healthControllerCheckReady(options).then((request) => request(axios, basePath));
         },
         /**
@@ -187,7 +186,7 @@ export const HealthApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        healthControllerVersion(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        healthControllerVersion(options?: any): AxiosPromise<void> {
             return localVarFp.healthControllerVersion(options).then((request) => request(axios, basePath));
         },
     };
@@ -195,14 +194,18 @@ export const HealthApiFactory = function (configuration?: Configuration, basePat
 
 /**
  * HealthApi - object-oriented interface
+ * @export
+ * @class HealthApi
+ * @extends {BaseAPI}
  */
 export class HealthApi extends BaseAPI {
     /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof HealthApi
      */
-    public healthControllerCheckHealth(options?: RawAxiosRequestConfig) {
+    public healthControllerCheckHealth(options?: AxiosRequestConfig) {
         return HealthApiFp(this.configuration).healthControllerCheckHealth(options).then((request) => request(this.axios, this.basePath));
     }
 
@@ -210,8 +213,9 @@ export class HealthApi extends BaseAPI {
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof HealthApi
      */
-    public healthControllerCheckReady(options?: RawAxiosRequestConfig) {
+    public healthControllerCheckReady(options?: AxiosRequestConfig) {
         return HealthApiFp(this.configuration).healthControllerCheckReady(options).then((request) => request(this.axios, this.basePath));
     }
 
@@ -219,9 +223,9 @@ export class HealthApi extends BaseAPI {
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof HealthApi
      */
-    public healthControllerVersion(options?: RawAxiosRequestConfig) {
+    public healthControllerVersion(options?: AxiosRequestConfig) {
         return HealthApiFp(this.configuration).healthControllerVersion(options).then((request) => request(this.axios, this.basePath));
     }
 }
-

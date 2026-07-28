@@ -493,6 +493,46 @@
         ]
       }
     },
+    "/auth/sessions": {
+      "get": {
+        "operationId": "AuthController_getSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      },
+      "delete": {
+        "operationId": "AuthController_revokeAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/sessions/{id}": {
+      "delete": {
+        "operationId": "AuthController_revokeSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/users/me": {
       "put": {
         "operationId": "UsersController_updateMe",

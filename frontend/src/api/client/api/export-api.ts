@@ -14,15 +14,16 @@
 
 
 import type { Configuration } from '../configuration';
-import type { AxiosPromise, AxiosInstance, RawAxiosRequestConfig } from 'axios';
+import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from 'axios';
 import globalAxios from 'axios';
 // Some imports not used depending on template conditions
 // @ts-ignore
-import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction, replaceWithSerializableTypeIfNeeded } from '../common';
+import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction } from '../common';
 // @ts-ignore
-import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError, operationServerMap } from '../base';
+import { BASE_PATH, COLLECTION_FORMATS, RequestArgs, BaseAPI, RequiredError } from '../base';
 /**
  * ExportApi - axios parameter creator
+ * @export
  */
 export const ExportApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -31,7 +32,7 @@ export const ExportApiAxiosParamCreator = function (configuration?: Configuratio
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        exportControllerExportTransactions: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        exportControllerExportTransactions: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/workspaces/{workspaceId}/export`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -45,6 +46,7 @@ export const ExportApiAxiosParamCreator = function (configuration?: Configuratio
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -59,6 +61,7 @@ export const ExportApiAxiosParamCreator = function (configuration?: Configuratio
 
 /**
  * ExportApi - functional programming interface
+ * @export
  */
 export const ExportApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = ExportApiAxiosParamCreator(configuration)
@@ -68,17 +71,16 @@ export const ExportApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async exportControllerExportTransactions(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async exportControllerExportTransactions(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.exportControllerExportTransactions(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ExportApi.exportControllerExportTransactions']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
 };
 
 /**
  * ExportApi - factory interface
+ * @export
  */
 export const ExportApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = ExportApiFp(configuration)
@@ -88,7 +90,7 @@ export const ExportApiFactory = function (configuration?: Configuration, basePat
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        exportControllerExportTransactions(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        exportControllerExportTransactions(options?: any): AxiosPromise<void> {
             return localVarFp.exportControllerExportTransactions(options).then((request) => request(axios, basePath));
         },
     };
@@ -96,15 +98,18 @@ export const ExportApiFactory = function (configuration?: Configuration, basePat
 
 /**
  * ExportApi - object-oriented interface
+ * @export
+ * @class ExportApi
+ * @extends {BaseAPI}
  */
 export class ExportApi extends BaseAPI {
     /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof ExportApi
      */
-    public exportControllerExportTransactions(options?: RawAxiosRequestConfig) {
+    public exportControllerExportTransactions(options?: AxiosRequestConfig) {
         return ExportApiFp(this.configuration).exportControllerExportTransactions(options).then((request) => request(this.axios, this.basePath));
     }
 }
-

@@ -14,15 +14,16 @@
 
 
 import type { Configuration } from '../configuration';
-import type { AxiosPromise, AxiosInstance, RawAxiosRequestConfig } from 'axios';
+import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from 'axios';
 import globalAxios from 'axios';
 // Some imports not used depending on template conditions
 // @ts-ignore
-import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction, replaceWithSerializableTypeIfNeeded } from '../common';
+import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction } from '../common';
 // @ts-ignore
-import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError, operationServerMap } from '../base';
+import { BASE_PATH, COLLECTION_FORMATS, RequestArgs, BaseAPI, RequiredError } from '../base';
 /**
  * DashboardApi - axios parameter creator
+ * @export
  */
 export const DashboardApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -31,7 +32,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        dashboardControllerGetCategoryBreakdown: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        dashboardControllerGetCategoryBreakdown: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/workspaces/{workspaceId}/dashboard/category-breakdown`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -45,6 +46,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -59,7 +61,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        dashboardControllerGetOverview: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        dashboardControllerGetOverview: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/workspaces/{workspaceId}/dashboard`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -73,6 +75,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -87,7 +90,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        dashboardControllerGetSpendingSummary: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        dashboardControllerGetSpendingSummary: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/workspaces/{workspaceId}/dashboard/spending-summary`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -101,6 +104,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -115,6 +119,7 @@ export const DashboardApiAxiosParamCreator = function (configuration?: Configura
 
 /**
  * DashboardApi - functional programming interface
+ * @export
  */
 export const DashboardApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = DashboardApiAxiosParamCreator(configuration)
@@ -124,39 +129,34 @@ export const DashboardApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async dashboardControllerGetCategoryBreakdown(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async dashboardControllerGetCategoryBreakdown(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.dashboardControllerGetCategoryBreakdown(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['DashboardApi.dashboardControllerGetCategoryBreakdown']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async dashboardControllerGetOverview(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async dashboardControllerGetOverview(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.dashboardControllerGetOverview(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['DashboardApi.dashboardControllerGetOverview']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async dashboardControllerGetSpendingSummary(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async dashboardControllerGetSpendingSummary(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.dashboardControllerGetSpendingSummary(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['DashboardApi.dashboardControllerGetSpendingSummary']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
 };
 
 /**
  * DashboardApi - factory interface
+ * @export
  */
 export const DashboardApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = DashboardApiFp(configuration)
@@ -166,7 +166,7 @@ export const DashboardApiFactory = function (configuration?: Configuration, base
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        dashboardControllerGetCategoryBreakdown(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        dashboardControllerGetCategoryBreakdown(options?: any): AxiosPromise<void> {
             return localVarFp.dashboardControllerGetCategoryBreakdown(options).then((request) => request(axios, basePath));
         },
         /**
@@ -174,7 +174,7 @@ export const DashboardApiFactory = function (configuration?: Configuration, base
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        dashboardControllerGetOverview(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        dashboardControllerGetOverview(options?: any): AxiosPromise<void> {
             return localVarFp.dashboardControllerGetOverview(options).then((request) => request(axios, basePath));
         },
         /**
@@ -182,7 +182,7 @@ export const DashboardApiFactory = function (configuration?: Configuration, base
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        dashboardControllerGetSpendingSummary(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        dashboardControllerGetSpendingSummary(options?: any): AxiosPromise<void> {
             return localVarFp.dashboardControllerGetSpendingSummary(options).then((request) => request(axios, basePath));
         },
     };
@@ -190,14 +190,18 @@ export const DashboardApiFactory = function (configuration?: Configuration, base
 
 /**
  * DashboardApi - object-oriented interface
+ * @export
+ * @class DashboardApi
+ * @extends {BaseAPI}
  */
 export class DashboardApi extends BaseAPI {
     /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof DashboardApi
      */
-    public dashboardControllerGetCategoryBreakdown(options?: RawAxiosRequestConfig) {
+    public dashboardControllerGetCategoryBreakdown(options?: AxiosRequestConfig) {
         return DashboardApiFp(this.configuration).dashboardControllerGetCategoryBreakdown(options).then((request) => request(this.axios, this.basePath));
     }
 
@@ -205,8 +209,9 @@ export class DashboardApi extends BaseAPI {
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof DashboardApi
      */
-    public dashboardControllerGetOverview(options?: RawAxiosRequestConfig) {
+    public dashboardControllerGetOverview(options?: AxiosRequestConfig) {
         return DashboardApiFp(this.configuration).dashboardControllerGetOverview(options).then((request) => request(this.axios, this.basePath));
     }
 
@@ -214,9 +219,9 @@ export class DashboardApi extends BaseAPI {
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof DashboardApi
      */
-    public dashboardControllerGetSpendingSummary(options?: RawAxiosRequestConfig) {
+    public dashboardControllerGetSpendingSummary(options?: AxiosRequestConfig) {
         return DashboardApiFp(this.configuration).dashboardControllerGetSpendingSummary(options).then((request) => request(this.axios, this.basePath));
     }
 }
-

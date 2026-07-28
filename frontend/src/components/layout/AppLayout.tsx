@@ -29,13 +29,8 @@ export default function AppLayout() {
   }
 
   return (
-<<<<<<< HEAD
     <div className="flex h-screen overflow-hidden bg-background">
       <div className="hidden md:flex">
-=======
-    <div className="flex min-h-screen bg-background">
-      <div className="hidden md:flex flex-1 flex-col h-full">
->>>>>>> origin/feature/monqom-api-client
         <Sidebar onAddTransaction={handleAddTransaction} />
       </div>
       <main className="flex-1 overflow-auto pb-16 md:pb-0">

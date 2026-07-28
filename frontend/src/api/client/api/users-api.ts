@@ -14,15 +14,16 @@
 
 
 import type { Configuration } from '../configuration';
-import type { AxiosPromise, AxiosInstance, RawAxiosRequestConfig } from 'axios';
+import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from 'axios';
 import globalAxios from 'axios';
 // Some imports not used depending on template conditions
 // @ts-ignore
-import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction, replaceWithSerializableTypeIfNeeded } from '../common';
+import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction } from '../common';
 // @ts-ignore
-import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError, operationServerMap } from '../base';
+import { BASE_PATH, COLLECTION_FORMATS, RequestArgs, BaseAPI, RequiredError } from '../base';
 /**
  * UsersApi - axios parameter creator
+ * @export
  */
 export const UsersApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -31,7 +32,7 @@ export const UsersApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersControllerDeleteMe: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        usersControllerDeleteMe: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/users/me`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -45,6 +46,7 @@ export const UsersApiAxiosParamCreator = function (configuration?: Configuration
             const localVarQueryParameter = {} as any;
 
 
+    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -60,7 +62,7 @@ export const UsersApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersControllerUpdateMe: async (body: object, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        usersControllerUpdateMe: async (body: object, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'body' is not null or undefined
             assertParamExists('usersControllerUpdateMe', 'body', body)
             const localVarPath = `/users/me`;
@@ -75,6 +77,8 @@ export const UsersApiAxiosParamCreator = function (configuration?: Configuration
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
+
+    
             localVarHeaderParameter['Content-Type'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -92,6 +96,7 @@ export const UsersApiAxiosParamCreator = function (configuration?: Configuration
 
 /**
  * UsersApi - functional programming interface
+ * @export
  */
 export const UsersApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = UsersApiAxiosParamCreator(configuration)
@@ -101,11 +106,9 @@ export const UsersApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async usersControllerDeleteMe(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async usersControllerDeleteMe(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.usersControllerDeleteMe(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['UsersApi.usersControllerDeleteMe']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
@@ -113,17 +116,16 @@ export const UsersApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async usersControllerUpdateMe(body: object, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async usersControllerUpdateMe(body: object, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.usersControllerUpdateMe(body, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['UsersApi.usersControllerUpdateMe']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
 };
 
 /**
  * UsersApi - factory interface
+ * @export
  */
 export const UsersApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = UsersApiFp(configuration)
@@ -133,7 +135,7 @@ export const UsersApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersControllerDeleteMe(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        usersControllerDeleteMe(options?: any): AxiosPromise<void> {
             return localVarFp.usersControllerDeleteMe(options).then((request) => request(axios, basePath));
         },
         /**
@@ -142,7 +144,7 @@ export const UsersApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersControllerUpdateMe(body: object, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        usersControllerUpdateMe(body: object, options?: any): AxiosPromise<void> {
             return localVarFp.usersControllerUpdateMe(body, options).then((request) => request(axios, basePath));
         },
     };
@@ -150,14 +152,18 @@ export const UsersApiFactory = function (configuration?: Configuration, basePath
 
 /**
  * UsersApi - object-oriented interface
+ * @export
+ * @class UsersApi
+ * @extends {BaseAPI}
  */
 export class UsersApi extends BaseAPI {
     /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof UsersApi
      */
-    public usersControllerDeleteMe(options?: RawAxiosRequestConfig) {
+    public usersControllerDeleteMe(options?: AxiosRequestConfig) {
         return UsersApiFp(this.configuration).usersControllerDeleteMe(options).then((request) => request(this.axios, this.basePath));
     }
 
@@ -166,9 +172,9 @@ export class UsersApi extends BaseAPI {
      * @param {object} body 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
+     * @memberof UsersApi
      */
-    public usersControllerUpdateMe(body: object, options?: RawAxiosRequestConfig) {
+    public usersControllerUpdateMe(body: object, options?: AxiosRequestConfig) {
         return UsersApiFp(this.configuration).usersControllerUpdateMe(body, options).then((request) => request(this.axios, this.basePath));
     }
 }
-

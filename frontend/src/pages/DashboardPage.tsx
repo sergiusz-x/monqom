@@ -11,10 +11,7 @@ import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 
-<<<<<<< HEAD
-=======
-import { invalidateFinancialData } from "@/lib/query-invalidation";
->>>>>>> origin/feature/monqom-api-client
+
 import { formatMonth, getMonthInTimeZone, shiftMonth } from "@/lib/date-only";
 import { RetryAlert, Skeleton } from "@monqom/ui";
 

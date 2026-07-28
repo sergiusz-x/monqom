@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { HealthApi } from '@/api/client/api/health-api';
-import type { Configuration } from '@/api/client/configuration';
+
 
 describe('HealthApi (generated client)', () => {
   it('should call GET /health with correct config', async () => {
@@ -10,7 +10,8 @@ describe('HealthApi (generated client)', () => {
     };
 
     // Create API instance with mocked axios
-    const api = new HealthApi(undefined, undefined, mockAxios as any);
+    // @ts-expect-error Testing with mocked axios
+    const api = new HealthApi(undefined, undefined, mockAxios);
 
     // Call the method
     const response = await api.healthControllerCheckHealth();
