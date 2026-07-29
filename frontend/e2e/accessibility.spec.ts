@@ -152,7 +152,9 @@ test.beforeEach(async ({ page }) => {
 
 test("dashboard page has no accessibility violations", async ({ page }) => {
   await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "Spending trend" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Spending trend" }),
+  ).toBeVisible();
 
   const accessibilityScanResults = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa"])
@@ -163,7 +165,9 @@ test("dashboard page has no accessibility violations", async ({ page }) => {
 
 test("transactions page has no accessibility violations", async ({ page }) => {
   await page.goto("/transactions");
-  await expect(page.getByRole("heading", { name: "Transactions" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Transactions" }),
+  ).toBeVisible();
 
   const accessibilityScanResults = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa"])
@@ -183,9 +187,13 @@ test("budgets page has no accessibility violations", async ({ page }) => {
   expect(accessibilityScanResults.violations).toEqual([]);
 });
 
-test("payment sources page has no accessibility violations", async ({ page }) => {
+test("payment sources page has no accessibility violations", async ({
+  page,
+}) => {
   await page.goto("/payment-sources");
-  await expect(page.getByRole("heading", { name: "Payment sources" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Payment sources" }),
+  ).toBeVisible();
 
   const accessibilityScanResults = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa"])
