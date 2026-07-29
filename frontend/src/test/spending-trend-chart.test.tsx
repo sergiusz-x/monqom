@@ -30,14 +30,14 @@ describe("SpendingTrendChart", () => {
       name: "Monthly spending amounts",
     });
     expect(chart).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(6);
+    expect(screen.getAllByRole("button")).toHaveLength(6);
   });
 
   it("selects a month on click", async () => {
     const user = userEvent.setup();
     renderChart();
 
-    const april = screen.getByRole("listitem", {
+    const april = screen.getByRole("button", {
       name: "April 2026 spending $75.00",
     });
     await user.click(april);
