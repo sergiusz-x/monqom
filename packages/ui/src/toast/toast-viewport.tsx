@@ -99,6 +99,7 @@ export function ToastViewport({
   return (
     <div
       data-slot="toast-viewport"
+      role="region"
       aria-label={t("common.notifications")}
       className="pointer-events-none fixed bottom-20 right-4 z-[80] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4"
     >

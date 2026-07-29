@@ -54,7 +54,6 @@ export function SpendingTrendChart({
               <button
                 key={item.month}
                 type="button"
-                role="listitem"
                 className="group grid w-full items-center gap-3 text-left"
                 style={{ gridTemplateColumns: "2.5rem minmax(0, 1fr) auto" }}
                 aria-pressed={isSelected}
