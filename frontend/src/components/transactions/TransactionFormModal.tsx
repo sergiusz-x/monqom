@@ -110,6 +110,18 @@ export function TransactionFormModal({
             placeholder={t("transactions.descriptionPlaceholder")}
           />
         </FormField>
+        <FormField
+          id="transaction-category"
+          label={t("common.category")}
+          error={errors.categoryId}
+          required
+        >
+          <CategorySelector
+            workspaceId={workspaceId}
+            value={fields.categoryId}
+            onChange={fields.setCategoryId}
+          />
+        </FormField>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
@@ -162,19 +174,6 @@ export function TransactionFormModal({
             </Button>
           </FormField>
         </div>
-
-        <FormField
-          id="transaction-category"
-          label={t("common.category")}
-          error={errors.categoryId}
-          required
-        >
-          <CategorySelector
-            workspaceId={workspaceId}
-            value={fields.categoryId}
-            onChange={fields.setCategoryId}
-          />
-        </FormField>
 
         <Button
           type="button"
