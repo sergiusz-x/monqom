@@ -103,6 +103,30 @@ describe("TransactionFormModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("tabs through the required fields before the defaulted fields", async () => {
+    const user = userEvent.setup();
+    render(
+      <TransactionFormModal
+        open
+        mode="create"
+        workspaceId="ws-1"
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Amount")).toHaveFocus();
+    await user.tab();
+    expect(screen.getByLabelText("Description")).toHaveFocus();
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: /pick category/i }),
+    ).toHaveFocus();
+    await user.tab();
+    expect(screen.getByLabelText("Date")).toHaveFocus();
+    await user.tab();
+    expect(screen.getByLabelText("Payment source")).toHaveFocus();
+  });
   it.each([
     ["12000", "120.00", 120],
     ["1619", "16.19", 16.19],
