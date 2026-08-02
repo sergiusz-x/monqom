@@ -7,6 +7,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
+import { MobileAccountMenu } from "./MobileAccountMenu";
 export default function AppLayout() {
   const { workspaceId, workspace, patchWorkspace } = useWorkspace();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -24,13 +25,14 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen h-[100dvh] overflow-hidden bg-background">
       <div className="hidden md:flex">
         <Sidebar onAddTransaction={handleAddTransaction} />
       </div>
-      <main className="flex-1 overflow-auto pb-16 md:pb-0">
-        <div className="border-b border-border px-4 py-2 md:hidden">
+      <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2 md:hidden">
           <WorkspaceSwitcher compact />
+          <MobileAccountMenu />
         </div>
         <Outlet />
       </main>

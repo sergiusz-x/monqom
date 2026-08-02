@@ -215,7 +215,7 @@ export function CategorySelector({
                 onKeyDown={handleSearchKeyDown}
                 placeholder={t("transactions.searchCategories")}
                 aria-label={t("transactions.searchCategoriesLabel")}
-                className="w-full bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent px-1 py-0.5 text-base md:text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
 

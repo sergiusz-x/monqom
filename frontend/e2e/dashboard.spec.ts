@@ -24,6 +24,16 @@ test.beforeEach(async ({ page }) => {
       return;
     }
 
+    if (path.endsWith("/auth/csrf-token")) {
+      await route.fulfill({ json: { csrfToken: "test-csrf-token" } });
+      return;
+    }
+
+    if (path.endsWith("/auth/logout")) {
+      await route.fulfill({ json: {} });
+      return;
+    }
+
     if (path.endsWith("/workspaces")) {
       await route.fulfill({
         json: [
@@ -188,6 +198,68 @@ test("opens the transaction form from primary navigation", async ({ page }) => {
     page.getByRole("dialog", { name: "Add transaction" }),
   ).toBeVisible();
 });
+
+test("keeps an authenticated session after a page reload", async ({ page }) => {
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add transaction" }),
+  ).toBeVisible();
+});
+
+test("lets a mobile user change theme and log out", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/dashboard");
+
+  await page.getByRole("button", { name: "Account menu" }).click();
+  const accountMenu = page.getByRole("dialog", { name: "Account menu" });
+  await expect(accountMenu.getByText("test@example.com")).toBeVisible();
+
+  await accountMenu.getByRole("button", { name: "Dark" }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+
+  await accountMenu.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test("keeps iPhone form controls readable without Safari input zoom", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/dashboard");
+  await expect(
+    page.getByRole("navigation", { name: "Mobile navigation" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Add transaction" }).click();
+
+  const form = page.getByRole("dialog", { name: "Add transaction" });
+  await expect(form).toBeVisible();
+
+  for (const control of [
+    form.getByLabel("Description"),
+    form.getByLabel("Date"),
+    form.getByLabel("Payment source"),
+  ]) {
+    await expect(control).toHaveCSS("font-size", "16px");
+  }
+
+  await form.getByLabel("Category").click();
+  await expect(page.getByLabel("Search categories")).toHaveCSS(
+    "font-size",
+    "16px",
+  );
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test("keeps the dashboard usable on a narrow screen", async ({
   page,
 }, testInfo) => {
