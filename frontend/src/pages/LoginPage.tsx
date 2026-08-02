@@ -15,7 +15,7 @@ interface LoginFormValues {
 }
 
 interface TwoFactorFormValues {
-  "one-time-code": string;
+  otp: string;
 }
 
 export default function LoginPage() {
@@ -54,7 +54,7 @@ export default function LoginPage() {
         totpEnabled: boolean;
         createdAt: string;
         updatedAt: string;
-      }>("/auth/2fa/verify", { token: data["one-time-code"] });
+      }>("/auth/2fa/verify", { token: data.otp });
       setUser(res.data);
       navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
@@ -76,15 +76,29 @@ export default function LoginPage() {
             {t("auth.twoFactorDescription")}
           </p>
         </div>
-        <form onSubmit={handleSubmit(onTwoFactorSubmit)} className="space-y-4">
+        <form
+          key="two-factor-form"
+          onSubmit={handleSubmit(onTwoFactorSubmit)}
+          autoComplete="off"
+          className="space-y-4"
+        >
+          <input
+            type="email"
+            name="username"
+            autoComplete="username"
+            defaultValue={loginForm.getValues("email")}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
           <FormField
-            id="one-time-code"
+            id="otp"
             label={t("auth.authenticationCode")}
-            error={errors["one-time-code"]?.message}
+            error={errors.otp?.message}
             required
           >
             <Input
-              type="text"
+              type="tel"
               autoComplete="one-time-code"
               inputMode="numeric"
               autoCorrect="off"
@@ -92,8 +106,11 @@ export default function LoginPage() {
               spellCheck={false}
               maxLength={8}
               autoFocus
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-protonpass-ignore="true"
               placeholder="000000"
-              {...register("one-time-code", {
+              {...register("otp", {
                 required: t("auth.codeRequired"),
                 pattern: {
                   value: /^\d{6,8}$/,
@@ -133,7 +150,11 @@ export default function LoginPage() {
           {t("auth.loginDescription")}
         </p>
       </div>
-      <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
+      <form
+        key="login-form"
+        onSubmit={handleSubmit(onLoginSubmit)}
+        className="space-y-4"
+      >
         <FormField
           id="email"
           label={t("auth.email")}

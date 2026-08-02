@@ -13,7 +13,9 @@ export function PwaLifecycle() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisterError() {
-      showToast(t("messages.updateFailed"), "warning");
+      if (import.meta.env.PROD) {
+        showToast(t("messages.updateFailed"), "warning");
+      }
     },
   });
 

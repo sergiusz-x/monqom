@@ -260,12 +260,20 @@ describe("LoginPage 2FA flow", () => {
 
     // Wait for the 2FA form to appear, then clear + type the code
     const codeInput = await screen.findByLabelText(/authentication code/i);
-    expect(codeInput).toHaveAttribute("name", "one-time-code");
+    expect(codeInput).toHaveAttribute("name", "otp");
+    expect(codeInput).toHaveAttribute("type", "tel");
     expect(codeInput).toHaveAttribute("autocomplete", "one-time-code");
     expect(codeInput).toHaveAttribute("inputmode", "numeric");
     expect(codeInput).toHaveAttribute("autocapitalize", "none");
     expect(codeInput).toHaveAttribute("autocorrect", "off");
     expect(codeInput).toHaveAttribute("maxlength", "8");
+    expect(codeInput).toHaveAttribute("data-1p-ignore", "true");
+    expect(codeInput).toHaveValue("");
+    const usernameInput = document.querySelector<HTMLInputElement>(
+      'input[name="username"]',
+    );
+    expect(usernameInput).toHaveAttribute("autocomplete", "username");
+    expect(usernameInput).toHaveValue("user@example.com");
     await user.clear(codeInput);
     await user.type(codeInput, "123456");
     await user.click(screen.getByRole("button", { name: /verify/i }));

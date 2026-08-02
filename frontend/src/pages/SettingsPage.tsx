@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/useToast";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { ProfileSection } from "@/components/settings/ProfileSection";
+import { AccountPreferencesSection } from "@/components/settings/AccountPreferencesSection";
 import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
@@ -57,12 +58,15 @@ export default function SettingsPage() {
         </nav>
 
         {activeSection === "profile" ? (
-          <ProfileSection
-            key={user?.id ?? "anonymous"}
-            user={user}
-            setUser={setUser}
-            onSaved={showToast}
-          />
+          <div className="space-y-6">
+            <ProfileSection
+              key={user?.id ?? "anonymous"}
+              user={user}
+              setUser={setUser}
+              onSaved={showToast}
+            />
+            <AccountPreferencesSection />
+          </div>
         ) : activeSection === "workspace" ? (
           <WorkspaceSection
             key={workspace?.id ?? "missing-workspace"}

@@ -23,6 +23,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import api from "@/lib/api";
 import i18n from "@/i18n";
 import { ToastProvider } from "@monqom/ui";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const mockApi = api as unknown as {
@@ -54,11 +55,13 @@ function renderSettings(authOverrides: Partial<AuthContextValue> = {}) {
   };
 
   render(
-    <ToastProvider>
-      <AuthContext.Provider value={authValue}>
-        <SettingsPage />
-      </AuthContext.Provider>
-    </ToastProvider>,
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthContext.Provider value={authValue}>
+          <SettingsPage />
+        </AuthContext.Provider>
+      </ToastProvider>
+    </ThemeProvider>,
   );
 
   return authValue;
@@ -248,6 +251,18 @@ describe("SettingsPage", () => {
     vi.unstubAllGlobals();
   });
 
+  it("exposes appearance and logout directly in account settings", async () => {
+    const user = userEvent.setup();
+    const logout = vi.fn().mockResolvedValue(undefined);
+    renderSettings({ logout });
+
+    expect(screen.getByText(testUser.email)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+    expect(document.documentElement).toHaveClass("dark");
+
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+  });
   it("requires DELETE confirmation before deleting an account", async () => {
     const user = userEvent.setup();
     mockApi.delete.mockResolvedValueOnce({ data: { message: "deleted" } });

@@ -7,7 +7,6 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
-import { MobileAccountMenu } from "./MobileAccountMenu";
 export default function AppLayout() {
   const { workspaceId, workspace, patchWorkspace } = useWorkspace();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -30,9 +29,8 @@ export default function AppLayout() {
         <Sidebar onAddTransaction={handleAddTransaction} />
       </div>
       <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-2 md:hidden">
+        <div className="border-b border-border px-4 py-2 md:hidden">
           <WorkspaceSwitcher compact />
-          <MobileAccountMenu />
         </div>
         <Outlet />
       </main>

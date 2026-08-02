@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const workspaceId = "workspace-1";
 
+test.use({ serviceWorkers: "block" });
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("monqom-language", "en"));
 
@@ -211,18 +213,30 @@ test("keeps an authenticated session after a page reload", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("lets a mobile user change theme and log out", async ({ page }) => {
+test("lets a mobile user change theme and log out from settings", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dashboard");
 
-  await page.getByRole("button", { name: "Account menu" }).click();
-  const accountMenu = page.getByRole("dialog", { name: "Account menu" });
-  await expect(accountMenu.getByText("test@example.com")).toBeVisible();
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("test@example.com"),
+  ).toBeVisible();
 
-  await accountMenu.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
 
-  await accountMenu.getByRole("button", { name: "Log out" }).click();
+  const dismissNotification = page.getByRole("button", {
+    name: "Dismiss notification",
+  });
+  if (await dismissNotification.isVisible()) {
+    await dismissNotification.click();
+  }
+
+  await page.getByRole("button", { name: "Log out" }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
 
