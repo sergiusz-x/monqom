@@ -20,8 +20,8 @@ test("exposes installable PWA metadata and a service worker", async ({
   });
   expect(manifest.icons).toEqual(
     expect.arrayContaining([
-      expect.objectContaining({ src: "/pwa-192-v2.png", sizes: "192x192" }),
-      expect.objectContaining({ src: "/pwa-512-v2.png", sizes: "512x512" }),
+      expect.objectContaining({ src: "/pwa-192-v3.png", sizes: "192x192" }),
+      expect.objectContaining({ src: "/pwa-512-v3.png", sizes: "512x512" }),
     ]),
   );
 

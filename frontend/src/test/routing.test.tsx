@@ -18,6 +18,7 @@ import { WorkspaceProvider } from "@/hooks/useWorkspace";
 
 import { RouteLoadingFallback } from "@/components/RouteLoadingFallback";
 import { ToastProvider } from "@monqom/ui";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const mockAuthValue = {
   user: null as User | null,
@@ -34,15 +35,17 @@ function renderAt(path: string, element: React.ReactNode, withAuth = false) {
     element
   );
   return render(
-    <ToastProvider>
-      <WorkspaceProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <Routes>
-            <Route path={path} element={content} />
-          </Routes>
-        </MemoryRouter>
-      </WorkspaceProvider>
-    </ToastProvider>,
+    <ThemeProvider>
+      <ToastProvider>
+        <WorkspaceProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <Routes>
+              <Route path={path} element={content} />
+            </Routes>
+          </MemoryRouter>
+        </WorkspaceProvider>
+      </ToastProvider>
+    </ThemeProvider>,
   );
 }
 

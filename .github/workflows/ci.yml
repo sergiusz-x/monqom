@@ -67,7 +67,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm test
       - run: pnpm run build
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: pnpm run test:e2e
       - run: pnpm audit --prod --audit-level=high
         working-directory: .

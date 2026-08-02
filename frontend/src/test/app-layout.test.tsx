@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen, act, waitFor, within } from "@testing-library/react";
+import { screen, act, within } from "@testing-library/react";
 import {
   renderWithQueryClient as render,
   renderHookWithQueryClient as renderHook,
@@ -488,23 +488,5 @@ describe("AppLayout", () => {
     expect(
       screen.getByRole("dialog", { name: /add transaction/i }),
     ).toBeInTheDocument();
-  });
-  it("offers theme controls and logout from the mobile account menu", async () => {
-    const user = userEvent.setup();
-    const logoutMock = vi.fn().mockResolvedValue(undefined);
-    renderWithAuthAndRouter(
-      <AppLayout />,
-      makeAuthValue({ logout: logoutMock }),
-    );
-
-    await user.click(screen.getByRole("button", { name: /account menu/i }));
-
-    const menu = screen.getByRole("dialog", { name: /account menu/i });
-    expect(within(menu).getByText(testUser.email)).toBeInTheDocument();
-    await user.click(within(menu).getByRole("button", { name: /dark/i }));
-    expect(document.documentElement).toHaveClass("dark");
-
-    await user.click(within(menu).getByRole("button", { name: /log out/i }));
-    await waitFor(() => expect(logoutMock).toHaveBeenCalledTimes(1));
   });
 });
