@@ -39,7 +39,7 @@ export default function BottomNav({ onAddTransaction }: BottomNavProps) {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center border-t border-border bg-background md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] items-start border-t border-border bg-background pt-1 md:hidden"
         aria-label={t("nav.mobile")}
       >
         {navItems.map(({ to, label, icon: Icon, end }) => (
@@ -65,7 +65,7 @@ export default function BottomNav({ onAddTransaction }: BottomNavProps) {
         onClick={onAddTransaction}
         aria-label={t("nav.addTransaction")}
         size="icon"
-        className="fixed bottom-20 right-4 z-50 size-14 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
+        className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 size-14 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
       >
         <Plus size={24} aria-hidden="true" />
       </Button>

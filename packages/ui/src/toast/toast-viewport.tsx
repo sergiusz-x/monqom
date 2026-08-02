@@ -100,7 +100,7 @@ export function ToastViewport({
     <div
       data-slot="toast-viewport"
       aria-label={t("common.notifications")}
-      className="pointer-events-none fixed bottom-20 right-4 z-[80] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4"
+      className="pointer-events-none fixed bottom-[max(5rem,calc(env(safe-area-inset-bottom)+1rem))] right-4 z-[80] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4"
     >
       {toasts.map((toast) => (
         <ToastItem

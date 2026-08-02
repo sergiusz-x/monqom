@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { RouteLoadingFallback } from "@/components/RouteLoadingFallback";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ToastProvider } from "@monqom/ui";
+import { PwaLifecycle } from "@/components/PwaLifecycle";
 
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
@@ -43,6 +44,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <ToastProvider>
+            <PwaLifecycle />
             <BrowserRouter>
               <AuthProvider>
                 <Routes>

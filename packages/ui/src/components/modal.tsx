@@ -62,7 +62,7 @@ export function Modal({
         <Dialog.Viewport
           data-slot="modal-viewport"
           className={cn(
-            "fixed inset-0 flex items-center justify-center overflow-y-auto p-4",
+            "fixed inset-0 flex items-center justify-center overflow-y-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]",
             layerClassName,
           )}
         >
