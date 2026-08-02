@@ -263,6 +263,30 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Log out" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
   });
+
+  it("shows the deployed application version in settings", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        version: "v1.4.0",
+        sha: "1234567890abcdef",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderSettings();
+
+    expect(await screen.findByText("Version v1.4.0")).toHaveAttribute(
+      "title",
+      "1234567890ab",
+    );
+    expect(fetchMock).toHaveBeenCalledWith("/version.json", {
+      cache: "no-store",
+    });
+
+    vi.unstubAllGlobals();
+  });
+
   it("requires DELETE confirmation before deleting an account", async () => {
     const user = userEvent.setup();
     mockApi.delete.mockResolvedValueOnce({ data: { message: "deleted" } });

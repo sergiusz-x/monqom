@@ -10,6 +10,7 @@ import { AccountPreferencesSection } from "@/components/settings/AccountPreferen
 import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
+import { ReleaseVersion } from "@/components/ReleaseVersion";
 import { Button } from "@monqom/ui";
 
 type ActiveSection = "profile" | "workspace" | "security" | "data";
@@ -89,6 +90,10 @@ export default function SettingsPage() {
             onSaved={showToast}
           />
         )}
+
+        <div className="pt-4 text-center text-sm text-muted-foreground">
+          <ReleaseVersion />
+        </div>
       </div>
     </PageContainer>
   );

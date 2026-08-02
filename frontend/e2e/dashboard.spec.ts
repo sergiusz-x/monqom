@@ -7,6 +7,12 @@ test.use({ serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("monqom-language", "en"));
 
+  await page.route("**/version.json", async (route) => {
+    await route.fulfill({
+      json: { version: "v1.4.0", sha: "1234567890abcdef" },
+    });
+  });
+
   await page.route("**/api/v1/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
 
@@ -225,6 +231,7 @@ test("lets a mobile user change theme and log out from settings", async ({
   await expect(
     page.getByRole("main").getByText("test@example.com"),
   ).toBeVisible();
+  await expect(page.getByText("Version v1.4.0")).toBeVisible();
 
   await page.getByRole("button", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
