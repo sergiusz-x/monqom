@@ -7,7 +7,7 @@ export interface ApiTransaction {
   workspace_id: string;
   category_id: string;
   payment_source_id: string | null;
-  type: "expense";
+  type: "expense" | "income";
   amount: number;
   currency: string;
   date: string;
@@ -46,7 +46,11 @@ export interface ApiBudgetProgressItem {
 }
 
 export type ApiPaymentSourceType =
-  "cash" | "debit_card" | "credit_card" | "bank" | "other";
+  | "cash"
+  | "debit_card"
+  | "credit_card"
+  | "bank"
+  | "other";
 
 export interface ApiPaymentSource {
   id: string;
@@ -64,6 +68,7 @@ export interface ApiCategory {
   id: string;
   name: string;
   system_key?: string | null;
+  type?: "expense" | "income";
   icon: string | null;
   parent_id: string | null;
   sort_order: number;
@@ -80,6 +85,8 @@ export interface ApiSpendingSummary {
   change_amount: number;
   change_percentage: number | null;
   direction: "up" | "down" | "flat";
+  income_total?: number;
+  net_total?: number;
 }
 
 export interface ApiCategoryBreakdownItem {

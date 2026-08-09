@@ -15,6 +15,7 @@ import {
 
 const CATEGORY_NOT_FOUND_MESSAGE = 'Category not found'
 const EXPENSE_TRANSACTION_TYPE = 'expense'
+const INCOME_TRANSACTION_TYPE = 'income'
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const DEFAULT_TRANSACTION_LIST_LIMIT = 20
 const MAX_TAGS_PER_TRANSACTION = 10
@@ -24,6 +25,7 @@ const PAYMENT_SOURCE_NOT_FOUND_MESSAGE = 'Payment source not found'
 const TRANSACTION_NOT_FOUND_MESSAGE = 'Transaction not found'
 
 export interface CreateTransactionCommand {
+    type?: 'expense' | 'income'
     amount: number
     currency?: string
     date: string
@@ -51,6 +53,7 @@ export interface CreateTransactionResponse {
 }
 
 export interface ListTransactionsCommand {
+    type?: 'expense' | 'income'
     categoryId?: string
     categoryIds?: string[]
     sortBy?: TransactionSortField
@@ -115,6 +118,7 @@ export class TransactionsService {
     ): Promise<CreateTransactionResponse> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        const transactionType = input.type ?? EXPENSE_TRANSACTION_TYPE
         const validatedInput = validateCreateTransactionInput(input)
 
         if (
@@ -151,6 +155,8 @@ export class TransactionsService {
                 categoryId,
                 validatedInput.paymentSourceId!,
                 tx,
+                undefined,
+                transactionType,
             )
 
             const transaction = await this.transactionsRepository.createTransactionWithTags(
@@ -159,7 +165,7 @@ export class TransactionsService {
                     userId: normalizedUserId,
                     categoryId,
                     paymentSourceId: validatedInput.paymentSourceId!,
-                    type: EXPENSE_TRANSACTION_TYPE,
+                    type: transactionType,
                     amount: amountCents,
                     currency,
                     ...(this.currencyService
@@ -250,12 +256,18 @@ export class TransactionsService {
                 throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
             }
 
+            const transactionType =
+                existingTransaction.type === INCOME_TRANSACTION_TYPE
+                    ? INCOME_TRANSACTION_TYPE
+                    : EXPENSE_TRANSACTION_TYPE
+
             await this.assertValidTransactionReferences(
                 normalizedWorkspaceId,
                 categoryId,
                 validatedInput.paymentSourceId!,
                 tx,
                 existingTransaction.paymentSourceId,
+                transactionType,
             )
 
             const transaction = await this.transactionsRepository.updateTransactionWithTags(
@@ -270,7 +282,7 @@ export class TransactionsService {
                         : {}),
                     categoryId,
                     paymentSourceId: validatedInput.paymentSourceId!,
-                    type: EXPENSE_TRANSACTION_TYPE,
+                    type: transactionType,
                     amount: amountCents,
                     currency,
                     ...(this.currencyService
@@ -347,6 +359,7 @@ export class TransactionsService {
 
         const filters: ListTransactionsFilters = {
             workspaceId: normalizedWorkspaceId,
+            type: input.type,
             categoryIds: validatedInput.categoryIds,
             sortBy: validatedInput.sortBy,
             sortDirection: validatedInput.sortDirection,
@@ -388,6 +401,7 @@ export class TransactionsService {
         paymentSourceId: string,
         prisma: TransactionsPersistenceClient,
         allowArchivedPaymentSourceId?: string,
+        expectedCategoryType: 'expense' | 'income' = EXPENSE_TRANSACTION_TYPE,
     ): Promise<void> {
         const category = await this.transactionsRepository.findCategoryById(
             workspaceId,
@@ -395,7 +409,7 @@ export class TransactionsService {
             prisma,
         )
 
-        if (!category) {
+        if (!category || (category.type && category.type !== expectedCategoryType)) {
             throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
         }
 

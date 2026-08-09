@@ -3,7 +3,7 @@ export interface Transaction {
   workspaceId: string;
   categoryId: string;
   paymentSourceId: string | null;
-  type: "expense";
+  type: "expense" | "income";
   amount: number;
   currency: string;
   date: string;
@@ -33,6 +33,7 @@ export type TransactionSortField =
 export type TransactionSortDirection = "asc" | "desc";
 
 export interface TransactionFilters {
+  type?: "" | "expense" | "income";
   categoryIds: string[];
   tag: string;
   paymentSourceId: string;

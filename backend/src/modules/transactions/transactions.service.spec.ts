@@ -150,6 +150,52 @@ describe('TransactionsService', () => {
         )
     })
 
+    it('creates an income transaction only with an income category', async () => {
+        transactionsRepository.findCategoryById.mockResolvedValue({
+            id: 'income-category-1',
+            type: 'income',
+        } as never)
+        transactionsRepository.findActivePaymentSourceById.mockResolvedValue({
+            id: 'payment-source-1',
+        } as never)
+        transactionsRepository.createTransactionWithTags.mockResolvedValue({
+            id: 'income-transaction-1',
+            workspaceId: 'workspace-1',
+            categoryId: 'income-category-1',
+            paymentSourceId: 'payment-source-1',
+            type: 'income',
+            amount: 500000,
+            currency: 'USD',
+            date: new Date('2026-03-25T00:00:00.000Z'),
+            description: 'Salary',
+            notes: null,
+            tags: [],
+            createdAt: new Date('2026-03-25T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-25T12:00:00.000Z'),
+            deletedAt: null,
+        } as never)
+
+        await service.createTransaction(
+            {
+                type: 'income',
+                amount: 5000,
+                date: '2026-03-25',
+                description: 'Salary',
+                categoryId: 'income-category-1',
+                paymentSourceId: 'payment-source-1',
+            },
+            'workspace-1',
+            'user-1',
+        )
+
+        expect(transactionsRepository.createTransactionWithTags).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: 'income',
+                categoryId: 'income-category-1',
+            }),
+            transactionClient,
+        )
+    })
     it('returns a single transaction by id with tags and a display amount', async () => {
         transactionsRepository.findTransactionById.mockResolvedValue({
             id: 'transaction-7',

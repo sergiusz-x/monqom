@@ -34,6 +34,29 @@ function getDirectionSymbol(direction: SpendingSummary["direction"]): string {
   return "→";
 }
 
+function SummaryMetric({
+  label,
+  value,
+  currency,
+  className,
+}: {
+  label: string;
+  value: number;
+  currency: string;
+  className: string;
+}) {
+  return (
+    <div className="rounded-lg bg-muted/50 p-4">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className={`mt-1 text-lg font-semibold ${className}`}>
+        {formatCurrency(value, currency)}
+      </p>
+    </div>
+  );
+}
+
 export function MonthlySpendingSummary({
   summary,
   monthLabel,
@@ -84,7 +107,32 @@ export function MonthlySpendingSummary({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryMetric
+          label={t("dashboard.income")}
+          value={summary.incomeTotal}
+          currency={summary.currency}
+          className="text-emerald-600 dark:text-emerald-400"
+        />
+        <SummaryMetric
+          label={t("dashboard.totalSpending")}
+          value={summary.currentTotal}
+          currency={summary.currency}
+          className="text-rose-600 dark:text-rose-400"
+        />
+        <SummaryMetric
+          label={t("dashboard.netBalance")}
+          value={summary.netTotal}
+          currency={summary.currency}
+          className={
+            summary.netTotal >= 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400"
+          }
+        />
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg bg-muted/50 p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             {t("dashboard.previousMonth")}

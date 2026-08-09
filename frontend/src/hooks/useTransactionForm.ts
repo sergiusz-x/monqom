@@ -51,6 +51,9 @@ export function useTransactionForm({
     isLoading: paymentSourcesLoading,
     error: paymentSourcesError,
   } = usePaymentSources(workspaceId, isEdit);
+  const [transactionType, setTransactionType] = useState<"expense" | "income">(
+    () => transaction?.type ?? "expense",
+  );
   const [amountMinorUnits, setAmountMinorUnits] = useState<number | null>(() =>
     isEdit && transaction ? majorAmountToMinorUnits(transaction.amount) : null,
   );
@@ -155,6 +158,7 @@ export function useTransactionForm({
     setSubmitError(null);
     setIsSaving(true);
     const payload = {
+      type: transactionType,
       amount: minorUnitsToMajorAmount(amountMinorUnits!),
       currency,
       date,
@@ -196,6 +200,8 @@ export function useTransactionForm({
     errors,
     submitError,
     isSaving,
+    transactionType,
+    setTransactionType,
     fields: {
       amountMinorUnits,
       setAmountMinorUnits: (val: number | null) => {

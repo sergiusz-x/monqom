@@ -34,6 +34,7 @@ import {
 
 type DialogState = { category: Category | null; parentId?: string } | null;
 type CategoryKind = "group" | "subcategory";
+type CategoryFlow = "expense" | "income";
 
 const SUGGESTED_EMOJIS = [
   "🛒",
@@ -58,11 +59,13 @@ export function CategoryManagementSection({
   onSaved: (message: string) => void;
 }) {
   const { t } = useTranslation();
+  const [categoryType, setCategoryType] = useState<CategoryFlow>("expense");
+  const [tab, setTab] = useState<"active" | "hidden">("active");
   const { categories, isLoading, error, retry } = useCategories(
     workspaceId ?? "",
     true,
+    categoryType,
   );
-  const [tab, setTab] = useState<"active" | "hidden">("active");
   const [dialog, setDialog] = useState<DialogState>(null);
   const [target, setTarget] = useState<Category | null>(null);
   const [pending, setPending] = useState(false);
@@ -122,6 +125,27 @@ export function CategoryManagementSection({
 
       <div
         className="mt-5 flex gap-2"
+        role="group"
+        aria-label={t("categoryManagement.type")}
+      >
+        {(["expense", "income"] as const).map((value) => (
+          <Button
+            key={value}
+            type="button"
+            variant={categoryType === value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCategoryType(value)}
+          >
+            {t(
+              value === "expense"
+                ? "categoryManagement.expenses"
+                : "categoryManagement.income",
+            )}
+          </Button>
+        ))}
+      </div>
+      <div
+        className="mt-3 flex gap-2"
         role="tablist"
         aria-label={t("categoryManagement.title")}
       >
@@ -198,6 +222,7 @@ export function CategoryManagementSection({
           category={dialog.category}
           defaultParentId={dialog.parentId}
           mutations={mutations}
+          categoryType={categoryType}
           parents={categories.filter((item) => !item.isArchived)}
           onClose={() => setDialog(null)}
           onSaved={() => {
@@ -349,6 +374,7 @@ function CategoryDialog({
   category,
   defaultParentId,
   mutations,
+  categoryType,
   parents,
   onClose,
   onSaved,
@@ -356,6 +382,7 @@ function CategoryDialog({
   category: Category | null;
   defaultParentId?: string;
   mutations: ReturnType<typeof useCategoryMutations>;
+  categoryType: CategoryFlow;
   parents: Category[];
   onClose: () => void;
   onSaved: () => void;
@@ -394,6 +421,7 @@ function CategoryDialog({
         name: name.trim(),
         icon: icon.trim() || null,
         parent_id: parentId || null,
+        ...(!category ? { type: categoryType } : {}),
       };
       if (category)
         await mutations.update.mutateAsync({ id: category.id, input: body });

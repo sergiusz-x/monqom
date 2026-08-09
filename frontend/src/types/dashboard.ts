@@ -6,6 +6,8 @@ export interface SpendingSummary {
   changeAmount: number;
   changePercentage: number | null;
   direction: "up" | "down" | "flat";
+  incomeTotal: number;
+  netTotal: number;
 }
 
 export interface CategoryBreakdownItem {

@@ -40,6 +40,8 @@ function makeSummary(
     changeAmount: 234.56,
     changePercentage: 23.46,
     direction: "up",
+    incomeTotal: 1500,
+    netTotal: 265.44,
     ...overrides,
   };
 }

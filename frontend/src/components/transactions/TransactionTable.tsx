@@ -129,7 +129,10 @@ export function TransactionTable({
                   {categoryMap[transaction.categoryId] ??
                     transaction.categoryId}
                 </td>
-                <td className="px-3 py-2 font-medium">
+                <td
+                  className={`px-3 py-2 font-medium ${transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+                >
+                  {transaction.type === "income" ? "+" : "-"}
                   {formatCurrency(transaction.amount, transaction.currency)}
                 </td>
                 <td className="max-w-52 truncate px-3 py-2 text-muted-foreground">

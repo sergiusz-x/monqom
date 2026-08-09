@@ -114,6 +114,26 @@ export function TransactionFilterBar({
             {t("transactions.clearDates")}
           </Button>
         )}
+        <label className="ml-auto flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">
+            {t("transactions.type")}
+          </span>
+          <Select
+            value={filters.type ?? ""}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                type: event.target.value as TransactionFilters["type"],
+                categoryIds: [],
+              })
+            }
+            className="h-8 min-w-36"
+          >
+            <option value="">{t("transactions.allTypes")}</option>
+            <option value="expense">{t("transactions.expense")}</option>
+            <option value="income">{t("transactions.income")}</option>
+          </Select>
+        </label>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-5">

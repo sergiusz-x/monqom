@@ -86,6 +86,7 @@ export function mapCategory(value: ApiCategory): Category {
     id: value.id,
     name: value.name,
     systemKey: value.system_key,
+    type: value.type ?? "expense",
     icon: value.icon,
     parentId: value.parent_id,
     sortOrder: value.sort_order,
@@ -106,6 +107,8 @@ export function mapDashboardOverview(
     changeAmount: value.summary.change_amount,
     changePercentage: value.summary.change_percentage,
     direction: value.summary.direction,
+    incomeTotal: value.summary.income_total ?? 0,
+    netTotal: value.summary.net_total ?? -value.summary.current_total,
   };
   const categoryBreakdown: CategoryBreakdown = {
     month: value.category_breakdown.month,

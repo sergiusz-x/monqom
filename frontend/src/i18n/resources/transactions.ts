@@ -3,6 +3,11 @@ import type { TranslationShape } from "./types";
 export const enTransactions = {
   transactions: {
     title: "Transactions",
+    type: "Type",
+    allTypes: "All types",
+    expense: "Expense",
+    income: "Income",
+    accountOrWallet: "Account or wallet",
     allCategories: "All categories",
     selectedCategories: "{{count}} categories",
     clearCategories: "Clear category selection",
@@ -65,6 +70,11 @@ export const enTransactions = {
 export const plTransactions = {
   transactions: {
     title: "Transakcje",
+    type: "Typ",
+    allTypes: "Wszystkie typy",
+    expense: "Wydatek",
+    income: "Wpływ",
+    accountOrWallet: "Konto lub portfel",
     allCategories: "Wszystkie kategorie",
     selectedCategories: "Wybrano kategorii: {{count}}",
     clearCategories: "Wyczyść wybór kategorii",

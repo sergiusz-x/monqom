@@ -36,6 +36,7 @@ export class TransactionsController {
     ): Promise<ListTransactionsResponse> {
         return this.transactionsService.listTransactions(
             {
+                type: query.type,
                 categoryId: query.category_id,
                 categoryIds: query.category_ids,
                 sortBy: query.sort_by,
@@ -107,6 +108,7 @@ export class TransactionsController {
 
 function toTransactionCommand(body: TransactionBodyDto) {
     return {
+        type: body.type,
         amount: body.amount,
         currency: body.currency,
         date: body.date,

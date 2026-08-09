@@ -39,7 +39,10 @@ export function TransactionCards({
           >
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">{transaction.description}</p>
-              <p className="font-semibold">
+              <p
+                className={`font-semibold ${transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+              >
+                {transaction.type === "income" ? "+" : "-"}
                 {formatCurrency(transaction.amount, transaction.currency)}
               </p>
             </div>

@@ -19,6 +19,8 @@ export interface SpendingSummaryResponse {
     change_amount: number
     change_percentage: number | null
     direction: 'up' | 'down' | 'flat'
+    income_total: number
+    net_total: number
 }
 
 export interface CategoryBreakdownItemResponse {
@@ -86,20 +88,26 @@ export class DashboardService {
               })
             : Promise.resolve([])
 
-        const [workspace, monthlySpend, categorySpend, recentTransactions] = await Promise.all([
-            workspacePromise,
-            this.dashboardRepository.listMonthlySpendForRange(
-                normalizedWorkspaceId,
-                trendStart,
-                monthRange.endDateExclusive,
-            ),
-            this.dashboardRepository.listCategorySpendForRange(
-                normalizedWorkspaceId,
-                monthRange.startDate,
-                monthRange.endDateExclusive,
-            ),
-            recentTransactionsPromise,
-        ])
+        const [workspace, monthlySpend, categorySpend, recentTransactions, incomeCents] =
+            await Promise.all([
+                workspacePromise,
+                this.dashboardRepository.listMonthlySpendForRange(
+                    normalizedWorkspaceId,
+                    trendStart,
+                    monthRange.endDateExclusive,
+                ),
+                this.dashboardRepository.listCategorySpendForRange(
+                    normalizedWorkspaceId,
+                    monthRange.startDate,
+                    monthRange.endDateExclusive,
+                ),
+                recentTransactionsPromise,
+                this.dashboardRepository.getTotalIncomeForRange(
+                    normalizedWorkspaceId,
+                    monthRange.startDate,
+                    monthRange.endDateExclusive,
+                ),
+            ])
         const totalsByMonth = new Map(monthlySpend.map((item) => [item.month, item.amount]))
         const currentTotalCents = totalsByMonth.get(monthRange.month) ?? 0
         const previousMonth = getMonthSequence(monthRange.month, 2)[0]
@@ -109,6 +117,7 @@ export class DashboardService {
             workspace.baseCurrency,
             currentTotalCents,
             previousTotalCents,
+            incomeCents,
         )
         const categoryBreakdown = await this.buildCategoryBreakdown(
             normalizedWorkspaceId,
@@ -137,8 +146,7 @@ export class DashboardService {
         const workspace = this.workspaceService
             ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
             : ({ baseCurrency: 'USD' } as const)
-
-        const [currentTotalCents, previousTotalCents] = await Promise.all([
+        const [spendingCents, previousSpendingCents, incomeCents] = await Promise.all([
             this.dashboardRepository.getTotalSpendForRange(
                 normalizedWorkspaceId,
                 monthRange.startDate,
@@ -149,16 +157,20 @@ export class DashboardService {
                 monthRange.previousStartDate,
                 monthRange.previousEndDateExclusive,
             ),
+            this.dashboardRepository.getTotalIncomeForRange(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+            ),
         ])
-
         return buildSpendingSummary(
             monthRange.month,
             workspace.baseCurrency,
-            currentTotalCents,
-            previousTotalCents,
+            spendingCents,
+            previousSpendingCents,
+            incomeCents,
         )
     }
-
     async getCategoryBreakdown(
         input: DashboardMonthCommand,
         workspaceId: string,
@@ -246,6 +258,7 @@ function buildSpendingSummary(
     currency: string,
     currentTotalCents: number,
     previousTotalCents: number,
+    incomeTotalCents = 0,
 ): SpendingSummaryResponse {
     const changeAmountCents = currentTotalCents - previousTotalCents
 
@@ -257,6 +270,8 @@ function buildSpendingSummary(
         change_amount: convertAmountToDisplayValue(changeAmountCents),
         change_percentage: calculateChangePercentage(currentTotalCents, previousTotalCents),
         direction: determineDirection(changeAmountCents),
+        income_total: convertAmountToDisplayValue(incomeTotalCents),
+        net_total: convertAmountToDisplayValue(incomeTotalCents - currentTotalCents),
     }
 }
 

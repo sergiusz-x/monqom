@@ -15,6 +15,7 @@ export interface CategoryResponse {
     id: string
     name: string
     system_key: string | null
+    type: 'expense' | 'income'
     icon: string | null
     parent_id: string | null
     sort_order: number
@@ -31,15 +32,15 @@ export class CategoriesService {
     ) {}
 
     async listCategories(
-        input: { includeArchived?: boolean },
+        input: { includeArchived?: boolean; type?: 'expense' | 'income' },
         workspaceId: string,
     ): Promise<CategoryResponse[]> {
-        return this.hierarchy(workspaceId.trim(), input.includeArchived ?? false)
+        return this.hierarchy(workspaceId.trim(), input.includeArchived ?? false, input.type)
     }
 
     async getCategoryById(
         id: string,
-        input: { includeArchived?: boolean },
+        input: { includeArchived?: boolean; type?: 'expense' | 'income' },
         workspaceId: string,
     ): Promise<CategoryResponse> {
         const category = await this.prisma.category.findFirst({
@@ -47,6 +48,7 @@ export class CategoriesService {
                 id: id.trim(),
                 workspaceId: workspaceId.trim(),
                 ...(input.includeArchived ? {} : { deletedAt: null }),
+                ...(input.type ? { type: input.type } : {}),
             },
         })
         if (!category) throw new NotFoundException(NOT_FOUND)
@@ -54,21 +56,28 @@ export class CategoriesService {
     }
 
     async createCategory(
-        input: { name: string; icon?: string | null; parent_id?: string | null },
+        input: {
+            name: string
+            icon?: string | null
+            parent_id?: string | null
+            type?: 'expense' | 'income'
+        },
         workspaceId: string,
         userId: string,
     ): Promise<CategoryResponse> {
         const value = this.validate(input)
+        const type = input.type ?? 'expense'
         const parentId = value.parentId
-        if (parentId) await this.activeParent(parentId, workspaceId)
-        await this.assertUnique(value.name, parentId, workspaceId)
-        const sortOrder = await this.nextOrder(parentId, workspaceId)
+        if (parentId) await this.activeParent(parentId, workspaceId, undefined, type)
+        await this.assertUnique(value.name, parentId, workspaceId, undefined, type)
+        const sortOrder = await this.nextOrder(parentId, workspaceId, type)
         const category = await this.prisma.category.create({
             data: {
                 id: `cat_${randomUUID().replace(/-/g, '')}`,
                 workspaceId,
                 parentId,
                 name: value.name,
+                type,
                 icon: value.icon,
                 sortOrder,
             },
@@ -79,7 +88,12 @@ export class CategoriesService {
 
     async updateCategory(
         id: string,
-        input: { name: string; icon?: string | null; parent_id?: string | null },
+        input: {
+            name: string
+            icon?: string | null
+            parent_id?: string | null
+            type?: 'expense' | 'income'
+        },
         workspaceId: string,
         userId: string,
     ): Promise<CategoryResponse> {
@@ -91,8 +105,20 @@ export class CategoriesService {
         const value = this.validate(input)
         if (existing.children.length && value.parentId !== null)
             throw new BadRequestException('A category with children cannot become a subcategory')
-        if (value.parentId) await this.activeParent(value.parentId, workspaceId, id)
-        await this.assertUnique(value.name, value.parentId, workspaceId, id)
+        if (value.parentId)
+            await this.activeParent(
+                value.parentId,
+                workspaceId,
+                id,
+                existing.type as 'expense' | 'income',
+            )
+        await this.assertUnique(
+            value.name,
+            value.parentId,
+            workspaceId,
+            id,
+            existing.type as 'expense' | 'income',
+        )
         const category = await this.prisma.category.update({
             where: { id },
             data: {
@@ -126,7 +152,7 @@ export class CategoriesService {
                 this.prisma.category.update({ where: { id }, data: { sortOrder: index + 1 } }),
             ),
         )
-        return this.hierarchy(workspaceId, false)
+        return this.hierarchy(workspaceId, false, categories[0].type as 'expense' | 'income')
     }
 
     async archiveCategory(
@@ -170,9 +196,14 @@ export class CategoriesService {
     private async hierarchy(
         workspaceId: string,
         includeArchived: boolean,
+        type?: 'expense' | 'income',
     ): Promise<CategoryResponse[]> {
         const rows = await this.prisma.category.findMany({
-            where: { workspaceId, ...(includeArchived ? {} : { deletedAt: null }) },
+            where: {
+                workspaceId,
+                ...(type ? { type } : {}),
+                ...(includeArchived ? {} : { deletedAt: null }),
+            },
             orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
         })
         const children = new Map<string | null, typeof rows>()
@@ -194,6 +225,7 @@ export class CategoriesService {
             id: string
             name: string
             systemKey: string | null
+            type: string
             icon: string | null
             parentId: string | null
             sortOrder: number
@@ -205,6 +237,7 @@ export class CategoriesService {
             id: row.id,
             name: row.name,
             system_key: row.systemKey,
+            type: row.type as 'expense' | 'income',
             icon: row.icon,
             parent_id: row.parentId,
             sort_order: row.sortOrder,
@@ -222,9 +255,14 @@ export class CategoriesService {
             throw new BadRequestException('Icon must be 32 characters or fewer')
         return { name, icon, parentId: input.parent_id?.trim() || null }
     }
-    private async activeParent(id: string, workspaceId: string, exceptId?: string) {
+    private async activeParent(
+        id: string,
+        workspaceId: string,
+        exceptId?: string,
+        type?: 'expense' | 'income',
+    ) {
         const parent = await this.prisma.category.findFirst({
-            where: { id, workspaceId, deletedAt: null },
+            where: { id, workspaceId, deletedAt: null, ...(type ? { type } : {}) },
         })
         if (!parent || parent.parentId || parent.id === exceptId)
             throw new BadRequestException('Parent category must be an active top-level category')
@@ -234,6 +272,7 @@ export class CategoriesService {
         parentId: string | null,
         workspaceId: string,
         exceptId?: string,
+        type?: 'expense' | 'income',
     ) {
         const duplicate = await this.prisma.category.findFirst({
             where: {
@@ -241,6 +280,7 @@ export class CategoriesService {
                 parentId,
                 deletedAt: null,
                 name: { equals: name, mode: 'insensitive' },
+                ...(type ? { type } : {}),
                 ...(exceptId ? { id: { not: exceptId } } : {}),
             },
         })
@@ -249,9 +289,13 @@ export class CategoriesService {
                 'An active category with this name already exists in this group',
             )
     }
-    private async nextOrder(parentId: string | null, workspaceId: string) {
+    private async nextOrder(
+        parentId: string | null,
+        workspaceId: string,
+        type?: 'expense' | 'income',
+    ) {
         const last = await this.prisma.category.aggregate({
-            where: { workspaceId, parentId, deletedAt: null },
+            where: { workspaceId, parentId, deletedAt: null, ...(type ? { type } : {}) },
             _max: { sortOrder: true },
         })
         return (last._max.sortOrder ?? 0) + 1
