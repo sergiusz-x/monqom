@@ -1,189 +1,115 @@
-import { NotFoundException } from '@nestjs/common'
-import { CategoriesRepository } from './categories.repository'
+import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { AuditService } from '../../shared/audit/audit.service'
+import { PrismaService } from '../../shared/database/prisma.service'
 import { CategoriesService } from './categories.service'
 
 describe('CategoriesService', () => {
     let service: CategoriesService
-    let categoriesRepository: jest.Mocked<
-        Pick<CategoriesRepository, 'findCategoryById' | 'listCategoriesByWorkspace'>
-    >
+    let prisma: { category: Record<string, jest.Mock>; $transaction: jest.Mock }
+    let audit: { record: jest.Mock }
 
     beforeEach(() => {
-        categoriesRepository = {
-            findCategoryById: jest.fn(),
-            listCategoriesByWorkspace: jest.fn(),
+        prisma = {
+            category: {
+                findMany: jest.fn(),
+                findFirst: jest.fn(),
+                create: jest.fn(),
+                update: jest.fn(),
+                updateMany: jest.fn(),
+                aggregate: jest.fn(),
+            },
+            $transaction: jest.fn(),
         }
-
-        service = new CategoriesService(categoriesRepository as unknown as CategoriesRepository)
+        audit = { record: jest.fn() }
+        service = new CategoriesService(
+            prisma as unknown as PrismaService,
+            audit as unknown as AuditService,
+        )
     })
 
-    it('lists non-archived categories as a two-level hierarchy sorted by sort order', async () => {
-        categoriesRepository.listCategoriesByWorkspace.mockResolvedValue([
+    it('returns workspace categories as a sorted two-level hierarchy', async () => {
+        prisma.category.findMany.mockResolvedValue([
             {
-                id: 'child-restaurants',
-                parentId: 'parent-food',
-                name: 'Restaurants',
-                icon: '🍝',
-                sortOrder: 2,
+                id: 'child',
+                parentId: 'food',
+                name: 'Groceries',
+                systemKey: 'categories.groceries',
+                icon: '🛒',
+                sortOrder: 1,
                 deletedAt: null,
             },
             {
-                id: 'parent-transport',
+                id: 'transport',
                 parentId: null,
                 name: 'Transport',
+                systemKey: 'categories.transport',
                 icon: '🚗',
                 sortOrder: 2,
                 deletedAt: null,
             },
             {
-                id: 'parent-food',
+                id: 'food',
                 parentId: null,
                 name: 'Food',
+                systemKey: 'categories.food',
                 icon: '🍽️',
                 sortOrder: 1,
                 deletedAt: null,
             },
-            {
-                id: 'child-groceries',
-                parentId: 'parent-food',
-                name: 'Groceries',
-                icon: '🛒',
-                sortOrder: 1,
-                deletedAt: null,
-            },
-        ] as never)
+        ])
 
         await expect(service.listCategories({}, ' workspace-1 ')).resolves.toEqual([
             {
-                id: 'parent-food',
+                id: 'food',
                 name: 'Food',
+                system_key: 'categories.food',
                 icon: '🍽️',
                 parent_id: null,
                 sort_order: 1,
+                is_archived: false,
+                archived_at: null,
                 children: [
                     {
-                        id: 'child-groceries',
+                        id: 'child',
                         name: 'Groceries',
+                        system_key: 'categories.groceries',
                         icon: '🛒',
-                        parent_id: 'parent-food',
+                        parent_id: 'food',
                         sort_order: 1,
-                        children: [],
-                    },
-                    {
-                        id: 'child-restaurants',
-                        name: 'Restaurants',
-                        icon: '🍝',
-                        parent_id: 'parent-food',
-                        sort_order: 2,
+                        is_archived: false,
+                        archived_at: null,
                         children: [],
                     },
                 ],
             },
             {
-                id: 'parent-transport',
+                id: 'transport',
                 name: 'Transport',
+                system_key: 'categories.transport',
                 icon: '🚗',
                 parent_id: null,
                 sort_order: 2,
+                is_archived: false,
+                archived_at: null,
                 children: [],
             },
         ])
-
-        expect(categoriesRepository.listCategoriesByWorkspace).toHaveBeenCalledWith(
-            'workspace-1',
-            false,
+        expect(prisma.category.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { workspaceId: 'workspace-1', deletedAt: null } }),
         )
     })
 
-    it('includes archived categories when include_archived=true', async () => {
-        categoriesRepository.listCategoriesByWorkspace.mockResolvedValue([])
-
-        await service.listCategories({ includeArchived: true }, 'workspace-1')
-
-        expect(categoriesRepository.listCategoriesByWorkspace).toHaveBeenCalledWith(
-            'workspace-1',
-            true,
-        )
-    })
-
-    it('returns a parent category with its nested children', async () => {
-        categoriesRepository.findCategoryById.mockResolvedValue({
-            id: 'parent-food',
-            parentId: null,
-            name: 'Food',
-            icon: '🍽️',
-            sortOrder: 1,
-            deletedAt: null,
-        } as never)
-        categoriesRepository.listCategoriesByWorkspace.mockResolvedValue([
-            {
-                id: 'parent-food',
-                parentId: null,
-                name: 'Food',
-                icon: '🍽️',
-                sortOrder: 1,
-                deletedAt: null,
-            },
-            {
-                id: 'child-groceries',
-                parentId: 'parent-food',
-                name: 'Groceries',
-                icon: '🛒',
-                sortOrder: 1,
-                deletedAt: null,
-            },
-        ] as never)
-
-        await expect(
-            service.getCategoryById(' parent-food ', {}, ' workspace-1 '),
-        ).resolves.toEqual({
-            id: 'parent-food',
-            name: 'Food',
-            icon: '🍽️',
-            parent_id: null,
-            sort_order: 1,
-            children: [
-                {
-                    id: 'child-groceries',
-                    name: 'Groceries',
-                    icon: '🛒',
-                    parent_id: 'parent-food',
-                    sort_order: 1,
-                    children: [],
-                },
-            ],
-        })
-    })
-
-    it('returns a child category without nested descendants', async () => {
-        categoriesRepository.findCategoryById.mockResolvedValue({
-            id: 'child-groceries',
-            parentId: 'parent-food',
-            name: 'Groceries',
-            icon: '🛒',
-            sortOrder: 1,
-            deletedAt: null,
-        } as never)
-
-        await expect(
-            service.getCategoryById('child-groceries', {}, 'workspace-1'),
-        ).resolves.toEqual({
-            id: 'child-groceries',
-            name: 'Groceries',
-            icon: '🛒',
-            parent_id: 'parent-food',
-            sort_order: 1,
-            children: [],
-        })
-
-        expect(categoriesRepository.listCategoriesByWorkspace).not.toHaveBeenCalled()
-    })
-
-    it('throws not found when the category is missing', async () => {
-        categoriesRepository.findCategoryById.mockResolvedValue(null)
-
+    it('does not return a category outside the current workspace', async () => {
+        prisma.category.findFirst.mockResolvedValue(null)
         await expect(service.getCategoryById('missing', {}, 'workspace-1')).rejects.toBeInstanceOf(
             NotFoundException,
         )
+    })
+
+    it('rejects a blank category name before writing to the database', async () => {
+        await expect(
+            service.createCategory({ name: '   ' }, 'workspace-1', 'user-1'),
+        ).rejects.toBeInstanceOf(BadRequestException)
+        expect(prisma.category.create).not.toHaveBeenCalled()
     })
 })

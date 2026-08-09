@@ -74,8 +74,8 @@ export function mapPaymentSource(value: ApiPaymentSource): PaymentSource {
     name: value.name,
     type: value.type,
     systemKey: value.system_key,
-    isArchived: value.is_archived,
-    archivedAt: value.archived_at,
+    isArchived: value.is_archived ?? false,
+    archivedAt: value.archived_at ?? null,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
   };
@@ -89,6 +89,8 @@ export function mapCategory(value: ApiCategory): Category {
     icon: value.icon,
     parentId: value.parent_id,
     sortOrder: value.sort_order,
+    isArchived: value.is_archived ?? false,
+    archivedAt: value.archived_at ?? null,
     children: value.children.map(mapCategory),
   };
 }

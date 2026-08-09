@@ -12,6 +12,10 @@ import {
   plPaymentSources,
 } from "./resources/payment-sources";
 import { enCategories, plCategories } from "./resources/categories";
+import {
+  enCategoryManagement,
+  plCategoryManagement,
+} from "./resources/category-management";
 
 const en = {
   ...enCore,
@@ -22,6 +26,7 @@ const en = {
   ...enSettings,
   ...enPaymentSources,
   ...enCategories,
+  ...enCategoryManagement,
 } as const;
 
 type TranslationKeyOf<T> = {
@@ -43,6 +48,7 @@ const pl = {
   ...plSettings,
   ...plPaymentSources,
   ...plCategories,
+  ...plCategoryManagement,
 } as const satisfies TranslationShape<typeof en>;
 
 export const defaultNS = "translation" as const;

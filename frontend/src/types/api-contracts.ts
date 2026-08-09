@@ -54,8 +54,8 @@ export interface ApiPaymentSource {
   name: string;
   type: ApiPaymentSourceType;
   system_key: string | null;
-  is_archived: boolean;
-  archived_at: string | null;
+  is_archived?: boolean;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +67,8 @@ export interface ApiCategory {
   icon: string | null;
   parent_id: string | null;
   sort_order: number;
+  is_archived?: boolean;
+  archived_at?: string | null;
   children: ApiCategory[];
 }
 

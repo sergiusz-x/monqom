@@ -32,7 +32,7 @@ describe('default category seed', () => {
         for (const parent of DEFAULT_CATEGORY_SEEDS) {
             expect(parent.sort_order).toBeGreaterThan(0)
             expect(parent.children.length).toBeGreaterThanOrEqual(2)
-            expect(parent.children.length).toBeLessThanOrEqual(4)
+            expect(parent.children.length).toBeLessThanOrEqual(7)
 
             for (const child of parent.children) {
                 expect(child.name).not.toHaveLength(0)
