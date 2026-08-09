@@ -567,6 +567,26 @@
                     }
                 },
                 "tags": ["Categories"]
+            },
+            "post": {
+                "operationId": "CategoriesController_createCategory",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
             }
         },
         "/workspaces/{workspaceId}/categories/{id}": {
@@ -584,6 +604,99 @@
                 ],
                 "responses": {
                     "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
+            },
+            "patch": {
+                "operationId": "CategoriesController_updateCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
+            }
+        },
+        "/workspaces/{workspaceId}/categories/order": {
+            "put": {
+                "operationId": "CategoriesController_reorderCategories",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryOrderBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
+            }
+        },
+        "/workspaces/{workspaceId}/categories/{id}/archive": {
+            "post": {
+                "operationId": "CategoriesController_archiveCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Categories"]
+            }
+        },
+        "/workspaces/{workspaceId}/categories/{id}/restore": {
+            "post": {
+                "operationId": "CategoriesController_restoreCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
                         "description": ""
                     }
                 },
@@ -978,6 +1091,14 @@
                 "properties": {}
             },
             "UpdateWorkspaceDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "CategoryBodyDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "CategoryOrderBodyDto": {
                 "type": "object",
                 "properties": {}
             },

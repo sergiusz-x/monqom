@@ -1,11 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import { CategoriesRepository, CategoryRecord } from './categories.repository'
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common'
+import { randomUUID } from 'crypto'
+import { PrismaService } from '../../shared/database/prisma.service'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 
-const CATEGORY_NOT_FOUND_MESSAGE = 'Category not found'
-
-export interface ListCategoriesCommand {
-    includeArchived?: boolean
-}
+const NOT_FOUND = 'Category not found'
 
 export interface CategoryResponse {
     id: string
@@ -14,120 +18,266 @@ export interface CategoryResponse {
     icon: string | null
     parent_id: string | null
     sort_order: number
+    is_archived: boolean
+    archived_at: Date | null
     children: CategoryResponse[]
 }
 
 @Injectable()
 export class CategoriesService {
-    constructor(private readonly categoriesRepository: CategoriesRepository) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly audit: AuditService,
+    ) {}
 
     async listCategories(
-        input: ListCategoriesCommand,
+        input: { includeArchived?: boolean },
         workspaceId: string,
     ): Promise<CategoryResponse[]> {
-        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
-        const includeArchived = input.includeArchived ?? false
-        const categories = await this.categoriesRepository.listCategoriesByWorkspace(
-            normalizedWorkspaceId,
-            includeArchived,
-        )
-
-        return buildCategoryHierarchy(categories)
+        return this.hierarchy(workspaceId.trim(), input.includeArchived ?? false)
     }
 
     async getCategoryById(
-        categoryId: string,
-        input: ListCategoriesCommand,
+        id: string,
+        input: { includeArchived?: boolean },
         workspaceId: string,
     ): Promise<CategoryResponse> {
-        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
-        const normalizedCategoryId = normalizeRequiredValue(categoryId, 'Category id')
-        const includeArchived = input.includeArchived ?? false
-        const category = await this.categoriesRepository.findCategoryById(
-            normalizedWorkspaceId,
-            normalizedCategoryId,
-            includeArchived,
+        const category = await this.prisma.category.findFirst({
+            where: {
+                id: id.trim(),
+                workspaceId: workspaceId.trim(),
+                ...(input.includeArchived ? {} : { deletedAt: null }),
+            },
+        })
+        if (!category) throw new NotFoundException(NOT_FOUND)
+        return this.map(category, [])
+    }
+
+    async createCategory(
+        input: { name: string; icon?: string | null; parent_id?: string | null },
+        workspaceId: string,
+        userId: string,
+    ): Promise<CategoryResponse> {
+        const value = this.validate(input)
+        const parentId = value.parentId
+        if (parentId) await this.activeParent(parentId, workspaceId)
+        await this.assertUnique(value.name, parentId, workspaceId)
+        const sortOrder = await this.nextOrder(parentId, workspaceId)
+        const category = await this.prisma.category.create({
+            data: {
+                id: `cat_${randomUUID().replace(/-/g, '')}`,
+                workspaceId,
+                parentId,
+                name: value.name,
+                icon: value.icon,
+                sortOrder,
+            },
+        })
+        await this.record(AUDIT_ACTIONS.CATEGORY_CREATED, category, userId)
+        return this.map(category, [])
+    }
+
+    async updateCategory(
+        id: string,
+        input: { name: string; icon?: string | null; parent_id?: string | null },
+        workspaceId: string,
+        userId: string,
+    ): Promise<CategoryResponse> {
+        const existing = await this.prisma.category.findFirst({
+            where: { id, workspaceId, deletedAt: null },
+            include: { children: true },
+        })
+        if (!existing) throw new NotFoundException(NOT_FOUND)
+        const value = this.validate(input)
+        if (existing.children.length && value.parentId !== null)
+            throw new BadRequestException('A category with children cannot become a subcategory')
+        if (value.parentId) await this.activeParent(value.parentId, workspaceId, id)
+        await this.assertUnique(value.name, value.parentId, workspaceId, id)
+        const category = await this.prisma.category.update({
+            where: { id },
+            data: {
+                name: value.name,
+                icon: value.icon,
+                parentId: value.parentId,
+                ...(value.name !== existing.name ? { systemKey: null } : {}),
+            },
+        })
+        await this.record(AUDIT_ACTIONS.CATEGORY_UPDATED, category, userId)
+        return this.map(category, [])
+    }
+
+    async reorderCategories(
+        items: Array<{ id: string }>,
+        workspaceId: string,
+    ): Promise<CategoryResponse[]> {
+        const ids = items.map((item) => item.id.trim()).filter(Boolean)
+        if (!ids.length || new Set(ids).size !== ids.length)
+            throw new BadRequestException('Category ids must be unique')
+        const categories = await this.prisma.category.findMany({
+            where: { workspaceId, id: { in: ids }, deletedAt: null },
+        })
+        if (
+            categories.length !== ids.length ||
+            new Set(categories.map((c) => c.parentId)).size !== 1
         )
-
-        if (!category) {
-            throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
-        }
-
-        if (category.parentId) {
-            return {
-                ...mapCategoryResponse(category),
-                children: [],
-            }
-        }
-
-        const categories = await this.categoriesRepository.listCategoriesByWorkspace(
-            normalizedWorkspaceId,
-            includeArchived,
+            throw new BadRequestException('Categories must be active siblings')
+        await this.prisma.$transaction(
+            ids.map((id, index) =>
+                this.prisma.category.update({ where: { id }, data: { sortOrder: index + 1 } }),
+            ),
         )
-        const nestedCategory = buildCategoryHierarchy(categories).find(
-            (entry) => entry.id === normalizedCategoryId,
-        )
+        return this.hierarchy(workspaceId, false)
+    }
 
-        if (!nestedCategory) {
-            throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
+    async archiveCategory(
+        id: string,
+        workspaceId: string,
+        userId: string,
+    ): Promise<CategoryResponse> {
+        const category = await this.prisma.category.findFirst({
+            where: { id, workspaceId, deletedAt: null },
+        })
+        if (!category) throw new NotFoundException(NOT_FOUND)
+        const at = new Date()
+        await this.prisma.category.updateMany({
+            where: { workspaceId, OR: [{ id }, { parentId: id }] },
+            data: { deletedAt: at },
+        })
+        const archived = { ...category, deletedAt: at }
+        await this.record(AUDIT_ACTIONS.CATEGORY_ARCHIVED, archived, userId)
+        return this.map(archived, [])
+    }
+
+    async restoreCategory(
+        id: string,
+        workspaceId: string,
+        userId: string,
+    ): Promise<CategoryResponse> {
+        const category = await this.prisma.category.findFirst({
+            where: { id, workspaceId, deletedAt: { not: null } },
+        })
+        if (!category) throw new NotFoundException(NOT_FOUND)
+        if (category.parentId) await this.activeParent(category.parentId, workspaceId)
+        await this.prisma.category.updateMany({
+            where: { workspaceId, OR: [{ id }, { parentId: id }] },
+            data: { deletedAt: null },
+        })
+        const restored = { ...category, deletedAt: null }
+        await this.record(AUDIT_ACTIONS.CATEGORY_RESTORED, restored, userId)
+        return this.map(restored, [])
+    }
+
+    private async hierarchy(
+        workspaceId: string,
+        includeArchived: boolean,
+    ): Promise<CategoryResponse[]> {
+        const rows = await this.prisma.category.findMany({
+            where: { workspaceId, ...(includeArchived ? {} : { deletedAt: null }) },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        })
+        const children = new Map<string | null, typeof rows>()
+        for (const row of rows)
+            children.set(row.parentId, [...(children.get(row.parentId) ?? []), row])
+        const build = (parentId: string | null): CategoryResponse[] =>
+            [...(children.get(parentId) ?? [])]
+                .sort(
+                    (left, right) =>
+                        left.sortOrder - right.sortOrder ||
+                        left.name.localeCompare(right.name) ||
+                        left.id.localeCompare(right.id),
+                )
+                .map((row) => this.map(row, build(row.id)))
+        return build(null)
+    }
+    private map(
+        row: {
+            id: string
+            name: string
+            systemKey: string | null
+            icon: string | null
+            parentId: string | null
+            sortOrder: number
+            deletedAt: Date | null
+        },
+        children: CategoryResponse[],
+    ): CategoryResponse {
+        return {
+            id: row.id,
+            name: row.name,
+            system_key: row.systemKey,
+            icon: row.icon,
+            parent_id: row.parentId,
+            sort_order: row.sortOrder,
+            is_archived: row.deletedAt !== null,
+            archived_at: row.deletedAt,
+            children,
         }
-
-        return nestedCategory
     }
-}
-
-function buildCategoryHierarchy(categories: CategoryRecord[]): CategoryResponse[] {
-    const categoriesByParentId = new Map<string | null, CategoryRecord[]>()
-
-    for (const category of categories) {
-        const entries = categoriesByParentId.get(category.parentId) ?? []
-        entries.push(category)
-        categoriesByParentId.set(category.parentId, entries)
+    private validate(input: { name: string; icon?: string | null; parent_id?: string | null }) {
+        const name = input.name?.trim()
+        if (!name || name.length > 100)
+            throw new BadRequestException('Name must contain 1 to 100 characters')
+        const icon = input.icon?.trim() || null
+        if (icon && icon.length > 32)
+            throw new BadRequestException('Icon must be 32 characters or fewer')
+        return { name, icon, parentId: input.parent_id?.trim() || null }
     }
-
-    const buildChildren = (parentId: string | null): CategoryResponse[] => {
-        const entries = categoriesByParentId.get(parentId) ?? []
-
-        return [...entries].sort(compareCategoryRecords).map((entry) => ({
-            ...mapCategoryResponse(entry),
-            children: buildChildren(entry.id),
-        }))
+    private async activeParent(id: string, workspaceId: string, exceptId?: string) {
+        const parent = await this.prisma.category.findFirst({
+            where: { id, workspaceId, deletedAt: null },
+        })
+        if (!parent || parent.parentId || parent.id === exceptId)
+            throw new BadRequestException('Parent category must be an active top-level category')
     }
-
-    return buildChildren(null)
-}
-
-function compareCategoryRecords(left: CategoryRecord, right: CategoryRecord): number {
-    if (left.sortOrder !== right.sortOrder) {
-        return left.sortOrder - right.sortOrder
+    private async assertUnique(
+        name: string,
+        parentId: string | null,
+        workspaceId: string,
+        exceptId?: string,
+    ) {
+        const duplicate = await this.prisma.category.findFirst({
+            where: {
+                workspaceId,
+                parentId,
+                deletedAt: null,
+                name: { equals: name, mode: 'insensitive' },
+                ...(exceptId ? { id: { not: exceptId } } : {}),
+            },
+        })
+        if (duplicate)
+            throw new ConflictException(
+                'An active category with this name already exists in this group',
+            )
     }
-
-    const nameComparison = left.name.localeCompare(right.name)
-
-    if (nameComparison !== 0) {
-        return nameComparison
+    private async nextOrder(parentId: string | null, workspaceId: string) {
+        const last = await this.prisma.category.aggregate({
+            where: { workspaceId, parentId, deletedAt: null },
+            _max: { sortOrder: true },
+        })
+        return (last._max.sortOrder ?? 0) + 1
     }
-
-    return left.id.localeCompare(right.id)
-}
-
-function mapCategoryResponse(category: CategoryRecord): Omit<CategoryResponse, 'children'> {
-    return {
-        id: category.id,
-        name: category.name,
-        system_key: category.systemKey,
-        icon: category.icon,
-        parent_id: category.parentId,
-        sort_order: category.sortOrder,
+    private async record(
+        action: (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS],
+        category: {
+            id: string
+            workspaceId: string
+            name: string
+            parentId: string | null
+            deletedAt: Date | null
+        },
+        userId: string,
+    ) {
+        await this.audit.record({
+            action,
+            workspaceId: category.workspaceId,
+            userId,
+            entityType: AUDIT_ENTITY_TYPES.CATEGORY,
+            entityId: category.id,
+            metadata: {
+                name: category.name,
+                parent_id: category.parentId,
+                archived_at: category.deletedAt?.toISOString() ?? null,
+            },
+        })
     }
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }

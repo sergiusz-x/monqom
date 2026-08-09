@@ -10,10 +10,12 @@ import { AccountPreferencesSection } from "@/components/settings/AccountPreferen
 import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
+import { CategoryManagementSection } from "@/components/settings/CategoryManagementSection";
 import { ReleaseVersion } from "@/components/ReleaseVersion";
 import { Button } from "@monqom/ui";
 
-type ActiveSection = "profile" | "workspace" | "security" | "data";
+type ActiveSection =
+  "profile" | "workspace" | "categories" | "security" | "data";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -25,6 +27,7 @@ export default function SettingsPage() {
   const tabs: Array<{ id: ActiveSection; label: string }> = [
     { id: "profile", label: t("settings.profile") },
     { id: "workspace", label: t("settings.workspace") },
+    { id: "categories", label: t("categoryManagement.tab") },
     { id: "security", label: t("settings.security") },
     { id: "data", label: t("settings.data") },
   ];
@@ -80,6 +83,11 @@ export default function SettingsPage() {
               showToast(message);
             }}
             onRetry={() => void refetch()}
+          />
+        ) : activeSection === "categories" ? (
+          <CategoryManagementSection
+            workspaceId={workspaceId}
+            onSaved={showToast}
           />
         ) : activeSection === "security" ? (
           <SecuritySection user={user} setUser={setUser} onSaved={showToast} />

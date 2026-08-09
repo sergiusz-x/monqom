@@ -44,6 +44,9 @@ export const DEFAULT_CATEGORY_SEEDS: readonly DefaultCategoryParentSeed[] = [
             { name: 'Public Transport', icon: '🚌', sort_order: 2 },
             { name: 'Taxi', icon: '🚕', sort_order: 3 },
             { name: 'Parking', icon: '🅿️', sort_order: 4 },
+            { name: 'Car Maintenance', icon: '🔧', sort_order: 5 },
+            { name: 'Car Wash', icon: '🧽', sort_order: 6 },
+            { name: 'Car Insurance', icon: '🛡️', sort_order: 7 },
         ],
     },
     {
@@ -85,6 +88,36 @@ export const DEFAULT_CATEGORY_SEEDS: readonly DefaultCategoryParentSeed[] = [
             { name: 'Water', icon: '🚰', sort_order: 2 },
             { name: 'Internet', icon: '🌐', sort_order: 3 },
             { name: 'Phone', icon: '📞', sort_order: 4 },
+        ],
+    },
+    {
+        name: 'Pets',
+        icon: '🐾',
+        sort_order: 9,
+        children: [
+            { name: 'Pet Food & Supplies', icon: '🦴', sort_order: 1 },
+            { name: 'Veterinary Care', icon: '🐶', sort_order: 2 },
+            { name: 'Pet Care', icon: '✂️', sort_order: 3 },
+        ],
+    },
+    {
+        name: 'Personal Care & Fitness',
+        icon: '🧴',
+        sort_order: 10,
+        children: [
+            { name: 'Cosmetics', icon: '🧴', sort_order: 1 },
+            { name: 'Hairdresser', icon: '💇', sort_order: 2 },
+            { name: 'Gym & Sport', icon: '🏋️', sort_order: 3 },
+            { name: 'Therapy', icon: '🧠', sort_order: 4 },
+        ],
+    },
+    {
+        name: 'Digital Services',
+        icon: '☁️',
+        sort_order: 11,
+        children: [
+            { name: 'Apps & Cloud', icon: '📱', sort_order: 1 },
+            { name: 'Hosting & Domains', icon: '🌐', sort_order: 2 },
         ],
     },
     {
@@ -215,6 +248,6 @@ function toSystemKey(name: string): string {
         name
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '.')
-            .replace(/^\\.|\\.$/g, '')
+            .replace(/^\.+|\.+$/g, '')
     )
 }

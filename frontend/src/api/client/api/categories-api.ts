@@ -52,6 +52,101 @@ export const CategoriesApiAxiosParamCreator = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
+    categoriesControllerArchiveCategory: async (
+      id: string,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists("categoriesControllerArchiveCategory", "id", id);
+      const localVarPath =
+        `/workspaces/{workspaceId}/categories/{id}/archive`.replace(
+          `{${"id"}}`,
+          encodeURIComponent(String(id)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "POST",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerCreateCategory: async (
+      body: object,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'body' is not null or undefined
+      assertParamExists("categoriesControllerCreateCategory", "body", body);
+      const localVarPath = `/workspaces/{workspaceId}/categories`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "POST",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      localVarHeaderParameter["Content-Type"] = "application/json";
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        body,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
     categoriesControllerGetCategory: async (
       id: string,
       options: AxiosRequestConfig = {},
@@ -129,6 +224,157 @@ export const CategoriesApiAxiosParamCreator = function (
         options: localVarRequestOptions,
       };
     },
+    /**
+     *
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerReorderCategories: async (
+      body: object,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'body' is not null or undefined
+      assertParamExists("categoriesControllerReorderCategories", "body", body);
+      const localVarPath = `/workspaces/{workspaceId}/categories/order`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "PUT",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      localVarHeaderParameter["Content-Type"] = "application/json";
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        body,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerRestoreCategory: async (
+      id: string,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists("categoriesControllerRestoreCategory", "id", id);
+      const localVarPath =
+        `/workspaces/{workspaceId}/categories/{id}/restore`.replace(
+          `{${"id"}}`,
+          encodeURIComponent(String(id)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "POST",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerUpdateCategory: async (
+      id: string,
+      body: object,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists("categoriesControllerUpdateCategory", "id", id);
+      // verify required parameter 'body' is not null or undefined
+      assertParamExists("categoriesControllerUpdateCategory", "body", body);
+      const localVarPath = `/workspaces/{workspaceId}/categories/{id}`.replace(
+        `{${"id"}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "PATCH",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      localVarHeaderParameter["Content-Type"] = "application/json";
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        body,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
   };
 };
 
@@ -140,6 +386,54 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
   const localVarAxiosParamCreator =
     CategoriesApiAxiosParamCreator(configuration);
   return {
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async categoriesControllerArchiveCategory(
+      id: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.categoriesControllerArchiveCategory(
+          id,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async categoriesControllerCreateCategory(
+      body: object,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.categoriesControllerCreateCategory(
+          body,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
     /**
      *
      * @param {string} id
@@ -185,6 +479,81 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
         configuration,
       );
     },
+    /**
+     *
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async categoriesControllerReorderCategories(
+      body: object,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.categoriesControllerReorderCategories(
+          body,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async categoriesControllerRestoreCategory(
+      id: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.categoriesControllerRestoreCategory(
+          id,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async categoriesControllerUpdateCategory(
+      id: string,
+      body: object,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.categoriesControllerUpdateCategory(
+          id,
+          body,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
   };
 };
 
@@ -199,6 +568,34 @@ export const CategoriesApiFactory = function (
 ) {
   const localVarFp = CategoriesApiFp(configuration);
   return {
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerArchiveCategory(
+      id: string,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .categoriesControllerArchiveCategory(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerCreateCategory(
+      body: object,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .categoriesControllerCreateCategory(body, options)
+        .then((request) => request(axios, basePath));
+    },
     /**
      *
      * @param {string} id
@@ -223,6 +620,50 @@ export const CategoriesApiFactory = function (
         .categoriesControllerListCategories(options)
         .then((request) => request(axios, basePath));
     },
+    /**
+     *
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerReorderCategories(
+      body: object,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .categoriesControllerReorderCategories(body, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerRestoreCategory(
+      id: string,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .categoriesControllerRestoreCategory(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {object} body
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerUpdateCategory(
+      id: string,
+      body: object,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .categoriesControllerUpdateCategory(id, body, options)
+        .then((request) => request(axios, basePath));
+    },
   };
 };
 
@@ -233,6 +674,38 @@ export const CategoriesApiFactory = function (
  * @extends {BaseAPI}
  */
 export class CategoriesApi extends BaseAPI {
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof CategoriesApi
+   */
+  public categoriesControllerArchiveCategory(
+    id: string,
+    options?: AxiosRequestConfig,
+  ) {
+    return CategoriesApiFp(this.configuration)
+      .categoriesControllerArchiveCategory(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {object} body
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof CategoriesApi
+   */
+  public categoriesControllerCreateCategory(
+    body: object,
+    options?: AxiosRequestConfig,
+  ) {
+    return CategoriesApiFp(this.configuration)
+      .categoriesControllerCreateCategory(body, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
   /**
    *
    * @param {string} id
@@ -258,6 +731,56 @@ export class CategoriesApi extends BaseAPI {
   public categoriesControllerListCategories(options?: AxiosRequestConfig) {
     return CategoriesApiFp(this.configuration)
       .categoriesControllerListCategories(options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {object} body
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof CategoriesApi
+   */
+  public categoriesControllerReorderCategories(
+    body: object,
+    options?: AxiosRequestConfig,
+  ) {
+    return CategoriesApiFp(this.configuration)
+      .categoriesControllerReorderCategories(body, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof CategoriesApi
+   */
+  public categoriesControllerRestoreCategory(
+    id: string,
+    options?: AxiosRequestConfig,
+  ) {
+    return CategoriesApiFp(this.configuration)
+      .categoriesControllerRestoreCategory(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {object} body
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof CategoriesApi
+   */
+  public categoriesControllerUpdateCategory(
+    id: string,
+    body: object,
+    options?: AxiosRequestConfig,
+  ) {
+    return CategoriesApiFp(this.configuration)
+      .categoriesControllerUpdateCategory(id, body, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

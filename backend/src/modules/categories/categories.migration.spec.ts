@@ -1,41 +1,38 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { DEFAULT_CATEGORIES } from '../../../prisma/seeds/constants'
 import { DEFAULT_CATEGORY_SEEDS } from '../workspaces/seeds/01_default_categories'
 
-describe('category sort-order migration', () => {
+describe('expanded default categories migration', () => {
     const migrationPath = join(
         process.cwd(),
         'prisma',
         'migrations',
-        '0009_category_sort_order_and_archive',
+        '0016_expand_default_categories',
         'migration.sql',
     )
     const migrationSql = readFileSync(migrationPath, 'utf8')
 
-    it('covers every seeded parent category name from current and legacy seed sources', () => {
-        const parentNames = new Set<string>([
-            ...DEFAULT_CATEGORY_SEEDS.map((category) => category.name),
-            ...DEFAULT_CATEGORIES.map((category) => category.name),
-        ])
+    const addedParentNames = ['Pets', 'Personal Care & Fitness', 'Digital Services']
+    const addedChildNames = [
+        'Car Maintenance',
+        'Car Wash',
+        'Car Insurance',
+        ...DEFAULT_CATEGORY_SEEDS.filter((category) =>
+            addedParentNames.includes(category.name),
+        ).flatMap((category) => category.children.map((child) => child.name)),
+    ]
 
-        for (const parentName of parentNames) {
-            expect(migrationSql).toContain(`WHEN '${parentName}' THEN`)
+    it('adds each new top-level default category for every workspace', () => {
+        for (const parentName of addedParentNames) {
+            expect(migrationSql).toContain(`('${parentName}',`)
         }
+        expect(migrationSql).toContain('FROM workspaces w')
     })
 
-    it('covers every seeded child category name from current and legacy seed sources', () => {
-        const childNames = new Set<string>([
-            ...DEFAULT_CATEGORY_SEEDS.flatMap((category) =>
-                category.children.map((childCategory) => childCategory.name),
-            ),
-            ...DEFAULT_CATEGORIES.flatMap((category) =>
-                category.children.map((childCategory) => childCategory.name),
-            ),
-        ])
-
-        for (const childName of childNames) {
-            expect(migrationSql).toContain(`child."name" = '${childName}'`)
+    it('adds each new default subcategory without overwriting existing data', () => {
+        for (const childName of addedChildNames) {
+            expect(migrationSql).toContain(`'${childName}'`)
         }
+        expect(migrationSql).toContain('WHERE NOT EXISTS')
     })
 })
