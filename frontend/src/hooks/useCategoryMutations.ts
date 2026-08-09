@@ -7,6 +7,7 @@ export interface CategoryInput {
   name: string;
   icon: string | null;
   parent_id: string | null;
+  type?: "expense" | "income";
 }
 
 type CategoriesSnapshot = Array<[readonly unknown[], Category[] | undefined]>;

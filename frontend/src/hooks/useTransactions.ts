@@ -18,6 +18,7 @@ function buildParams(
     sort_direction: filters.sortDirection,
   });
 
+  if (filters.type) params.set("type", filters.type);
   if (filters.categoryIds.length > 0) {
     params.set("category_ids", filters.categoryIds.join(","));
   }
@@ -42,6 +43,7 @@ export function useTransactions(
       ...queryKeys.transactions(workspaceId),
       "list",
       {
+        type: filters.type,
         categoryIds: filters.categoryIds,
         tag: filters.tag,
         paymentSourceId: filters.paymentSourceId,

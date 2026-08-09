@@ -263,7 +263,7 @@ test("keeps iPhone form controls readable without Safari input zoom", async ({
   for (const control of [
     form.getByLabel("Description"),
     form.getByLabel("Date"),
-    form.getByLabel("Payment source"),
+    form.getByLabel("Account or wallet"),
   ]) {
     await expect(control).toHaveCSS("font-size", "16px");
   }

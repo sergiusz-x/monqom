@@ -32,6 +32,7 @@ export interface ExportTransactionsCommand {
 
 export interface ExportedTransaction {
     date: string
+    type: string
     amount: string
     currency: string
     base_amount: string
@@ -89,7 +90,7 @@ export class ExportService {
     private async *createCsvExportChunks(
         filters: ListTransactionsForExportQuery,
     ): AsyncIterable<string> {
-        yield 'date,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source\n'
+        yield 'date,type,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source\n'
 
         for await (const transaction of this.streamTransactions(filters)) {
             yield `${serializeCsvRow(transaction)}\n`
@@ -227,6 +228,7 @@ function buildExportFileName(format: ExportFormat): string {
 function mapExportTransaction(transaction: ExportTransactionRecord): ExportedTransaction {
     return {
         date: transaction.date.toISOString().slice(0, 10),
+        type: transaction.type,
         amount: formatAmountFromCents(transaction.amount),
         currency: transaction.currency,
         base_amount: formatAmountFromCents(transaction.base_amount),
@@ -245,6 +247,7 @@ function mapExportTransaction(transaction: ExportTransactionRecord): ExportedTra
 function serializeCsvRow(transaction: ExportedTransaction): string {
     return [
         transaction.date,
+        transaction.type,
         transaction.amount,
         transaction.currency,
         transaction.base_amount,

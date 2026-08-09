@@ -21,6 +21,7 @@ export interface CategorySelectorProps {
   onChange: (categoryId: string | null) => void;
   placeholder?: string;
   disabled?: boolean;
+  type?: "expense" | "income";
 }
 
 interface VisibleItem {
@@ -82,6 +83,7 @@ export function CategorySelector({
   onChange,
   placeholder,
   disabled = false,
+  type = "expense",
 }: CategorySelectorProps) {
   const field = useFieldControlProps();
   const { t } = useTranslation();
@@ -93,7 +95,11 @@ export function CategorySelector({
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const { categories, isLoading, error, retry } = useCategories(workspaceId);
+  const { categories, isLoading, error, retry } = useCategories(
+    workspaceId,
+    false,
+    type,
+  );
   const localizedCategories = useMemo(
     () =>
       categories.map((parent) => ({

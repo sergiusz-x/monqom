@@ -27,7 +27,7 @@ export class CategoriesController {
         @Req() req: Request,
     ): Promise<CategoryResponse[]> {
         return this.categoriesService.listCategories(
-            { includeArchived: query.include_archived },
+            { includeArchived: query.include_archived, type: query.type },
             req.workspace!.workspaceId,
         )
     }
@@ -38,7 +38,7 @@ export class CategoriesController {
     ): Promise<CategoryResponse> {
         return this.categoriesService.getCategoryById(
             id,
-            { includeArchived: query.include_archived },
+            { includeArchived: query.include_archived, type: query.type },
             req.workspace!.workspaceId,
         )
     }

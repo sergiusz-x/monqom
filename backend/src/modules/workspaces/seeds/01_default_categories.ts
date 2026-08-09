@@ -6,6 +6,7 @@ export interface DefaultCategoryChildSeed {
 }
 
 export interface DefaultCategoryParentSeed {
+    type?: 'expense' | 'income'
     name: string
     icon?: string
     sort_order: number
@@ -144,6 +145,7 @@ interface CategorySeedUpsertArgs {
         icon: string | null
         sortOrder: number
         deletedAt: null
+        type: 'income' | 'expense'
     }
     create: {
         id: string
@@ -154,6 +156,7 @@ interface CategorySeedUpsertArgs {
         icon?: string | null
         sortOrder: number
         deletedAt: null
+        type: 'income' | 'expense'
     }
 }
 
@@ -193,6 +196,7 @@ export async function seedCategoriesForWorkspace(
                 parentId: null,
                 name: parent.name,
                 systemKey: toSystemKey(parent.name),
+                type: 'expense',
                 icon: parent.icon ?? null,
                 sortOrder: parent.sort_order,
                 deletedAt: null,
@@ -203,6 +207,7 @@ export async function seedCategoriesForWorkspace(
                 parentId: null,
                 name: parent.name,
                 systemKey: toSystemKey(parent.name),
+                type: 'expense',
                 icon: parent.icon,
                 sortOrder: parent.sort_order,
                 deletedAt: null,
@@ -223,6 +228,7 @@ export async function seedCategoriesForWorkspace(
                     parentId: parentId,
                     name: child.name,
                     systemKey: toSystemKey(child.name),
+                    type: 'expense',
                     icon: child.icon ?? null,
                     sortOrder: child.sort_order,
                     deletedAt: null,
@@ -233,6 +239,7 @@ export async function seedCategoriesForWorkspace(
                     parentId: parentId,
                     name: child.name,
                     systemKey: toSystemKey(child.name),
+                    type: 'expense',
                     icon: child.icon,
                     sortOrder: child.sort_order,
                     deletedAt: null,
@@ -250,4 +257,96 @@ function toSystemKey(name: string): string {
             .replace(/[^a-z0-9]+/g, '.')
             .replace(/^\.+|\.+$/g, '')
     )
+}
+
+export async function seedIncomeCategoriesForWorkspace(
+    workspaceId: string,
+    prisma: CategorySeedPrismaClient,
+): Promise<void> {
+    const parents = [
+        {
+            name: 'Work',
+            icon: '💼',
+            children: [
+                ['Salary', '💰'],
+                ['Business & Freelance', '🧑‍💻'],
+            ],
+        },
+        {
+            name: 'Other income',
+            icon: '✨',
+            children: [
+                ['Transfer from a person', '🤝'],
+                ['Refund', '↩️'],
+                ['Gift', '🎁'],
+                ['Sale', '🏷️'],
+                ['Other', '➕'],
+            ],
+        },
+    ] as const
+    const keys: Record<string, string> = {
+        Work: 'categories.income.work',
+        Salary: 'categories.income.salary',
+        'Business & Freelance': 'categories.income.business.freelance',
+        'Other income': 'categories.income.other',
+        'Transfer from a person': 'categories.income.transfer.person',
+        Refund: 'categories.income.refund',
+        Gift: 'categories.income.gift',
+        Sale: 'categories.income.sale',
+        Other: 'categories.income.other.source',
+    }
+    for (const [parentIndex, parent] of parents.entries()) {
+        const parentId = deterministicCategoryId(workspaceId, `income/${parent.name}`)
+        await prisma.category.upsert({
+            where: { id: parentId },
+            update: {
+                workspaceId,
+                parentId: null,
+                name: parent.name,
+                systemKey: keys[parent.name],
+                icon: parent.icon,
+                sortOrder: parentIndex + 1,
+                deletedAt: null,
+                type: 'income',
+            },
+            create: {
+                id: parentId,
+                workspaceId,
+                parentId: null,
+                name: parent.name,
+                systemKey: keys[parent.name],
+                icon: parent.icon,
+                sortOrder: parentIndex + 1,
+                deletedAt: null,
+                type: 'income',
+            },
+        })
+        for (const [childIndex, [name, icon]] of parent.children.entries()) {
+            const id = deterministicCategoryId(workspaceId, `income/${parent.name}/${name}`)
+            await prisma.category.upsert({
+                where: { id },
+                update: {
+                    workspaceId,
+                    parentId,
+                    name,
+                    systemKey: keys[name],
+                    icon,
+                    sortOrder: childIndex + 1,
+                    deletedAt: null,
+                    type: 'income',
+                },
+                create: {
+                    id,
+                    workspaceId,
+                    parentId,
+                    name,
+                    systemKey: keys[name],
+                    icon,
+                    sortOrder: childIndex + 1,
+                    deletedAt: null,
+                    type: 'income',
+                },
+            })
+        }
+    }
 }

@@ -18,6 +18,9 @@ import {
 import { transformStringArrayQuery } from '../../shared/validation/query-transformers'
 
 export class TransactionBodyDto {
+    @IsOptional()
+    @IsIn(['expense', 'income'])
+    type?: 'expense' | 'income'
     @IsNumber({ allowInfinity: false, allowNaN: false, maxDecimalPlaces: 2 })
     @IsPositive()
     amount!: number
@@ -55,6 +58,9 @@ export class TransactionBodyDto {
 }
 
 export class ListTransactionsQueryDto {
+    @IsOptional()
+    @IsIn(['expense', 'income'])
+    type?: 'expense' | 'income'
     @IsOptional()
     @IsString()
     @IsNotEmpty()

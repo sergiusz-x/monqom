@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import { Prisma, Workspace, WorkspaceMembership } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { seedCategoriesForWorkspace } from '../workspaces/seeds/01_default_categories'
+import {
+    seedCategoriesForWorkspace,
+    seedIncomeCategoriesForWorkspace,
+} from '../workspaces/seeds/01_default_categories'
 
 export interface CreateWorkspaceInput {
     name: string
@@ -213,5 +216,7 @@ export class WorkspaceRepository {
         prisma: WorkspacePersistenceClient = this.prisma,
     ): Promise<void> {
         await seedCategoriesForWorkspace(workspaceId, prisma)
+        await seedIncomeCategoriesForWorkspace(workspaceId, prisma)
+        await seedIncomeCategoriesForWorkspace(workspaceId, prisma)
     }
 }

@@ -23,6 +23,7 @@ describe('ExportService', () => {
         transactionsRepository.listTransactionsForExport.mockResolvedValueOnce([
             createExportTransactionRecord({
                 date: new Date('2026-03-22T09:30:00.000Z'),
+                type: 'expense',
                 amount: 4050,
                 category: 'Food',
                 notes: 'Lunch, with team',
@@ -42,8 +43,8 @@ describe('ExportService', () => {
 
         await expect(readExportChunks(exportFile.chunks)).resolves.toBe(
             [
-                'date,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
-                '2026-03-22,40.50,EUR,44.10,USD,1.0888888889,2026-03-21,frankfurter,Food,Team lunch,"Lunch, with team","commute, food",Main Card',
+                'date,type,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
+                '2026-03-22,expense,40.50,EUR,44.10,USD,1.0888888889,2026-03-21,frankfurter,Food,Team lunch,"Lunch, with team","commute, food",Main Card',
                 '',
             ].join('\n'),
         )
@@ -74,8 +75,8 @@ describe('ExportService', () => {
 
         await expect(readExportChunks(exportFile.chunks)).resolves.toBe(
             [
-                'date,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
-                `2026-03-22,40.50,EUR,44.10,USD,1.0888888889,2026-03-21,frankfurter,"'=Category",Team lunch,"' +SUM(A1:A2)","'-unsafe,  @meta","'=Wallet"`,
+                'date,type,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
+                `2026-03-22,expense,40.50,EUR,44.10,USD,1.0888888889,2026-03-21,frankfurter,"'=Category",Team lunch,"' +SUM(A1:A2)","'-unsafe,  @meta","'=Wallet"`,
                 '',
             ].join('\n'),
         )
@@ -163,6 +164,7 @@ function createExportTransactionRecord(
 ): ExportTransactionRecord {
     return {
         date: new Date('2026-03-22T09:30:00.000Z'),
+        type: 'expense',
         amount: 4050,
         currency: 'EUR',
         base_amount: 4410,

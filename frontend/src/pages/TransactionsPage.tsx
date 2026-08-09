@@ -139,7 +139,28 @@ export default function TransactionsPage() {
     saveTransactionPreferences(window.localStorage, workspaceId, filters);
   }, [filters, workspaceId, hydratedStorageWorkspaceId]);
 
-  const { categories } = useCategories(workspaceId ?? "");
+  const { categories: expenseCategories } = useCategories(
+    workspaceId ?? "",
+    false,
+    "expense",
+  );
+  const { categories: incomeCategories } = useCategories(
+    workspaceId ?? "",
+    false,
+    "income",
+  );
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          [...expenseCategories, ...incomeCategories].map((category) => [
+            category.id,
+            category,
+          ]),
+        ).values(),
+      ),
+    [expenseCategories, incomeCategories],
+  );
   const { paymentSources } = usePaymentSources(workspaceId ?? "", true);
   const { tags } = useTags(workspaceId ?? "");
   const { data, isLoading, error, retry } = useTransactions(

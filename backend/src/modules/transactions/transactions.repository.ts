@@ -56,6 +56,7 @@ export type TransactionSortField =
 export type TransactionSortDirection = 'asc' | 'desc'
 
 export interface ListTransactionsFilters {
+    type?: 'expense' | 'income'
     workspaceId: string
     categoryId?: string
     categoryIds?: string[]
@@ -104,6 +105,7 @@ export interface ListedTransactionRecord {
 
 export interface ExportTransactionRecord {
     date: Date
+    type: string
     amount: number
     currency: string
     base_amount: number
@@ -518,6 +520,7 @@ export class TransactionsRepository {
         return prisma.$queryRaw<ExportTransactionRecord[]>(Prisma.sql`
             SELECT
                 t."date",
+                t."type",
                 t."amount",
                 t."currency",
                 t."base_amount",
@@ -554,6 +557,7 @@ export class TransactionsRepository {
             GROUP BY
                 t."id",
                 t."date",
+                t."type",
                 t."amount",
                 t."currency",
                 t."base_amount",
@@ -620,6 +624,10 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
         WHERE t."workspace_id" = ${filters.workspaceId}
             AND t."deleted_at" IS NULL
     `
+
+    if (filters.type) {
+        whereClause = Prisma.sql`${whereClause} AND t."type" = ${filters.type}`
+    }
 
     if (filters.categoryIds && filters.categoryIds.length > 0) {
         whereClause = Prisma.sql`${whereClause} AND t."category_id" IN (${Prisma.join(filters.categoryIds)})`

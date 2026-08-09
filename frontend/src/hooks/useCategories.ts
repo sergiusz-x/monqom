@@ -4,16 +4,23 @@ import { queryKeys } from "@/lib/query-client";
 import type { ApiCategory } from "@/types/api-contracts";
 import { mapCategory } from "@/lib/api-mappers";
 import { getApiErrorMessage } from "@/lib/api-errors";
-export function useCategories(workspaceId: string, includeArchived = false) {
+export function useCategories(
+  workspaceId: string,
+  includeArchived = false,
+  type: "expense" | "income" = "expense",
+) {
   const query = useQuery({
-    queryKey: [...queryKeys.categories(workspaceId), { includeArchived }],
+    queryKey: [...queryKeys.categories(workspaceId), { includeArchived, type }],
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
       const response = await api.get<ApiCategory[]>(
         `/workspaces/${workspaceId}/categories`,
         {
           signal,
-          params: includeArchived ? { include_archived: true } : undefined,
+          params: {
+            ...(includeArchived ? { include_archived: true } : {}),
+            type,
+          },
         },
       );
       return response.data.map(mapCategory);

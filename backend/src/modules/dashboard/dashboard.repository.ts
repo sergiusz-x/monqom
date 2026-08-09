@@ -47,6 +47,23 @@ export class DashboardRepository {
         return result._sum.baseAmount ?? 0
     }
 
+    async getTotalIncomeForRange(
+        workspaceId: string,
+        startDate: Date,
+        endDateExclusive: Date,
+        prisma: DashboardPersistenceClient = this.prisma,
+    ): Promise<number> {
+        const result = await prisma.transaction.aggregate({
+            where: {
+                workspaceId,
+                deletedAt: null,
+                type: 'income',
+                date: { gte: startDate, lt: endDateExclusive },
+            },
+            _sum: { baseAmount: true },
+        })
+        return result._sum.baseAmount ?? 0
+    }
     async listMonthlySpendForRange(
         workspaceId: string,
         startDate: Date,

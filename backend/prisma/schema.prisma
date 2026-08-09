@@ -120,6 +120,7 @@ model Category {
   workspaceId String    @map("workspace_id")
   parentId    String?   @map("parent_id")
   name        String
+  type        String   @default("expense")
   systemKey   String?   @map("system_key")
   color       String?
   icon        String?
@@ -137,6 +138,7 @@ model Category {
   @@unique([workspaceId, id])
   @@index([workspaceId])
   @@index([workspaceId, parentId])
+  @@index([workspaceId, type])
   @@map("categories")
 }
 

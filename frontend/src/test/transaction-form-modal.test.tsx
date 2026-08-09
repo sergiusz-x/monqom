@@ -125,7 +125,7 @@ describe("TransactionFormModal", () => {
     await user.tab();
     expect(screen.getByLabelText("Date")).toHaveFocus();
     await user.tab();
-    expect(screen.getByLabelText("Payment source")).toHaveFocus();
+    expect(screen.getByLabelText("Account or wallet")).toHaveFocus();
   });
   it.each([
     ["12000", "120.00", 120],
@@ -160,6 +160,32 @@ describe("TransactionFormModal", () => {
     },
   );
 
+  it("sends the selected income type when creating a transaction", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Income" }));
+    await user.type(screen.getByLabelText("Amount"), "250000");
+    await user.type(screen.getByLabelText("Description"), "Salary");
+    await user.click(screen.getByRole("button", { name: /pick category/i }));
+    await user.click(screen.getByRole("button", { name: /save transaction/i }));
+
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
+    expect(mockApi.post.mock.calls[0][1]).toMatchObject({
+      type: "income",
+      amount: 2500,
+    });
+  });
   it("uses workspace currency, local today and the user's last payment source", async () => {
     const user = userEvent.setup();
     const now = new Date();
@@ -180,7 +206,7 @@ describe("TransactionFormModal", () => {
 
     expect(screen.getByLabelText("Date")).toHaveValue(today);
     await waitFor(() =>
-      expect(screen.getByLabelText("Payment source")).toHaveValue("ps-2"),
+      expect(screen.getByLabelText("Account or wallet")).toHaveValue("ps-2"),
     );
     await user.type(screen.getByLabelText("Amount"), "1234");
     await user.type(screen.getByLabelText("Description"), "Team lunch");

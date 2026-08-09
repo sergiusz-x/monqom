@@ -9,6 +9,7 @@ describe('DashboardService', () => {
         Pick<
             DashboardRepository,
             | 'getTotalSpendForRange'
+            | 'getTotalIncomeForRange'
             | 'listCategoriesByIds'
             | 'listCategorySpendForRange'
             | 'listMonthlySpendForRange'
@@ -19,6 +20,7 @@ describe('DashboardService', () => {
     beforeEach(() => {
         dashboardRepository = {
             getTotalSpendForRange: jest.fn(),
+            getTotalIncomeForRange: jest.fn(),
             listCategoriesByIds: jest.fn(),
             listCategorySpendForRange: jest.fn(),
             listMonthlySpendForRange: jest.fn(),
@@ -38,6 +40,7 @@ describe('DashboardService', () => {
         dashboardRepository.getTotalSpendForRange
             .mockResolvedValueOnce(62599)
             .mockResolvedValueOnce(40000)
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValueOnce(80000)
 
         await expect(
             service.getSpendingSummary({ month: ' 2026-03 ' }, ' workspace-1 '),
@@ -49,6 +52,8 @@ describe('DashboardService', () => {
             change_amount: 225.99,
             change_percentage: 56.5,
             direction: 'up',
+            income_total: 800,
+            net_total: 174.01,
         })
 
         expect(dashboardRepository.getTotalSpendForRange).toHaveBeenNthCalledWith(
@@ -82,6 +87,8 @@ describe('DashboardService', () => {
                 systemKey: null,
             },
         ])
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValueOnce(2500)
+
         transactionsRepository.listTransactions.mockResolvedValue([
             {
                 id: 'transaction-1',
@@ -109,6 +116,8 @@ describe('DashboardService', () => {
                 change_amount: 60,
                 change_percentage: 150,
                 direction: 'up',
+                income_total: 25,
+                net_total: -75,
             },
             category_breakdown: {
                 month: '2026-04',
@@ -172,6 +181,7 @@ describe('DashboardService', () => {
         dashboardRepository.getTotalSpendForRange
             .mockResolvedValueOnce(12500)
             .mockResolvedValueOnce(0)
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValueOnce(5000)
 
         await expect(
             service.getSpendingSummary({ month: '2026-03' }, 'workspace-1'),
@@ -183,6 +193,8 @@ describe('DashboardService', () => {
             change_amount: 125,
             change_percentage: null,
             direction: 'up',
+            income_total: 50,
+            net_total: -75,
         })
     })
 
