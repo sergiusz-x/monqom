@@ -130,7 +130,7 @@ export function TransactionTable({
                     transaction.categoryId}
                 </td>
                 <td
-                  className={`px-3 py-2 font-medium ${transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+                  className={`px-3 py-2 font-medium ${transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}
                 >
                   {transaction.type === "income" ? "+" : "-"}
                   {formatCurrency(transaction.amount, transaction.currency)}
