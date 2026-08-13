@@ -227,7 +227,7 @@ describe('AuthService', () => {
             locale: 'pl',
         })
     })
-it('persists the authenticated user salary privacy preference', async () => {
+    it('persists the authenticated user salary privacy preference', async () => {
         authRepository.findUserById.mockResolvedValue(createMockUser())
         authRepository.updateUserProfile.mockResolvedValue(
             createMockUser({
@@ -408,7 +408,7 @@ it('persists the authenticated user salary privacy preference', async () => {
                 emailVerified: true,
                 sessionVersion: 0,
                 totpEnabled: false,
-            hideSalaryAmounts: false,
+                hideSalaryAmounts: false,
                 createdAt: new Date('2026-03-22T10:00:00.000Z'),
                 updatedAt: new Date('2026-03-22T10:00:00.000Z'),
             },
