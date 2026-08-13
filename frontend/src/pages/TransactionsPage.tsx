@@ -28,6 +28,7 @@ import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import type { TFunction } from "i18next";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { categorySystemKeys } from "@/lib/category-system-keys";
 import {
   buildTransactionListParams,
   DEFAULT_TRANSACTION_FILTERS,
@@ -175,6 +176,11 @@ export default function TransactionsPage() {
   const editingTransaction =
     data?.data.find((item) => item.id === editingTransactionId) ?? null;
 
+  const categorySystemKeyMap = useMemo(
+    () => categorySystemKeys(categories),
+    [categories],
+  );
+
   const categoryMap = useMemo(
     () => buildCategoryMap(categories, t),
     [categories, t],
@@ -272,6 +278,7 @@ export default function TransactionsPage() {
         <TransactionTable
           transactions={transactions}
           categoryMap={categoryMap}
+          categorySystemKeys={categorySystemKeyMap}
           paymentSourceMap={paymentSourceMap}
           sortBy={filters.sortBy}
           sortDirection={filters.sortDirection}
@@ -281,6 +288,7 @@ export default function TransactionsPage() {
         <TransactionCards
           transactions={transactions}
           categoryMap={categoryMap}
+          categorySystemKeys={categorySystemKeyMap}
           paymentSourceMap={paymentSourceMap}
           onOpen={openTransaction}
         />
@@ -325,6 +333,7 @@ export default function TransactionsPage() {
         key={selectedTransaction?.id ?? "details-modal"}
         open={Boolean(selectedTransactionId && selectedTransaction)}
         transaction={selectedTransaction}
+        categorySystemKeys={categorySystemKeyMap}
         categoryLabel={
           selectedTransaction
             ? (categoryMap[selectedTransaction.categoryId] ??

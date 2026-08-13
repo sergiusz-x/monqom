@@ -86,6 +86,7 @@ export interface ChangePasswordCommand {
 export interface UpdateUserProfileCommand {
     name?: string
     locale?: 'en' | 'pl'
+    hideSalaryAmounts?: boolean
 }
 
 export interface AuthAuditEventInput {
@@ -102,6 +103,7 @@ export interface RegisteredUserResponse {
     email: string
     name: string
     locale: string
+    hideSalaryAmounts: boolean
     emailVerified: boolean
     totpEnabled: boolean
     createdAt: Date
@@ -321,9 +323,12 @@ export class AuthService {
         userId: string,
         input: UpdateUserProfileCommand,
     ): Promise<AuthenticatedUserResponse> {
-        const { name, locale, errors } = validateUserProfileInput(input)
+        const { name, locale, hideSalaryAmounts, errors } = validateUserProfileInput(input)
 
-        if (errors.length > 0 || (!name && !locale)) {
+        if (
+            errors.length > 0 ||
+            (name === undefined && locale === undefined && hideSalaryAmounts === undefined)
+        ) {
             throw new BadRequestException(errors)
         }
 
@@ -333,6 +338,7 @@ export class AuthService {
             userId,
             name,
             ...(locale !== undefined ? { locale } : {}),
+            ...(hideSalaryAmounts !== undefined ? { hideSalaryAmounts } : {}),
         })
 
         return mapRegisteredUser(user)
@@ -609,6 +615,7 @@ function mapRegisteredUser(user: User): RegisteredUserResponse {
         email: user.email,
         name: user.name,
         locale: user.locale,
+        hideSalaryAmounts: user.hideSalaryAmounts,
         emailVerified: user.emailVerified,
         totpEnabled: user.totpEnabled,
         createdAt: user.createdAt,
@@ -644,11 +651,13 @@ function validateChangePasswordInput(input: ChangePasswordCommand): {
 function validateUserProfileInput(input: UpdateUserProfileCommand): {
     name?: string
     locale?: 'en' | 'pl'
+    hideSalaryAmounts?: boolean
     errors: string[]
 } {
     const errors: string[] = []
     let name: string | undefined
     let locale: 'en' | 'pl' | undefined
+    let hideSalaryAmounts: boolean | undefined
 
     if (input.name !== undefined) {
         name = input.name.trim()
@@ -659,8 +668,11 @@ function validateUserProfileInput(input: UpdateUserProfileCommand): {
     if (input.locale !== undefined) {
         locale = input.locale
     }
+    if (input.hideSalaryAmounts !== undefined) {
+        hideSalaryAmounts = input.hideSalaryAmounts
+    }
 
-    return { name, locale, errors }
+    return { name, locale, hideSalaryAmounts, errors }
 }
 
 function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {

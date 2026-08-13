@@ -6,6 +6,7 @@ export function createUserFixture(overrides: Partial<User> = {}): User {
         email: 'test@example.com',
         name: 'Ada Lovelace',
         locale: 'en',
+        hideSalaryAmounts: false,
         passwordHash: 'hash',
         emailVerified: false,
         sessionVersion: 0,

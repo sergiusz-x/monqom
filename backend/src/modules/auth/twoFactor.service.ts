@@ -246,6 +246,7 @@ function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserRespon
         email: user.email,
         name: user.name,
         locale: user.locale,
+        hideSalaryAmounts: user.hideSalaryAmounts,
         emailVerified: user.emailVerified,
         totpEnabled: user.totpEnabled,
         sessionVersion: user.sessionVersion,

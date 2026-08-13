@@ -171,6 +171,7 @@ describe('TwoFactorService', () => {
             email: 'test@example.com',
             name: 'Ada Lovelace',
             locale: 'en',
+            hideSalaryAmounts: false,
             emailVerified: true,
             totpEnabled: true,
             sessionVersion: 0,

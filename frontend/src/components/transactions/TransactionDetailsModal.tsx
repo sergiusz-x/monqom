@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { formatCurrency } from "@/lib/money";
+import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import type { Transaction } from "@/types/transaction";
 import { formatLongDate } from "@/lib/date-only";
 import { Menu } from "@base-ui/react/menu";
@@ -18,6 +18,7 @@ interface TransactionDetailsModalProps {
   open: boolean;
   transaction: Transaction | null;
   categoryLabel: string;
+  categorySystemKeys: Record<string, string | null | undefined>;
   paymentSourceLabel: string;
   isDeleting: boolean;
   deleteError: string | null;
@@ -30,6 +31,7 @@ export function TransactionDetailsModal({
   open,
   transaction,
   categoryLabel,
+  categorySystemKeys,
   paymentSourceLabel,
   isDeleting,
   deleteError,
@@ -107,9 +109,11 @@ export function TransactionDetailsModal({
             <p className="mt-1 text-sm text-muted-foreground">
               {categoryLabel}
             </p>
-            <p className="mt-1 text-3xl font-semibold tabular-nums">
-              {formatCurrency(transaction.amount, transaction.currency)}
-            </p>
+            <SensitiveTransactionAmount
+              transaction={transaction}
+              categorySystemKeys={categorySystemKeys}
+              className="mt-1 text-3xl font-semibold tabular-nums"
+            />
           </div>
 
           <dl

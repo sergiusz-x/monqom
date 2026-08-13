@@ -89,6 +89,21 @@ export const enSettings = {
     baseCurrencyLockedError:
       "The base currency cannot be changed after a transaction or budget has been created.",
   },
+  privacy: {
+    tab: "Privacy",
+    title: "Screen privacy",
+    description:
+      "Reduce accidental exposure of sensitive amounts while you use Monqom around other people.",
+    hideSalaryAmounts: "Hide salary amounts",
+    hideSalaryAmountsDescription:
+      "Mask amounts assigned to the built-in Salary category in transaction views. You can reveal one amount when needed; it is hidden again after a refresh.",
+    notAccessControl:
+      "This changes only what is shown on your screen. It does not restrict access to your financial data, exports, or other workspace members.",
+    saved: "Privacy preference saved",
+    saveError: "Failed to save the privacy preference",
+    salaryAmountHidden: "Salary amount hidden",
+    revealSalaryAmount: "Reveal salary amount",
+  },
 } as const;
 
 export const plSettings = {
@@ -179,5 +194,20 @@ export const plSettings = {
       "Waluta bazowa jest zablokowana, ponieważ workspace zawiera już transakcję lub budżet.",
     baseCurrencyLockedError:
       "Waluty bazowej nie można zmienić po utworzeniu transakcji lub budżetu.",
+  },
+  privacy: {
+    tab: "Prywatność",
+    title: "Prywatność ekranu",
+    description:
+      "Ogranicz przypadkowe ujawnienie wrażliwych kwot, gdy korzystasz z Monqom przy innych osobach.",
+    hideSalaryAmounts: "Ukrywaj kwoty pensji",
+    hideSalaryAmountsDescription:
+      "Maskuj kwoty przypisane do wbudowanej kategorii Pensja w widokach transakcji. W razie potrzeby możesz odsłonić jedną kwotę; po odświeżeniu znów będzie ukryta.",
+    notAccessControl:
+      "To zmienia tylko widok na Twoim ekranie. Nie ogranicza dostępu do danych finansowych, eksportów ani innych członków workspace.",
+    saved: "Zapisano preferencję prywatności",
+    saveError: "Nie udało się zapisać preferencji prywatności",
+    salaryAmountHidden: "Kwota pensji jest ukryta",
+    revealSalaryAmount: "Pokaż kwotę pensji",
   },
 } as const satisfies TranslationShape<typeof enSettings>;

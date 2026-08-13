@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SalaryPrivacyProvider } from "@/contexts/SalaryPrivacyContext";
 import AppLayout from "@/components/layout/AppLayout";
 import PublicLayout from "@/components/layout/PublicLayout";
 import MarketingLayout from "@/components/layout/MarketingLayout";
@@ -47,71 +48,73 @@ export default function App() {
             <PwaLifecycle />
             <BrowserRouter>
               <AuthProvider>
-                <Routes>
-                  <Route element={<LandingRoute />}>
-                    <Route element={<MarketingLayout />}>
-                      <Route path="/" element={lazyRoute(<LandingPage />)} />
+                <SalaryPrivacyProvider>
+                  <Routes>
+                    <Route element={<LandingRoute />}>
+                      <Route element={<MarketingLayout />}>
+                        <Route path="/" element={lazyRoute(<LandingPage />)} />
+                      </Route>
                     </Route>
-                  </Route>
-                  <Route element={<PublicLayout />}>
-                    <Route path="/login" element={lazyRoute(<LoginPage />)} />
-                    <Route
-                      path="/register"
-                      element={lazyRoute(<RegisterPage />)}
-                    />
-                    <Route
-                      path="/verify-email"
-                      element={lazyRoute(<VerifyEmailPage />)}
-                    />
-                    <Route
-                      path="/forgot-password"
-                      element={lazyRoute(<ForgotPasswordPage />)}
-                    />
-                    <Route
-                      path="/reset-password"
-                      element={lazyRoute(<ResetPasswordPage />)}
-                    />
-                    <Route
-                      path="/resend-verification"
-                      element={lazyRoute(<ResendVerificationPage />)}
-                    />
-                  </Route>
-                  <Route element={<ProtectedRoute />}>
-                    <Route
-                      element={
-                        <WorkspaceProvider>
-                          <AppLayout />
-                        </WorkspaceProvider>
-                      }
-                    >
+                    <Route element={<PublicLayout />}>
+                      <Route path="/login" element={lazyRoute(<LoginPage />)} />
                       <Route
-                        path="/dashboard"
-                        element={lazyRoute(<DashboardPage />)}
+                        path="/register"
+                        element={lazyRoute(<RegisterPage />)}
                       />
                       <Route
-                        path="/transactions"
-                        element={lazyRoute(<TransactionsPage />)}
+                        path="/verify-email"
+                        element={lazyRoute(<VerifyEmailPage />)}
                       />
                       <Route
-                        path="/transactions/:transactionId"
-                        element={lazyRoute(<TransactionDetailPage />)}
+                        path="/forgot-password"
+                        element={lazyRoute(<ForgotPasswordPage />)}
                       />
                       <Route
-                        path="/budgets"
-                        element={lazyRoute(<BudgetsPage />)}
+                        path="/reset-password"
+                        element={lazyRoute(<ResetPasswordPage />)}
                       />
                       <Route
-                        path="/payment-sources"
-                        element={lazyRoute(<PaymentSourcesPage />)}
-                      />
-                      <Route
-                        path="/settings"
-                        element={lazyRoute(<SettingsPage />)}
+                        path="/resend-verification"
+                        element={lazyRoute(<ResendVerificationPage />)}
                       />
                     </Route>
-                  </Route>
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                    <Route element={<ProtectedRoute />}>
+                      <Route
+                        element={
+                          <WorkspaceProvider>
+                            <AppLayout />
+                          </WorkspaceProvider>
+                        }
+                      >
+                        <Route
+                          path="/dashboard"
+                          element={lazyRoute(<DashboardPage />)}
+                        />
+                        <Route
+                          path="/transactions"
+                          element={lazyRoute(<TransactionsPage />)}
+                        />
+                        <Route
+                          path="/transactions/:transactionId"
+                          element={lazyRoute(<TransactionDetailPage />)}
+                        />
+                        <Route
+                          path="/budgets"
+                          element={lazyRoute(<BudgetsPage />)}
+                        />
+                        <Route
+                          path="/payment-sources"
+                          element={lazyRoute(<PaymentSourcesPage />)}
+                        />
+                        <Route
+                          path="/settings"
+                          element={lazyRoute(<SettingsPage />)}
+                        />
+                      </Route>
+                    </Route>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </SalaryPrivacyProvider>
               </AuthProvider>
             </BrowserRouter>
           </ToastProvider>

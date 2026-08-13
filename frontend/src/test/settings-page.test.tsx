@@ -40,6 +40,7 @@ const testUser: User = {
   name: "Ada Lovelace",
   emailVerified: true,
   totpEnabled: false,
+  hideSalaryAmounts: false,
   createdAt: "2026-03-20T00:00:00.000Z",
   updatedAt: "2026-03-20T00:00:00.000Z",
 };
@@ -199,6 +200,31 @@ describe("SettingsPage", () => {
         "The base currency is locked because this workspace already contains a transaction or budget.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("saves the salary privacy preference in its own settings tab", async () => {
+    const user = userEvent.setup();
+    const updatedUser = { ...testUser, hideSalaryAmounts: true };
+    mockApi.put.mockResolvedValueOnce({ data: updatedUser });
+    const authValue = renderSettings();
+
+    await user.click(screen.getByRole("button", { name: "Privacy" }));
+    const toggle = screen.getByRole("switch", {
+      name: "Hide salary amounts",
+    });
+    expect(toggle).not.toBeChecked();
+
+    await user.click(toggle);
+
+    await waitFor(() =>
+      expect(mockApi.put).toHaveBeenCalledWith("/users/me", {
+        hide_salary_amounts: true,
+      }),
+    );
+    expect(authValue.setUser).toHaveBeenCalledWith(updatedUser);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Privacy preference saved",
+    );
   });
 
   it("changes password through the security section", async () => {
