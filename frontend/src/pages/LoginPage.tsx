@@ -50,6 +50,8 @@ export default function LoginPage() {
         id: string;
         email: string;
         name: string;
+        locale: "en" | "pl";
+        hideSalaryAmounts: boolean;
         emailVerified: boolean;
         totpEnabled: boolean;
         createdAt: string;

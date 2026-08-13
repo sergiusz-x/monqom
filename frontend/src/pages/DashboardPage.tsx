@@ -43,7 +43,20 @@ export default function DashboardPage() {
     workspace?.timezone ?? "UTC",
   );
   const month = selectedMonth ?? currentMonth;
-  const { categories } = useCategories(workspaceId ?? "");
+  const { categories: expenseCategories } = useCategories(
+    workspaceId ?? "",
+    false,
+    "expense",
+  );
+  const { categories: incomeCategories } = useCategories(
+    workspaceId ?? "",
+    false,
+    "income",
+  );
+  const categories = useMemo(
+    () => [...expenseCategories, ...incomeCategories],
+    [expenseCategories, incomeCategories],
+  );
   const {
     summary,
     categoryBreakdown,

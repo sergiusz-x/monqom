@@ -11,11 +11,12 @@ import { WorkspaceSection } from "@/components/settings/WorkspaceSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
 import { CategoryManagementSection } from "@/components/settings/CategoryManagementSection";
+import { PrivacySection } from "@/components/settings/PrivacySection";
 import { ReleaseVersion } from "@/components/ReleaseVersion";
 import { Button } from "@monqom/ui";
 
 type ActiveSection =
-  "profile" | "workspace" | "categories" | "security" | "data";
+  "profile" | "workspace" | "categories" | "privacy" | "security" | "data";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export default function SettingsPage() {
     { id: "profile", label: t("settings.profile") },
     { id: "workspace", label: t("settings.workspace") },
     { id: "categories", label: t("categoryManagement.tab") },
+    { id: "privacy", label: t("privacy.tab") },
     { id: "security", label: t("settings.security") },
     { id: "data", label: t("settings.data") },
   ];
@@ -89,6 +91,8 @@ export default function SettingsPage() {
             workspaceId={workspaceId}
             onSaved={showToast}
           />
+        ) : activeSection === "privacy" ? (
+          <PrivacySection user={user} setUser={setUser} onSaved={showToast} />
         ) : activeSection === "security" ? (
           <SecuritySection user={user} setUser={setUser} onSaved={showToast} />
         ) : (

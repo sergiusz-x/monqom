@@ -144,6 +144,7 @@ describe('AuthService', () => {
             locale: 'en',
             emailVerified: false,
             totpEnabled: false,
+            hideSalaryAmounts: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })
@@ -226,6 +227,31 @@ describe('AuthService', () => {
             locale: 'pl',
         })
     })
+it('persists the authenticated user salary privacy preference', async () => {
+        authRepository.findUserById.mockResolvedValue(createMockUser())
+        authRepository.updateUserProfile.mockResolvedValue(
+            createMockUser({
+                hideSalaryAmounts: true,
+                updatedAt: new Date('2026-05-01T10:00:00.000Z'),
+            }),
+        )
+
+        await expect(
+            service.updateAuthenticatedUser('user-1', {
+                hideSalaryAmounts: true,
+            }),
+        ).resolves.toMatchObject({
+            id: 'user-1',
+            hideSalaryAmounts: true,
+        })
+
+        expect(authRepository.updateUserProfile).toHaveBeenCalledWith({
+            userId: 'user-1',
+            name: undefined,
+            hideSalaryAmounts: true,
+        })
+    })
+
     it('rejects invalid profile updates before writing', async () => {
         await expect(
             service.updateAuthenticatedUser('user-1', {
@@ -249,6 +275,7 @@ describe('AuthService', () => {
             failedLoginCount: 0,
             lockedUntil: null,
             totpEnabled: false,
+            hideSalaryAmounts: false,
             totpSecretEncrypted: null,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
@@ -381,6 +408,7 @@ describe('AuthService', () => {
                 emailVerified: true,
                 sessionVersion: 0,
                 totpEnabled: false,
+            hideSalaryAmounts: false,
                 createdAt: new Date('2026-03-22T10:00:00.000Z'),
                 updatedAt: new Date('2026-03-22T10:00:00.000Z'),
             },
@@ -504,6 +532,7 @@ describe('AuthService', () => {
             locale: 'en',
             emailVerified: true,
             totpEnabled: false,
+            hideSalaryAmounts: false,
             createdAt: new Date('2026-03-22T10:00:00.000Z'),
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         })

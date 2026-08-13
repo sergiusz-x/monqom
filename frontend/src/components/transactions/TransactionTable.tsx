@@ -4,7 +4,7 @@ import type {
   TransactionSortDirection,
   TransactionSortField,
 } from "@/types/transaction";
-import { formatCurrency } from "@/lib/money";
+import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button, Card } from "@monqom/ui";
@@ -12,6 +12,7 @@ import { Button, Card } from "@monqom/ui";
 interface TransactionTableProps {
   transactions: Transaction[];
   categoryMap: Record<string, string>;
+  categorySystemKeys: Record<string, string | null | undefined>;
   paymentSourceMap: Record<string, string>;
   sortBy: TransactionSortField;
   sortDirection: TransactionSortDirection;
@@ -69,6 +70,7 @@ function SortableHeader({
 export function TransactionTable({
   transactions,
   categoryMap,
+  categorySystemKeys,
   paymentSourceMap,
   sortBy,
   sortDirection,
@@ -129,11 +131,11 @@ export function TransactionTable({
                   {categoryMap[transaction.categoryId] ??
                     transaction.categoryId}
                 </td>
-                <td
-                  className={`px-3 py-2 font-medium ${transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}
-                >
-                  {transaction.type === "income" ? "+" : "-"}
-                  {formatCurrency(transaction.amount, transaction.currency)}
+                <td className="px-3 py-2 font-medium">
+                  <SensitiveTransactionAmount
+                    transaction={transaction}
+                    categorySystemKeys={categorySystemKeys}
+                  />
                 </td>
                 <td className="max-w-52 truncate px-3 py-2 text-muted-foreground">
                   {transaction.description}

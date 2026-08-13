@@ -38,6 +38,7 @@ beforeEach(() => {
       name: "U",
       emailVerified: true,
       totpEnabled: false,
+      hideSalaryAmounts: false,
       createdAt: "",
       updatedAt: "",
     },

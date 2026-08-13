@@ -1,5 +1,5 @@
 import type { Transaction } from "@/types/transaction";
-import { formatCurrency } from "@/lib/money";
+import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button, cardVariants } from "@monqom/ui";
@@ -7,6 +7,7 @@ import { Button, cardVariants } from "@monqom/ui";
 interface TransactionCardsProps {
   transactions: Transaction[];
   categoryMap: Record<string, string>;
+  categorySystemKeys: Record<string, string | null | undefined>;
   paymentSourceMap: Record<string, string>;
   onOpen: (transactionId: string) => void;
 }
@@ -14,6 +15,7 @@ interface TransactionCardsProps {
 export function TransactionCards({
   transactions,
   categoryMap,
+  categorySystemKeys,
   paymentSourceMap,
   onOpen,
 }: TransactionCardsProps) {
@@ -27,24 +29,28 @@ export function TransactionCards({
           : t("common.none");
 
         return (
-          <Button
+          <div
             key={transaction.id}
-            type="button"
-            onClick={() => onOpen(transaction.id)}
-            variant="ghost"
             className={cardVariants({
-              className:
-                "h-auto w-full flex-col items-stretch text-left hover:bg-muted/30",
+              className: "h-auto w-full flex-col items-stretch text-left",
             })}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-medium">{transaction.description}</p>
-              <p
-                className={`font-semibold ${transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto min-w-0 flex-1 justify-start p-0 text-left hover:bg-transparent"
+                onClick={() => onOpen(transaction.id)}
               >
-                {transaction.type === "income" ? "+" : "-"}
-                {formatCurrency(transaction.amount, transaction.currency)}
-              </p>
+                <span className="truncate font-medium">
+                  {transaction.description}
+                </span>
+              </Button>
+              <SensitiveTransactionAmount
+                transaction={transaction}
+                categorySystemKeys={categorySystemKeys}
+                className="font-semibold"
+              />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {formatShortDate(transaction.date)} &middot;{" "}
@@ -58,7 +64,7 @@ export function TransactionCards({
             <p className="mt-2 text-xs text-muted-foreground">
               {paymentSourceLabel}
             </p>
-          </Button>
+          </div>
         );
       })}
     </div>

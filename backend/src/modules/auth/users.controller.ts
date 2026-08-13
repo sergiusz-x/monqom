@@ -36,6 +36,7 @@ export class UsersController {
         return this.authService.updateAuthenticatedUser(req.session.auth!.userId, {
             name: body.name,
             locale: body.locale as 'en' | 'pl' | undefined,
+            hideSalaryAmounts: body.hide_salary_amounts,
         })
     }
 

@@ -16,6 +16,7 @@ export interface User {
   email: string;
   name: string;
   locale?: "en" | "pl";
+  hideSalaryAmounts: boolean;
   emailVerified: boolean;
   totpEnabled: boolean;
   createdAt: string;
@@ -125,6 +126,10 @@ function isPublicAuthRequest(url?: string): boolean {
     "/auth/forgot-password",
     "/auth/reset-password",
   ].some((path) => url?.includes(path));
+}
+
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
 }
 
 export function useAuth(): AuthContextValue {

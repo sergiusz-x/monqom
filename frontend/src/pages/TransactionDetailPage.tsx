@@ -6,7 +6,8 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import api from "@/lib/api";
 import { getApiErrorStatus } from "@/lib/api-errors";
-import { formatCurrency } from "@/lib/money";
+import { categorySystemKeys } from "@/lib/category-system-keys";
+import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { paymentSourceName } from "@/lib/payment-sources";
 import { useCategories } from "@/hooks/useCategories";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
@@ -59,7 +60,20 @@ export default function TransactionDetailPage() {
     isLoading: workspaceLoading,
     patchWorkspace,
   } = useWorkspace();
-  const { categories } = useCategories(workspaceId ?? "");
+  const { categories: expenseCategories } = useCategories(
+    workspaceId ?? "",
+    false,
+    "expense",
+  );
+  const { categories: incomeCategories } = useCategories(
+    workspaceId ?? "",
+    false,
+    "income",
+  );
+  const categories = useMemo(
+    () => [...expenseCategories, ...incomeCategories],
+    [expenseCategories, incomeCategories],
+  );
   const { paymentSources } = usePaymentSources(workspaceId ?? "", true);
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -79,6 +93,11 @@ export default function TransactionDetailPage() {
       return mapTransaction(response.data);
     },
   });
+
+  const categorySystemKeyMap = useMemo(
+    () => categorySystemKeys(categories),
+    [categories],
+  );
 
   const categoryLabels = useMemo(
     () => buildCategoryLabels(categories, t),
@@ -230,9 +249,11 @@ export default function TransactionDetailPage() {
       />
 
       <SectionCard className="space-y-6">
-        <p className="text-3xl font-semibold tabular-nums">
-          {formatCurrency(transaction.amount, transaction.currency)}
-        </p>
+        <SensitiveTransactionAmount
+          transaction={transaction}
+          categorySystemKeys={categorySystemKeyMap}
+          className="text-3xl font-semibold tabular-nums"
+        />
         <dl
           className={cardVariants({
             tone: "muted",

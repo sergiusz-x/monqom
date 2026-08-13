@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/useToast";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import api from "@/lib/api";
 import { formatShortDate } from "@/lib/date-only";
-import { formatCurrency } from "@/lib/money";
+import { categorySystemKeys } from "@/lib/category-system-keys";
+import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { paymentSourceName } from "@/lib/payment-sources";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import type { Category } from "@/types/category";
@@ -58,6 +59,11 @@ export function RecentTransactions({
       ]),
     );
   }, [categories, t]);
+
+  const categorySystemKeyMap = useMemo(
+    () => categorySystemKeys(categories),
+    [categories],
+  );
 
   const paymentSourceNames = useMemo(
     () =>
@@ -123,29 +129,34 @@ export function RecentTransactions({
           <ul className="space-y-2">
             {transactions.slice(0, 5).map((transaction) => (
               <li key={transaction.id}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-auto w-full justify-between px-3 py-2 text-left hover:border-border hover:bg-muted/50"
-                  onClick={() => {
-                    setDeleteError(null);
-                    setSelectedTransaction(transaction);
-                  }}
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      {transaction.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatShortDate(transaction.date)} &middot;{" "}
-                      {categoryNames.get(transaction.categoryId) ??
-                        t("dashboard.uncategorized")}
-                    </p>
-                  </div>
-                  <p className="text-sm font-semibold">
-                    {formatCurrency(transaction.amount, transaction.currency)}
-                  </p>
-                </Button>
+                <div className="flex items-center justify-between gap-3 rounded-md px-3 py-2 hover:border-border hover:bg-muted/50">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-auto min-w-0 flex-1 justify-start p-0 text-left hover:bg-transparent"
+                    onClick={() => {
+                      setDeleteError(null);
+                      setSelectedTransaction(transaction);
+                    }}
+                  >
+                    <span>
+                      <span className="block text-sm font-medium">
+                        {transaction.description}
+                      </span>
+
+                      <span className="block text-xs text-muted-foreground">
+                        {formatShortDate(transaction.date)} &middot;{" "}
+                        {categoryNames.get(transaction.categoryId) ??
+                          t("dashboard.uncategorized")}
+                      </span>
+                    </span>
+                  </Button>
+                  <SensitiveTransactionAmount
+                    transaction={transaction}
+                    categorySystemKeys={categorySystemKeyMap}
+                    className="text-sm font-semibold"
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -156,6 +167,7 @@ export function RecentTransactions({
         key={selectedTransaction?.id ?? "dashboard-details-modal"}
         open={Boolean(selectedTransaction)}
         transaction={selectedTransaction}
+        categorySystemKeys={categorySystemKeyMap}
         categoryLabel={
           selectedTransaction
             ? (categoryNames.get(selectedTransaction.categoryId) ??

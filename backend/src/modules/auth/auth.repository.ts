@@ -24,6 +24,7 @@ export interface CreateUserWithVerificationTokenInput {
     verificationToken: string
     verificationTokenExpiresAt: Date
     locale?: string
+    hideSalaryAmounts?: boolean
 }
 
 export interface CreateVerificationTokenForUserInput {
@@ -48,6 +49,7 @@ export interface UpdateUserProfileInput {
     userId: string
     name?: string
     locale?: string
+    hideSalaryAmounts?: boolean
 }
 
 export interface ConsumeVerificationTokensAndMarkEmailVerifiedInput {
@@ -135,6 +137,7 @@ export class AuthRepository {
             data: {
                 name: input.name,
                 locale: input.locale,
+                hideSalaryAmounts: input.hideSalaryAmounts,
             },
         })
     }

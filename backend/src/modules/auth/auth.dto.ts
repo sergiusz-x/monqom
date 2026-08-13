@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Length, MinLength } from 'class-validator'
+import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Length, MinLength } from 'class-validator'
 
 export class RegisterDto {
     @IsEmail()
@@ -77,4 +77,8 @@ export class UpdateUserProfileDto {
     @IsOptional()
     @IsIn(['en', 'pl'])
     locale?: string
+
+    @IsOptional()
+    @IsBoolean()
+    hide_salary_amounts?: boolean
 }
