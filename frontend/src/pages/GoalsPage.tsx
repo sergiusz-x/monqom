@@ -36,28 +36,30 @@ export default function GoalsPage() {
           </Button>
         }
       />
-      <div
-        className="flex gap-1 rounded-lg border border-border p-1"
-        role="tablist"
-        aria-label={t("goals.title")}
-      >
-        {(["active", "completed", "archived"] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={view === item}
-            className={cn(
-              "min-h-10 flex-1 rounded-md px-3 text-sm font-medium transition-colors",
-              view === item
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-muted",
-            )}
-            onClick={() => setView(item)}
-          >
-            {t(item === "active" ? "goals.allActive" : `goals.${item}`)}
-          </button>
-        ))}
+      <div className="max-w-full overflow-x-auto">
+        <div
+          className="inline-flex min-w-max gap-1 rounded-full bg-muted/70 p-1"
+          role="tablist"
+          aria-label={t("goals.title")}
+        >
+          {(["active", "completed", "archived"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="tab"
+              aria-selected={view === item}
+              className={cn(
+                "min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors",
+                view === item
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setView(item)}
+            >
+              {t(item === "active" ? "goals.allActive" : `goals.${item}`)}
+            </button>
+          ))}
+        </div>
       </div>
       {isLoading ? (
         <SectionCard>
