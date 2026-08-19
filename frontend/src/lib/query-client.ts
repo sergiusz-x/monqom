@@ -32,4 +32,8 @@ export const queryKeys = {
     ["workspaces", workspaceId, "dashboard"] as const,
   budgets: (workspaceId: string) =>
     ["workspaces", workspaceId, "budgets"] as const,
+  goals: (workspaceId: string) =>
+    ["workspaces", workspaceId, "goals"] as const,
+  goal: (workspaceId: string, goalId: string) =>
+    ["workspaces", workspaceId, "goals", goalId] as const,
 };

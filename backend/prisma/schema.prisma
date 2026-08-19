@@ -92,6 +92,8 @@ model Workspace {
   paymentSources  PaymentSource[]
   transactions    Transaction[]
   budgets         Budget[]
+  goals           Goal[]
+  goalOperations  GoalOperation[]
   auditEvents     AuditEvent[]
   transactionTags TransactionTag[]
 
@@ -239,6 +241,47 @@ model Budget {
   @@index([workspaceId])
   @@index([workspaceId, categoryId])
   @@map("budgets")
+}
+
+model Goal {
+  id             String    @id @default(uuid())
+  workspaceId    String    @map("workspace_id")
+  name           String
+  targetAmount   Int       @map("target_amount")
+  initialAmount  Int       @default(0) @map("initial_amount")
+  currency       String
+  targetDate     DateTime  @map("target_date") @db.Date
+  planStartMonth DateTime  @map("plan_start_month") @db.Date
+  archivedAt     DateTime? @map("archived_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  operations GoalOperation[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, archivedAt])
+  @@index([workspaceId, targetDate])
+  @@map("goals")
+}
+
+model GoalOperation {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  goalId      String   @map("goal_id")
+  type        String
+  amount      Int
+  date        DateTime @db.Date
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  goal      Goal      @relation(fields: [workspaceId, goalId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, goalId, date])
+  @@map("goal_operations")
 }
 
 model AuditEvent {

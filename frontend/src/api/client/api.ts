@@ -18,6 +18,7 @@ export * from "./api/budgets-api";
 export * from "./api/categories-api";
 export * from "./api/dashboard-api";
 export * from "./api/export-api";
+export * from "./api/goals-api";
 export * from "./api/health-api";
 export * from "./api/payment-sources-api";
 export * from "./api/transaction-tags-api";

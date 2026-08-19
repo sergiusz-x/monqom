@@ -6,6 +6,7 @@ api/budgets-api.ts
 api/categories-api.ts
 api/dashboard-api.ts
 api/export-api.ts
+api/goals-api.ts
 api/health-api.ts
 api/payment-sources-api.ts
 api/transaction-tags-api.ts
@@ -18,7 +19,10 @@ common.ts
 configuration.ts
 git_push.sh
 index.ts
+model/create-goal-dto.ts
+model/goal-operation-dto.ts
 model/health-controller-check-health200-response-info-value.ts
 model/health-controller-check-health200-response.ts
 model/health-controller-check-health503-response.ts
 model/index.ts
+model/update-goal-dto.ts

@@ -135,4 +135,22 @@ describe('Prisma migrations', () => {
             'ON "transaction_tags" ("workspace_id", "transaction_id", LOWER("name"))',
         )
     })
+
+    it('adds workspace-isolated savings goals and constrained operation history', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0018_savings_goals',
+            'migration.sql',
+        )
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+        expect(migrationSql).toContain('CREATE TABLE "goals"')
+        expect(migrationSql).toContain('CREATE TABLE "goal_operations"')
+        expect(migrationSql).toContain('REFERENCES "goals"("workspace_id", "id")')
+        expect(migrationSql).toContain("CHECK (\"type\" IN ('deposit', 'withdrawal'))")
+    })
 })

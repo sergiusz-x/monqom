@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Receipt,
   PiggyBank,
+  Target,
   WalletCards,
   Settings,
   Plus,
@@ -33,6 +34,7 @@ const navItems = [
   },
   { to: "/transactions", label: "nav.transactions", icon: Receipt, end: false },
   { to: "/budgets", label: "nav.budgets", icon: PiggyBank, end: false },
+  { to: "/goals", label: "nav.goals", icon: Target, end: false },
   {
     to: "/payment-sources",
     label: "paymentSources.title",
