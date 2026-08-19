@@ -1,19 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { Menu } from "@base-ui/react/menu";
 import {
   Archive,
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
   CalendarDays,
-  MoreHorizontal,
   Pencil,
   RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
+  ActionMenu,
   Alert,
   AsyncState,
   Button,
@@ -24,9 +23,9 @@ import {
   Modal,
   MoneyInput,
   PendingButton,
+  ProgressBar,
   SectionCard,
   Textarea,
-  buttonVariants,
 } from "@monqom/ui";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-errors";
@@ -37,6 +36,7 @@ import { useGoal } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
+import { GoalStatusBadge } from "@/components/goals/GoalStatusBadge";
 import { cn } from "@/lib/utils";
 import type { GoalOperation, GoalOperationType } from "@/types/goal";
 
@@ -139,7 +139,6 @@ export default function GoalDetailPage() {
       </PageContainer>
     );
 
-  const progress = Math.min(Math.max(goal.progressPercentage, 0), 100);
   return (
     <PageContainer className="space-y-6">
       <PageHeader
@@ -156,73 +155,44 @@ export default function GoalDetailPage() {
           date: formatDateOnly(goal.targetDate, i18n.language),
         })}
         actions={
-          <Menu.Root modal={false}>
-            <Menu.Trigger
-              aria-label={t("goals.actions")}
-              className={buttonVariants({ variant: "ghost", size: "icon" })}
-            >
-              <MoreHorizontal size={20} aria-hidden="true" />
-            </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner
-                sideOffset={4}
-                align="end"
-                className="z-[100] outline-none"
-              >
-                <Menu.Popup className="min-w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-                  {!goal.archivedAt ? (
-                    <Menu.Item
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                      onClick={() => navigate(`/goals/${goal.id}/edit`)}
-                    >
-                      <Pencil size={15} aria-hidden="true" />
-                      {t("goals.edit")}
-                    </Menu.Item>
-                  ) : null}
-                  <Menu.Item
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                    onClick={() =>
-                      goal.archivedAt
-                        ? void archiveOrRestore()
-                        : setConfirm("archive")
-                    }
-                  >
-                    {goal.archivedAt ? (
-                      <RotateCcw size={15} aria-hidden="true" />
-                    ) : (
-                      <Archive size={15} aria-hidden="true" />
-                    )}
-                    {t(goal.archivedAt ? "goals.restore" : "goals.archive")}
-                  </Menu.Item>
-                  <Menu.Item
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive outline-none data-[highlighted]:bg-destructive/10"
-                    onClick={() => setConfirm("delete")}
-                  >
-                    <Trash2 size={15} aria-hidden="true" />
-                    {t("goals.delete")}
-                  </Menu.Item>
-                </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
+          <ActionMenu
+            ariaLabel={t("goals.actions")}
+            items={[
+              ...(!goal.archivedAt
+                ? [
+                    {
+                      id: "edit",
+                      label: t("goals.edit"),
+                      icon: Pencil,
+                      onSelect: () => navigate(`/goals/${goal.id}/edit`),
+                    },
+                  ]
+                : []),
+              {
+                id: goal.archivedAt ? "restore" : "archive",
+                label: t(goal.archivedAt ? "goals.restore" : "goals.archive"),
+                icon: goal.archivedAt ? RotateCcw : Archive,
+                onSelect: () =>
+                  goal.archivedAt
+                    ? void archiveOrRestore()
+                    : setConfirm("archive"),
+              },
+              {
+                id: "delete",
+                label: t("goals.delete"),
+                icon: Trash2,
+                tone: "destructive",
+                onSelect: () => setConfirm("delete"),
+              },
+            ]}
+          />
         }
       />
       {actionError ? <Alert variant="error">{actionError}</Alert> : null}
 
       <SectionCard className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span
-            className={cn(
-              "rounded-full px-3 py-1 text-sm font-medium",
-              goal.status === "completed"
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : goal.status === "overdue"
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-primary/10 text-primary",
-            )}
-          >
-            {t(`goals.${goal.status}`)}
-          </span>
+          <GoalStatusBadge status={goal.status} />
           <span className="text-sm font-medium tabular-nums text-muted-foreground">
             {goal.progressPercentage}%
           </span>
@@ -239,22 +209,14 @@ export default function GoalDetailPage() {
               / {formatCurrency(goal.targetAmount, goal.currency)}
             </p>
           </div>
-          <div
-            className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-label={t("goals.progressLabel", {
+          <ProgressBar
+            value={goal.progressPercentage}
+            className="mt-4 h-2.5"
+            ariaLabel={t("goals.progressLabel", {
               name: goal.name,
               percent: goal.progressPercentage,
             })}
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className="h-full rounded-full bg-primary transition-[width]"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          />
         </div>
         <div className="grid gap-5 border-t border-border pt-5 sm:grid-cols-2 sm:divide-x sm:divide-border">
           <div>
@@ -367,46 +329,28 @@ export default function GoalDetailPage() {
                     {formatCurrency(operation.amount, goal.currency)}
                   </span>
                   {!goal.archivedAt ? (
-                    <Menu.Root modal={false}>
-                      <Menu.Trigger
-                        aria-label={t("goals.operationActions")}
-                        className={buttonVariants({
-                          variant: "ghost",
-                          size: "icon",
-                        })}
-                      >
-                        <MoreHorizontal size={18} aria-hidden="true" />
-                      </Menu.Trigger>
-                      <Menu.Portal>
-                        <Menu.Positioner
-                          sideOffset={4}
-                          align="end"
-                          className="z-[100] outline-none"
-                        >
-                          <Menu.Popup className="min-w-44 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-                            <Menu.Item
-                              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                              onClick={() =>
-                                setOperationDialog({
-                                  type: operation.type,
-                                  operation,
-                                })
-                              }
-                            >
-                              <Pencil size={15} aria-hidden="true" />
-                              {t("goals.editOperation")}
-                            </Menu.Item>
-                            <Menu.Item
-                              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive outline-none data-[highlighted]:bg-destructive/10"
-                              onClick={() => setOperationToDelete(operation)}
-                            >
-                              <Trash2 size={15} aria-hidden="true" />
-                              {t("goals.deleteOperation")}
-                            </Menu.Item>
-                          </Menu.Popup>
-                        </Menu.Positioner>
-                      </Menu.Portal>
-                    </Menu.Root>
+                    <ActionMenu
+                      ariaLabel={t("goals.operationActions")}
+                      items={[
+                        {
+                          id: "edit",
+                          label: t("goals.editOperation"),
+                          icon: Pencil,
+                          onSelect: () =>
+                            setOperationDialog({
+                              type: operation.type,
+                              operation,
+                            }),
+                        },
+                        {
+                          id: "delete",
+                          label: t("goals.deleteOperation"),
+                          icon: Trash2,
+                          tone: "destructive",
+                          onSelect: () => setOperationToDelete(operation),
+                        },
+                      ]}
+                    />
                   ) : null}
                 </div>
               </Card>

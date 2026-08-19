@@ -4,7 +4,7 @@ import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
 
 import { translateSystemLabel } from "@/i18n/translate-system-label";
-import { Card } from "@monqom/ui";
+import { Card, ProgressBar } from "@monqom/ui";
 
 export interface BudgetProgressBarProps {
   item: BudgetProgressItem;
@@ -45,7 +45,6 @@ export function BudgetProgressBar({
 
   const percentage = item.percentage!;
   const isOverBudget = percentage > 100;
-  const barWidth = Math.min(percentage, 100);
   const colorClass = getBarColorClass(percentage);
 
   return (
@@ -62,17 +61,11 @@ export function BudgetProgressBar({
         </span>
       </div>
 
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-2 rounded-full transition-all", colorClass)}
-          style={{ width: `${barWidth}%` }}
-          role="progressbar"
-          aria-valuenow={barWidth}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={t("budgets.progress", { category: categoryName })}
-        />
-      </div>
+      <ProgressBar
+        value={percentage}
+        indicatorClassName={colorClass}
+        ariaLabel={t("budgets.progress", { category: categoryName })}
+      />
 
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         <span>

@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AsyncState, Button, Card, EmptyState, SectionCard } from "@monqom/ui";
+import {
+  AsyncState,
+  Button,
+  Card,
+  EmptyState,
+  ProgressBar,
+  SectionCard,
+  SegmentedControl,
+} from "@monqom/ui";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
+import { GoalStatusBadge } from "@/components/goals/GoalStatusBadge";
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { formatDateOnly } from "@/lib/goals";
 import { formatCurrency } from "@/lib/money";
-import { cn } from "@/lib/utils";
 import type { Goal } from "@/types/goal";
 
 type View = "active" | "completed" | "archived";
@@ -36,31 +44,15 @@ export default function GoalsPage() {
           </Button>
         }
       />
-      <div className="max-w-full overflow-x-auto">
-        <div
-          className="inline-flex min-w-max gap-1 rounded-full bg-muted/70 p-1"
-          role="tablist"
-          aria-label={t("goals.title")}
-        >
-          {(["active", "completed", "archived"] as const).map((item) => (
-            <button
-              key={item}
-              type="button"
-              role="tab"
-              aria-selected={view === item}
-              className={cn(
-                "min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors",
-                view === item
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setView(item)}
-            >
-              {t(item === "active" ? "goals.allActive" : `goals.${item}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SegmentedControl
+        value={view}
+        ariaLabel={t("goals.title")}
+        options={(["active", "completed", "archived"] as const).map((item) => ({
+          value: item,
+          label: t(item === "active" ? "goals.allActive" : `goals.${item}`),
+        }))}
+        onChange={setView}
+      />
       {isLoading ? (
         <SectionCard>
           <AsyncState
@@ -105,7 +97,6 @@ export default function GoalsPage() {
 
 function GoalCard({ goal, locale }: { goal: Goal; locale: string }) {
   const { t } = useTranslation();
-  const shownProgress = Math.min(Math.max(goal.progressPercentage, 0), 100);
   return (
     <Link
       to={`/goals/${goal.id}`}
@@ -125,16 +116,7 @@ function GoalCard({ goal, locale }: { goal: Goal; locale: string }) {
             </p>
           </div>
           {goal.status !== "active" ? (
-            <span
-              className={cn(
-                "rounded-full px-2 py-1 text-xs font-medium",
-                goal.status === "completed"
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                  : "bg-destructive/10 text-destructive",
-              )}
-            >
-              {t(`goals.${goal.status}`)}
-            </span>
+            <GoalStatusBadge status={goal.status} size="sm" />
           ) : null}
         </div>
         <div>
@@ -146,22 +128,13 @@ function GoalCard({ goal, locale }: { goal: Goal; locale: string }) {
               {goal.progressPercentage}%
             </span>
           </div>
-          <div
-            className="h-2 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-label={t("goals.progressLabel", {
+          <ProgressBar
+            value={goal.progressPercentage}
+            ariaLabel={t("goals.progressLabel", {
               name: goal.name,
               percent: goal.progressPercentage,
             })}
-            aria-valuenow={shownProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className="h-full rounded-full bg-primary transition-[width]"
-              style={{ width: `${shownProgress}%` }}
-            />
-          </div>
+          />
           <p className="mt-2 text-xs text-muted-foreground">
             {t("goals.target", {
               amount: formatCurrency(goal.targetAmount, goal.currency),
