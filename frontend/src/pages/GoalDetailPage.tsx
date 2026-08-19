@@ -1,6 +1,17 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
+import {
+  Archive,
+  ArrowDownLeft,
+  ArrowLeft,
+  ArrowUpRight,
+  CalendarDays,
+  MoreHorizontal,
+  Pencil,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -15,6 +26,7 @@ import {
   PendingButton,
   SectionCard,
   Textarea,
+  buttonVariants,
 } from "@monqom/ui";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-errors";
@@ -35,15 +47,21 @@ export default function GoalDetailPage() {
   const { workspaceId, workspace } = useWorkspace();
   const { goal, isLoading, error, retry } = useGoal(workspaceId ?? "", goalId);
   const { showToast } = useToast(3000);
-  const [operationDialog, setOperationDialog] = useState<{ type: GoalOperationType; operation?: GoalOperation } | null>(null);
+  const [operationDialog, setOperationDialog] = useState<{
+    type: GoalOperationType;
+    operation?: GoalOperation;
+  } | null>(null);
   const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
-  const [operationToDelete, setOperationToDelete] = useState<GoalOperation | null>(null);
+  const [operationToDelete, setOperationToDelete] =
+    useState<GoalOperation | null>(null);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   async function refresh() {
     if (!workspaceId) return;
-    await queryClient.invalidateQueries({ queryKey: queryKeys.goals(workspaceId) });
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.goals(workspaceId),
+    });
   }
 
   async function archiveOrRestore() {
@@ -52,9 +70,13 @@ export default function GoalDetailPage() {
     setActionError(null);
     const restoring = Boolean(goal.archivedAt);
     try {
-      await api.post(`/workspaces/${workspaceId}/goals/${goal.id}/${restoring ? "restore" : "archive"}`);
+      await api.post(
+        `/workspaces/${workspaceId}/goals/${goal.id}/${restoring ? "restore" : "archive"}`,
+      );
       await refresh();
-      showToast(t(restoring ? "goals.restoredSuccess" : "goals.archivedSuccess"));
+      showToast(
+        t(restoring ? "goals.restoredSuccess" : "goals.archivedSuccess"),
+      );
       setConfirm(null);
     } catch (nextError) {
       setActionError(getApiErrorMessage(nextError));
@@ -83,7 +105,9 @@ export default function GoalDetailPage() {
     setPending(true);
     setActionError(null);
     try {
-      await api.delete(`/workspaces/${workspaceId}/goals/${goal.id}/operations/${operationToDelete.id}`);
+      await api.delete(
+        `/workspaces/${workspaceId}/goals/${goal.id}/operations/${operationToDelete.id}`,
+      );
       await refresh();
       showToast(t("goals.operationDeleted"));
       setOperationToDelete(null);
@@ -94,73 +118,390 @@ export default function GoalDetailPage() {
     }
   }
 
-  if (isLoading) return <PageContainer><AsyncState status="loading" message={t("common.loading")} skeletonRows={6} /></PageContainer>;
-  if (error || !goal) return <PageContainer><AsyncState status="error" message={error ?? t("apiErrors.notFound")} onRetry={() => void retry()} /></PageContainer>;
+  if (isLoading)
+    return (
+      <PageContainer>
+        <AsyncState
+          status="loading"
+          message={t("common.loading")}
+          skeletonRows={6}
+        />
+      </PageContainer>
+    );
+  if (error || !goal)
+    return (
+      <PageContainer>
+        <AsyncState
+          status="error"
+          message={error ?? t("apiErrors.notFound")}
+          onRetry={() => void retry()}
+        />
+      </PageContainer>
+    );
 
   const progress = Math.min(Math.max(goal.progressPercentage, 0), 100);
   return (
     <PageContainer className="space-y-6">
       <PageHeader
-        beforeTitle={<Link to="/goals" className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={16} aria-hidden="true" /> {t("goals.back")}</Link>}
+        beforeTitle={
+          <Link
+            to="/goals"
+            className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft size={16} aria-hidden="true" /> {t("goals.back")}
+          </Link>
+        }
         title={goal.name}
-        description={t("goals.due", { date: formatDateOnly(goal.targetDate, i18n.language) })}
+        description={t("goals.due", {
+          date: formatDateOnly(goal.targetDate, i18n.language),
+        })}
         actions={
-          <>
-            {!goal.archivedAt ? <Button variant="outline" onClick={() => navigate(`/goals/${goal.id}/edit`)}><Pencil aria-hidden="true" />{t("goals.edit")}</Button> : null}
-            <Button variant="outline" onClick={() => goal.archivedAt ? void archiveOrRestore() : setConfirm("archive")}>{t(goal.archivedAt ? "goals.restore" : "goals.archive")}</Button>
-            <Button variant="destructive" onClick={() => setConfirm("delete")}>{t("goals.delete")}</Button>
-          </>
+          <Menu.Root modal={false}>
+            <Menu.Trigger
+              aria-label={t("goals.actions")}
+              className={buttonVariants({ variant: "ghost", size: "icon" })}
+            >
+              <MoreHorizontal size={20} aria-hidden="true" />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner
+                sideOffset={4}
+                align="end"
+                className="z-[100] outline-none"
+              >
+                <Menu.Popup className="min-w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+                  {!goal.archivedAt ? (
+                    <Menu.Item
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
+                      onClick={() => navigate(`/goals/${goal.id}/edit`)}
+                    >
+                      <Pencil size={15} aria-hidden="true" />
+                      {t("goals.edit")}
+                    </Menu.Item>
+                  ) : null}
+                  <Menu.Item
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
+                    onClick={() =>
+                      goal.archivedAt
+                        ? void archiveOrRestore()
+                        : setConfirm("archive")
+                    }
+                  >
+                    {goal.archivedAt ? (
+                      <RotateCcw size={15} aria-hidden="true" />
+                    ) : (
+                      <Archive size={15} aria-hidden="true" />
+                    )}
+                    {t(goal.archivedAt ? "goals.restore" : "goals.archive")}
+                  </Menu.Item>
+                  <Menu.Item
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive outline-none data-[highlighted]:bg-destructive/10"
+                    onClick={() => setConfirm("delete")}
+                  >
+                    <Trash2 size={15} aria-hidden="true" />
+                    {t("goals.delete")}
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
         }
       />
       {actionError ? <Alert variant="error">{actionError}</Alert> : null}
 
-      <SectionCard className="space-y-5">
+      <SectionCard className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className={cn("rounded-full px-3 py-1 text-sm font-medium", goal.status === "completed" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : goal.status === "overdue" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>{t(`goals.${goal.status}`)}</span>
-          <span className="text-sm tabular-nums">{goal.progressPercentage}%</span>
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 text-sm font-medium",
+              goal.status === "completed"
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : goal.status === "overdue"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-primary/10 text-primary",
+            )}
+          >
+            {t(`goals.${goal.status}`)}
+          </span>
+          <span className="text-sm font-medium tabular-nums text-muted-foreground">
+            {goal.progressPercentage}%
+          </span>
         </div>
-        <div className="h-3 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("goals.progressLabel", { name: goal.name, percent: goal.progressPercentage })} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Summary label={t("goals.currentBalance")} value={formatCurrency(goal.currentAmount, goal.currency)} />
-          <Summary label={t("goals.targetSummary")} value={formatCurrency(goal.targetAmount, goal.currency)} />
-          <Summary label={t("goals.monthlyNeeded")} value={goal.recommendedMonthlyAmount === null ? "-" : formatCurrency(goal.recommendedMonthlyAmount, goal.currency)} />
-          <Summary label={goal.status === "overdue" ? t("goals.deadlinePassed") : t("goals.monthsLeft")} value={goal.status === "overdue" ? "-" : String(goal.remainingMonths)} />
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {t("goals.currentBalance")}
+          </p>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className="text-3xl font-semibold tabular-nums sm:text-4xl">
+              {formatCurrency(goal.currentAmount, goal.currency)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              / {formatCurrency(goal.targetAmount, goal.currency)}
+            </p>
+          </div>
+          <div
+            className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-label={t("goals.progressLabel", {
+              name: goal.name,
+              percent: goal.progressPercentage,
+            })}
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+        <div className="grid gap-5 border-t border-border pt-5 sm:grid-cols-2 sm:divide-x sm:divide-border">
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {t("goals.remaining")}
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">
+              {formatCurrency(goal.remainingAmount, goal.currency)}
+            </p>
+          </div>
+          <div className="sm:pl-5">
+            <p className="text-xs text-muted-foreground">
+              {t("goals.monthlyNeeded")}
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">
+              {goal.recommendedMonthlyAmount === null
+                ? "-"
+                : formatCurrency(goal.recommendedMonthlyAmount, goal.currency)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {goal.status === "overdue"
+                ? t("goals.deadlinePassed")
+                : t("goals.months", { count: goal.remainingMonths })}
+            </p>
+          </div>
         </div>
       </SectionCard>
 
       <SectionCard className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold">{t("goals.operations")}</h2>
-          {!goal.archivedAt ? <div className="flex gap-2"><Button onClick={() => setOperationDialog({ type: "deposit" })}><ArrowDownLeft aria-hidden="true" />{t("goals.addDeposit")}</Button><Button variant="outline" onClick={() => setOperationDialog({ type: "withdrawal" })}><ArrowUpRight aria-hidden="true" />{t("goals.addWithdrawal")}</Button></div> : null}
+          {!goal.archivedAt ? (
+            <div className="flex gap-2">
+              <Button onClick={() => setOperationDialog({ type: "deposit" })}>
+                <ArrowDownLeft aria-hidden="true" />
+                {t("goals.addDeposit")}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setOperationDialog({ type: "withdrawal" })}
+              >
+                <ArrowUpRight aria-hidden="true" />
+                {t("goals.addWithdrawal")}
+              </Button>
+            </div>
+          ) : null}
         </div>
-        {goal.initialAmount > 0 ? <Card tone="muted" padding="compact" className="flex items-center justify-between gap-4"><div><p className="font-medium">{t("goals.openingBalance")}</p><p className="text-xs text-muted-foreground">{goal.planStartMonth}</p></div><p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">+{formatCurrency(goal.initialAmount, goal.currency)}</p></Card> : null}
+        {goal.initialAmount > 0 ? (
+          <Card
+            tone="muted"
+            padding="compact"
+            className="flex items-center justify-between gap-4"
+          >
+            <div>
+              <p className="font-medium">{t("goals.openingBalance")}</p>
+              <p className="text-xs text-muted-foreground">
+                {goal.planStartMonth}
+              </p>
+            </div>
+            <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+              +{formatCurrency(goal.initialAmount, goal.currency)}
+            </p>
+          </Card>
+        ) : null}
         {goal.operations?.length ? (
           <div className="space-y-2">
             {goal.operations.map((operation) => (
-              <Card key={operation.id} padding="compact" tone="transparent" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3"><span className={cn("rounded-lg p-2", operation.type === "deposit" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-destructive/10 text-destructive")}>{operation.type === "deposit" ? <ArrowDownLeft aria-hidden="true" /> : <ArrowUpRight aria-hidden="true" />}</span><div><p className="font-medium">{t(`goals.${operation.type}`)}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><CalendarDays size={13} aria-hidden="true" />{formatDateOnly(operation.date, i18n.language)}{operation.note ? ` · ${operation.note}` : ""}</p></div></div>
-                <div className="flex items-center justify-between gap-2 sm:justify-end"><span className={cn("font-semibold tabular-nums", operation.type === "deposit" ? "text-emerald-700 dark:text-emerald-300" : "text-destructive")}>{operation.type === "deposit" ? "+" : "-"}{formatCurrency(operation.amount, goal.currency)}</span>{!goal.archivedAt ? <><Button size="icon" variant="ghost" aria-label={t("goals.editOperation")} onClick={() => setOperationDialog({ type: operation.type, operation })}><Pencil aria-hidden="true" /></Button><Button size="icon" variant="ghost" aria-label={t("goals.deleteOperation")} onClick={() => setOperationToDelete(operation)}><Trash2 aria-hidden="true" /></Button></> : null}</div>
+              <Card
+                key={operation.id}
+                padding="compact"
+                tone="transparent"
+                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "rounded-lg p-2",
+                      operation.type === "deposit"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        : "bg-destructive/10 text-destructive",
+                    )}
+                  >
+                    {operation.type === "deposit" ? (
+                      <ArrowDownLeft aria-hidden="true" />
+                    ) : (
+                      <ArrowUpRight aria-hidden="true" />
+                    )}
+                  </span>
+                  <div>
+                    <p className="font-medium">
+                      {t(`goals.${operation.type}`)}
+                    </p>
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <CalendarDays size={13} aria-hidden="true" />
+                      {formatDateOnly(operation.date, i18n.language)}
+                      {operation.note ? ` · ${operation.note}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      operation.type === "deposit"
+                        ? "text-emerald-700 dark:text-emerald-300"
+                        : "text-destructive",
+                    )}
+                  >
+                    {operation.type === "deposit" ? "+" : "-"}
+                    {formatCurrency(operation.amount, goal.currency)}
+                  </span>
+                  {!goal.archivedAt ? (
+                    <Menu.Root modal={false}>
+                      <Menu.Trigger
+                        aria-label={t("goals.operationActions")}
+                        className={buttonVariants({
+                          variant: "ghost",
+                          size: "icon",
+                        })}
+                      >
+                        <MoreHorizontal size={18} aria-hidden="true" />
+                      </Menu.Trigger>
+                      <Menu.Portal>
+                        <Menu.Positioner
+                          sideOffset={4}
+                          align="end"
+                          className="z-[100] outline-none"
+                        >
+                          <Menu.Popup className="min-w-44 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+                            <Menu.Item
+                              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
+                              onClick={() =>
+                                setOperationDialog({
+                                  type: operation.type,
+                                  operation,
+                                })
+                              }
+                            >
+                              <Pencil size={15} aria-hidden="true" />
+                              {t("goals.editOperation")}
+                            </Menu.Item>
+                            <Menu.Item
+                              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive outline-none data-[highlighted]:bg-destructive/10"
+                              onClick={() => setOperationToDelete(operation)}
+                            >
+                              <Trash2 size={15} aria-hidden="true" />
+                              {t("goals.deleteOperation")}
+                            </Menu.Item>
+                          </Menu.Popup>
+                        </Menu.Positioner>
+                      </Menu.Portal>
+                    </Menu.Root>
+                  ) : null}
+                </div>
               </Card>
             ))}
           </div>
-        ) : goal.initialAmount === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">{t("goals.noOperations")}</p> : null}
+        ) : goal.initialAmount === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {t("goals.noOperations")}
+          </p>
+        ) : null}
       </SectionCard>
 
-      {operationDialog && workspaceId ? <OperationDialog key={operationDialog.operation?.id ?? operationDialog.type} open workspaceId={workspaceId} goalId={goal.id} currency={goal.currency} maxDate={todayInTimeZone(workspace?.timezone ?? "UTC")} type={operationDialog.type} operation={operationDialog.operation} onClose={() => setOperationDialog(null)} onSaved={async () => { setOperationDialog(null); await refresh(); showToast(t("goals.operationSaved")); }} /> : null}
-      <ConfirmationDialog open={confirm === "archive"} title={t("goals.archive")} description={t("goals.archiveConfirm", { name: goal.name })} confirmLabel={t("goals.archive")} cancelLabel={t("common.cancel")} pendingLabel={t("common.loading")} isPending={pending} error={actionError} onClose={() => !pending && setConfirm(null)} onConfirm={() => void archiveOrRestore()} />
-      <ConfirmationDialog open={confirm === "delete"} title={t("goals.delete")} description={t("goals.deleteConfirm", { name: goal.name })} confirmLabel={t("goals.delete")} cancelLabel={t("common.cancel")} pendingLabel={t("common.loading")} isPending={pending} error={actionError} onClose={() => !pending && setConfirm(null)} onConfirm={() => void deleteGoal()} />
-      <ConfirmationDialog open={Boolean(operationToDelete)} title={t("goals.deleteOperation")} description={t("goals.deleteOperationConfirm")} confirmLabel={t("common.delete")} cancelLabel={t("common.cancel")} pendingLabel={t("common.loading")} isPending={pending} error={actionError} onClose={() => !pending && setOperationToDelete(null)} onConfirm={() => void deleteOperation()} />
+      {operationDialog && workspaceId ? (
+        <OperationDialog
+          key={operationDialog.operation?.id ?? operationDialog.type}
+          open
+          workspaceId={workspaceId}
+          goalId={goal.id}
+          currency={goal.currency}
+          maxDate={todayInTimeZone(workspace?.timezone ?? "UTC")}
+          type={operationDialog.type}
+          operation={operationDialog.operation}
+          onClose={() => setOperationDialog(null)}
+          onSaved={async () => {
+            setOperationDialog(null);
+            await refresh();
+            showToast(t("goals.operationSaved"));
+          }}
+        />
+      ) : null}
+      <ConfirmationDialog
+        open={confirm === "archive"}
+        title={t("goals.archive")}
+        description={t("goals.archiveConfirm", { name: goal.name })}
+        confirmLabel={t("goals.archive")}
+        cancelLabel={t("common.cancel")}
+        pendingLabel={t("common.loading")}
+        isPending={pending}
+        error={actionError}
+        onClose={() => !pending && setConfirm(null)}
+        onConfirm={() => void archiveOrRestore()}
+      />
+      <ConfirmationDialog
+        open={confirm === "delete"}
+        title={t("goals.delete")}
+        description={t("goals.deleteConfirm", { name: goal.name })}
+        confirmLabel={t("goals.delete")}
+        cancelLabel={t("common.cancel")}
+        pendingLabel={t("common.loading")}
+        isPending={pending}
+        error={actionError}
+        onClose={() => !pending && setConfirm(null)}
+        onConfirm={() => void deleteGoal()}
+      />
+      <ConfirmationDialog
+        open={Boolean(operationToDelete)}
+        title={t("goals.deleteOperation")}
+        description={t("goals.deleteOperationConfirm")}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        pendingLabel={t("common.loading")}
+        isPending={pending}
+        error={actionError}
+        onClose={() => !pending && setOperationToDelete(null)}
+        onConfirm={() => void deleteOperation()}
+      />
     </PageContainer>
   );
 }
 
-function Summary({ label, value }: { label: string; value: string }) {
-  return <Card tone="muted" padding="compact"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold tabular-nums">{value}</p></Card>;
-}
-
-function OperationDialog({ open, workspaceId, goalId, currency, maxDate, type, operation, onClose, onSaved }: { open: boolean; workspaceId: string; goalId: string; currency: string; maxDate: string; type: GoalOperationType; operation?: GoalOperation; onClose: () => void; onSaved: () => Promise<void> }) {
+function OperationDialog({
+  open,
+  workspaceId,
+  goalId,
+  currency,
+  maxDate,
+  type,
+  operation,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  workspaceId: string;
+  goalId: string;
+  currency: string;
+  maxDate: string;
+  type: GoalOperationType;
+  operation?: GoalOperation;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
   const { t } = useTranslation();
-  const [amount, setAmount] = useState<number | null>(operation ? Math.round(operation.amount * 100) : null);
+  const [amount, setAmount] = useState<number | null>(
+    operation ? Math.round(operation.amount * 100) : null,
+  );
   const [date, setDate] = useState(operation?.date ?? maxDate);
   const [note, setNote] = useState(operation?.note ?? "");
   const [saving, setSaving] = useState(false);
@@ -168,15 +509,73 @@ function OperationDialog({ open, workspaceId, goalId, currency, maxDate, type, o
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!amount || amount <= 0) return setError(t("goals.invalidTarget"));
-    setSaving(true); setError(null);
+    setSaving(true);
+    setError(null);
     try {
       const url = `/workspaces/${workspaceId}/goals/${goalId}/operations${operation ? `/${operation.id}` : ""}`;
       const body = { type, amount: amount / 100, date, note };
-      if (operation) await api.patch(url, body); else await api.post(url, body);
+      if (operation) await api.patch(url, body);
+      else await api.post(url, body);
       await onSaved();
     } catch (nextError) {
       setError(getApiErrorMessage(nextError) || t("goals.operationSaveError"));
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
-  return <Modal open={open} onClose={onClose} preventClose={saving} ariaLabelledBy="goal-operation-title" contentClassName="max-w-md"><form onSubmit={(event) => void submit(event)} className="space-y-4"><h2 id="goal-operation-title" className="text-lg font-semibold">{operation ? t("goals.editOperation") : t("goals.addOperation", { type: t(`goals.${type}`).toLowerCase() })}</h2><FormField label={t("common.amount")} required><MoneyInput currency={currency} minorUnits={amount} onMinorUnitsChange={setAmount} /></FormField><FormField label={t("goals.operationDate")} required><Input type="date" max={maxDate} value={date} onChange={(event) => setDate(event.target.value)} /></FormField><FormField label={t("goals.note")}><Textarea maxLength={500} value={note} placeholder={t("goals.notePlaceholder")} onChange={(event) => setNote(event.target.value)} /></FormField>{error ? <Alert variant="error">{error}</Alert> : null}<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>{t("common.cancel")}</Button><PendingButton type="submit" isPending={saving} pendingLabel={t("goals.saving")}>{t("common.save")}</PendingButton></div></form></Modal>;
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      preventClose={saving}
+      ariaLabelledBy="goal-operation-title"
+      contentClassName="max-w-md"
+    >
+      <form onSubmit={(event) => void submit(event)} className="space-y-4">
+        <h2 id="goal-operation-title" className="text-lg font-semibold">
+          {operation
+            ? t("goals.editOperation")
+            : t("goals.addOperation", {
+                type: t(`goals.${type}`).toLowerCase(),
+              })}
+        </h2>
+        <FormField label={t("common.amount")} required>
+          <MoneyInput
+            currency={currency}
+            minorUnits={amount}
+            onMinorUnitsChange={setAmount}
+          />
+        </FormField>
+        <FormField label={t("goals.operationDate")} required>
+          <Input
+            type="date"
+            max={maxDate}
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+          />
+        </FormField>
+        <FormField label={t("goals.note")}>
+          <Textarea
+            maxLength={500}
+            value={note}
+            placeholder={t("goals.notePlaceholder")}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </FormField>
+        {error ? <Alert variant="error">{error}</Alert> : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <PendingButton
+            type="submit"
+            isPending={saving}
+            pendingLabel={t("goals.saving")}
+          >
+            {t("common.save")}
+          </PendingButton>
+        </div>
+      </form>
+    </Modal>
+  );
 }

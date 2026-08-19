@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AsyncState, Button, Card, EmptyState, SectionCard } from "@monqom/ui";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
@@ -32,38 +31,72 @@ export default function GoalsPage() {
         title={t("goals.title")}
         description={t("goals.description")}
         actions={
-          <Button type="button" onClick={() => navigate("/goals/new")}>{t("goals.add")}</Button>
+          <Button type="button" onClick={() => navigate("/goals/new")}>
+            {t("goals.add")}
+          </Button>
         }
       />
-      <div className="flex gap-1 rounded-lg border border-border p-1" role="tablist" aria-label={t("goals.title")}>
+      <div
+        className="flex gap-1 rounded-lg border border-border p-1"
+        role="tablist"
+        aria-label={t("goals.title")}
+      >
         {(["active", "completed", "archived"] as const).map((item) => (
           <button
             key={item}
             type="button"
             role="tab"
             aria-selected={view === item}
-            className={cn("min-h-10 flex-1 rounded-md px-3 text-sm font-medium transition-colors", view === item ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+            className={cn(
+              "min-h-10 flex-1 rounded-md px-3 text-sm font-medium transition-colors",
+              view === item
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted",
+            )}
             onClick={() => setView(item)}
           >
             {t(item === "active" ? "goals.allActive" : `goals.${item}`)}
           </button>
         ))}
       </div>
-      <SectionCard>
-        {isLoading ? (
-          <AsyncState status="loading" message={t("common.loading")} skeletonRows={4} />
-        ) : error ? (
-          <AsyncState status="error" message={error} onRetry={() => void retry()} />
-        ) : goals.length === 0 ? (
-          <EmptyState title={t("goals.empty")} description={t("goals.emptyDescription")} actionLabel={t("goals.add")} onAction={() => navigate("/goals/new")} />
-        ) : visible.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">{t("goals.noResults")}</p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {visible.map((goal) => <GoalCard key={goal.id} goal={goal} locale={i18n.language} />)}
-          </div>
-        )}
-      </SectionCard>
+      {isLoading ? (
+        <SectionCard>
+          <AsyncState
+            status="loading"
+            message={t("common.loading")}
+            skeletonRows={4}
+          />
+        </SectionCard>
+      ) : error ? (
+        <SectionCard>
+          <AsyncState
+            status="error"
+            message={error}
+            onRetry={() => void retry()}
+          />
+        </SectionCard>
+      ) : goals.length === 0 ? (
+        <SectionCard>
+          <EmptyState
+            title={t("goals.empty")}
+            description={t("goals.emptyDescription")}
+            actionLabel={t("goals.add")}
+            onAction={() => navigate("/goals/new")}
+          />
+        </SectionCard>
+      ) : visible.length === 0 ? (
+        <SectionCard>
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {t("goals.noResults")}
+          </p>
+        </SectionCard>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {visible.map((goal) => (
+            <GoalCard key={goal.id} goal={goal} locale={i18n.language} />
+          ))}
+        </div>
+      )}
     </PageContainer>
   );
 }
@@ -72,20 +105,77 @@ function GoalCard({ goal, locale }: { goal: Goal; locale: string }) {
   const { t } = useTranslation();
   const shownProgress = Math.min(Math.max(goal.progressPercentage, 0), 100);
   return (
-    <Link to={`/goals/${goal.id}`} className="rounded-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-      <Card padding="responsive" className="h-full space-y-4 transition-colors hover:border-primary/50 hover:bg-muted/20">
+    <Link
+      to={`/goals/${goal.id}`}
+      className="rounded-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <Card
+        padding="responsive"
+        className="h-full space-y-5 transition-colors hover:border-primary/50 hover:bg-muted/20"
+      >
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="rounded-lg bg-primary/10 p-2 text-primary"><Target size={18} aria-hidden="true" /></span>
-            <div className="min-w-0"><h2 className="truncate font-semibold">{goal.name}</h2><p className="text-xs text-muted-foreground">{t("goals.due", { date: formatDateOnly(goal.targetDate, locale) })}</p></div>
+          <div className="min-w-0">
+            <h2 className="truncate font-semibold">{goal.name}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("goals.due", {
+                date: formatDateOnly(goal.targetDate, locale),
+              })}
+            </p>
           </div>
-          <span className={cn("rounded-full px-2 py-1 text-xs font-medium", goal.status === "completed" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : goal.status === "overdue" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>{t(`goals.${goal.status}`)}</span>
+          {goal.status !== "active" ? (
+            <span
+              className={cn(
+                "rounded-full px-2 py-1 text-xs font-medium",
+                goal.status === "completed"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "bg-destructive/10 text-destructive",
+              )}
+            >
+              {t(`goals.${goal.status}`)}
+            </span>
+          ) : null}
         </div>
         <div>
-          <div className="mb-2 flex justify-between gap-3 text-sm"><span>{t("goals.savedOf", { saved: formatCurrency(goal.currentAmount, goal.currency), target: formatCurrency(goal.targetAmount, goal.currency) })}</span><span className="tabular-nums">{goal.progressPercentage}%</span></div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("goals.progressLabel", { name: goal.name, percent: goal.progressPercentage })} aria-valuenow={shownProgress} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${shownProgress}%` }} /></div>
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <span className="font-semibold tabular-nums">
+              {formatCurrency(goal.currentAmount, goal.currency)}
+            </span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {goal.progressPercentage}%
+            </span>
+          </div>
+          <div
+            className="h-2 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-label={t("goals.progressLabel", {
+              name: goal.name,
+              percent: goal.progressPercentage,
+            })}
+            aria-valuenow={shownProgress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${shownProgress}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("goals.target", {
+              amount: formatCurrency(goal.targetAmount, goal.currency),
+            })}
+          </p>
         </div>
-        <div className="flex items-end justify-between border-t border-border pt-3"><div><p className="text-xs text-muted-foreground">{t("goals.monthlyNeeded")}</p><p className="font-semibold tabular-nums">{goal.recommendedMonthlyAmount === null ? "-" : formatCurrency(goal.recommendedMonthlyAmount, goal.currency)}</p></div><span className="text-xs text-muted-foreground">{goal.remainingMonths} {t("goals.plannedMonths").toLowerCase()}</span></div>
+        <div className="flex items-baseline justify-between gap-3 border-t border-border pt-4">
+          <span className="text-xs text-muted-foreground">
+            {t("goals.monthlyNeeded")}
+          </span>
+          <span className="font-semibold tabular-nums">
+            {goal.recommendedMonthlyAmount === null
+              ? "-"
+              : formatCurrency(goal.recommendedMonthlyAmount, goal.currency)}
+          </span>
+        </div>
       </Card>
     </Link>
   );
