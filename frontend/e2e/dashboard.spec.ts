@@ -225,7 +225,8 @@ test("lets a mobile user change theme and log out from settings", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dashboard");
 
-  await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(
