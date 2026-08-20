@@ -29,6 +29,13 @@ describe("shared UI primitives", () => {
       />,
     );
 
+    expect(screen.getByRole("tablist", { name: "Goal view" })).toHaveClass(
+      "rounded-lg",
+      "border",
+    );
+    expect(screen.getByRole("tablist", { name: "Goal view" })).not.toHaveClass(
+      "rounded-full",
+    );
     expect(screen.getByRole("tab", { name: "Active" })).toHaveAttribute(
       "aria-selected",
       "true",

@@ -1,4 +1,5 @@
 import { cn } from "../lib/utils";
+import { Button } from "./button";
 
 export interface SegmentedControlOption<T extends string> {
   value: T;
@@ -23,26 +24,23 @@ export function SegmentedControl<T extends string>({
   return (
     <div className={cn("max-w-full overflow-x-auto", className)}>
       <div
-        className="inline-flex min-w-max gap-1 rounded-full bg-muted/70 p-1"
+        className="inline-flex min-w-max rounded-lg border border-border bg-muted/30 p-0.5"
         role="tablist"
         aria-label={ariaLabel}
       >
         {options.map((option) => (
-          <button
+          <Button
             key={option.value}
             type="button"
+            size="sm"
+            variant={value === option.value ? "default" : "ghost"}
             role="tab"
             aria-selected={value === option.value}
-            className={cn(
-              "min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors max-sm:min-h-11",
-              value === option.value
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+            className="h-7 px-3 text-xs"
             onClick={() => onChange(option.value)}
           >
             {option.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
