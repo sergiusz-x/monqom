@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   CalendarDays,
   Pencil,
+  Plus,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -249,38 +250,27 @@ export default function GoalDetailPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold">{t("goals.operations")}</h2>
           {!goal.archivedAt ? (
-            <div className="flex gap-2">
-              <Button onClick={() => setOperationDialog({ type: "deposit" })}>
-                <ArrowDownLeft aria-hidden="true" />
-                {t("goals.addDeposit")}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setOperationDialog({ type: "withdrawal" })}
-              >
-                <ArrowUpRight aria-hidden="true" />
-                {t("goals.addWithdrawal")}
-              </Button>
-            </div>
+            <ActionMenu
+              ariaLabel={t("goals.addOperationButton")}
+              triggerLabel={t("goals.addOperationButton")}
+              triggerIcon={Plus}
+              items={[
+                {
+                  id: "deposit",
+                  label: t("goals.addDeposit"),
+                  icon: ArrowDownLeft,
+                  onSelect: () => setOperationDialog({ type: "deposit" }),
+                },
+                {
+                  id: "withdrawal",
+                  label: t("goals.addWithdrawal"),
+                  icon: ArrowUpRight,
+                  onSelect: () => setOperationDialog({ type: "withdrawal" }),
+                },
+              ]}
+            />
           ) : null}
         </div>
-        {goal.initialAmount > 0 ? (
-          <Card
-            tone="muted"
-            padding="compact"
-            className="flex items-center justify-between gap-4"
-          >
-            <div>
-              <p className="font-medium">{t("goals.openingBalance")}</p>
-              <p className="text-xs text-muted-foreground">
-                {goal.planStartMonth}
-              </p>
-            </div>
-            <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
-              +{formatCurrency(goal.initialAmount, goal.currency)}
-            </p>
-          </Card>
-        ) : null}
         {goal.operations?.length ? (
           <div className="space-y-2">
             {goal.operations.map((operation) => (
@@ -360,6 +350,23 @@ export default function GoalDetailPage() {
           <p className="py-8 text-center text-sm text-muted-foreground">
             {t("goals.noOperations")}
           </p>
+        ) : null}
+        {goal.initialAmount > 0 ? (
+          <Card
+            tone="muted"
+            padding="compact"
+            className="flex items-center justify-between gap-4"
+          >
+            <div>
+              <p className="font-medium">{t("goals.openingBalance")}</p>
+              <p className="text-xs text-muted-foreground">
+                {goal.planStartMonth}
+              </p>
+            </div>
+            <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+              +{formatCurrency(goal.initialAmount, goal.currency)}
+            </p>
+          </Card>
         ) : null}
       </SectionCard>
 

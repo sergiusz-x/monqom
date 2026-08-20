@@ -19,6 +19,8 @@ export interface ActionMenuProps {
   items: readonly ActionMenuItem[];
   disabled?: boolean;
   portalContainer?: ComponentProps<typeof Menu.Portal>["container"];
+  triggerLabel?: string;
+  triggerIcon?: LucideIcon;
 }
 
 export function ActionMenu({
@@ -26,15 +28,23 @@ export function ActionMenu({
   items,
   disabled = false,
   portalContainer,
+  triggerLabel,
+  triggerIcon,
 }: ActionMenuProps) {
+  const TriggerIcon = triggerIcon ?? MoreHorizontal;
+
   return (
     <Menu.Root modal={false}>
       <Menu.Trigger
         aria-label={ariaLabel}
         disabled={disabled}
-        className={buttonVariants({ variant: "ghost", size: "icon" })}
+        className={buttonVariants({
+          variant: triggerLabel ? "default" : "ghost",
+          size: triggerLabel ? "default" : "icon",
+        })}
       >
-        <MoreHorizontal size={19} aria-hidden="true" />
+        <TriggerIcon size={19} aria-hidden="true" />
+        {triggerLabel}
       </Menu.Trigger>
       <Menu.Portal container={portalContainer}>
         <Menu.Positioner

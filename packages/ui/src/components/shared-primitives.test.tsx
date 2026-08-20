@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { Plus } from "lucide-react";
 
+import { ActionMenu } from "./action-menu";
 import { Badge } from "./badge";
 import { ProgressBar } from "./progress-bar";
 import { SegmentedControl } from "./segmented-control";
@@ -40,5 +42,20 @@ describe("shared UI primitives", () => {
   it("applies shared badge tones", () => {
     render(<Badge tone="success">Completed</Badge>);
     expect(screen.getByText("Completed")).toHaveClass("text-emerald-700");
+  });
+
+  it("supports a labelled primary action-menu trigger", () => {
+    render(
+      <ActionMenu
+        ariaLabel="Add operation"
+        triggerLabel="Add operation"
+        triggerIcon={Plus}
+        items={[]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Add operation" }),
+    ).toHaveTextContent("Add operation");
   });
 });
