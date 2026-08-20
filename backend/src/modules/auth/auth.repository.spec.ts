@@ -1,5 +1,6 @@
 import { PrismaService } from '../../shared/database/prisma.service'
 import { AuditService } from '../../shared/audit/audit.service'
+import { ConfigService } from '@nestjs/config'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { AuthRepository } from './auth.repository'
 
@@ -27,6 +28,7 @@ describe('AuthRepository', () => {
         repository = new AuthRepository(
             prisma as never as PrismaService,
             auditService as never as AuditService,
+            createConfigService(),
         )
     })
 
@@ -88,6 +90,7 @@ describe('AuthRepository', () => {
         const transactionalRepository = new AuthRepository(
             transactionalPrisma as never as PrismaService,
             auditService as never as AuditService,
+            createConfigService(),
         )
 
         await transactionalRepository.deleteUserAccount('user-1')
@@ -107,3 +110,7 @@ describe('AuthRepository', () => {
         })
     })
 })
+
+function createConfigService(): ConfigService {
+    return { get: jest.fn().mockReturnValue('test-session-secret') } as unknown as ConfigService
+}

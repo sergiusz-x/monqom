@@ -1,8 +1,9 @@
-import { createHash } from 'crypto'
 import { Injectable, NestMiddleware } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { Prisma } from '@prisma/client'
 import { NextFunction, Request, Response } from 'express'
 import { PrismaService } from '../database/prisma.service'
+import { createOpaqueDigest } from '../security/opaque-digest'
 
 const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 const DEFAULT_LIMIT = 5
@@ -61,7 +62,10 @@ const AUTH_RATE_LIMIT_POLICIES = [
 @Injectable()
 export class AuthRateLimitMiddleware implements NestMiddleware {
     private requestsSinceCleanup = 0
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly configService: ConfigService,
+    ) {}
 
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
         const now = new Date()
@@ -69,7 +73,9 @@ export class AuthRateLimitMiddleware implements NestMiddleware {
         try {
             const results = await this.prisma.$transaction(async (tx) => {
                 const consumed: ConsumedRateLimit[] = []
-                for (const key of getRateLimitKeys(req, ratePolicy))
+                const digestSecret = this.configService.get<string>('env.sessionSecret')
+                if (!digestSecret) throw new Error('SESSION_SECRET is required for rate limiting')
+                for (const key of getRateLimitKeys(req, ratePolicy, digestSecret))
                     consumed.push(await consumeRateLimit(tx, key, ratePolicy.limit, now))
                 return consumed
             })
@@ -131,15 +137,24 @@ function policy(routeSuffix: string, key: string, message: string, limit = DEFAU
     return { routeSuffix, policy: { key, message, limit } satisfies AuthRateLimitPolicy }
 }
 
-function getRateLimitKeys(req: Request, ratePolicy: AuthRateLimitPolicy): string[] {
-    const keys = [hashRateLimitKey(ratePolicy.key, 'ip', req.ip || 'unknown')]
+function getRateLimitKeys(
+    req: Request,
+    ratePolicy: AuthRateLimitPolicy,
+    digestSecret: string,
+): string[] {
+    const keys = [hashRateLimitKey(ratePolicy.key, 'ip', req.ip || 'unknown', digestSecret)]
     const email = getRequestEmail(req)
-    if (email) keys.push(hashRateLimitKey(ratePolicy.key, 'email', email))
+    if (email) keys.push(hashRateLimitKey(ratePolicy.key, 'email', email, digestSecret))
     return keys
 }
 
-function hashRateLimitKey(policyKey: string, dimension: string, value: string): string {
-    return createHash('sha256').update(`${policyKey}:${dimension}:${value}`).digest('hex')
+function hashRateLimitKey(
+    policyKey: string,
+    dimension: string,
+    value: string,
+    digestSecret: string,
+): string {
+    return createOpaqueDigest(value, `auth-rate-limit:${policyKey}:${dimension}`, digestSecret)
 }
 
 function getRequestEmail(req: Request): string | undefined {

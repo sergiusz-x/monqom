@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
 import { AuthController } from './auth.controller'
 import { UsersController } from './users.controller'
 import { AuthRateLimitMiddleware } from '../../shared/middleware/authRateLimit'
@@ -9,7 +10,7 @@ import { WorkspaceModule } from '../workspace/workspace.module'
 import { TwoFactorService } from './twoFactor.service'
 
 @Module({
-    imports: [WorkspaceModule, AuthCoreModule],
+    imports: [ConfigModule, WorkspaceModule, AuthCoreModule],
     controllers: [AuthController, UsersController],
     providers: [AuthService, TwoFactorService],
 })

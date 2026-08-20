@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { createHash } from 'crypto'
+import { ConfigService } from '@nestjs/config'
 import {
     EmailVerificationToken,
     PasswordResetToken,
@@ -15,6 +15,7 @@ import {
     AuditMetadata,
 } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { createOpaqueDigest } from '../../shared/security/opaque-digest'
 
 const POSTGRES_UNDEFINED_TABLE_ERROR_CODE = '42P01'
 const ACCOUNT_LOCKOUT_MS = 15 * 60 * 1000
@@ -111,6 +112,7 @@ export class AuthRepository {
     constructor(
         private readonly prisma: PrismaService,
         private readonly auditService: AuditService,
+        private readonly configService: ConfigService,
     ) {}
 
     async findUserByEmail(email: string): Promise<User | null> {
@@ -176,8 +178,8 @@ export class AuthRepository {
             await tx.emailVerificationToken.create({
                 data: {
                     userId: user.id,
-                    token: hashToken(input.verificationToken),
-                    tokenHash: hashToken(input.verificationToken),
+                    token: this.hashToken(input.verificationToken),
+                    tokenHash: this.hashToken(input.verificationToken),
                     expiresAt: input.verificationTokenExpiresAt,
                 },
             })
@@ -210,7 +212,7 @@ export class AuthRepository {
     ): Promise<EmailVerificationTokenWithUser | null> {
         return this.prisma.emailVerificationToken.findFirst({
             where: {
-                OR: [{ tokenHash: hashToken(token) }, { tokenHash: null, token }],
+                OR: [{ tokenHash: this.hashToken(token) }, { tokenHash: null, token }],
             },
             include: { user: true },
         })
@@ -266,8 +268,8 @@ export class AuthRepository {
             await tx.emailVerificationToken.create({
                 data: {
                     userId: input.userId,
-                    token: hashToken(input.verificationToken),
-                    tokenHash: hashToken(input.verificationToken),
+                    token: this.hashToken(input.verificationToken),
+                    tokenHash: this.hashToken(input.verificationToken),
                     expiresAt: input.verificationTokenExpiresAt,
                 },
             })
@@ -299,8 +301,8 @@ export class AuthRepository {
         await prisma.passwordResetToken.create({
             data: {
                 userId: input.userId,
-                token: hashToken(input.passwordResetToken),
-                tokenHash: hashToken(input.passwordResetToken),
+                token: this.hashToken(input.passwordResetToken),
+                tokenHash: this.hashToken(input.passwordResetToken),
                 expiresAt: input.passwordResetTokenExpiresAt,
             },
         })
@@ -311,7 +313,7 @@ export class AuthRepository {
     ): Promise<PasswordResetTokenWithUser | null> {
         return this.prisma.passwordResetToken.findFirst({
             where: {
-                OR: [{ tokenHash: hashToken(token) }, { tokenHash: null, token }],
+                OR: [{ tokenHash: this.hashToken(token) }, { tokenHash: null, token }],
             },
             include: { user: true },
         })
@@ -599,6 +601,12 @@ export class AuthRepository {
             metadata: input.metadata,
         })
     }
+
+    private hashToken(token: string): string {
+        const digestSecret = this.configService.get<string>('env.sessionSecret')
+        if (!digestSecret) throw new Error('SESSION_SECRET is required for authentication tokens')
+        return createOpaqueDigest(token, 'authentication-token', digestSecret)
+    }
 }
 
 async function deleteUserSessions(tx: Prisma.TransactionClient, userId: string): Promise<void> {
@@ -612,10 +620,6 @@ async function deleteUserSessions(tx: Prisma.TransactionClient, userId: string):
             throw error
         }
     }
-}
-
-function hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex')
 }
 
 function isMissingSessionStoreTableError(error: unknown): boolean {
