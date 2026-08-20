@@ -25,6 +25,7 @@ import {
   MoneyInput,
   PendingButton,
   ProgressBar,
+  SegmentedControl,
   SectionCard,
   Textarea,
 } from "@monqom/ui";
@@ -250,25 +251,10 @@ export default function GoalDetailPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold">{t("goals.operations")}</h2>
           {!goal.archivedAt ? (
-            <ActionMenu
-              ariaLabel={t("goals.addOperationButton")}
-              triggerLabel={t("goals.addOperationButton")}
-              triggerIcon={Plus}
-              items={[
-                {
-                  id: "deposit",
-                  label: t("goals.addDeposit"),
-                  icon: ArrowDownLeft,
-                  onSelect: () => setOperationDialog({ type: "deposit" }),
-                },
-                {
-                  id: "withdrawal",
-                  label: t("goals.addWithdrawal"),
-                  icon: ArrowUpRight,
-                  onSelect: () => setOperationDialog({ type: "withdrawal" }),
-                },
-              ]}
-            />
+            <Button onClick={() => setOperationDialog({ type: "deposit" })}>
+              <Plus aria-hidden="true" />
+              {t("goals.addOperationButton")}
+            </Button>
           ) : null}
         </div>
         {goal.operations?.length ? (
@@ -428,7 +414,7 @@ export default function GoalDetailPage() {
   );
 }
 
-function OperationDialog({
+export function OperationDialog({
   open,
   workspaceId,
   goalId,
@@ -453,6 +439,7 @@ function OperationDialog({
   const [amount, setAmount] = useState<number | null>(
     operation ? Math.round(operation.amount * 100) : null,
   );
+  const [operationType, setOperationType] = useState<GoalOperationType>(type);
   const [date, setDate] = useState(operation?.date ?? maxDate);
   const [note, setNote] = useState(operation?.note ?? "");
   const [saving, setSaving] = useState(false);
@@ -464,7 +451,7 @@ function OperationDialog({
     setError(null);
     try {
       const url = `/workspaces/${workspaceId}/goals/${goalId}/operations${operation ? `/${operation.id}` : ""}`;
-      const body = { type, amount: amount / 100, date, note };
+      const body = { type: operationType, amount: amount / 100, date, note };
       if (operation) await api.patch(url, body);
       else await api.post(url, body);
       await onSaved();
@@ -484,12 +471,19 @@ function OperationDialog({
     >
       <form onSubmit={(event) => void submit(event)} className="space-y-4">
         <h2 id="goal-operation-title" className="text-lg font-semibold">
-          {operation
-            ? t("goals.editOperation")
-            : t("goals.addOperation", {
-                type: t(`goals.${type}`).toLowerCase(),
-              })}
+          {operation ? t("goals.editOperation") : t("goals.addOperationButton")}
         </h2>
+        {!operation ? (
+          <SegmentedControl
+            value={operationType}
+            ariaLabel={t("goals.operationType")}
+            options={(["deposit", "withdrawal"] as const).map((value) => ({
+              value,
+              label: t(`goals.${value}`),
+            }))}
+            onChange={setOperationType}
+          />
+        ) : null}
         <FormField label={t("common.amount")} required>
           <MoneyInput
             currency={currency}
