@@ -66,6 +66,9 @@ importers:
       connect-pg-simple:
         specifier: ^10.0.0
         version: 10.0.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
       express-session:
         specifier: ^1.19.0
         version: 1.19.0
@@ -78,6 +81,9 @@ importers:
       pg:
         specifier: ^8.20.0
         version: 8.22.0
+      prisma:
+        specifier: 7.8.0
+        version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -136,9 +142,6 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^7.0.0
         version: 7.18.0(eslint@8.57.1)(typescript@5.9.3)
-      dotenv:
-        specifier: ^16.4.7
-        version: 16.6.1
       eslint:
         specifier: ^8.57.0
         version: 8.57.1
@@ -151,9 +154,6 @@ importers:
       prettier:
         specifier: ^3.2.5
         version: 3.9.6
-      prisma:
-        specifier: 7.8.0
-        version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21

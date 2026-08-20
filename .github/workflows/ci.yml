@@ -96,9 +96,19 @@ jobs:
           docker compose -f docker-compose.dokploy.yml config --quiet
           docker compose -f docker-compose.dokploy.yml config --format json | jq -e '.services | all(.networks | has("dokploy-network"))'
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target migration --tag monqom-backend-migration:ci --file backend/Dockerfile .
-      - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/backend/prisma.config.ts'
+      - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/backend/prisma.config.ts && test ! -e /usr/local/bin/npm && node ./node_modules/prisma/build/index.js --version'
+      - name: Scan migration image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: monqom-backend-migration:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target runtime --tag monqom-backend:ci --file backend/Dockerfile .
-      - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/backend/dist/main.js && grep -q "APP_VERSION=.ci." /app/backend/release.env && grep -q "GIT_SHA=.${{ github.sha }}." /app/backend/release.env'
+      - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/backend/dist/main.js && test ! -e /usr/local/bin/npm && test ! -e /app/backend/node_modules/.bin/jest && grep -q "APP_VERSION=.ci." /app/backend/release.env && grep -q "GIT_SHA=.${{ github.sha }}." /app/backend/release.env'
       - run: docker run --rm --entrypoint node monqom-backend:ci -e "require.resolve('@nestjs/swagger')"
       - name: Scan backend runtime image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

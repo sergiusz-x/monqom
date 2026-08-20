@@ -15,7 +15,7 @@ RUN pnpm exec prisma generate
 
 FROM dependencies AS production-dependencies
 WORKDIR /app
-RUN pnpm install --frozen-lockfile --prod --offline
+RUN pnpm --filter backend deploy --prod /prod/backend
 
 FROM dependencies AS build
 WORKDIR /app
@@ -45,9 +45,11 @@ RUN --mount=type=bind,source=.git,target=/repo/.git,readonly \
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup -S monqom && adduser -S monqom -G monqom
-COPY --from=production-dependencies /app/node_modules ./node_modules
-COPY --from=production-dependencies /app/backend/node_modules ./backend/node_modules
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx \
+    && addgroup -S monqom \
+    && adduser -S monqom -G monqom
+COPY --from=production-dependencies /prod/backend/node_modules ./backend/node_modules
 COPY backend/prisma ./backend/prisma
 COPY backend/prisma.config.ts ./backend/
 WORKDIR /app
@@ -59,9 +61,17 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node 
 WORKDIR /app/backend
 CMD ["sh", "-c", "set -a; . ./release.env; set +a; exec node dist/main"]
 
-FROM build AS migration
+FROM node:22-alpine AS migration
 WORKDIR /app/backend
 ENV NODE_ENV=production
-RUN addgroup -S monqom && adduser -S monqom -G monqom
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx \
+    && addgroup -S monqom \
+    && adduser -S monqom -G monqom
+COPY --from=production-dependencies /prod/backend/node_modules ./node_modules
+COPY backend/prisma ./prisma
+COPY backend/prisma.config.ts ./
+COPY backend/scripts/migrate-with-retry.sh ./scripts/migrate-with-retry.sh
+RUN sed -i 's/\r$//' ./scripts/migrate-with-retry.sh
 USER monqom
 CMD ["sh", "./scripts/migrate-with-retry.sh"]
