@@ -22,7 +22,11 @@ describe('GoalsService', () => {
         const prisma = {
             goal: { findMany: jest.fn().mockResolvedValue([]) },
         }
-        const service = new GoalsService(prisma as never, workspaceService as never, auditService as never)
+        const service = new GoalsService(
+            prisma as never,
+            workspaceService as never,
+            auditService as never,
+        )
 
         await service.list('workspace-1')
 
@@ -47,7 +51,11 @@ describe('GoalsService', () => {
             },
         }
         const prisma = { $transaction: jest.fn((callback) => callback(tx)) }
-        const service = new GoalsService(prisma as never, workspaceService as never, auditService as never)
+        const service = new GoalsService(
+            prisma as never,
+            workspaceService as never,
+            auditService as never,
+        )
 
         const result = await service.create('workspace-1', 'user-1', {
             name: ' Holiday ',
@@ -93,7 +101,11 @@ describe('GoalsService', () => {
             goalOperation: { create: jest.fn() },
         }
         const prisma = { $transaction: jest.fn((callback) => callback(tx)) }
-        const service = new GoalsService(prisma as never, workspaceService as never, auditService as never)
+        const service = new GoalsService(
+            prisma as never,
+            workspaceService as never,
+            auditService as never,
+        )
 
         await expect(
             service.createOperation('workspace-1', 'user-1', 'goal-1', {
@@ -108,7 +120,11 @@ describe('GoalsService', () => {
     it('returns not found when a nested goal is absent from the workspace', async () => {
         const tx = { goal: { findUnique: jest.fn().mockResolvedValue(null) } }
         const prisma = { $transaction: jest.fn((callback) => callback(tx)) }
-        const service = new GoalsService(prisma as never, workspaceService as never, auditService as never)
+        const service = new GoalsService(
+            prisma as never,
+            workspaceService as never,
+            auditService as never,
+        )
 
         await expect(
             service.createOperation('workspace-2', 'user-1', 'goal-1', {

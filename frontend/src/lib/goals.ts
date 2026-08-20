@@ -44,7 +44,9 @@ export function todayInTimeZone(timeZone: string, now = new Date()): string {
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
   return `${values.year}-${values.month}-${values.day}`;
 }
 
@@ -83,7 +85,10 @@ export function previewMonthlyAmount(input: {
     0,
     (targetYear - todayYear) * 12 + targetMonth - todayMonth - startOffset + 1,
   );
-  const remaining = Math.max(input.targetAmountCents - input.initialAmountCents, 0);
+  const remaining = Math.max(
+    input.targetAmountCents - input.initialAmountCents,
+    0,
+  );
   return {
     months,
     monthlyAmountCents: months > 0 ? Math.ceil(remaining / months) : remaining,

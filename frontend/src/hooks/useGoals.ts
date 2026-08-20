@@ -10,10 +10,13 @@ export function useGoals(workspaceId: string, includeArchived = true) {
     queryKey: [...queryKeys.goals(workspaceId), { includeArchived }],
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiGoal[]>(`/workspaces/${workspaceId}/goals`, {
-        params: { include_archived: includeArchived },
-        signal,
-      });
+      const response = await api.get<ApiGoal[]>(
+        `/workspaces/${workspaceId}/goals`,
+        {
+          params: { include_archived: includeArchived },
+          signal,
+        },
+      );
       return response.data.map(mapGoal);
     },
   });

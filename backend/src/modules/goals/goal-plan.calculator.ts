@@ -36,8 +36,11 @@ export function calculateGoalPlan(input: {
                 ? 0
                 : Number(((currentAmountCents / input.targetAmountCents) * 100).toFixed(2)),
         remainingMonths,
-        recommendedMonthlyAmountCents:
-            completed ? 0 : remainingMonths > 0 ? Math.ceil(remainingAmountCents / remainingMonths) : null,
+        recommendedMonthlyAmountCents: completed
+            ? 0
+            : remainingMonths > 0
+              ? Math.ceil(remainingAmountCents / remainingMonths)
+              : null,
         status,
     }
 }
@@ -79,6 +82,8 @@ function laterMonth(left: Date, right: Date): Date {
 }
 
 function compareDateOnly(left: Date, right: Date): number {
-    return Date.UTC(left.getUTCFullYear(), left.getUTCMonth(), left.getUTCDate()) -
+    return (
+        Date.UTC(left.getUTCFullYear(), left.getUTCMonth(), left.getUTCDate()) -
         Date.UTC(right.getUTCFullYear(), right.getUTCMonth(), right.getUTCDate())
+    )
 }

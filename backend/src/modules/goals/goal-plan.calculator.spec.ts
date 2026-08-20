@@ -1,8 +1,4 @@
-import {
-    addUtcMonthsClamped,
-    calculateGoalPlan,
-    dateInTimeZone,
-} from './goal-plan.calculator'
+import { addUtcMonthsClamped, calculateGoalPlan, dateInTimeZone } from './goal-plan.calculator'
 
 describe('goal plan calculator', () => {
     const today = new Date('2026-08-19T00:00:00.000Z')
@@ -71,7 +67,11 @@ describe('goal plan calculator', () => {
                 planStartMonth: new Date('2026-01-01T00:00:00.000Z'),
                 today,
             }),
-        ).toMatchObject({ status: 'overdue', remainingMonths: 0, recommendedMonthlyAmountCents: null })
+        ).toMatchObject({
+            status: 'overdue',
+            remainingMonths: 0,
+            recommendedMonthlyAmountCents: null,
+        })
     })
 
     it('clamps month additions and resolves the workspace-local day', () => {

@@ -38,8 +38,8 @@ describe("goal planning helpers", () => {
   });
 
   it("uses the workspace timezone for today's date", () => {
-    expect(todayInTimeZone("Europe/Warsaw", new Date("2026-08-19T22:30:00Z"))).toBe(
-      "2026-08-20",
-    );
+    expect(
+      todayInTimeZone("Europe/Warsaw", new Date("2026-08-19T22:30:00Z")),
+    ).toBe("2026-08-20");
   });
 });

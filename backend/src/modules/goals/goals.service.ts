@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common'
 import { Goal, GoalOperation, Prisma } from '@prisma/client'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
@@ -81,13 +86,16 @@ export class GoalsService {
     }
 
     async update(workspaceId: string, userId: string, goalId: string, body: UpdateGoalDto) {
-        if (Object.keys(body).length === 0) throw new BadRequestException('At least one field is required')
+        if (Object.keys(body).length === 0)
+            throw new BadRequestException('At least one field is required')
         const context = await this.context(workspaceId)
         const goal = await this.prisma.$transaction(async (tx) => {
             const previous = await this.findGoal(workspaceId, goalId, tx)
             assertMutable(previous)
             const initialAmount =
-                body.initial_amount === undefined ? previous.initialAmount : toCents(body.initial_amount)
+                body.initial_amount === undefined
+                    ? previous.initialAmount
+                    : toCents(body.initial_amount)
             if (balanceCents(previous.operations, initialAmount) < 0) {
                 throw new ConflictException(NEGATIVE_BALANCE)
             }
@@ -421,7 +429,10 @@ function balanceCents(operations: GoalOperation[], initialAmount: number): numbe
 }
 
 function sumOperations(operations: GoalOperation[], type: string): number {
-    return operations.reduce((sum, operation) => sum + (operation.type === type ? operation.amount : 0), 0)
+    return operations.reduce(
+        (sum, operation) => sum + (operation.type === type ? operation.amount : 0),
+        0,
+    )
 }
 
 function toCents(value: number): number {

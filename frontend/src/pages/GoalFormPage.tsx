@@ -43,7 +43,9 @@ export default function GoalFormPage() {
   const [targetAmount, setTargetAmount] = useState<number | null>(null);
   const [initialAmount, setInitialAmount] = useState<number | null>(0);
   const [months, setMonths] = useState(12);
-  const [targetDate, setTargetDate] = useState(() => addMonthsClamped(today, 12));
+  const [targetDate, setTargetDate] = useState(() =>
+    addMonthsClamped(today, 12),
+  );
   const [includeCurrentMonth, setIncludeCurrentMonth] = useState(false);
   const [loadedGoalId, setLoadedGoalId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -84,14 +86,16 @@ export default function GoalFormPage() {
 
   function changeDate(value: string) {
     setTargetDate(value);
-    if (value >= minDate && value <= maxDate) setMonths(monthsUntilDate(today, value));
+    if (value >= minDate && value <= maxDate)
+      setMonths(monthsUntilDate(today, value));
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) nextErrors.name = t("goals.invalidName");
-    if (!targetAmount || targetAmount <= 0) nextErrors.target = t("goals.invalidTarget");
+    if (!targetAmount || targetAmount <= 0)
+      nextErrors.target = t("goals.invalidTarget");
     if (!targetDate || targetDate < minDate || targetDate > maxDate) {
       nextErrors.date = t("goals.invalidDate");
     }
@@ -111,7 +115,8 @@ export default function GoalFormPage() {
         if ((initialAmount ?? 0) / 100 !== detail.goal.initialAmount) {
           body.initial_amount = (initialAmount ?? 0) / 100;
         }
-        if (targetDate !== detail.goal.targetDate) body.target_date = targetDate;
+        if (targetDate !== detail.goal.targetDate)
+          body.target_date = targetDate;
         if (Object.keys(body).length === 0) {
           navigate(`/goals/${goalId}`);
           return;
@@ -130,7 +135,9 @@ export default function GoalFormPage() {
         });
       }
       const saved = mapGoal(response.data);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.goals(workspaceId) });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.goals(workspaceId),
+      });
       queryClient.setQueryData(queryKeys.goal(workspaceId, saved.id), saved);
       showToast(t(editing ? "goals.updated" : "goals.created"));
       navigate(`/goals/${saved.id}`);
@@ -144,14 +151,22 @@ export default function GoalFormPage() {
   if (editing && (detail.isLoading || !workspace)) {
     return (
       <PageContainer>
-        <AsyncState status="loading" message={t("common.loading")} skeletonRows={5} />
+        <AsyncState
+          status="loading"
+          message={t("common.loading")}
+          skeletonRows={5}
+        />
       </PageContainer>
     );
   }
   if (editing && detail.error) {
     return (
       <PageContainer>
-        <AsyncState status="error" message={detail.error} onRetry={() => void detail.retry()} />
+        <AsyncState
+          status="error"
+          message={detail.error}
+          onRetry={() => void detail.retry()}
+        />
       </PageContainer>
     );
   }
@@ -160,7 +175,10 @@ export default function GoalFormPage() {
     <PageContainer className="space-y-6">
       <PageHeader
         beforeTitle={
-          <Link to={editing ? `/goals/${goalId}` : "/goals"} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            to={editing ? `/goals/${goalId}` : "/goals"}
+            className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft size={16} aria-hidden="true" /> {t("goals.back")}
           </Link>
         }
@@ -168,23 +186,52 @@ export default function GoalFormPage() {
         description={t("goals.formDescription")}
       />
 
-      <form onSubmit={(event) => void submit(event)} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
+      >
         <SectionCard className="space-y-5">
           <FormField label={t("goals.name")} error={errors.name} required>
-            <Input value={name} maxLength={80} placeholder={t("goals.namePlaceholder")} onChange={(event) => setName(event.target.value)} />
+            <Input
+              value={name}
+              maxLength={80}
+              placeholder={t("goals.namePlaceholder")}
+              onChange={(event) => setName(event.target.value)}
+            />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t("goals.targetAmount")} error={errors.target} required>
-              <MoneyInput currency={currency} minorUnits={targetAmount} onMinorUnitsChange={setTargetAmount} />
+            <FormField
+              label={t("goals.targetAmount")}
+              error={errors.target}
+              required
+            >
+              <MoneyInput
+                currency={currency}
+                minorUnits={targetAmount}
+                onMinorUnitsChange={setTargetAmount}
+              />
             </FormField>
             <FormField label={t("goals.initialAmount")}>
-              <MoneyInput currency={currency} minorUnits={initialAmount} onMinorUnitsChange={setInitialAmount} />
+              <MoneyInput
+                currency={currency}
+                minorUnits={initialAmount}
+                onMinorUnitsChange={setInitialAmount}
+              />
             </FormField>
           </div>
           <FormField label={t("goals.targetDate")} error={errors.date} required>
-            <Input type="date" min={minDate} max={maxDate} value={targetDate} onChange={(event) => changeDate(event.target.value)} />
+            <Input
+              type="date"
+              min={minDate}
+              max={maxDate}
+              value={targetDate}
+              onChange={(event) => changeDate(event.target.value)}
+            />
           </FormField>
-          <FormField label={t("goals.sliderLabel")} hint={t("goals.months", { count: months })}>
+          <FormField
+            label={t("goals.sliderLabel")}
+            hint={t("goals.months", { count: months })}
+          >
             <input
               id="goal-months"
               type="range"
@@ -198,28 +245,67 @@ export default function GoalFormPage() {
           </FormField>
           {!editing ? (
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3">
-              <input type="checkbox" checked={includeCurrentMonth} className="mt-1 size-4 accent-primary" onChange={(event) => setIncludeCurrentMonth(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={includeCurrentMonth}
+                className="mt-1 size-4 accent-primary"
+                onChange={(event) =>
+                  setIncludeCurrentMonth(event.target.checked)
+                }
+              />
               <span>
-                <span className="block text-sm font-medium">{t("goals.includeCurrent")}</span>
-                <span className="block text-xs text-muted-foreground">{t("goals.includeCurrentHint")}</span>
+                <span className="block text-sm font-medium">
+                  {t("goals.includeCurrent")}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t("goals.includeCurrentHint")}
+                </span>
               </span>
             </label>
           ) : null}
           {submitError ? <Alert variant="error">{submitError}</Alert> : null}
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => navigate(editing ? `/goals/${goalId}` : "/goals")}>{t("common.cancel")}</Button>
-            <PendingButton type="submit" isPending={saving} pendingLabel={t("goals.saving")}>{t(editing ? "goals.save" : "goals.create")}</PendingButton>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate(editing ? `/goals/${goalId}` : "/goals")}
+            >
+              {t("common.cancel")}
+            </Button>
+            <PendingButton
+              type="submit"
+              isPending={saving}
+              pendingLabel={t("goals.saving")}
+            >
+              {t(editing ? "goals.save" : "goals.create")}
+            </PendingButton>
           </div>
         </SectionCard>
 
-        <Card padding="responsive" className="h-fit space-y-5 border-primary/25 bg-primary/5 lg:sticky lg:top-6">
+        <Card
+          padding="responsive"
+          className="h-fit space-y-5 border-primary/25 bg-primary/5 lg:sticky lg:top-6"
+        >
           <div className="flex items-center gap-2">
             <Sparkles className="text-primary" size={18} aria-hidden="true" />
             <h2 className="font-semibold">{t("goals.livePlan")}</h2>
           </div>
-          <PlanValue label={t("goals.monthlyNeeded")} value={formatCurrency(preview.monthlyAmountCents / 100, currency)} prominent />
-          <PlanValue label={t("goals.remaining")} value={formatCurrency(Math.max((targetAmount ?? 0) - (initialAmount ?? 0), 0) / 100, currency)} />
-          <PlanValue label={t("goals.plannedMonths")} value={String(preview.months)} />
+          <PlanValue
+            label={t("goals.monthlyNeeded")}
+            value={formatCurrency(preview.monthlyAmountCents / 100, currency)}
+            prominent
+          />
+          <PlanValue
+            label={t("goals.remaining")}
+            value={formatCurrency(
+              Math.max((targetAmount ?? 0) - (initialAmount ?? 0), 0) / 100,
+              currency,
+            )}
+          />
+          <PlanValue
+            label={t("goals.plannedMonths")}
+            value={String(preview.months)}
+          />
           <div className="flex items-center gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
             <CalendarDays size={16} aria-hidden="true" />
             {targetDate}
@@ -230,11 +316,27 @@ export default function GoalFormPage() {
   );
 }
 
-function PlanValue({ label, value, prominent = false }: { label: string; value: string; prominent?: boolean }) {
+function PlanValue({
+  label,
+  value,
+  prominent = false,
+}: {
+  label: string;
+  value: string;
+  prominent?: boolean;
+}) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={prominent ? "text-2xl font-semibold tabular-nums" : "font-medium tabular-nums"}>{value}</p>
+      <p
+        className={
+          prominent
+            ? "text-2xl font-semibold tabular-nums"
+            : "font-medium tabular-nums"
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }
