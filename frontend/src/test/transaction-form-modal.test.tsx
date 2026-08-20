@@ -174,7 +174,7 @@ describe("TransactionFormModal", () => {
       </ToastProvider>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Income" }));
+    await user.click(screen.getByRole("tab", { name: "Income" }));
     await user.type(screen.getByLabelText("Amount"), "250000");
     await user.type(screen.getByLabelText("Description"), "Salary");
     await user.click(screen.getByRole("button", { name: /pick category/i }));

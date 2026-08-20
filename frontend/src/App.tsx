@@ -24,6 +24,9 @@ const TransactionDetailPage = lazy(
   () => import("@/pages/TransactionDetailPage"),
 );
 const BudgetsPage = lazy(() => import("@/pages/BudgetsPage"));
+const GoalsPage = lazy(() => import("@/pages/GoalsPage"));
+const GoalFormPage = lazy(() => import("@/pages/GoalFormPage"));
+const GoalDetailPage = lazy(() => import("@/pages/GoalDetailPage"));
 const PaymentSourcesPage = lazy(() => import("@/pages/PaymentSourcesPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
@@ -72,6 +75,19 @@ export default function App() {
                       <Route
                         path="/reset-password"
                         element={lazyRoute(<ResetPasswordPage />)}
+                      />
+                      <Route path="/goals" element={lazyRoute(<GoalsPage />)} />
+                      <Route
+                        path="/goals/new"
+                        element={lazyRoute(<GoalFormPage />)}
+                      />
+                      <Route
+                        path="/goals/:goalId"
+                        element={lazyRoute(<GoalDetailPage />)}
+                      />
+                      <Route
+                        path="/goals/:goalId/edit"
+                        element={lazyRoute(<GoalFormPage />)}
                       />
                       <Route
                         path="/resend-verification"

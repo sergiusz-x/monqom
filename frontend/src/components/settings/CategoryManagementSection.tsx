@@ -1,17 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Check,
-  EyeOff,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  RotateCcw,
-  X,
-} from "lucide-react";
-import { Menu } from "@base-ui/react/menu";
+import { Check, EyeOff, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
-import { buttonVariants } from "@monqom/ui";
 import { useCategories } from "@/hooks/useCategories";
 import {
   useCategoryMutations,
@@ -19,6 +9,7 @@ import {
 } from "@/hooks/useCategoryMutations";
 import type { Category } from "@/types/category";
 import {
+  ActionMenu,
   Alert,
   Button,
   Card,
@@ -29,6 +20,7 @@ import {
   Modal,
   PendingButton,
   SectionCard,
+  SegmentedControl,
   Select,
 } from "@monqom/ui";
 
@@ -144,29 +136,20 @@ export function CategoryManagementSection({
           </Button>
         ))}
       </div>
-      <div
-        className="mt-3 flex gap-2"
-        role="tablist"
-        aria-label={t("categoryManagement.title")}
-      >
-        {(["active", "hidden"] as const).map((value) => (
-          <Button
-            key={value}
-            type="button"
-            variant={tab === value ? "default" : "outline"}
-            size="sm"
-            role="tab"
-            aria-selected={tab === value}
-            onClick={() => setTab(value)}
-          >
-            {t(
-              value === "active"
-                ? "categoryManagement.active"
-                : "categoryManagement.hiddenTab",
-            )}
-          </Button>
-        ))}
-      </div>
+      <SegmentedControl
+        className="mt-3"
+        value={tab}
+        ariaLabel={t("categoryManagement.title")}
+        options={(["active", "hidden"] as const).map((value) => ({
+          value,
+          label: t(
+            value === "active"
+              ? "categoryManagement.active"
+              : "categoryManagement.hiddenTab",
+          ),
+        }))}
+        onChange={setTab}
+      />
 
       {actionError && (
         <Alert variant="error" compact className="mt-4">
@@ -297,59 +280,45 @@ function CategoryRow({
                 : t("categoryManagement.subcategory")}
           </p>
         </div>
-        <Menu.Root modal={false}>
-          <Menu.Trigger
-            aria-label={t("categoryManagement.actions")}
-            className={buttonVariants({ variant: "ghost", size: "icon" })}
-          >
-            <MoreHorizontal size={19} aria-hidden="true" />
-          </Menu.Trigger>
-          <Menu.Portal>
-            <Menu.Positioner
-              sideOffset={4}
-              align="end"
-              className="z-[100] outline-none"
-            >
-              <Menu.Popup className="min-w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-                {category.isArchived ? (
-                  <Menu.Item
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                    onClick={() => onRestore(category)}
-                  >
-                    <RotateCcw size={15} aria-hidden="true" />
-                    {t("categoryManagement.restore")}
-                  </Menu.Item>
-                ) : (
-                  <>
-                    <Menu.Item
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                      onClick={() => onEdit(category)}
-                    >
-                      <Pencil size={15} aria-hidden="true" />
-                      {t("common.edit")}
-                    </Menu.Item>
-                    {!nested && onAddChild ? (
-                      <Menu.Item
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                        onClick={() => onAddChild(category)}
-                      >
-                        <Plus size={15} aria-hidden="true" />
-                        {t("categoryManagement.addSubcategory")}
-                      </Menu.Item>
-                    ) : null}
-                    <Menu.Item
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive outline-none data-[highlighted]:bg-destructive/10"
-                      onClick={() => onHide(category)}
-                    >
-                      <EyeOff size={15} aria-hidden="true" />
-                      {t("categoryManagement.hide")}
-                    </Menu.Item>
-                  </>
-                )}
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
+        <ActionMenu
+          ariaLabel={t("categoryManagement.actions")}
+          items={
+            category.isArchived
+              ? [
+                  {
+                    id: "restore",
+                    label: t("categoryManagement.restore"),
+                    icon: RotateCcw,
+                    onSelect: () => onRestore(category),
+                  },
+                ]
+              : [
+                  {
+                    id: "edit",
+                    label: t("common.edit"),
+                    icon: Pencil,
+                    onSelect: () => onEdit(category),
+                  },
+                  ...(!nested && onAddChild
+                    ? [
+                        {
+                          id: "add-child",
+                          label: t("categoryManagement.addSubcategory"),
+                          icon: Plus,
+                          onSelect: () => onAddChild(category),
+                        },
+                      ]
+                    : []),
+                  {
+                    id: "hide",
+                    label: t("categoryManagement.hide"),
+                    icon: EyeOff,
+                    tone: "destructive" as const,
+                    onSelect: () => onHide(category),
+                  },
+                ]
+          }
+        />
       </Card>
       {!category.isArchived && !nested && category.children.length ? (
         <div className="mt-2 space-y-2">

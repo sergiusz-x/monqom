@@ -10,6 +10,7 @@ import { HealthModule } from './modules/health/health.module'
 import { PaymentSourcesModule } from './modules/payment-sources/payment-sources.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
 import { WorkspaceModule } from './modules/workspace/workspace.module'
+import { GoalsModule } from './modules/goals/goals.module'
 import { AuditModule } from './shared/audit/audit.module'
 import { DatabaseModule } from './shared/database/database.module'
 import { CurrencyModule } from './shared/currency/currency.module'
@@ -33,6 +34,7 @@ import { CurrencyModule } from './shared/currency/currency.module'
         AuditModule,
         DatabaseModule,
         CurrencyModule,
+        GoalsModule,
     ],
 })
 export class AppModule {}

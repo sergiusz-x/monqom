@@ -302,6 +302,7 @@ describe("Sidebar", () => {
       screen.getByRole("link", { name: /transactions/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /budgets/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /goals/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /settings/i })).toBeInTheDocument();
   });
 
@@ -393,7 +394,7 @@ describe("BottomNav", () => {
     return { ...utils, onAddTransaction };
   }
 
-  it("renders all navigation links", () => {
+  it("renders primary links and exposes secondary destinations from More", async () => {
     renderBottomNav();
     expect(
       screen.getByRole("link", { name: /^dashboard$/i }),
@@ -402,7 +403,14 @@ describe("BottomNav", () => {
       screen.getByRole("link", { name: /transactions/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /budgets/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /goals/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /more/i }));
+    expect(
+      screen.getByRole("button", { name: /settings/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /payment sources/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders Add Transaction button", () => {

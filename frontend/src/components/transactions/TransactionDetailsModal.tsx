@@ -1,16 +1,15 @@
 import { useRef, useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import type { Transaction } from "@/types/transaction";
 import { formatLongDate } from "@/lib/date-only";
-import { Menu } from "@base-ui/react/menu";
 import {
+  ActionMenu,
   Button,
   ConfirmationDialog,
   Modal,
-  buttonVariants,
   cardVariants,
 } from "@monqom/ui";
 
@@ -58,38 +57,26 @@ export function TransactionDetailsModal({
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-lg font-semibold">{t("transactions.details")}</h2>
           <div className="flex items-center gap-1">
-            <Menu.Root modal={false}>
-              <Menu.Trigger
-                aria-label={t("transactions.actions")}
-                className={buttonVariants({ variant: "ghost", size: "icon" })}
-              >
-                <MoreHorizontal size={19} aria-hidden="true" />
-              </Menu.Trigger>
-              <Menu.Portal container={modalContentRef}>
-                <Menu.Positioner
-                  sideOffset={4}
-                  align="end"
-                  className="z-[100] outline-none"
-                >
-                  <Menu.Popup className="min-w-36 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-                    <Menu.Item
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                      onClick={onEdit}
-                    >
-                      <Pencil size={15} aria-hidden="true" />
-                      {t("common.edit")}
-                    </Menu.Item>
-                    <Menu.Item
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive outline-none data-[highlighted]:bg-destructive/10"
-                      onClick={() => setConfirmingDelete(true)}
-                    >
-                      <Trash2 size={15} aria-hidden="true" />
-                      {t("common.delete")}
-                    </Menu.Item>
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </Menu.Portal>
-            </Menu.Root>
+            <ActionMenu
+              ariaLabel={t("transactions.actions")}
+              portalContainer={modalContentRef}
+              disabled={isDeleting}
+              items={[
+                {
+                  id: "edit",
+                  label: t("common.edit"),
+                  icon: Pencil,
+                  onSelect: onEdit,
+                },
+                {
+                  id: "delete",
+                  label: t("common.delete"),
+                  icon: Trash2,
+                  tone: "destructive",
+                  onSelect: () => setConfirmingDelete(true),
+                },
+              ]}
+            />
             <Button
               type="button"
               variant="ghost"

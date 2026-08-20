@@ -1041,6 +1041,338 @@
                 },
                 "tags": ["PaymentSources"]
             }
+        },
+        "/workspaces/{workspaceId}/goals": {
+            "get": {
+                "operationId": "GoalsController_list",
+                "parameters": [
+                    {
+                        "name": "include_archived",
+                        "required": false,
+                        "in": "query",
+                        "schema": {
+                            "default": "false",
+                            "type": "string",
+                            "enum": ["true", "false"]
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            },
+            "post": {
+                "operationId": "GoalsController_create",
+                "parameters": [
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateGoalDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            }
+        },
+        "/workspaces/{workspaceId}/goals/{goalId}": {
+            "get": {
+                "operationId": "GoalsController_get",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            },
+            "patch": {
+                "operationId": "GoalsController_update",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateGoalDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            },
+            "delete": {
+                "operationId": "GoalsController_delete",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            }
+        },
+        "/workspaces/{workspaceId}/goals/{goalId}/archive": {
+            "post": {
+                "operationId": "GoalsController_archive",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            }
+        },
+        "/workspaces/{workspaceId}/goals/{goalId}/restore": {
+            "post": {
+                "operationId": "GoalsController_restore",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            }
+        },
+        "/workspaces/{workspaceId}/goals/{goalId}/operations": {
+            "post": {
+                "operationId": "GoalsController_createOperation",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoalOperationDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            }
+        },
+        "/workspaces/{workspaceId}/goals/{goalId}/operations/{operationId}": {
+            "patch": {
+                "operationId": "GoalsController_updateOperation",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "operationId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoalOperationDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            },
+            "delete": {
+                "operationId": "GoalsController_deleteOperation",
+                "parameters": [
+                    {
+                        "name": "goalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "operationId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Goals"]
+            }
         }
     },
     "info": {
@@ -1113,6 +1445,93 @@
             "PaymentSourceBodyDto": {
                 "type": "object",
                 "properties": {}
+            },
+            "CreateGoalDto": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Holiday",
+                        "maxLength": 80
+                    },
+                    "target_amount": {
+                        "type": "number",
+                        "example": 12000,
+                        "minimum": 0.01,
+                        "maximum": 21474836.47
+                    },
+                    "initial_amount": {
+                        "type": "number",
+                        "example": 1500,
+                        "minimum": 0,
+                        "maximum": 21474836.47,
+                        "default": 0
+                    },
+                    "target_date": {
+                        "type": "string",
+                        "example": "2027-08-19",
+                        "format": "date"
+                    },
+                    "include_current_month": {
+                        "type": "boolean",
+                        "example": false,
+                        "default": false
+                    }
+                },
+                "required": ["name", "target_amount", "target_date", "include_current_month"]
+            },
+            "UpdateGoalDto": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Holiday",
+                        "maxLength": 80
+                    },
+                    "target_amount": {
+                        "type": "number",
+                        "example": 14000,
+                        "minimum": 0.01,
+                        "maximum": 21474836.47
+                    },
+                    "initial_amount": {
+                        "type": "number",
+                        "example": 2000,
+                        "minimum": 0,
+                        "maximum": 21474836.47
+                    },
+                    "target_date": {
+                        "type": "string",
+                        "example": "2027-10-19",
+                        "format": "date"
+                    }
+                }
+            },
+            "GoalOperationDto": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["deposit", "withdrawal"]
+                    },
+                    "amount": {
+                        "type": "number",
+                        "example": 250,
+                        "minimum": 0.01,
+                        "maximum": 21474836.47
+                    },
+                    "date": {
+                        "type": "string",
+                        "example": "2026-08-19",
+                        "format": "date"
+                    },
+                    "note": {
+                        "type": "string",
+                        "example": "Monthly transfer",
+                        "maxLength": 500
+                    }
+                },
+                "required": ["type", "amount", "date"]
             }
         }
     }

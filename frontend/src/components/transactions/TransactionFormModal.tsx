@@ -18,6 +18,7 @@ import {
   Modal,
   MoneyInput,
   PendingButton,
+  SegmentedControl,
   Select,
   Textarea,
 } from "@monqom/ui";
@@ -83,20 +84,15 @@ export function TransactionFormModal({
       </h2>
       <form ref={formRef} className="mt-4 space-y-4" onSubmit={handleSubmit}>
         {!isEdit ? (
-          <div className="grid w-fit grid-cols-2 rounded-lg border border-border bg-muted/30 p-0.5">
-            {(["expense", "income"] as const).map((type) => (
-              <Button
-                key={type}
-                type="button"
-                size="sm"
-                variant={transactionType === type ? "default" : "ghost"}
-                className="h-7 px-3 text-xs"
-                onClick={() => setTransactionType(type)}
-              >
-                {t(`transactions.${type}`)}
-              </Button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={transactionType}
+            ariaLabel={t("transactions.type")}
+            options={(["expense", "income"] as const).map((type) => ({
+              value: type,
+              label: t(`transactions.${type}`),
+            }))}
+            onChange={setTransactionType}
+          />
         ) : null}
         <FormField
           id="transaction-amount"

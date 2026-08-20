@@ -6,6 +6,7 @@ import { enAuth, plAuth } from "./resources/auth";
 import { enDashboard, plDashboard } from "./resources/dashboard";
 import { enTransactions, plTransactions } from "./resources/transactions";
 import { enBudgets, plBudgets } from "./resources/budgets";
+import { enGoals, plGoals } from "./resources/goals";
 import { enSettings, plSettings } from "./resources/settings";
 import {
   enPaymentSources,
@@ -23,6 +24,7 @@ const en = {
   ...enDashboard,
   ...enTransactions,
   ...enBudgets,
+  ...enGoals,
   ...enSettings,
   ...enPaymentSources,
   ...enCategories,
@@ -45,6 +47,7 @@ const pl = {
   ...plDashboard,
   ...plTransactions,
   ...plBudgets,
+  ...plGoals,
   ...plSettings,
   ...plPaymentSources,
   ...plCategories,

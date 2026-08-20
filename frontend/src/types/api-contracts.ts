@@ -45,6 +45,38 @@ export interface ApiBudgetProgressItem {
   percentage: number | null;
 }
 
+export interface ApiGoalOperation {
+  id: string;
+  goal_id: string;
+  type: "deposit" | "withdrawal";
+  amount: number;
+  date: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiGoal {
+  id: string;
+  workspace_id: string;
+  name: string;
+  target_amount: number;
+  initial_amount: number;
+  currency: string;
+  target_date: string;
+  plan_start_month: string;
+  archived_at: string | null;
+  current_amount: number;
+  remaining_amount: number;
+  progress_percentage: number;
+  remaining_months: number;
+  recommended_monthly_amount: number | null;
+  status: "active" | "completed" | "overdue";
+  operations?: ApiGoalOperation[];
+  created_at: string;
+  updated_at: string;
+}
+
 export type ApiPaymentSourceType =
   "cash" | "debit_card" | "credit_card" | "bank" | "other";
 
