@@ -38,3 +38,12 @@ test("offers the password recovery journey", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
 });
+
+test("redirects unauthenticated savings goal routes to sign in", async ({
+  page,
+}) => {
+  await page.goto("/goals/new");
+
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+});

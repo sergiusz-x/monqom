@@ -76,19 +76,6 @@ export default function App() {
                         path="/reset-password"
                         element={lazyRoute(<ResetPasswordPage />)}
                       />
-                      <Route path="/goals" element={lazyRoute(<GoalsPage />)} />
-                      <Route
-                        path="/goals/new"
-                        element={lazyRoute(<GoalFormPage />)}
-                      />
-                      <Route
-                        path="/goals/:goalId"
-                        element={lazyRoute(<GoalDetailPage />)}
-                      />
-                      <Route
-                        path="/goals/:goalId/edit"
-                        element={lazyRoute(<GoalFormPage />)}
-                      />
                       <Route
                         path="/resend-verification"
                         element={lazyRoute(<ResendVerificationPage />)}
@@ -117,6 +104,22 @@ export default function App() {
                         <Route
                           path="/budgets"
                           element={lazyRoute(<BudgetsPage />)}
+                        />
+                        <Route
+                          path="/goals"
+                          element={lazyRoute(<GoalsPage />)}
+                        />
+                        <Route
+                          path="/goals/new"
+                          element={lazyRoute(<GoalFormPage />)}
+                        />
+                        <Route
+                          path="/goals/:goalId"
+                          element={lazyRoute(<GoalDetailPage />)}
+                        />
+                        <Route
+                          path="/goals/:goalId/edit"
+                          element={lazyRoute(<GoalFormPage />)}
                         />
                         <Route
                           path="/payment-sources"

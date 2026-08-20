@@ -139,4 +139,100 @@ describe('GoalsService', () => {
             }),
         )
     })
+
+    it('retries a serializable goal operation after a write conflict', async () => {
+        const operation = {
+            id: 'operation-1',
+            workspaceId: 'workspace-1',
+            goalId: 'goal-1',
+            type: 'deposit',
+            amount: 1000,
+            date: new Date('2026-08-19T00:00:00.000Z'),
+            note: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        }
+        const tx = {
+            goal: {
+                findUnique: jest.fn().mockResolvedValue({
+                    id: 'goal-1',
+                    workspaceId: 'workspace-1',
+                    name: 'Holiday',
+                    targetAmount: 100000,
+                    initialAmount: 0,
+                    currency: 'PLN',
+                    targetDate: new Date('2027-08-19T00:00:00.000Z'),
+                    planStartMonth: new Date('2026-09-01T00:00:00.000Z'),
+                    archivedAt: null,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    operations: [],
+                }),
+            },
+            goalOperation: { create: jest.fn().mockResolvedValue(operation) },
+        }
+        const prisma = {
+            $transaction: jest
+                .fn()
+                .mockRejectedValueOnce({ code: 'P2034' })
+                .mockImplementationOnce((callback) => callback(tx)),
+        }
+        const service = new GoalsService(
+            prisma as never,
+            workspaceService as never,
+            auditService as never,
+        )
+
+        await expect(
+            service.createOperation('workspace-1', 'user-1', 'goal-1', {
+                type: 'deposit',
+                amount: 10,
+                date: '2026-08-19',
+            }),
+        ).resolves.toMatchObject({ id: 'operation-1', amount: 10 })
+        expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+        expect(prisma.$transaction).toHaveBeenLastCalledWith(expect.any(Function), {
+            isolationLevel: 'Serializable',
+        })
+    })
+
+    it('protects opening balance updates with serializable isolation', async () => {
+        const existingGoal = {
+            id: 'goal-1',
+            workspaceId: 'workspace-1',
+            name: 'Holiday',
+            targetAmount: 100000,
+            initialAmount: 2000,
+            currency: 'PLN',
+            targetDate: new Date('2027-08-19T00:00:00.000Z'),
+            planStartMonth: new Date('2026-09-01T00:00:00.000Z'),
+            archivedAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            operations: [],
+        }
+        const tx = {
+            goal: {
+                findUnique: jest.fn().mockResolvedValue(existingGoal),
+                update: jest.fn().mockResolvedValue({
+                    ...existingGoal,
+                    initialAmount: 1000,
+                }),
+            },
+        }
+        const prisma = { $transaction: jest.fn((callback) => callback(tx)) }
+        const service = new GoalsService(
+            prisma as never,
+            workspaceService as never,
+            auditService as never,
+        )
+
+        await service.update('workspace-1', 'user-1', 'goal-1', {
+            initial_amount: 10,
+        })
+
+        expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+            isolationLevel: 'Serializable',
+        })
+    })
 })

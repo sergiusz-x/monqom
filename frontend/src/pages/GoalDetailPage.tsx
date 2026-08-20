@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   Archive,
@@ -33,12 +34,13 @@ import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-errors";
 import { formatDateOnly, todayInTimeZone } from "@/lib/goals";
 import { formatCurrency } from "@/lib/money";
-import { queryClient, queryKeys } from "@/lib/query-client";
+import { queryKeys } from "@/lib/query-client";
 import { useGoal } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { GoalStatusBadge } from "@/components/goals/GoalStatusBadge";
+import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 import { cn } from "@/lib/utils";
 import type { GoalOperation, GoalOperationType } from "@/types/goal";
 
@@ -46,7 +48,14 @@ export default function GoalDetailPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { goalId = "" } = useParams();
-  const { workspaceId, workspace } = useWorkspace();
+  const {
+    workspaceId,
+    workspace,
+    isLoading: workspaceLoading,
+    error: workspaceError,
+    refetch: retryWorkspace,
+  } = useWorkspace();
+  const queryClient = useQueryClient();
   const { goal, isLoading, error, retry } = useGoal(workspaceId ?? "", goalId);
   const { showToast } = useToast(3000);
   const [operationDialog, setOperationDialog] = useState<{
@@ -120,6 +129,25 @@ export default function GoalDetailPage() {
     }
   }
 
+  if (workspaceLoading)
+    return (
+      <PageContainer>
+        <AsyncState
+          status="loading"
+          message={t("common.loading")}
+          skeletonRows={6}
+        />
+      </PageContainer>
+    );
+  if (workspaceError || !workspaceId || !workspace)
+    return (
+      <PageContainer>
+        <WorkspaceErrorState
+          message={workspaceError ?? t("common.noWorkspace")}
+          onRetry={workspaceError ? () => void retryWorkspace() : undefined}
+        />
+      </PageContainer>
+    );
   if (isLoading)
     return (
       <PageContainer>

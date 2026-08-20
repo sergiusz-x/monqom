@@ -12,6 +12,7 @@ import {
 } from "@monqom/ui";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { GoalStatusBadge } from "@/components/goals/GoalStatusBadge";
+import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { formatDateOnly } from "@/lib/goals";
@@ -23,7 +24,12 @@ type View = "active" | "completed" | "archived";
 export default function GoalsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { workspaceId } = useWorkspace();
+  const {
+    workspaceId,
+    isLoading: workspaceLoading,
+    error: workspaceError,
+    refetch: retryWorkspace,
+  } = useWorkspace();
   const { goals, isLoading, error, retry } = useGoals(workspaceId ?? "", true);
   const [view, setView] = useState<View>("active");
   const visible = goals.filter((goal) => {
@@ -39,7 +45,11 @@ export default function GoalsPage() {
         title={t("goals.title")}
         description={t("goals.description")}
         actions={
-          <Button type="button" onClick={() => navigate("/goals/new")}>
+          <Button
+            type="button"
+            disabled={!workspaceId}
+            onClick={() => navigate("/goals/new")}
+          >
             {t("goals.add")}
           </Button>
         }
@@ -53,7 +63,22 @@ export default function GoalsPage() {
         }))}
         onChange={setView}
       />
-      {isLoading ? (
+      {workspaceLoading ? (
+        <SectionCard>
+          <AsyncState
+            status="loading"
+            message={t("common.loading")}
+            skeletonRows={4}
+          />
+        </SectionCard>
+      ) : workspaceError || !workspaceId ? (
+        <SectionCard>
+          <WorkspaceErrorState
+            message={workspaceError ?? t("common.noWorkspace")}
+            onRetry={workspaceError ? () => void retryWorkspace() : undefined}
+          />
+        </SectionCard>
+      ) : isLoading ? (
         <SectionCard>
           <AsyncState
             status="loading"

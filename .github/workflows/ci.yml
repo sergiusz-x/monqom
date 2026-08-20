@@ -94,6 +94,7 @@ jobs:
       - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/backend/prisma.config.ts'
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target runtime --tag monqom-backend:ci --file backend/Dockerfile .
       - run: docker run --rm --entrypoint sh monqom-backend:ci -c 'test -f /app/backend/dist/main.js && grep -q "APP_VERSION=.ci." /app/backend/release.env && grep -q "GIT_SHA=.${{ github.sha }}." /app/backend/release.env'
+      - run: docker run --rm --entrypoint node monqom-backend:ci -e "require.resolve('@nestjs/swagger')"
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --tag monqom-frontend:ci --file frontend/Dockerfile .
       - run: docker run --rm --add-host backend:127.0.0.1 monqom-frontend:ci nginx -t
       - run: docker run --rm --entrypoint sh monqom-frontend:ci -c 'grep -q "script-src .self. https://challenges.cloudflare.com" /etc/nginx/conf.d/default.conf && grep -q "frame-src https://challenges.cloudflare.com" /etc/nginx/conf.d/default.conf && grep -q "X-Forwarded-Proto .client_forwarded_proto" /etc/nginx/conf.d/default.conf && test -f /usr/share/nginx/html/theme-init.js && ! grep -q "<script>" /usr/share/nginx/html/index.html'
