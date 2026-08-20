@@ -1,20 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { dashboardApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
-import type { ApiDashboardOverview } from "@/types/api-contracts";
 import { mapDashboardOverview } from "@/lib/api-mappers";
 import { getApiErrorMessage } from "@/lib/api-errors";
+import type { ApiDashboardOverview } from "@/types/api-contracts";
 
 export function useDashboardData(workspaceId: string, month: string) {
   const query = useQuery({
     queryKey: [...queryKeys.dashboard(workspaceId), month],
     enabled: Boolean(workspaceId && month),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiDashboardOverview>(
-        `/workspaces/${workspaceId}/dashboard`,
-        { params: { month }, signal },
+      const response = await dashboardApi.dashboardControllerGetOverview(
+        month,
+        workspaceId,
+        { signal },
       );
-      return mapDashboardOverview(response.data);
+      return mapDashboardOverview(response.data as ApiDashboardOverview);
     },
   });
 

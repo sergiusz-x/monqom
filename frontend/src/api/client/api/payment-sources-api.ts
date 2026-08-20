@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,14 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { InlineResponse20012 } from "../model";
+// @ts-ignore
+import type { PaymentSourceBodyDto } from "../model";
 /**
  * PaymentSourcesApi - axios parameter creator
  * @export
@@ -49,11 +56,13 @@ export const PaymentSourcesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerArchivePaymentSource: async (
       id: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
@@ -62,11 +71,19 @@ export const PaymentSourcesApiAxiosParamCreator = function (
         "id",
         id,
       );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "paymentSourcesControllerArchivePaymentSource",
+        "workspaceId",
+        workspaceId,
+      );
       const localVarPath =
-        `/workspaces/{workspaceId}/payment-sources/{id}/archive`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+        `/workspaces/{workspaceId}/payment-sources/{id}/archive`
+          .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+          .replace(
+            `{${"workspaceId"}}`,
+            encodeURIComponent(String(workspaceId)),
+          );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -98,21 +115,32 @@ export const PaymentSourcesApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerCreatePaymentSource: async (
-      body: object,
+      workspaceId: string,
+      paymentSourceBodyDto: PaymentSourceBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
+      // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
         "paymentSourcesControllerCreatePaymentSource",
-        "body",
-        body,
+        "workspaceId",
+        workspaceId,
       );
-      const localVarPath = `/workspaces/{workspaceId}/payment-sources`;
+      // verify required parameter 'paymentSourceBodyDto' is not null or undefined
+      assertParamExists(
+        "paymentSourcesControllerCreatePaymentSource",
+        "paymentSourceBodyDto",
+        paymentSourceBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/payment-sources`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -139,7 +167,7 @@ export const PaymentSourcesApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        paymentSourceBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -151,13 +179,26 @@ export const PaymentSourcesApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerListPaymentSources: async (
+      workspaceId: string,
+      includeArchived?: boolean,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/payment-sources`;
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "paymentSourcesControllerListPaymentSources",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/payment-sources`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -172,6 +213,10 @@ export const PaymentSourcesApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (includeArchived !== undefined) {
+        localVarQueryParameter["include_archived"] = includeArchived;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -190,13 +235,15 @@ export const PaymentSourcesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerUpdatePaymentSource: async (
       id: string,
-      body: object,
+      workspaceId: string,
+      paymentSourceBodyDto: PaymentSourceBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
@@ -205,17 +252,21 @@ export const PaymentSourcesApiAxiosParamCreator = function (
         "id",
         id,
       );
-      // verify required parameter 'body' is not null or undefined
+      // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
         "paymentSourcesControllerUpdatePaymentSource",
-        "body",
-        body,
+        "workspaceId",
+        workspaceId,
       );
-      const localVarPath =
-        `/workspaces/{workspaceId}/payment-sources/{id}`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+      // verify required parameter 'paymentSourceBodyDto' is not null or undefined
+      assertParamExists(
+        "paymentSourcesControllerUpdatePaymentSource",
+        "paymentSourceBodyDto",
+        paymentSourceBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/payment-sources/{id}`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -242,7 +293,7 @@ export const PaymentSourcesApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        paymentSourceBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -266,18 +317,24 @@ export const PaymentSourcesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async paymentSourcesControllerArchivePaymentSource(
       id: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20012>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.paymentSourcesControllerArchivePaymentSource(
           id,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -289,19 +346,25 @@ export const PaymentSourcesApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async paymentSourcesControllerCreatePaymentSource(
-      body: object,
+      workspaceId: string,
+      paymentSourceBodyDto: PaymentSourceBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20012>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.paymentSourcesControllerCreatePaymentSource(
-          body,
+          workspaceId,
+          paymentSourceBodyDto,
           options,
         );
       return createRequestFunction(
@@ -313,16 +376,25 @@ export const PaymentSourcesApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async paymentSourcesControllerListPaymentSources(
+      workspaceId: string,
+      includeArchived?: boolean,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse20012>>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.paymentSourcesControllerListPaymentSources(
+          workspaceId,
+          includeArchived,
           options,
         );
       return createRequestFunction(
@@ -335,21 +407,27 @@ export const PaymentSourcesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async paymentSourcesControllerUpdatePaymentSource(
       id: string,
-      body: object,
+      workspaceId: string,
+      paymentSourceBodyDto: PaymentSourceBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20012>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.paymentSourcesControllerUpdatePaymentSource(
           id,
-          body,
+          workspaceId,
+          paymentSourceBodyDto,
           options,
         );
       return createRequestFunction(
@@ -376,57 +454,80 @@ export const PaymentSourcesApiFactory = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerArchivePaymentSource(
       id: string,
+      workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20012> {
       return localVarFp
-        .paymentSourcesControllerArchivePaymentSource(id, options)
+        .paymentSourcesControllerArchivePaymentSource(id, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerCreatePaymentSource(
-      body: object,
+      workspaceId: string,
+      paymentSourceBodyDto: PaymentSourceBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20012> {
       return localVarFp
-        .paymentSourcesControllerCreatePaymentSource(body, options)
+        .paymentSourcesControllerCreatePaymentSource(
+          workspaceId,
+          paymentSourceBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerListPaymentSources(
+      workspaceId: string,
+      includeArchived?: boolean,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<Array<InlineResponse20012>> {
       return localVarFp
-        .paymentSourcesControllerListPaymentSources(options)
+        .paymentSourcesControllerListPaymentSources(
+          workspaceId,
+          includeArchived,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     paymentSourcesControllerUpdatePaymentSource(
       id: string,
-      body: object,
+      workspaceId: string,
+      paymentSourceBodyDto: PaymentSourceBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20012> {
       return localVarFp
-        .paymentSourcesControllerUpdatePaymentSource(id, body, options)
+        .paymentSourcesControllerUpdatePaymentSource(
+          id,
+          workspaceId,
+          paymentSourceBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
   };
@@ -442,64 +543,87 @@ export class PaymentSourcesApi extends BaseAPI {
   /**
    *
    * @param {string} id
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof PaymentSourcesApi
    */
   public paymentSourcesControllerArchivePaymentSource(
     id: string,
+    workspaceId: string,
     options?: AxiosRequestConfig,
   ) {
     return PaymentSourcesApiFp(this.configuration)
-      .paymentSourcesControllerArchivePaymentSource(id, options)
+      .paymentSourcesControllerArchivePaymentSource(id, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {PaymentSourceBodyDto} paymentSourceBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof PaymentSourcesApi
    */
   public paymentSourcesControllerCreatePaymentSource(
-    body: object,
+    workspaceId: string,
+    paymentSourceBodyDto: PaymentSourceBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return PaymentSourcesApiFp(this.configuration)
-      .paymentSourcesControllerCreatePaymentSource(body, options)
+      .paymentSourcesControllerCreatePaymentSource(
+        workspaceId,
+        paymentSourceBodyDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
+   * @param {string} workspaceId
+   * @param {boolean} [includeArchived]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof PaymentSourcesApi
    */
   public paymentSourcesControllerListPaymentSources(
+    workspaceId: string,
+    includeArchived?: boolean,
     options?: AxiosRequestConfig,
   ) {
     return PaymentSourcesApiFp(this.configuration)
-      .paymentSourcesControllerListPaymentSources(options)
+      .paymentSourcesControllerListPaymentSources(
+        workspaceId,
+        includeArchived,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {PaymentSourceBodyDto} paymentSourceBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof PaymentSourcesApi
    */
   public paymentSourcesControllerUpdatePaymentSource(
     id: string,
-    body: object,
+    workspaceId: string,
+    paymentSourceBodyDto: PaymentSourceBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return PaymentSourcesApiFp(this.configuration)
-      .paymentSourcesControllerUpdatePaymentSource(id, body, options)
+      .paymentSourcesControllerUpdatePaymentSource(
+        id,
+        workspaceId,
+        paymentSourceBodyDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }

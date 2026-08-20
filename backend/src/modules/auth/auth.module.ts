@@ -1,5 +1,4 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
-import { ThrottlerModule } from '@nestjs/throttler'
 import { AuthController } from './auth.controller'
 import { UsersController } from './users.controller'
 import { AuthRateLimitMiddleware } from '../../shared/middleware/authRateLimit'
@@ -9,30 +8,22 @@ import { AuthCoreModule } from './auth-core.module'
 import { WorkspaceModule } from '../workspace/workspace.module'
 import { TwoFactorService } from './twoFactor.service'
 
-const AUTH_LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
-const AUTH_LOGIN_RATE_LIMIT_MESSAGE = 'Too many login attempts. Please try again later.'
-
 @Module({
-    imports: [
-        ThrottlerModule.forRoot({
-            errorMessage: AUTH_LOGIN_RATE_LIMIT_MESSAGE,
-            throttlers: [
-                {
-                    limit: 5,
-                    ttl: AUTH_LOGIN_RATE_LIMIT_WINDOW_MS,
-                    blockDuration: AUTH_LOGIN_RATE_LIMIT_WINDOW_MS,
-                },
-            ],
-        }),
-        WorkspaceModule,
-        AuthCoreModule,
-    ],
+    imports: [WorkspaceModule, AuthCoreModule],
     controllers: [AuthController, UsersController],
     providers: [AuthService, TwoFactorService],
 })
 export class AuthModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
         consumer.apply(AuthRateLimitMiddleware).forRoutes(
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.csrfToken}`,
+                method: RequestMethod.GET,
+            },
+            {
+                path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.login}`,
+                method: RequestMethod.POST,
+            },
             {
                 path: `${AUTH_BASE_ROUTE}/${AUTH_ROUTES.register}`,
                 method: RequestMethod.POST,

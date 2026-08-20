@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,14 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { InlineResponse2006 } from "../model";
+// @ts-ignore
+import type { UpdateWorkspaceDto } from "../model";
 /**
  * WorkspaceScopedApi - axios parameter creator
  * @export
@@ -48,13 +55,24 @@ export const WorkspaceScopedApiAxiosParamCreator = function (
   return {
     /**
      *
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     workspaceScopedControllerGetWorkspace: async (
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}`;
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "workspaceScopedControllerGetWorkspace",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -86,21 +104,32 @@ export const WorkspaceScopedApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {UpdateWorkspaceDto} updateWorkspaceDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     workspaceScopedControllerUpdateWorkspace: async (
-      body: object,
+      workspaceId: string,
+      updateWorkspaceDto: UpdateWorkspaceDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
+      // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
         "workspaceScopedControllerUpdateWorkspace",
-        "body",
-        body,
+        "workspaceId",
+        workspaceId,
       );
-      const localVarPath = `/workspaces/{workspaceId}`;
+      // verify required parameter 'updateWorkspaceDto' is not null or undefined
+      assertParamExists(
+        "workspaceScopedControllerUpdateWorkspace",
+        "updateWorkspaceDto",
+        updateWorkspaceDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -127,7 +156,7 @@ export const WorkspaceScopedApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        updateWorkspaceDto,
         localVarRequestOptions,
         configuration,
       );
@@ -150,16 +179,22 @@ export const WorkspaceScopedApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async workspaceScopedControllerGetWorkspace(
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2006>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.workspaceScopedControllerGetWorkspace(
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -171,19 +206,25 @@ export const WorkspaceScopedApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {UpdateWorkspaceDto} updateWorkspaceDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async workspaceScopedControllerUpdateWorkspace(
-      body: object,
+      workspaceId: string,
+      updateWorkspaceDto: UpdateWorkspaceDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2006>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.workspaceScopedControllerUpdateWorkspace(
-          body,
+          workspaceId,
+          updateWorkspaceDto,
           options,
         );
       return createRequestFunction(
@@ -209,26 +250,36 @@ export const WorkspaceScopedApiFactory = function (
   return {
     /**
      *
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    workspaceScopedControllerGetWorkspace(options?: any): AxiosPromise<void> {
+    workspaceScopedControllerGetWorkspace(
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<InlineResponse2006> {
       return localVarFp
-        .workspaceScopedControllerGetWorkspace(options)
+        .workspaceScopedControllerGetWorkspace(workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {UpdateWorkspaceDto} updateWorkspaceDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     workspaceScopedControllerUpdateWorkspace(
-      body: object,
+      workspaceId: string,
+      updateWorkspaceDto: UpdateWorkspaceDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2006> {
       return localVarFp
-        .workspaceScopedControllerUpdateWorkspace(body, options)
+        .workspaceScopedControllerUpdateWorkspace(
+          workspaceId,
+          updateWorkspaceDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
   };
@@ -243,29 +294,39 @@ export const WorkspaceScopedApiFactory = function (
 export class WorkspaceScopedApi extends BaseAPI {
   /**
    *
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof WorkspaceScopedApi
    */
-  public workspaceScopedControllerGetWorkspace(options?: AxiosRequestConfig) {
+  public workspaceScopedControllerGetWorkspace(
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
     return WorkspaceScopedApiFp(this.configuration)
-      .workspaceScopedControllerGetWorkspace(options)
+      .workspaceScopedControllerGetWorkspace(workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {UpdateWorkspaceDto} updateWorkspaceDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof WorkspaceScopedApi
    */
   public workspaceScopedControllerUpdateWorkspace(
-    body: object,
+    workspaceId: string,
+    updateWorkspaceDto: UpdateWorkspaceDto,
     options?: AxiosRequestConfig,
   ) {
     return WorkspaceScopedApiFp(this.configuration)
-      .workspaceScopedControllerUpdateWorkspace(body, options)
+      .workspaceScopedControllerUpdateWorkspace(
+        workspaceId,
+        updateWorkspaceDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }

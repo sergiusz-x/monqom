@@ -20,8 +20,14 @@ ARG APP_VERSION
 ARG GIT_SHA
 RUN --mount=type=bind,source=.git,target=/repo/.git,readonly \
     set -eu; \
-    version="${APP_VERSION:-$(git describe --exact-match --tags HEAD)}"; \
     sha="${GIT_SHA:-$(git rev-parse HEAD)}"; \
+    if [ -n "${APP_VERSION:-}" ]; then \
+      version="$APP_VERSION"; \
+    elif exact_tag="$(git describe --exact-match --tags HEAD 2>/dev/null)"; then \
+      version="$exact_tag"; \
+    else \
+      version="sha-$(printf '%s' "$sha" | cut -c1-12)"; \
+    fi; \
     printf '{"version":"%s","sha":"%s"}\n' "$version" "$sha" > /version.json
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine

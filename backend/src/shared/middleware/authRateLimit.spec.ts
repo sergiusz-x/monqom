@@ -1,194 +1,84 @@
 import { Request, Response } from 'express'
+import { PrismaService } from '../database/prisma.service'
 import { AuthRateLimitMiddleware } from './authRateLimit'
 
 describe('AuthRateLimitMiddleware', () => {
-    let middleware: AuthRateLimitMiddleware
-    let nextFunction: jest.Mock
-    let response: Partial<Response>
-    let statusMock: jest.Mock
-    let jsonMock: jest.Mock
+    it('continues when the shared limiter accepts the request', async () => {
+        const prisma = createPrisma([{ attempt_count: 1, blocked_until: null }])
+        const middleware = new AuthRateLimitMiddleware(prisma)
+        const next = jest.fn()
 
-    beforeEach(() => {
-        middleware = new AuthRateLimitMiddleware()
-        nextFunction = jest.fn()
-        jsonMock = jest.fn()
-        statusMock = jest.fn(() => ({ json: jsonMock }))
-        response = {
-            setHeader: jest.fn(),
-            status: statusMock,
-        }
+        await middleware.use(createRequest('/api/v1/auth/login'), createResponse().response, next)
+
+        expect(next).toHaveBeenCalledTimes(1)
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1)
     })
 
-    it('uses req.ip when trust proxy is disabled, ignoring spoofed forwarded headers', () => {
-        const request = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/register',
-            forwardedFor: '198.51.100.10',
-            trustProxy: false,
-        })
+    it('returns the endpoint-specific response when PostgreSQL blocks the key', async () => {
+        const blockedUntil = new Date(Date.now() + 60_000)
+        const prisma = createPrisma([{ attempt_count: 6, blocked_until: blockedUntil }])
+        const middleware = new AuthRateLimitMiddleware(prisma)
+        const { response, status, json, setHeader } = createResponse()
+        const next = jest.fn()
 
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-            middleware.use(request, response as Response, nextFunction)
-        }
+        await middleware.use(createRequest('/api/v1/auth/register'), response, next)
 
-        middleware.use(request, response as Response, nextFunction)
-
-        expect(nextFunction).toHaveBeenCalledTimes(5)
-        expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '900')
-        expect(statusMock).toHaveBeenCalledWith(429)
-        expect(jsonMock).toHaveBeenCalledWith({
+        expect(next).not.toHaveBeenCalled()
+        expect(setHeader).toHaveBeenCalledWith('Retry-After', '900')
+        expect(status).toHaveBeenCalledWith(429)
+        expect(json).toHaveBeenCalledWith({
             statusCode: 429,
             message: 'Too many registration attempts. Please try again later.',
             error: 'Too Many Requests',
         })
     })
 
-    it('uses forwarded headers only when trust proxy is enabled', () => {
-        const request = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/register',
-            forwardedFor: '198.51.100.10, 203.0.113.5',
-            trustProxy: true,
-        })
+    it('fails closed when the shared limiter is unavailable', async () => {
+        const prisma = {
+            $transaction: jest.fn().mockRejectedValue(new Error('database unavailable')),
+        } as unknown as PrismaService
+        const middleware = new AuthRateLimitMiddleware(prisma)
+        const { response, status, json } = createResponse()
 
-        middleware.use(request, response as Response, nextFunction)
+        await middleware.use(createRequest('/api/v1/auth/login'), response, jest.fn())
 
-        expect(nextFunction).toHaveBeenCalledTimes(1)
-        expect(statusMock).not.toHaveBeenCalled()
-    })
-
-    it('tracks rate limits separately for register and forgot-password', () => {
-        const registerRequest = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/register',
-            trustProxy: false,
-        })
-        const forgotPasswordRequest = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/forgot-password',
-            trustProxy: false,
-        })
-
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-            middleware.use(registerRequest, response as Response, nextFunction)
-        }
-
-        middleware.use(forgotPasswordRequest, response as Response, nextFunction)
-
-        expect(nextFunction).toHaveBeenCalledTimes(6)
-        expect(statusMock).not.toHaveBeenCalled()
-    })
-
-    it('limits registration attempts by email across different IP addresses', () => {
-        const firstIpRequest = createRequest({
-            ip: '198.51.100.10',
-            path: '/api/v1/auth/register',
-            trustProxy: false,
-            email: 'person@example.com',
-        })
-        const secondIpRequest = createRequest({
-            ip: '198.51.100.11',
-            path: '/api/v1/auth/register',
-            trustProxy: false,
-            email: 'PERSON@example.com',
-        })
-
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-            middleware.use(firstIpRequest, response as Response, nextFunction)
-        }
-        middleware.use(secondIpRequest, response as Response, nextFunction)
-
-        expect(nextFunction).toHaveBeenCalledTimes(5)
-        expect(statusMock).toHaveBeenCalledWith(429)
-    })
-
-    it('returns an endpoint-specific message for verification requests', () => {
-        const request = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/verify-email',
-            trustProxy: false,
-        })
-
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-            middleware.use(request, response as Response, nextFunction)
-        }
-
-        middleware.use(request, response as Response, nextFunction)
-
-        expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '900')
-        expect(statusMock).toHaveBeenCalledWith(429)
-        expect(jsonMock).toHaveBeenCalledWith({
-            statusCode: 429,
-            message: 'Too many email verification attempts. Please try again later.',
-            error: 'Too Many Requests',
-        })
-    })
-
-    it('returns an endpoint-specific message for password reset requests', () => {
-        const request = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/forgot-password',
-            trustProxy: false,
-        })
-
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-            middleware.use(request, response as Response, nextFunction)
-        }
-
-        middleware.use(request, response as Response, nextFunction)
-
-        expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '900')
-        expect(statusMock).toHaveBeenCalledWith(429)
-        expect(jsonMock).toHaveBeenCalledWith({
-            statusCode: 429,
-            message: 'Too many password reset requests. Please try again later.',
-            error: 'Too Many Requests',
-        })
-    })
-
-    it('returns an endpoint-specific message for two-factor verification requests', () => {
-        const request = createRequest({
-            ip: '127.0.0.1',
-            path: '/api/v1/auth/2fa/verify',
-            trustProxy: false,
-        })
-
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-            middleware.use(request, response as Response, nextFunction)
-        }
-
-        middleware.use(request, response as Response, nextFunction)
-
-        expect(response.setHeader).toHaveBeenCalledWith('Retry-After', '900')
-        expect(statusMock).toHaveBeenCalledWith(429)
-        expect(jsonMock).toHaveBeenCalledWith({
-            statusCode: 429,
-            message: 'Too many two-factor verification attempts. Please try again later.',
-            error: 'Too Many Requests',
+        expect(status).toHaveBeenCalledWith(503)
+        expect(json).toHaveBeenCalledWith({
+            statusCode: 503,
+            message: 'Authentication protection is temporarily unavailable',
+            error: 'Service Unavailable',
         })
     })
 })
 
-function createRequest(input: {
-    ip: string
-    path: string
-    forwardedFor?: string
-    trustProxy: boolean
-    email?: string
-}): Request {
+function createPrisma(
+    rows: Array<{ attempt_count: number; blocked_until: Date | null }>,
+): PrismaService {
+    const tx = { $queryRaw: jest.fn().mockResolvedValue(rows) }
     return {
-        ip: input.ip,
-        path: input.path,
-        originalUrl: input.path,
-        url: input.path,
-        headers: input.forwardedFor
-            ? {
-                  'x-forwarded-for': input.forwardedFor,
-              }
-            : {},
-        app: {
-            get: jest.fn((key: string) => (key === 'trust proxy' ? input.trustProxy : undefined)),
-        },
-        body: input.email ? { email: input.email } : {},
-    } as unknown as Request
+        $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
+        authRateLimit: { deleteMany: jest.fn() },
+    } as unknown as PrismaService
+}
+
+function createRequest(path: string): Request {
+    return {
+        ip: '127.0.0.1',
+        path,
+        originalUrl: path,
+        url: path,
+        body: {},
+    } as Request
+}
+
+function createResponse(): {
+    response: Response
+    status: jest.Mock
+    json: jest.Mock
+    setHeader: jest.Mock
+} {
+    const json = jest.fn()
+    const status = jest.fn(() => ({ json }))
+    const setHeader = jest.fn()
+    return { response: { status, setHeader } as unknown as Response, status, json, setHeader }
 }

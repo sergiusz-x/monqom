@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,36 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { ChangePasswordDto } from "../model";
+// @ts-ignore
+import type { CurrentPasswordDto } from "../model";
+// @ts-ignore
+import type { EmailDto } from "../model";
+// @ts-ignore
+import type { InlineResponse2001 } from "../model";
+// @ts-ignore
+import type { InlineResponse2002 } from "../model";
+// @ts-ignore
+import type { InlineResponse2003 } from "../model";
+// @ts-ignore
+import type { InlineResponse2004 } from "../model";
+// @ts-ignore
+import type { InlineResponse2005 } from "../model";
+// @ts-ignore
+import type { InlineResponse201 } from "../model";
+// @ts-ignore
+import type { LoginDto } from "../model";
+// @ts-ignore
+import type { RegisterDto } from "../model";
+// @ts-ignore
+import type { ResetPasswordDto } from "../model";
+// @ts-ignore
+import type { TokenDto } from "../model";
 /**
  * AuthApi - axios parameter creator
  * @export
@@ -48,16 +77,20 @@ export const AuthApiAxiosParamCreator = function (
   return {
     /**
      *
-     * @param {object} body
+     * @param {ChangePasswordDto} changePasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerChangePassword: async (
-      body: object,
+      changePasswordDto: ChangePasswordDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerChangePassword", "body", body);
+      // verify required parameter 'changePasswordDto' is not null or undefined
+      assertParamExists(
+        "authControllerChangePassword",
+        "changePasswordDto",
+        changePasswordDto,
+      );
       const localVarPath = `/auth/change-password`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -85,7 +118,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        changePasswordDto,
         localVarRequestOptions,
         configuration,
       );
@@ -97,16 +130,20 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {CurrentPasswordDto} currentPasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerDisableTwoFactor: async (
-      body: object,
+      currentPasswordDto: CurrentPasswordDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerDisableTwoFactor", "body", body);
+      // verify required parameter 'currentPasswordDto' is not null or undefined
+      assertParamExists(
+        "authControllerDisableTwoFactor",
+        "currentPasswordDto",
+        currentPasswordDto,
+      );
       const localVarPath = `/auth/2fa/disable`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -134,7 +171,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        currentPasswordDto,
         localVarRequestOptions,
         configuration,
       );
@@ -146,16 +183,16 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {EmailDto} emailDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerForgotPassword: async (
-      body: object,
+      emailDto: EmailDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerForgotPassword", "body", body);
+      // verify required parameter 'emailDto' is not null or undefined
+      assertParamExists("authControllerForgotPassword", "emailDto", emailDto);
       const localVarPath = `/auth/forgot-password`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -183,7 +220,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        emailDto,
         localVarRequestOptions,
         configuration,
       );
@@ -233,54 +270,16 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    authControllerGetSessions: async (
-      options: AxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      const localVarPath = `/auth/sessions`;
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
-      }
-
-      const localVarRequestOptions = {
-        method: "GET",
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
-
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
-     * @param {object} body
+     * @param {LoginDto} loginDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerLogin: async (
-      body: object,
+      loginDto: LoginDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerLogin", "body", body);
+      // verify required parameter 'loginDto' is not null or undefined
+      assertParamExists("authControllerLogin", "loginDto", loginDto);
       const localVarPath = `/auth/login`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -308,7 +307,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        loginDto,
         localVarRequestOptions,
         configuration,
       );
@@ -396,16 +395,16 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {RegisterDto} registerDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerRegister: async (
-      body: object,
+      registerDto: RegisterDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerRegister", "body", body);
+      // verify required parameter 'registerDto' is not null or undefined
+      assertParamExists("authControllerRegister", "registerDto", registerDto);
       const localVarPath = `/auth/register`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -433,7 +432,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        registerDto,
         localVarRequestOptions,
         configuration,
       );
@@ -445,16 +444,20 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {EmailDto} emailDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerResendVerification: async (
-      body: object,
+      emailDto: EmailDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerResendVerification", "body", body);
+      // verify required parameter 'emailDto' is not null or undefined
+      assertParamExists(
+        "authControllerResendVerification",
+        "emailDto",
+        emailDto,
+      );
       const localVarPath = `/auth/resend-verification`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -482,7 +485,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        emailDto,
         localVarRequestOptions,
         configuration,
       );
@@ -494,16 +497,20 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {ResetPasswordDto} resetPasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerResetPassword: async (
-      body: object,
+      resetPasswordDto: ResetPasswordDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerResetPassword", "body", body);
+      // verify required parameter 'resetPasswordDto' is not null or undefined
+      assertParamExists(
+        "authControllerResetPassword",
+        "resetPasswordDto",
+        resetPasswordDto,
+      );
       const localVarPath = `/auth/reset-password`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -531,86 +538,10 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        resetPasswordDto,
         localVarRequestOptions,
         configuration,
       );
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    authControllerRevokeAll: async (
-      options: AxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      const localVarPath = `/auth/sessions`;
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
-      }
-
-      const localVarRequestOptions = {
-        method: "DELETE",
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
-
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    authControllerRevokeSession: async (
-      options: AxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      const localVarPath = `/auth/sessions/{id}`;
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
-      }
-
-      const localVarRequestOptions = {
-        method: "DELETE",
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
-
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
 
       return {
         url: toPathString(localVarUrlObj),
@@ -657,16 +588,16 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerVerifyEmail: async (
-      body: object,
+      tokenDto: TokenDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerVerifyEmail", "body", body);
+      // verify required parameter 'tokenDto' is not null or undefined
+      assertParamExists("authControllerVerifyEmail", "tokenDto", tokenDto);
       const localVarPath = `/auth/verify-email`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -694,7 +625,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        tokenDto,
         localVarRequestOptions,
         configuration,
       );
@@ -706,16 +637,16 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerVerifyTwoFactor: async (
-      body: object,
+      tokenDto: TokenDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerVerifyTwoFactor", "body", body);
+      // verify required parameter 'tokenDto' is not null or undefined
+      assertParamExists("authControllerVerifyTwoFactor", "tokenDto", tokenDto);
       const localVarPath = `/auth/2fa/verify`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -743,7 +674,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        tokenDto,
         localVarRequestOptions,
         configuration,
       );
@@ -755,16 +686,20 @@ export const AuthApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerVerifyTwoFactorSetup: async (
-      body: object,
+      tokenDto: TokenDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("authControllerVerifyTwoFactorSetup", "body", body);
+      // verify required parameter 'tokenDto' is not null or undefined
+      assertParamExists(
+        "authControllerVerifyTwoFactorSetup",
+        "tokenDto",
+        tokenDto,
+      );
       const localVarPath = `/auth/2fa/verify-setup`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -792,7 +727,7 @@ export const AuthApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        tokenDto,
         localVarRequestOptions,
         configuration,
       );
@@ -814,19 +749,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
-     * @param {object} body
+     * @param {ChangePasswordDto} changePasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerChangePassword(
-      body: object,
+      changePasswordDto: ChangePasswordDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerChangePassword(
-          body,
+          changePasswordDto,
           options,
         );
       return createRequestFunction(
@@ -838,19 +776,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {CurrentPasswordDto} currentPasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerDisableTwoFactor(
-      body: object,
+      currentPasswordDto: CurrentPasswordDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerDisableTwoFactor(
-          body,
+          currentPasswordDto,
           options,
         );
       return createRequestFunction(
@@ -862,19 +803,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {EmailDto} emailDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerForgotPassword(
-      body: object,
+      emailDto: EmailDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerForgotPassword(
-          body,
+          emailDto,
           options,
         );
       return createRequestFunction(
@@ -892,7 +836,10 @@ export const AuthApiFp = function (configuration?: Configuration) {
     async authControllerGetCsrfToken(
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2001>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerGetCsrfToken(options);
@@ -905,37 +852,18 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async authControllerGetSessions(
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.authControllerGetSessions(options);
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
-      );
-    },
-    /**
-     *
-     * @param {object} body
+     * @param {LoginDto} loginDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerLogin(
-      body: object,
+      loginDto: LoginDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>
     > {
       const localVarAxiosArgs =
-        await localVarAxiosParamCreator.authControllerLogin(body, options);
+        await localVarAxiosParamCreator.authControllerLogin(loginDto, options);
       return createRequestFunction(
         localVarAxiosArgs,
         globalAxios,
@@ -951,7 +879,10 @@ export const AuthApiFp = function (configuration?: Configuration) {
     async authControllerLogout(
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerLogout(options);
@@ -970,7 +901,10 @@ export const AuthApiFp = function (configuration?: Configuration) {
     async authControllerMe(
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse201>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerMe(options);
@@ -983,18 +917,24 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {RegisterDto} registerDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerRegister(
-      body: object,
+      registerDto: RegisterDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse201>
     > {
       const localVarAxiosArgs =
-        await localVarAxiosParamCreator.authControllerRegister(body, options);
+        await localVarAxiosParamCreator.authControllerRegister(
+          registerDto,
+          options,
+        );
       return createRequestFunction(
         localVarAxiosArgs,
         globalAxios,
@@ -1004,19 +944,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {EmailDto} emailDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerResendVerification(
-      body: object,
+      emailDto: EmailDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerResendVerification(
-          body,
+          emailDto,
           options,
         );
       return createRequestFunction(
@@ -1028,59 +971,24 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {ResetPasswordDto} resetPasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerResetPassword(
-      body: object,
+      resetPasswordDto: ResetPasswordDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerResetPassword(
-          body,
+          resetPasswordDto,
           options,
         );
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
-      );
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async authControllerRevokeAll(
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.authControllerRevokeAll(options);
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
-      );
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async authControllerRevokeSession(
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.authControllerRevokeSession(options);
       return createRequestFunction(
         localVarAxiosArgs,
         globalAxios,
@@ -1096,7 +1004,10 @@ export const AuthApiFp = function (configuration?: Configuration) {
     async authControllerSetupTwoFactor(
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2002>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerSetupTwoFactor(options);
@@ -1109,19 +1020,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerVerifyEmail(
-      body: object,
+      tokenDto: TokenDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerVerifyEmail(
-          body,
+          tokenDto,
           options,
         );
       return createRequestFunction(
@@ -1133,19 +1047,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerVerifyTwoFactor(
-      body: object,
+      tokenDto: TokenDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2004>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerVerifyTwoFactor(
-          body,
+          tokenDto,
           options,
         );
       return createRequestFunction(
@@ -1157,19 +1074,22 @@ export const AuthApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async authControllerVerifyTwoFactorSetup(
-      body: object,
+      tokenDto: TokenDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2003>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.authControllerVerifyTwoFactorSetup(
-          body,
+          tokenDto,
           options,
         );
       return createRequestFunction(
@@ -1195,44 +1115,44 @@ export const AuthApiFactory = function (
   return {
     /**
      *
-     * @param {object} body
+     * @param {ChangePasswordDto} changePasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerChangePassword(
-      body: object,
+      changePasswordDto: ChangePasswordDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2005> {
       return localVarFp
-        .authControllerChangePassword(body, options)
+        .authControllerChangePassword(changePasswordDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {CurrentPasswordDto} currentPasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerDisableTwoFactor(
-      body: object,
+      currentPasswordDto: CurrentPasswordDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2005> {
       return localVarFp
-        .authControllerDisableTwoFactor(body, options)
+        .authControllerDisableTwoFactor(currentPasswordDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {EmailDto} emailDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerForgotPassword(
-      body: object,
+      emailDto: EmailDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2005> {
       return localVarFp
-        .authControllerForgotPassword(body, options)
+        .authControllerForgotPassword(emailDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -1240,30 +1160,25 @@ export const AuthApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerGetCsrfToken(options?: any): AxiosPromise<void> {
+    authControllerGetCsrfToken(
+      options?: any,
+    ): AxiosPromise<InlineResponse2001> {
       return localVarFp
         .authControllerGetCsrfToken(options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
+     * @param {LoginDto} loginDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerGetSessions(options?: any): AxiosPromise<void> {
+    authControllerLogin(
+      loginDto: LoginDto,
+      options?: any,
+    ): AxiosPromise<object> {
       return localVarFp
-        .authControllerGetSessions(options)
-        .then((request) => request(axios, basePath));
-    },
-    /**
-     *
-     * @param {object} body
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    authControllerLogin(body: object, options?: any): AxiosPromise<void> {
-      return localVarFp
-        .authControllerLogin(body, options)
+        .authControllerLogin(loginDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -1271,7 +1186,7 @@ export const AuthApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerLogout(options?: any): AxiosPromise<void> {
+    authControllerLogout(options?: any): AxiosPromise<InlineResponse2005> {
       return localVarFp
         .authControllerLogout(options)
         .then((request) => request(axios, basePath));
@@ -1281,48 +1196,51 @@ export const AuthApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerMe(options?: any): AxiosPromise<void> {
+    authControllerMe(options?: any): AxiosPromise<InlineResponse201> {
       return localVarFp
         .authControllerMe(options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {RegisterDto} registerDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerRegister(body: object, options?: any): AxiosPromise<void> {
+    authControllerRegister(
+      registerDto: RegisterDto,
+      options?: any,
+    ): AxiosPromise<InlineResponse201> {
       return localVarFp
-        .authControllerRegister(body, options)
+        .authControllerRegister(registerDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {EmailDto} emailDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerResendVerification(
-      body: object,
+      emailDto: EmailDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2005> {
       return localVarFp
-        .authControllerResendVerification(body, options)
+        .authControllerResendVerification(emailDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {ResetPasswordDto} resetPasswordDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerResetPassword(
-      body: object,
+      resetPasswordDto: ResetPasswordDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2005> {
       return localVarFp
-        .authControllerResetPassword(body, options)
+        .authControllerResetPassword(resetPasswordDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -1330,68 +1248,53 @@ export const AuthApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerRevokeAll(options?: any): AxiosPromise<void> {
-      return localVarFp
-        .authControllerRevokeAll(options)
-        .then((request) => request(axios, basePath));
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    authControllerRevokeSession(options?: any): AxiosPromise<void> {
-      return localVarFp
-        .authControllerRevokeSession(options)
-        .then((request) => request(axios, basePath));
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    authControllerSetupTwoFactor(options?: any): AxiosPromise<void> {
+    authControllerSetupTwoFactor(
+      options?: any,
+    ): AxiosPromise<InlineResponse2002> {
       return localVarFp
         .authControllerSetupTwoFactor(options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    authControllerVerifyEmail(body: object, options?: any): AxiosPromise<void> {
+    authControllerVerifyEmail(
+      tokenDto: TokenDto,
+      options?: any,
+    ): AxiosPromise<InlineResponse2005> {
       return localVarFp
-        .authControllerVerifyEmail(body, options)
+        .authControllerVerifyEmail(tokenDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerVerifyTwoFactor(
-      body: object,
+      tokenDto: TokenDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2004> {
       return localVarFp
-        .authControllerVerifyTwoFactor(body, options)
+        .authControllerVerifyTwoFactor(tokenDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {TokenDto} tokenDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     authControllerVerifyTwoFactorSetup(
-      body: object,
+      tokenDto: TokenDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2003> {
       return localVarFp
-        .authControllerVerifyTwoFactorSetup(body, options)
+        .authControllerVerifyTwoFactorSetup(tokenDto, options)
         .then((request) => request(axios, basePath));
     },
   };
@@ -1406,49 +1309,49 @@ export const AuthApiFactory = function (
 export class AuthApi extends BaseAPI {
   /**
    *
-   * @param {object} body
+   * @param {ChangePasswordDto} changePasswordDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerChangePassword(
-    body: object,
+    changePasswordDto: ChangePasswordDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerChangePassword(body, options)
+      .authControllerChangePassword(changePasswordDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {CurrentPasswordDto} currentPasswordDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerDisableTwoFactor(
-    body: object,
+    currentPasswordDto: CurrentPasswordDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerDisableTwoFactor(body, options)
+      .authControllerDisableTwoFactor(currentPasswordDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {EmailDto} emailDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerForgotPassword(
-    body: object,
+    emailDto: EmailDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerForgotPassword(body, options)
+      .authControllerForgotPassword(emailDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -1466,26 +1369,14 @@ export class AuthApi extends BaseAPI {
 
   /**
    *
+   * @param {LoginDto} loginDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
-  public authControllerGetSessions(options?: AxiosRequestConfig) {
+  public authControllerLogin(loginDto: LoginDto, options?: AxiosRequestConfig) {
     return AuthApiFp(this.configuration)
-      .authControllerGetSessions(options)
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {object} body
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof AuthApi
-   */
-  public authControllerLogin(body: object, options?: AxiosRequestConfig) {
-    return AuthApiFp(this.configuration)
-      .authControllerLogin(body, options)
+      .authControllerLogin(loginDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -1515,70 +1406,49 @@ export class AuthApi extends BaseAPI {
 
   /**
    *
-   * @param {object} body
+   * @param {RegisterDto} registerDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
-  public authControllerRegister(body: object, options?: AxiosRequestConfig) {
+  public authControllerRegister(
+    registerDto: RegisterDto,
+    options?: AxiosRequestConfig,
+  ) {
     return AuthApiFp(this.configuration)
-      .authControllerRegister(body, options)
+      .authControllerRegister(registerDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {EmailDto} emailDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerResendVerification(
-    body: object,
+    emailDto: EmailDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerResendVerification(body, options)
+      .authControllerResendVerification(emailDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {ResetPasswordDto} resetPasswordDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerResetPassword(
-    body: object,
+    resetPasswordDto: ResetPasswordDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerResetPassword(body, options)
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof AuthApi
-   */
-  public authControllerRevokeAll(options?: AxiosRequestConfig) {
-    return AuthApiFp(this.configuration)
-      .authControllerRevokeAll(options)
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof AuthApi
-   */
-  public authControllerRevokeSession(options?: AxiosRequestConfig) {
-    return AuthApiFp(this.configuration)
-      .authControllerRevokeSession(options)
+      .authControllerResetPassword(resetPasswordDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -1596,46 +1466,49 @@ export class AuthApi extends BaseAPI {
 
   /**
    *
-   * @param {object} body
+   * @param {TokenDto} tokenDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
-  public authControllerVerifyEmail(body: object, options?: AxiosRequestConfig) {
+  public authControllerVerifyEmail(
+    tokenDto: TokenDto,
+    options?: AxiosRequestConfig,
+  ) {
     return AuthApiFp(this.configuration)
-      .authControllerVerifyEmail(body, options)
+      .authControllerVerifyEmail(tokenDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {TokenDto} tokenDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerVerifyTwoFactor(
-    body: object,
+    tokenDto: TokenDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerVerifyTwoFactor(body, options)
+      .authControllerVerifyTwoFactor(tokenDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {TokenDto} tokenDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof AuthApi
    */
   public authControllerVerifyTwoFactorSetup(
-    body: object,
+    tokenDto: TokenDto,
     options?: AxiosRequestConfig,
   ) {
     return AuthApiFp(this.configuration)
-      .authControllerVerifyTwoFactorSetup(body, options)
+      .authControllerVerifyTwoFactorSetup(tokenDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

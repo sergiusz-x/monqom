@@ -19,6 +19,7 @@ import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { CreateGoalDto, GoalOperationDto, ListGoalsQueryDto, UpdateGoalDto } from './goals.dto'
 import { GOALS_BASE_ROUTE } from './goals.routes'
 import { GoalsService } from './goals.service'
+import { ApiGoalOperationResponse, ApiGoalResponse } from '../../shared/openapi/response-schemas'
 
 @Controller(GOALS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -28,22 +29,26 @@ export class GoalsController {
     constructor(private readonly goalsService: GoalsService) {}
 
     @Get()
+    @ApiGoalResponse(true)
     list(@Query() query: ListGoalsQueryDto, @Req() req: Request) {
         return this.goalsService.list(req.workspace!.workspaceId, query.include_archived === 'true')
     }
 
     @Get(':goalId')
+    @ApiGoalResponse()
     get(@Param('goalId') goalId: string, @Req() req: Request) {
         return this.goalsService.get(req.workspace!.workspaceId, goalId)
     }
 
     @Post()
+    @ApiGoalResponse(false, HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     create(@Body() body: CreateGoalDto, @Req() req: Request) {
         return this.goalsService.create(req.workspace!.workspaceId, req.session.auth!.userId, body)
     }
 
     @Patch(':goalId')
+    @ApiGoalResponse()
     update(@Param('goalId') goalId: string, @Body() body: UpdateGoalDto, @Req() req: Request) {
         return this.goalsService.update(
             req.workspace!.workspaceId,
@@ -54,6 +59,7 @@ export class GoalsController {
     }
 
     @Post(':goalId/archive')
+    @ApiGoalResponse()
     @HttpCode(HttpStatus.OK)
     archive(@Param('goalId') goalId: string, @Req() req: Request) {
         return this.goalsService.setArchived(
@@ -65,6 +71,7 @@ export class GoalsController {
     }
 
     @Post(':goalId/restore')
+    @ApiGoalResponse()
     @HttpCode(HttpStatus.OK)
     restore(@Param('goalId') goalId: string, @Req() req: Request) {
         return this.goalsService.setArchived(
@@ -82,6 +89,7 @@ export class GoalsController {
     }
 
     @Post(':goalId/operations')
+    @ApiGoalOperationResponse(HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     createOperation(
         @Param('goalId') goalId: string,
@@ -97,6 +105,7 @@ export class GoalsController {
     }
 
     @Patch(':goalId/operations/:operationId')
+    @ApiGoalOperationResponse()
     updateOperation(
         @Param('goalId') goalId: string,
         @Param('operationId') operationId: string,

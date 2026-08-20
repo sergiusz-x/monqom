@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import api from "@/lib/api";
+import { transactionsApi } from "@/api/contract";
 import { getApiErrorStatus } from "@/lib/api-errors";
 import { categorySystemKeys } from "@/lib/category-system-keys";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
@@ -86,11 +86,13 @@ export default function TransactionDetailPage() {
     queryKey: queryKeys.transaction(workspaceId ?? "", transactionId ?? ""),
     enabled: Boolean(!workspaceLoading && workspaceId && transactionId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiTransaction>(
-        `/workspaces/${workspaceId}/transactions/${transactionId}`,
-        { signal },
-      );
-      return mapTransaction(response.data);
+      const response =
+        await transactionsApi.transactionsControllerGetTransaction(
+          transactionId!,
+          workspaceId!,
+          { signal },
+        );
+      return mapTransaction(response.data as ApiTransaction);
     },
   });
 
@@ -119,8 +121,9 @@ export default function TransactionDetailPage() {
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await api.delete(
-        `/workspaces/${workspaceId}/transactions/${transactionId}`,
+      await transactionsApi.transactionsControllerDeleteTransaction(
+        transactionId,
+        workspaceId,
       );
       showToast(t("transactions.deleted"));
       navigate("/transactions", { replace: true });

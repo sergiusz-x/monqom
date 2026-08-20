@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { transactionTagsApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
 import { getApiErrorMessage } from "@/lib/api-errors";
 
@@ -8,10 +8,11 @@ export function useTags(workspaceId: string) {
     queryKey: queryKeys.tags(workspaceId),
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<string[]>(
-        `/workspaces/${workspaceId}/tags`,
-        { signal },
-      );
+      const response =
+        await transactionTagsApi.transactionTagsControllerListWorkspaceTags(
+          workspaceId,
+          { signal },
+        );
       return response.data;
     },
   });

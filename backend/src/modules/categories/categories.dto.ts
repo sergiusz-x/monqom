@@ -9,19 +9,35 @@ import {
     MaxLength,
 } from 'class-validator'
 import { transformBooleanQuery } from '../../shared/validation/query-transformers'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 export class CategoriesQueryDto {
-    @IsOptional() @Transform(transformBooleanQuery) @IsBoolean() include_archived?: boolean
-    @IsOptional() @IsIn(['expense', 'income']) type?: 'expense' | 'income'
+    @ApiPropertyOptional({ type: Boolean })
+    @IsOptional()
+    @Transform(transformBooleanQuery)
+    @IsBoolean()
+    include_archived?: boolean
+    @ApiPropertyOptional({ enum: ['expense', 'income'] })
+    @IsOptional()
+    @IsIn(['expense', 'income'])
+    type?: 'expense' | 'income'
 }
 export class CategoryBodyDto {
-    @IsString() @IsNotEmpty() @MaxLength(100) name!: string
-    @IsOptional() @IsString() @MaxLength(32) icon?: string | null
-    @IsOptional() @IsString() parent_id?: string | null
-    @IsOptional() @IsIn(['expense', 'income']) type?: 'expense' | 'income'
+    @ApiProperty({ maxLength: 100 }) @IsString() @IsNotEmpty() @MaxLength(100) name!: string
+    @ApiPropertyOptional({ type: String, nullable: true, maxLength: 32 })
+    @IsOptional()
+    @IsString()
+    @MaxLength(32)
+    icon?: string | null
+    @ApiPropertyOptional({ type: String, nullable: true }) @IsOptional() @IsString() parent_id?:
+        string | null
+    @ApiPropertyOptional({ enum: ['expense', 'income'] })
+    @IsOptional()
+    @IsIn(['expense', 'income'])
+    type?: 'expense' | 'income'
 }
 export class CategoryOrderItemDto {
-    @IsString() @IsNotEmpty() id!: string
+    @ApiProperty() @IsString() @IsNotEmpty() id!: string
 }
 export class CategoryOrderBodyDto {
-    @IsArray() items!: CategoryOrderItemDto[]
+    @ApiProperty({ type: [CategoryOrderItemDto] }) @IsArray() items!: CategoryOrderItemDto[]
 }

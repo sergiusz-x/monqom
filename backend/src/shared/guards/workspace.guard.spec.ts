@@ -1,7 +1,6 @@
 import {
     BadRequestException,
     ExecutionContext,
-    ForbiddenException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common'
@@ -132,7 +131,7 @@ describe('WorkspaceGuard', () => {
         )
     })
 
-    it('returns 403 when the workspace exists but the user is not a member', async () => {
+    it('returns 404 without revealing that an inaccessible workspace exists', async () => {
         const request: SessionRequest = {
             headers: {},
             params: {
@@ -152,7 +151,7 @@ describe('WorkspaceGuard', () => {
         } as never)
 
         await expect(guard.canActivate(createExecutionContext(request))).rejects.toBeInstanceOf(
-            ForbiddenException,
+            NotFoundException,
         )
     })
 

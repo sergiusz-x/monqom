@@ -2,7 +2,6 @@ import {
     BadRequestException,
     CanActivate,
     ExecutionContext,
-    ForbiddenException,
     Injectable,
     NotFoundException,
     UnauthorizedException,
@@ -11,7 +10,6 @@ import type { Request } from 'express'
 import { WorkspaceRepository } from '../../modules/workspace/workspace.repository'
 
 const AUTHENTICATION_REQUIRED_MESSAGE = 'Authentication required'
-const WORKSPACE_ACCESS_FORBIDDEN_MESSAGE = 'Forbidden'
 const WORKSPACE_HEADER_NAME = 'x-workspace-id'
 const WORKSPACE_ID_REQUIRED_MESSAGE = 'Workspace id is required'
 const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found'
@@ -39,13 +37,7 @@ export class WorkspaceGuard implements CanActivate {
         )
 
         if (!workspaceAccess) {
-            const workspace = await this.workspaceRepository.findWorkspaceById(workspaceId)
-
-            if (!workspace) {
-                throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE)
-            }
-
-            throw new ForbiddenException(WORKSPACE_ACCESS_FORBIDDEN_MESSAGE)
+            throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE)
         }
 
         request.workspace = {

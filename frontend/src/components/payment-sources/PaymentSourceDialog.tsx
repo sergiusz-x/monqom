@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { paymentSourcesApi } from "@/api/contract";
 import {
   PAYMENT_SOURCE_TYPES,
   paymentSourceTypeLabel,
@@ -63,18 +63,19 @@ export function PaymentSourceDialog({
     setError(null);
     try {
       const response = source
-        ? await api.put<ApiPaymentSource>(
-            `/workspaces/${workspaceId}/payment-sources/${source.id}`,
+        ? await paymentSourcesApi.paymentSourcesControllerUpdatePaymentSource(
+            source.id,
+            workspaceId,
             { name: normalizedName, type },
           )
-        : await api.post<ApiPaymentSource>(
-            `/workspaces/${workspaceId}/payment-sources`,
+        : await paymentSourcesApi.paymentSourcesControllerCreatePaymentSource(
+            workspaceId,
             { name: normalizedName, type },
           );
       await queryClient.invalidateQueries({
         queryKey: queryKeys.paymentSourcesRoot(workspaceId),
       });
-      onSaved(mapPaymentSource(response.data));
+      onSaved(mapPaymentSource(response.data as ApiPaymentSource));
       onClose();
     } catch {
       setError(t("paymentSources.saveError"));

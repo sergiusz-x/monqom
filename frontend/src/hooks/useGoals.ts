@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { goalsApi } from "@/api/contract";
 import { getApiErrorMessage } from "@/lib/api-errors";
 import { mapGoal } from "@/lib/goals";
 import { queryKeys } from "@/lib/query-client";
@@ -10,14 +10,12 @@ export function useGoals(workspaceId: string, includeArchived = true) {
     queryKey: [...queryKeys.goals(workspaceId), { includeArchived }],
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiGoal[]>(
-        `/workspaces/${workspaceId}/goals`,
-        {
-          params: { include_archived: includeArchived },
-          signal,
-        },
+      const response = await goalsApi.goalsControllerList(
+        workspaceId,
+        includeArchived ? "true" : "false",
+        { signal },
       );
-      return response.data.map(mapGoal);
+      return response.data.map((goal) => mapGoal(goal as ApiGoal));
     },
   });
   return {
@@ -33,11 +31,10 @@ export function useGoal(workspaceId: string, goalId: string) {
     queryKey: queryKeys.goal(workspaceId, goalId),
     enabled: Boolean(workspaceId && goalId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiGoal>(
-        `/workspaces/${workspaceId}/goals/${goalId}`,
-        { signal },
-      );
-      return mapGoal(response.data);
+      const response = await goalsApi.goalsControllerGet(goalId, workspaceId, {
+        signal,
+      });
+      return mapGoal(response.data as ApiGoal);
     },
   });
   return {

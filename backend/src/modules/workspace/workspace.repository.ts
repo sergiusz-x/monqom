@@ -35,6 +35,7 @@ export interface WorkspaceMembershipAccess {
 export type UserWorkspaceRecord = Workspace & {
     lastPaymentSourceId: string
     baseCurrencyLocked: boolean
+    role: string
 }
 
 export type WorkspaceDetailsRecord = Workspace & {
@@ -59,7 +60,7 @@ export class WorkspaceRepository {
             include: {
                 memberships: {
                     where: { userId },
-                    select: { lastPaymentSourceId: true },
+                    select: { lastPaymentSourceId: true, role: true },
                 },
                 _count: {
                     select: {
@@ -82,6 +83,7 @@ export class WorkspaceRepository {
         return workspaces.map(({ memberships, _count, ...workspace }) => ({
             ...workspace,
             lastPaymentSourceId: memberships[0].lastPaymentSourceId,
+            role: memberships[0].role,
             baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0 || _count.goals > 0,
         }))
     }
@@ -218,7 +220,6 @@ export class WorkspaceRepository {
         prisma: WorkspacePersistenceClient = this.prisma,
     ): Promise<void> {
         await seedCategoriesForWorkspace(workspaceId, prisma)
-        await seedIncomeCategoriesForWorkspace(workspaceId, prisma)
         await seedIncomeCategoriesForWorkspace(workspaceId, prisma)
     }
 }

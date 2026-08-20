@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common'
 import * as argon2 from 'argon2'
 import { WorkspaceService } from '../workspace/workspace.service'
+import { EmailOutboxService } from '../../shared/email/email-outbox.service'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 import { logger } from '../../shared/utils/logger'
@@ -37,6 +38,7 @@ describe('AuthService', () => {
     let prisma: {
         $transaction: jest.Mock
     }
+    let emailOutbox: { enqueue: jest.Mock }
     const originalNodeEnv = process.env.NODE_ENV
 
     beforeEach(() => {
@@ -64,11 +66,13 @@ describe('AuthService', () => {
                 callback(transactionClient),
             ),
         }
+        emailOutbox = { enqueue: jest.fn() }
 
         service = new AuthService(
             authRepository as unknown as AuthRepository,
             workspaceService as unknown as WorkspaceService,
             prisma as never,
+            emailOutbox as unknown as EmailOutboxService,
         )
         jest.clearAllMocks()
         process.env.NODE_ENV = 'test'

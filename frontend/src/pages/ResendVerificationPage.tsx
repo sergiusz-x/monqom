@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
-import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 import { Alert, FormField, Input, PendingButton } from "@monqom/ui";
@@ -23,7 +23,7 @@ export default function ResendVerificationPage() {
   async function onSubmit(data: FormValues) {
     setServerError("");
     try {
-      await api.post("/auth/resend-verification", { email: data.email });
+      await authApi.authControllerResendVerification({ email: data.email });
       setSubmitted(true);
     } catch {
       setServerError(t("auth.genericError"));

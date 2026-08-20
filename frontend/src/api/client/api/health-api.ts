@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,14 +37,14 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
 // @ts-ignore
-import { HealthControllerCheckHealth200Response } from "../model";
+import type { InlineResponse200 } from "../model";
 // @ts-ignore
-import { HealthControllerCheckHealth503Response } from "../model";
+import type { InlineResponse503 } from "../model";
 /**
  * HealthApi - axios parameter creator
  * @export
@@ -185,7 +188,7 @@ export const HealthApiFp = function (configuration?: Configuration) {
       (
         axios?: AxiosInstance,
         basePath?: string,
-      ) => AxiosPromise<HealthControllerCheckHealth200Response>
+      ) => AxiosPromise<InlineResponse200>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.healthControllerCheckHealth(options);
@@ -255,7 +258,7 @@ export const HealthApiFactory = function (
      */
     healthControllerCheckHealth(
       options?: any,
-    ): AxiosPromise<HealthControllerCheckHealth200Response> {
+    ): AxiosPromise<InlineResponse200> {
       return localVarFp
         .healthControllerCheckHealth(options)
         .then((request) => request(axios, basePath));

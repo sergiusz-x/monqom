@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,16 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { CategoryBodyDto } from "../model";
+// @ts-ignore
+import type { CategoryOrderBodyDto } from "../model";
+// @ts-ignore
+import type { InlineResponse2007 } from "../model";
 /**
  * CategoriesApi - axios parameter creator
  * @export
@@ -49,20 +58,26 @@ export const CategoriesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerArchiveCategory: async (
       id: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("categoriesControllerArchiveCategory", "id", id);
-      const localVarPath =
-        `/workspaces/{workspaceId}/categories/{id}/archive`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerArchiveCategory",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories/{id}/archive`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -94,17 +109,32 @@ export const CategoriesApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryBodyDto} categoryBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerCreateCategory: async (
-      body: object,
+      workspaceId: string,
+      categoryBodyDto: CategoryBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("categoriesControllerCreateCategory", "body", body);
-      const localVarPath = `/workspaces/{workspaceId}/categories`;
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerCreateCategory",
+        "workspaceId",
+        workspaceId,
+      );
+      // verify required parameter 'categoryBodyDto' is not null or undefined
+      assertParamExists(
+        "categoriesControllerCreateCategory",
+        "categoryBodyDto",
+        categoryBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -131,7 +161,7 @@ export const CategoriesApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        categoryBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -144,18 +174,90 @@ export const CategoriesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
+     * @param {'expense' | 'income'} [type]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerGetCategory: async (
       id: string,
+      workspaceId: string,
+      includeArchived?: boolean,
+      type?: "expense" | "income",
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("categoriesControllerGetCategory", "id", id);
-      const localVarPath = `/workspaces/{workspaceId}/categories/{id}`.replace(
-        `{${"id"}}`,
-        encodeURIComponent(String(id)),
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerGetCategory",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories/{id}`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "GET",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      if (includeArchived !== undefined) {
+        localVarQueryParameter["include_archived"] = includeArchived;
+      }
+
+      if (type !== undefined) {
+        localVarQueryParameter["type"] = type;
+      }
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
+     * @param {'expense' | 'income'} [type]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    categoriesControllerListCategories: async (
+      workspaceId: string,
+      includeArchived?: boolean,
+      type?: "expense" | "income",
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerListCategories",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
       );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -172,43 +274,13 @@ export const CategoriesApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    categoriesControllerListCategories: async (
-      options: AxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/categories`;
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
+      if (includeArchived !== undefined) {
+        localVarQueryParameter["include_archived"] = includeArchived;
       }
 
-      const localVarRequestOptions = {
-        method: "GET",
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
+      if (type !== undefined) {
+        localVarQueryParameter["type"] = type;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -226,17 +298,32 @@ export const CategoriesApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryOrderBodyDto} categoryOrderBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerReorderCategories: async (
-      body: object,
+      workspaceId: string,
+      categoryOrderBodyDto: CategoryOrderBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("categoriesControllerReorderCategories", "body", body);
-      const localVarPath = `/workspaces/{workspaceId}/categories/order`;
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerReorderCategories",
+        "workspaceId",
+        workspaceId,
+      );
+      // verify required parameter 'categoryOrderBodyDto' is not null or undefined
+      assertParamExists(
+        "categoriesControllerReorderCategories",
+        "categoryOrderBodyDto",
+        categoryOrderBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories/order`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -263,7 +350,7 @@ export const CategoriesApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        categoryOrderBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -276,20 +363,26 @@ export const CategoriesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerRestoreCategory: async (
       id: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("categoriesControllerRestoreCategory", "id", id);
-      const localVarPath =
-        `/workspaces/{workspaceId}/categories/{id}/restore`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerRestoreCategory",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories/{id}/restore`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -322,23 +415,34 @@ export const CategoriesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryBodyDto} categoryBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerUpdateCategory: async (
       id: string,
-      body: object,
+      workspaceId: string,
+      categoryBodyDto: CategoryBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("categoriesControllerUpdateCategory", "id", id);
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("categoriesControllerUpdateCategory", "body", body);
-      const localVarPath = `/workspaces/{workspaceId}/categories/{id}`.replace(
-        `{${"id"}}`,
-        encodeURIComponent(String(id)),
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "categoriesControllerUpdateCategory",
+        "workspaceId",
+        workspaceId,
       );
+      // verify required parameter 'categoryBodyDto' is not null or undefined
+      assertParamExists(
+        "categoriesControllerUpdateCategory",
+        "categoryBodyDto",
+        categoryBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/categories/{id}`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -365,7 +469,7 @@ export const CategoriesApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        categoryBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -389,18 +493,24 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerArchiveCategory(
       id: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2007>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerArchiveCategory(
           id,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -412,19 +522,25 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryBodyDto} categoryBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerCreateCategory(
-      body: object,
+      workspaceId: string,
+      categoryBodyDto: CategoryBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2007>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerCreateCategory(
-          body,
+          workspaceId,
+          categoryBodyDto,
           options,
         );
       return createRequestFunction(
@@ -437,18 +553,30 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
+     * @param {'expense' | 'income'} [type]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerGetCategory(
       id: string,
+      workspaceId: string,
+      includeArchived?: boolean,
+      type?: "expense" | "income",
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2007>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerGetCategory(
           id,
+          workspaceId,
+          includeArchived,
+          type,
           options,
         );
       return createRequestFunction(
@@ -460,16 +588,28 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
+     * @param {'expense' | 'income'} [type]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerListCategories(
+      workspaceId: string,
+      includeArchived?: boolean,
+      type?: "expense" | "income",
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse2007>>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerListCategories(
+          workspaceId,
+          includeArchived,
+          type,
           options,
         );
       return createRequestFunction(
@@ -481,19 +621,25 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryOrderBodyDto} categoryOrderBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerReorderCategories(
-      body: object,
+      workspaceId: string,
+      categoryOrderBodyDto: CategoryOrderBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse2007>>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerReorderCategories(
-          body,
+          workspaceId,
+          categoryOrderBodyDto,
           options,
         );
       return createRequestFunction(
@@ -506,18 +652,24 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerRestoreCategory(
       id: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2007>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerRestoreCategory(
           id,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -530,21 +682,27 @@ export const CategoriesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryBodyDto} categoryBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async categoriesControllerUpdateCategory(
       id: string,
-      body: object,
+      workspaceId: string,
+      categoryBodyDto: CategoryBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2007>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.categoriesControllerUpdateCategory(
           id,
-          body,
+          workspaceId,
+          categoryBodyDto,
           options,
         );
       return createRequestFunction(
@@ -571,97 +729,145 @@ export const CategoriesApiFactory = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerArchiveCategory(
       id: string,
+      workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2007> {
       return localVarFp
-        .categoriesControllerArchiveCategory(id, options)
+        .categoriesControllerArchiveCategory(id, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryBodyDto} categoryBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerCreateCategory(
-      body: object,
+      workspaceId: string,
+      categoryBodyDto: CategoryBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2007> {
       return localVarFp
-        .categoriesControllerCreateCategory(body, options)
+        .categoriesControllerCreateCategory(
+          workspaceId,
+          categoryBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
+     * @param {'expense' | 'income'} [type]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerGetCategory(
       id: string,
+      workspaceId: string,
+      includeArchived?: boolean,
+      type?: "expense" | "income",
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2007> {
       return localVarFp
-        .categoriesControllerGetCategory(id, options)
+        .categoriesControllerGetCategory(
+          id,
+          workspaceId,
+          includeArchived,
+          type,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {boolean} [includeArchived]
+     * @param {'expense' | 'income'} [type]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    categoriesControllerListCategories(options?: any): AxiosPromise<void> {
+    categoriesControllerListCategories(
+      workspaceId: string,
+      includeArchived?: boolean,
+      type?: "expense" | "income",
+      options?: any,
+    ): AxiosPromise<Array<InlineResponse2007>> {
       return localVarFp
-        .categoriesControllerListCategories(options)
+        .categoriesControllerListCategories(
+          workspaceId,
+          includeArchived,
+          type,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryOrderBodyDto} categoryOrderBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerReorderCategories(
-      body: object,
+      workspaceId: string,
+      categoryOrderBodyDto: CategoryOrderBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<Array<InlineResponse2007>> {
       return localVarFp
-        .categoriesControllerReorderCategories(body, options)
+        .categoriesControllerReorderCategories(
+          workspaceId,
+          categoryOrderBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerRestoreCategory(
       id: string,
+      workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2007> {
       return localVarFp
-        .categoriesControllerRestoreCategory(id, options)
+        .categoriesControllerRestoreCategory(id, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {CategoryBodyDto} categoryBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     categoriesControllerUpdateCategory(
       id: string,
-      body: object,
+      workspaceId: string,
+      categoryBodyDto: CategoryBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2007> {
       return localVarFp
-        .categoriesControllerUpdateCategory(id, body, options)
+        .categoriesControllerUpdateCategory(
+          id,
+          workspaceId,
+          categoryBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
   };
@@ -677,110 +883,154 @@ export class CategoriesApi extends BaseAPI {
   /**
    *
    * @param {string} id
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
   public categoriesControllerArchiveCategory(
     id: string,
+    workspaceId: string,
     options?: AxiosRequestConfig,
   ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerArchiveCategory(id, options)
+      .categoriesControllerArchiveCategory(id, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {CategoryBodyDto} categoryBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
   public categoriesControllerCreateCategory(
-    body: object,
+    workspaceId: string,
+    categoryBodyDto: CategoryBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerCreateCategory(body, options)
+      .categoriesControllerCreateCategory(workspaceId, categoryBodyDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
+   * @param {string} workspaceId
+   * @param {boolean} [includeArchived]
+   * @param {'expense' | 'income'} [type]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
   public categoriesControllerGetCategory(
     id: string,
+    workspaceId: string,
+    includeArchived?: boolean,
+    type?: "expense" | "income",
     options?: AxiosRequestConfig,
   ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerGetCategory(id, options)
+      .categoriesControllerGetCategory(
+        id,
+        workspaceId,
+        includeArchived,
+        type,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
+   * @param {string} workspaceId
+   * @param {boolean} [includeArchived]
+   * @param {'expense' | 'income'} [type]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
-  public categoriesControllerListCategories(options?: AxiosRequestConfig) {
+  public categoriesControllerListCategories(
+    workspaceId: string,
+    includeArchived?: boolean,
+    type?: "expense" | "income",
+    options?: AxiosRequestConfig,
+  ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerListCategories(options)
+      .categoriesControllerListCategories(
+        workspaceId,
+        includeArchived,
+        type,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {CategoryOrderBodyDto} categoryOrderBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
   public categoriesControllerReorderCategories(
-    body: object,
+    workspaceId: string,
+    categoryOrderBodyDto: CategoryOrderBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerReorderCategories(body, options)
+      .categoriesControllerReorderCategories(
+        workspaceId,
+        categoryOrderBodyDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
   public categoriesControllerRestoreCategory(
     id: string,
+    workspaceId: string,
     options?: AxiosRequestConfig,
   ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerRestoreCategory(id, options)
+      .categoriesControllerRestoreCategory(id, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {CategoryBodyDto} categoryBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof CategoriesApi
    */
   public categoriesControllerUpdateCategory(
     id: string,
-    body: object,
+    workspaceId: string,
+    categoryBodyDto: CategoryBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return CategoriesApiFp(this.configuration)
-      .categoriesControllerUpdateCategory(id, body, options)
+      .categoriesControllerUpdateCategory(
+        id,
+        workspaceId,
+        categoryBodyDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }

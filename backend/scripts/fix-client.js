@@ -21,6 +21,43 @@ function prependTsNocheck(dir) {
             } else {
                 content = '/* eslint-disable */\n// @ts-nocheck\n' + content
             }
+            // OpenAPI Generator 5 emits TypeScript-only symbols as runtime imports.
+            // Modern bundlers correctly reject those because axios and model barrels
+            // do not have matching JavaScript exports.
+            content = content
+                .replace(
+                    /import \{ Configuration \} from (['"]\.\.?\/configuration['"]);/g,
+                    'import type { Configuration } from $1;',
+                )
+                .replace(
+                    /import \{ ([A-Za-z0-9]+) \} from (['"](?:\.\.\/model|\.\/[a-z0-9-]+)['"]);/g,
+                    'import type { $1 } from $2;',
+                )
+                .replace(
+                    /import \{ AxiosInstance, AxiosResponse \} from ['"]axios['"];/g,
+                    "import type { AxiosInstance, AxiosResponse } from 'axios';",
+                )
+                .replace(
+                    /import globalAxios,\s*\{[\s\S]*?\}\s*from ['"]axios['"];/g,
+                    "import globalAxios, { type AxiosPromise, type AxiosInstance, type AxiosRequestConfig } from 'axios';",
+                )
+                .replace(
+                    /import \{ RequiredError, (?:type )?RequestArgs \} from (['"]\.\/base['"]);/g,
+                    'import { RequiredError, type RequestArgs } from $1;',
+                )
+                .replace(/type type /g, 'type ')
+                .replace(/import type \{ type /g, 'import type { ')
+                .replace(/([?:]\s*)type AxiosInstance/g, '$1AxiosInstance')
+                .replace(
+                    /import \{ RequiredError, RequestArgs \} from (['"]\.\/base['"]);/g,
+                    'import { RequiredError, type RequestArgs } from $1;',
+                )
+            content = content.replace(
+                /import \{([^}]+)\} from (['"]\.\.\/base['"]);/g,
+                (_match, names, source) =>
+                    `import {${names.replace(/(?<!type )\bRequestArgs\b/, 'type RequestArgs')}} from ${source};`,
+            )
+            content = content.replace(/type type /g, 'type ')
             fs.writeFileSync(fullPath, content, 'utf8')
         }
     }

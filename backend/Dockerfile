@@ -1,21 +1,29 @@
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS dependencies
 WORKDIR /app
+ENV CI=true
 RUN corepack enable pnpm
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY backend/package.json ./backend/
 COPY packages/ui/package.json ./packages/ui/
 COPY backend/scripts ./backend/scripts
 RUN pnpm install --frozen-lockfile
+COPY backend/prisma ./backend/prisma
+COPY backend/prisma.config.ts ./backend/
+WORKDIR /app/backend
+RUN pnpm exec prisma generate
+
+FROM dependencies AS production-dependencies
+WORKDIR /app
+RUN pnpm install --frozen-lockfile --prod --offline
 
 FROM dependencies AS build
 WORKDIR /app
-COPY backend/prisma ./backend/prisma
-COPY backend/prisma.config.ts backend/nest-cli.json backend/tsconfig.json backend/tsconfig.build.json ./backend/
+COPY backend/nest-cli.json backend/tsconfig.json backend/tsconfig.build.json ./backend/
 COPY backend/src ./backend/src
 COPY packages/ui ./packages/ui
 WORKDIR /app/backend
-RUN npx prisma generate && pnpm run build
+RUN pnpm run build
 
 FROM node:22-alpine AS release
 RUN apk add --no-cache git
@@ -24,23 +32,24 @@ ARG APP_VERSION
 ARG GIT_SHA
 RUN --mount=type=bind,source=.git,target=/repo/.git,readonly \
     set -eu; \
-    version="${APP_VERSION:-$(git describe --exact-match --tags HEAD)}"; \
     sha="${GIT_SHA:-$(git rev-parse HEAD)}"; \
+    if [ -n "${APP_VERSION:-}" ]; then \
+      version="$APP_VERSION"; \
+    elif exact_tag="$(git describe --exact-match --tags HEAD 2>/dev/null)"; then \
+      version="$exact_tag"; \
+    else \
+      version="sha-$(printf '%s' "$sha" | cut -c1-12)"; \
+    fi; \
     printf "APP_VERSION='%s'\nGIT_SHA='%s'\n" "$version" "$sha" > /release.env
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
-RUN corepack enable pnpm
 ENV NODE_ENV=production
 RUN addgroup -S monqom && adduser -S monqom -G monqom
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY backend/package.json ./backend/
-COPY packages/ui/package.json ./packages/ui/
+COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=production-dependencies /app/backend/node_modules ./backend/node_modules
 COPY backend/prisma ./backend/prisma
 COPY backend/prisma.config.ts ./backend/
-RUN pnpm install --frozen-lockfile --prod
-WORKDIR /app/backend
-RUN pnpm dlx prisma@7.8.0 generate
 WORKDIR /app
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=release /release.env ./backend/release.env

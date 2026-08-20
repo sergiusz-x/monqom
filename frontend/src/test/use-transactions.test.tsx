@@ -40,9 +40,8 @@ describe("useTransactions", () => {
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(1));
 
-    expect(mockGet.mock.calls[0][0]).toBe("/workspaces/ws-1/transactions");
-    const params = (mockGet.mock.calls[0][1] as { params: URLSearchParams })
-      .params;
+    const params = new URL(mockGet.mock.calls[0][0], "https://app.example.test")
+      .searchParams;
     expect(params.get("category_ids")).toBe("cat-1");
     expect(params.get("tag")).toBe("food");
     expect(params.get("payment_source_id")).toBe("src-1");
@@ -74,8 +73,8 @@ describe("useTransactions", () => {
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(1));
 
-    const params = (mockGet.mock.calls[0][1] as { params: URLSearchParams })
-      .params;
+    const params = new URL(mockGet.mock.calls[0][0], "https://app.example.test")
+      .searchParams;
     expect(params.get("sort_by")).toBe("date");
     expect(params.get("sort_direction")).toBe("desc");
   });

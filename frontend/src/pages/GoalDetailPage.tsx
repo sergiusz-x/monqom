@@ -30,7 +30,7 @@ import {
   SectionCard,
   Textarea,
 } from "@monqom/ui";
-import api from "@/lib/api";
+import { goalsApi } from "@/api/contract";
 import { getApiErrorMessage } from "@/lib/api-errors";
 import { formatDateOnly, todayInTimeZone } from "@/lib/goals";
 import { formatCurrency } from "@/lib/money";
@@ -81,9 +81,11 @@ export default function GoalDetailPage() {
     setActionError(null);
     const restoring = Boolean(goal.archivedAt);
     try {
-      await api.post(
-        `/workspaces/${workspaceId}/goals/${goal.id}/${restoring ? "restore" : "archive"}`,
-      );
+      if (restoring) {
+        await goalsApi.goalsControllerRestore(goal.id, workspaceId);
+      } else {
+        await goalsApi.goalsControllerArchive(goal.id, workspaceId);
+      }
       await refresh();
       showToast(
         t(restoring ? "goals.restoredSuccess" : "goals.archivedSuccess"),
@@ -101,7 +103,7 @@ export default function GoalDetailPage() {
     setPending(true);
     setActionError(null);
     try {
-      await api.delete(`/workspaces/${workspaceId}/goals/${goal.id}`);
+      await goalsApi.goalsControllerDelete(goal.id, workspaceId);
       await refresh();
       showToast(t("goals.deletedSuccess"));
       navigate("/goals");
@@ -116,8 +118,10 @@ export default function GoalDetailPage() {
     setPending(true);
     setActionError(null);
     try {
-      await api.delete(
-        `/workspaces/${workspaceId}/goals/${goal.id}/operations/${operationToDelete.id}`,
+      await goalsApi.goalsControllerDeleteOperation(
+        goal.id,
+        operationToDelete.id,
+        workspaceId,
       );
       await refresh();
       showToast(t("goals.operationDeleted"));
@@ -478,10 +482,21 @@ export function OperationDialog({
     setSaving(true);
     setError(null);
     try {
-      const url = `/workspaces/${workspaceId}/goals/${goalId}/operations${operation ? `/${operation.id}` : ""}`;
       const body = { type: operationType, amount: amount / 100, date, note };
-      if (operation) await api.patch(url, body);
-      else await api.post(url, body);
+      if (operation) {
+        await goalsApi.goalsControllerUpdateOperation(
+          goalId,
+          operation.id,
+          workspaceId,
+          body,
+        );
+      } else {
+        await goalsApi.goalsControllerCreateOperation(
+          goalId,
+          workspaceId,
+          body,
+        );
+      }
       await onSaved();
     } catch (nextError) {
       setError(getApiErrorMessage(nextError) || t("goals.operationSaveError"));

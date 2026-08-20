@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
-import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 
@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
   async function onSubmit(data: ForgotPasswordFormValues) {
     setServerError("");
     try {
-      await api.post("/auth/forgot-password", { email: data.email });
+      await authApi.authControllerForgotPassword({ email: data.email });
       setSubmitted(true);
     } catch (err: unknown) {
       // Backend intentionally returns success for unknown emails to prevent enumeration.

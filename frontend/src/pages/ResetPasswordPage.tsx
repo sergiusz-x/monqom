@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router";
-import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 
@@ -63,8 +63,8 @@ export default function ResetPasswordPage() {
   async function onSubmit(data: ResetPasswordFormValues) {
     setServerError("");
     try {
-      await api.post("/auth/reset-password", {
-        token,
+      await authApi.authControllerResetPassword({
+        token: token!,
         newPassword: data.newPassword,
       });
       setSuccess(true);

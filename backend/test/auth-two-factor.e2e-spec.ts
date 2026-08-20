@@ -9,6 +9,7 @@ import { AppModule } from './../src/app.module'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { createSessionOptions } from './../src/shared/session/session.config'
+import { EmailOutboxService } from './../src/shared/email/email-outbox.service'
 
 interface StoredUser {
     id: string
@@ -45,6 +46,9 @@ interface StoredAuditEvent {
 }
 
 interface FakeTransactionClient {
+    $queryRaw(query: { values?: unknown[] }): Promise<
+        Array<{ attempt_count: number; blocked_until: Date | null }>
+    >
     user: {
         findUnique(args: { where: { email?: string; id?: string } }): Promise<StoredUser | null>
         update(args: {
@@ -121,6 +125,8 @@ describe('Auth two-factor authentication (e2e)', () => {
         })
             .overrideProvider(PrismaService)
             .useValue(prismaMock)
+            .overrideProvider(EmailOutboxService)
+            .useValue({ enqueue: jest.fn(), processBatch: jest.fn() })
             .compile()
 
         app = moduleFixture.createNestApplication()
@@ -468,7 +474,7 @@ describe('Auth two-factor authentication (e2e)', () => {
 
         expect(response.body).toEqual({
             statusCode: 429,
-            message: 'Too many two-factor verification attempts. Please try again later.',
+            message: 'Too many two-factor verification attempts.',
             error: 'Too Many Requests',
         })
     })
@@ -512,8 +518,21 @@ function createPrismaMock(): PrismaMock {
     const auditEvents: StoredAuditEvent[] = []
     let recoveryCodeCounter = 0
     let auditEventCounter = 0
+    const rateLimits = new Map<string, number>()
 
     const transactionClient: FakeTransactionClient = {
+        $queryRaw: async (query) => {
+            const key = String(query.values?.[0] ?? 'unknown')
+            const attempts = (rateLimits.get(key) ?? 0) + 1
+            rateLimits.set(key, attempts)
+            return [
+                {
+                    attempt_count: attempts,
+                    blocked_until:
+                        attempts > 5 ? new Date(Date.now() + 15 * 60_000) : null,
+                },
+            ]
+        },
         user: {
             findUnique: async ({ where }) => {
                 if (where.email) {

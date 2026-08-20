@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
+
 /**
  * Monqom API
  * The Monqom API description
@@ -15,7 +16,7 @@
 
 // May contain unused imports in some cases
 // @ts-ignore
-import { HealthControllerCheckHealth200ResponseInfoValue } from "./health-controller-check-health200-response-info-value";
+import type { HealthControllerCheckHealth200ResponseInfoValue } from "./health-controller-check-health200-response-info-value";
 
 /**
  *

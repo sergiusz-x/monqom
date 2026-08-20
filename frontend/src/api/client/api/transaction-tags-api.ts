@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,7 +37,7 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
@@ -48,13 +51,24 @@ export const TransactionTagsApiAxiosParamCreator = function (
   return {
     /**
      *
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionTagsControllerListWorkspaceTags: async (
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/tags`;
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "transactionTagsControllerListWorkspaceTags",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/tags`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -97,16 +111,19 @@ export const TransactionTagsApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async transactionTagsControllerListWorkspaceTags(
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<string>>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionTagsControllerListWorkspaceTags(
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -132,14 +149,16 @@ export const TransactionTagsApiFactory = function (
   return {
     /**
      *
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionTagsControllerListWorkspaceTags(
+      workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<Array<string>> {
       return localVarFp
-        .transactionTagsControllerListWorkspaceTags(options)
+        .transactionTagsControllerListWorkspaceTags(workspaceId, options)
         .then((request) => request(axios, basePath));
     },
   };
@@ -154,15 +173,17 @@ export const TransactionTagsApiFactory = function (
 export class TransactionTagsApi extends BaseAPI {
   /**
    *
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof TransactionTagsApi
    */
   public transactionTagsControllerListWorkspaceTags(
+    workspaceId: string,
     options?: AxiosRequestConfig,
   ) {
     return TransactionTagsApiFp(this.configuration)
-      .transactionTagsControllerListWorkspaceTags(options)
+      .transactionTagsControllerListWorkspaceTags(workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

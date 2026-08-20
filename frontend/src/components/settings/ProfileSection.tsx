@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import api from "@/lib/api";
+import { usersApi } from "@/api/contract";
 import { type User } from "@/contexts/AuthContext";
 import i18n, { type AppTranslationKey } from "@/i18n";
 
@@ -48,12 +48,12 @@ export function ProfileSection({
     setProfileError(null);
 
     try {
-      const res = await api.put<User>("/users/me", {
+      const res = await usersApi.usersControllerUpdateMe({
         name: displayName.trim(),
         locale,
       });
       await i18n.changeLanguage(locale);
-      setUser(res.data);
+      setUser(res.data as User);
       onSaved(t("settings.profileSaved"));
     } catch {
       setProfileError(t("settings.profileSaveError"));

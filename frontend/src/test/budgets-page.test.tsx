@@ -97,8 +97,11 @@ describe("BudgetsPage", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
-      const params = mockApi.get.mock.calls[2][1].params as { month: string };
-      expect(params.month).toMatch(/^\d{4}-\d{2}$/);
+      const params = new URL(
+        mockApi.get.mock.calls[2][0],
+        "https://app.example.test",
+      ).searchParams;
+      expect(params.get("month")).toMatch(/^\d{4}-\d{2}$/);
     });
   });
 

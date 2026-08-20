@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { budgetsApi } from "@/api/contract";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useBudgetOverview } from "@/hooks/useBudgetOverview";
 import { CategorySelector } from "@/components/CategorySelector";
@@ -171,15 +171,19 @@ export default function BudgetsPage() {
     try {
       const wasEditing = Boolean(editingBudgetId);
       if (editingBudgetId) {
-        await api.put(`/workspaces/${workspaceId}/budgets/${editingBudgetId}`, {
-          amount,
-          currency: form.currency,
-          category_id: form.categoryId,
-          year,
-          month: monthPart,
-        });
+        await budgetsApi.budgetsControllerUpdateBudget(
+          editingBudgetId,
+          workspaceId,
+          {
+            amount,
+            currency: form.currency,
+            category_id: form.categoryId,
+            year,
+            month: monthPart,
+          },
+        );
       } else {
-        await api.post(`/workspaces/${workspaceId}/budgets`, {
+        await budgetsApi.budgetsControllerCreateBudget(workspaceId, {
           amount,
           currency: form.currency,
           category_id: form.categoryId,
@@ -207,7 +211,10 @@ export default function BudgetsPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await api.delete(`/workspaces/${workspaceId}/budgets/${editingBudgetId}`);
+      await budgetsApi.budgetsControllerDeleteBudget(
+        editingBudgetId,
+        workspaceId,
+      );
       hideCreate();
       await queryClient.invalidateQueries({
         queryKey: queryKeys.budgets(workspaceId),

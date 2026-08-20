@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import type { User } from "@/contexts/AuthContext";
 
 import { useFocusOnError } from "@/hooks/useFocusOnError";
@@ -72,7 +72,10 @@ export function SecuritySection({
     setIsChangingPassword(true);
     setPasswordError(null);
     try {
-      await api.post("/auth/change-password", { currentPassword, newPassword });
+      await authApi.authControllerChangePassword({
+        currentPassword,
+        newPassword,
+      });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -91,8 +94,9 @@ export function SecuritySection({
     setTwoFactorError(null);
     setRecoveryCodes([]);
     try {
-      const res = await api.post<TwoFactorSetupResponse>("/auth/2fa/setup");
-      setSetupQrCode(res.data.qrCodeDataUrl || res.data.otpauthUri);
+      const res = await authApi.authControllerSetupTwoFactor();
+      const setup = res.data as TwoFactorSetupResponse;
+      setSetupQrCode(setup.qrCodeDataUrl || setup.otpauthUri);
     } catch {
       setTwoFactorError(t("settings.twoFactorStartError"));
     } finally {
@@ -110,13 +114,14 @@ export function SecuritySection({
     setIsUpdatingTwoFactor(true);
     setTwoFactorError(null);
     try {
-      const res = await api.post<TwoFactorVerifySetupResponse>(
-        "/auth/2fa/verify-setup",
-        { token: setupToken.trim() },
-      );
+      const res = await authApi.authControllerVerifyTwoFactorSetup({
+        token: setupToken.trim(),
+      });
       setTwoFactorEnabled(true);
       setUser(user ? { ...user, totpEnabled: true } : user);
-      setRecoveryCodes(res.data.recoveryCodes);
+      setRecoveryCodes(
+        (res.data as TwoFactorVerifySetupResponse).recoveryCodes,
+      );
       setSetupQrCode(null);
       setSetupToken("");
       onSaved(t("settings.twoFactorEnabled"));
@@ -137,7 +142,9 @@ export function SecuritySection({
     setIsUpdatingTwoFactor(true);
     setTwoFactorError(null);
     try {
-      await api.post("/auth/2fa/disable", { currentPassword: disablePassword });
+      await authApi.authControllerDisableTwoFactor({
+        currentPassword: disablePassword,
+      });
       setTwoFactorEnabled(false);
       setUser(user ? { ...user, totpEnabled: false } : user);
       setDisablePassword("");

@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,16 +37,20 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
 // @ts-ignore
-import { CreateGoalDto } from "../model";
+import type { CreateGoalDto } from "../model";
 // @ts-ignore
-import { GoalOperationDto } from "../model";
+import type { GoalOperationDto } from "../model";
 // @ts-ignore
-import { UpdateGoalDto } from "../model";
+import type { InlineResponse20013 } from "../model";
+// @ts-ignore
+import type { UpdateGoalDto } from "../model";
+// @ts-ignore
+import type { WorkspacesWorkspaceIdGoalsOperations } from "../model";
 /**
  * GoalsApi - axios parameter creator
  * @export
@@ -658,7 +665,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20013>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerArchive(
@@ -685,7 +695,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       createGoalDto: CreateGoalDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20013>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerCreate(
@@ -714,7 +727,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       goalOperationDto: GoalOperationDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<WorkspacesWorkspaceIdGoalsOperations>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerCreateOperation(
@@ -799,7 +815,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20013>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerGet(
@@ -826,7 +845,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       includeArchived?: "true" | "false",
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse20013>>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerList(
@@ -853,7 +875,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20013>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerRestore(
@@ -882,7 +907,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       updateGoalDto: UpdateGoalDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20013>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerUpdate(
@@ -914,7 +942,10 @@ export const GoalsApiFp = function (configuration?: Configuration) {
       goalOperationDto: GoalOperationDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<WorkspacesWorkspaceIdGoalsOperations>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.goalsControllerUpdateOperation(
@@ -956,7 +987,7 @@ export const GoalsApiFactory = function (
       goalId: string,
       workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20013> {
       return localVarFp
         .goalsControllerArchive(goalId, workspaceId, options)
         .then((request) => request(axios, basePath));
@@ -972,7 +1003,7 @@ export const GoalsApiFactory = function (
       workspaceId: string,
       createGoalDto: CreateGoalDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20013> {
       return localVarFp
         .goalsControllerCreate(workspaceId, createGoalDto, options)
         .then((request) => request(axios, basePath));
@@ -990,7 +1021,7 @@ export const GoalsApiFactory = function (
       workspaceId: string,
       goalOperationDto: GoalOperationDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<WorkspacesWorkspaceIdGoalsOperations> {
       return localVarFp
         .goalsControllerCreateOperation(
           goalId,
@@ -1050,7 +1081,7 @@ export const GoalsApiFactory = function (
       goalId: string,
       workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20013> {
       return localVarFp
         .goalsControllerGet(goalId, workspaceId, options)
         .then((request) => request(axios, basePath));
@@ -1066,7 +1097,7 @@ export const GoalsApiFactory = function (
       workspaceId: string,
       includeArchived?: "true" | "false",
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<Array<InlineResponse20013>> {
       return localVarFp
         .goalsControllerList(workspaceId, includeArchived, options)
         .then((request) => request(axios, basePath));
@@ -1082,7 +1113,7 @@ export const GoalsApiFactory = function (
       goalId: string,
       workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20013> {
       return localVarFp
         .goalsControllerRestore(goalId, workspaceId, options)
         .then((request) => request(axios, basePath));
@@ -1100,7 +1131,7 @@ export const GoalsApiFactory = function (
       workspaceId: string,
       updateGoalDto: UpdateGoalDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20013> {
       return localVarFp
         .goalsControllerUpdate(goalId, workspaceId, updateGoalDto, options)
         .then((request) => request(axios, basePath));
@@ -1120,7 +1151,7 @@ export const GoalsApiFactory = function (
       workspaceId: string,
       goalOperationDto: GoalOperationDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<WorkspacesWorkspaceIdGoalsOperations> {
       return localVarFp
         .goalsControllerUpdateOperation(
           goalId,

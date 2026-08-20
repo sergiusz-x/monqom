@@ -5,13 +5,21 @@ import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { EXPORT_BASE_ROUTE } from './export.routes'
 import { ExportService } from './export.service'
 import { ExportTransactionsQueryDto } from './export.dto'
+import { ApiOkResponse, ApiParam } from '@nestjs/swagger'
 
 @Controller(EXPORT_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
+@ApiParam({ name: 'workspaceId', type: String })
 export class ExportController {
     constructor(private readonly exportService: ExportService) {}
 
     @Get()
+    @ApiOkResponse({
+        content: {
+            'text/csv': { schema: { type: 'string', format: 'binary' } },
+            'application/json': { schema: { type: 'string', format: 'binary' } },
+        },
+    })
     @HttpCode(HttpStatus.OK)
     async exportTransactions(
         @Query() query: ExportTransactionsQueryDto,

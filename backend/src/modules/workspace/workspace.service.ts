@@ -14,6 +14,8 @@ import {
     WorkspaceRepository,
 } from './workspace.repository'
 import { normalizeCurrency } from '../../shared/currency/currency.service'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 
 const PERSONAL_WORKSPACE_TYPE = 'personal'
 const PERSONAL_WORKSPACE_TIMEZONE = 'UTC'
@@ -35,6 +37,7 @@ export class WorkspaceService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly workspaceRepository: WorkspaceRepository,
+        private readonly audit?: AuditService,
     ) {}
 
     async listUserWorkspaces(userId: string): Promise<UserWorkspaceRecord[]> {
@@ -74,6 +77,7 @@ export class WorkspaceService {
     async updateWorkspaceSettings(
         workspaceId: string,
         input: UpdateWorkspaceSettingsCommand,
+        userId?: string,
     ): Promise<Workspace> {
         const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
         const { name, timezone, baseCurrency, errors } = validateWorkspaceSettingsInput(input)
@@ -113,6 +117,26 @@ export class WorkspaceService {
                     },
                     tx,
                 )
+
+                if (userId) {
+                    await this.audit?.record(
+                        {
+                            action: AUDIT_ACTIONS.WORKSPACE_UPDATED,
+                            workspaceId: normalizedWorkspaceId,
+                            userId,
+                            entityType: AUDIT_ENTITY_TYPES.WORKSPACE,
+                            entityId: normalizedWorkspaceId,
+                            metadata: {
+                                name_changed: name !== undefined,
+                                timezone_changed: timezone !== workspace.timezone,
+                                base_currency_changed:
+                                    baseCurrency !== undefined &&
+                                    baseCurrency !== workspace.baseCurrency,
+                            },
+                        },
+                        tx,
+                    )
+                }
 
                 return {
                     ...updated,

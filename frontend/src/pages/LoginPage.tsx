@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
-import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
@@ -46,18 +46,10 @@ export default function LoginPage() {
   async function onTwoFactorSubmit(data: TwoFactorFormValues) {
     setServerError("");
     try {
-      const res = await api.post<{
-        id: string;
-        email: string;
-        name: string;
-        locale: "en" | "pl";
-        hideSalaryAmounts: boolean;
-        emailVerified: boolean;
-        totpEnabled: boolean;
-        createdAt: string;
-        updatedAt: string;
-      }>("/auth/2fa/verify", { token: data.otp });
-      setUser(res.data);
+      const res = await authApi.authControllerVerifyTwoFactor({
+        token: data.otp,
+      });
+      setUser(res.data as Parameters<typeof setUser>[0]);
       navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
       setServerError(getApiErrorMessage(err));

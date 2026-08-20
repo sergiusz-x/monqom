@@ -8,7 +8,7 @@ import { TransactionFormModal } from "@/components/transactions/TransactionFormM
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useToast } from "@/hooks/useToast";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
-import api from "@/lib/api";
+import { transactionsApi } from "@/api/contract";
 import { formatShortDate } from "@/lib/date-only";
 import { categorySystemKeys } from "@/lib/category-system-keys";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
@@ -88,8 +88,9 @@ export function RecentTransactions({
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await api.delete(
-        `/workspaces/${workspaceId}/transactions/${selectedTransaction.id}`,
+      await transactionsApi.transactionsControllerDeleteTransaction(
+        selectedTransaction.id,
+        workspaceId,
       );
       setSelectedTransaction(null);
       await invalidateFinancialData(queryClient, workspaceId);
