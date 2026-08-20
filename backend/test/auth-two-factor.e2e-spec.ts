@@ -46,9 +46,9 @@ interface StoredAuditEvent {
 }
 
 interface FakeTransactionClient {
-    $queryRaw(query: { values?: unknown[] }): Promise<
-        Array<{ attempt_count: number; blocked_until: Date | null }>
-    >
+    $queryRaw(query: {
+        values?: unknown[]
+    }): Promise<Array<{ attempt_count: number; blocked_until: Date | null }>>
     user: {
         findUnique(args: { where: { email?: string; id?: string } }): Promise<StoredUser | null>
         update(args: {
@@ -528,8 +528,7 @@ function createPrismaMock(): PrismaMock {
             return [
                 {
                     attempt_count: attempts,
-                    blocked_until:
-                        attempts > 5 ? new Date(Date.now() + 15 * 60_000) : null,
+                    blocked_until: attempts > 5 ? new Date(Date.now() + 15 * 60_000) : null,
                 },
             ]
         },
