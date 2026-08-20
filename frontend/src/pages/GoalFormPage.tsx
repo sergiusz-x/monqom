@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, CalendarDays, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,11 +24,12 @@ import {
   todayInTimeZone,
 } from "@/lib/goals";
 import { formatCurrency } from "@/lib/money";
-import { queryClient, queryKeys } from "@/lib/query-client";
+import { queryKeys } from "@/lib/query-client";
 import { useGoal } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
+import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 import type { ApiGoal } from "@/types/api-contracts";
 
 export default function GoalFormPage() {
@@ -35,7 +37,14 @@ export default function GoalFormPage() {
   const navigate = useNavigate();
   const { goalId = "" } = useParams();
   const editing = Boolean(goalId);
-  const { workspaceId, workspace } = useWorkspace();
+  const {
+    workspaceId,
+    workspace,
+    isLoading: workspaceLoading,
+    error: workspaceError,
+    refetch: retryWorkspace,
+  } = useWorkspace();
+  const queryClient = useQueryClient();
   const detail = useGoal(workspaceId ?? "", goalId);
   const { showToast } = useToast(3000);
   const today = todayInTimeZone(workspace?.timezone ?? "UTC");
@@ -48,6 +57,9 @@ export default function GoalFormPage() {
   );
   const [includeCurrentMonth, setIncludeCurrentMonth] = useState(false);
   const [loadedGoalId, setLoadedGoalId] = useState<string | null>(null);
+  const [createDefaultsWorkspaceKey, setCreateDefaultsWorkspaceKey] = useState<
+    string | null
+  >(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,6 +75,17 @@ export default function GoalFormPage() {
     setMonths(monthsUntilDate(today, detail.goal.targetDate));
     setLoadedGoalId(detail.goal.id);
   }, [detail.goal, loadedGoalId, today]);
+
+  useEffect(() => {
+    if (editing || !workspace) return;
+    const workspaceKey = `${workspace.id}:${workspace.timezone}`;
+    if (createDefaultsWorkspaceKey === workspaceKey) return;
+    // Initialize date-sensitive defaults only after the workspace timezone is known.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTargetDate(addMonthsClamped(today, 12));
+    setMonths(12);
+    setCreateDefaultsWorkspaceKey(workspaceKey);
+  }, [createDefaultsWorkspaceKey, editing, today, workspace]);
 
   const minDate = addMonthsClamped(today, 1);
   const maxDate = addMonthsClamped(today, 120);
@@ -148,7 +171,42 @@ export default function GoalFormPage() {
     }
   }
 
-  if (editing && (detail.isLoading || !workspace)) {
+  if (workspaceLoading) {
+    return (
+      <PageContainer>
+        <AsyncState
+          status="loading"
+          message={t("common.loading")}
+          skeletonRows={5}
+        />
+      </PageContainer>
+    );
+  }
+  if (workspaceError || !workspaceId || !workspace) {
+    return (
+      <PageContainer>
+        <WorkspaceErrorState
+          message={workspaceError ?? t("common.noWorkspace")}
+          onRetry={workspaceError ? () => void retryWorkspace() : undefined}
+        />
+      </PageContainer>
+    );
+  }
+  if (
+    !editing &&
+    createDefaultsWorkspaceKey !== `${workspace.id}:${workspace.timezone}`
+  ) {
+    return (
+      <PageContainer>
+        <AsyncState
+          status="loading"
+          message={t("common.loading")}
+          skeletonRows={5}
+        />
+      </PageContainer>
+    );
+  }
+  if (editing && detail.isLoading) {
     return (
       <PageContainer>
         <AsyncState

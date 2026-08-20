@@ -65,6 +65,7 @@ export class WorkspaceRepository {
                     select: {
                         transactions: true,
                         budgets: true,
+                        goals: true,
                     },
                 },
             },
@@ -81,7 +82,7 @@ export class WorkspaceRepository {
         return workspaces.map(({ memberships, _count, ...workspace }) => ({
             ...workspace,
             lastPaymentSourceId: memberships[0].lastPaymentSourceId,
-            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0,
+            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0 || _count.goals > 0,
         }))
     }
 
@@ -98,6 +99,7 @@ export class WorkspaceRepository {
                     select: {
                         transactions: true,
                         budgets: true,
+                        goals: true,
                     },
                 },
             },
@@ -108,7 +110,7 @@ export class WorkspaceRepository {
         const { _count, ...details } = workspace
         return {
             ...details,
-            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0,
+            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0 || _count.goals > 0,
         }
     }
 

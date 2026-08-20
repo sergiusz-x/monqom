@@ -21,6 +21,7 @@ const GOAL_NOT_FOUND = 'Goal not found'
 const GOAL_ARCHIVED = 'Archived goals are read-only'
 const NEGATIVE_BALANCE = 'Goal balance cannot be negative'
 const DATE_RANGE = 'Target date must be between 1 and 120 months from today'
+const SERIALIZABLE_RETRY_LIMIT = 3
 
 type GoalWithOperations = Prisma.GoalGetPayload<{ include: { operations: true } }>
 
@@ -52,7 +53,7 @@ export class GoalsService {
         const context = await this.context(workspaceId)
         const targetDate = parseTargetDate(body.target_date, context.today)
         const initialAmount = toCents(body.initial_amount ?? 0)
-        const goal = await this.prisma.$transaction(async (tx) => {
+        const goal = await this.runSerializable(async (tx) => {
             const created = await tx.goal.create({
                 data: {
                     workspaceId,
@@ -89,7 +90,7 @@ export class GoalsService {
         if (Object.keys(body).length === 0)
             throw new BadRequestException('At least one field is required')
         const context = await this.context(workspaceId)
-        const goal = await this.prisma.$transaction(async (tx) => {
+        const goal = await this.runSerializable(async (tx) => {
             const previous = await this.findGoal(workspaceId, goalId, tx)
             assertMutable(previous)
             const initialAmount =
@@ -180,33 +181,30 @@ export class GoalsService {
         body: GoalOperationDto,
     ) {
         const context = await this.context(workspaceId)
-        const operation = await this.prisma.$transaction(
-            async (tx) => {
-                const goal = await this.findGoal(workspaceId, goalId, tx)
-                assertMutable(goal)
-                const date = parseOperationDate(body.date, context.today)
-                const amount = toCents(body.amount)
-                if (
-                    body.type === 'withdrawal' &&
-                    balanceCents(goal.operations, goal.initialAmount) - amount < 0
-                ) {
-                    throw new ConflictException(NEGATIVE_BALANCE)
-                }
-                const created = await tx.goalOperation.create({
-                    data: {
-                        workspaceId,
-                        goalId,
-                        type: body.type,
-                        amount,
-                        date,
-                        note: normalizeNote(body.note),
-                    },
-                })
-                await this.auditOperation(AUDIT_ACTIONS.GOAL_OPERATION_CREATED, created, userId, tx)
-                return created
-            },
-            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-        )
+        const operation = await this.runSerializable(async (tx) => {
+            const goal = await this.findGoal(workspaceId, goalId, tx)
+            assertMutable(goal)
+            const date = parseOperationDate(body.date, context.today)
+            const amount = toCents(body.amount)
+            if (
+                body.type === 'withdrawal' &&
+                balanceCents(goal.operations, goal.initialAmount) - amount < 0
+            ) {
+                throw new ConflictException(NEGATIVE_BALANCE)
+            }
+            const created = await tx.goalOperation.create({
+                data: {
+                    workspaceId,
+                    goalId,
+                    type: body.type,
+                    amount,
+                    date,
+                    note: normalizeNote(body.note),
+                },
+            })
+            await this.auditOperation(AUDIT_ACTIONS.GOAL_OPERATION_CREATED, created, userId, tx)
+            return created
+        })
         return mapOperation(operation)
     }
 
@@ -218,45 +216,42 @@ export class GoalsService {
         body: GoalOperationDto,
     ) {
         const context = await this.context(workspaceId)
-        const operation = await this.prisma.$transaction(
-            async (tx) => {
-                const goal = await this.findGoal(workspaceId, goalId, tx)
-                assertMutable(goal)
-                const previous = goal.operations.find((item) => item.id === operationId)
-                if (!previous) throw new NotFoundException('Goal operation not found')
-                const nextOperations = goal.operations.filter((item) => item.id !== operationId)
-                const nextAmount = toCents(body.amount)
-                const prospective =
-                    balanceCents(nextOperations, goal.initialAmount) +
-                    (body.type === 'deposit' ? nextAmount : -nextAmount)
-                if (prospective < 0) throw new ConflictException(NEGATIVE_BALANCE)
-                const updated = await tx.goalOperation.update({
-                    where: { workspaceId_id: { workspaceId, id: operationId } },
-                    data: {
-                        type: body.type,
-                        amount: nextAmount,
-                        date: parseOperationDate(body.date, context.today),
-                        note: normalizeNote(body.note),
+        const operation = await this.runSerializable(async (tx) => {
+            const goal = await this.findGoal(workspaceId, goalId, tx)
+            assertMutable(goal)
+            const previous = goal.operations.find((item) => item.id === operationId)
+            if (!previous) throw new NotFoundException('Goal operation not found')
+            const nextOperations = goal.operations.filter((item) => item.id !== operationId)
+            const nextAmount = toCents(body.amount)
+            const prospective =
+                balanceCents(nextOperations, goal.initialAmount) +
+                (body.type === 'deposit' ? nextAmount : -nextAmount)
+            if (prospective < 0) throw new ConflictException(NEGATIVE_BALANCE)
+            const updated = await tx.goalOperation.update({
+                where: { workspaceId_id: { workspaceId, id: operationId } },
+                data: {
+                    type: body.type,
+                    amount: nextAmount,
+                    date: parseOperationDate(body.date, context.today),
+                    note: normalizeNote(body.note),
+                },
+            })
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.GOAL_OPERATION_UPDATED,
+                    workspaceId,
+                    userId,
+                    entityType: AUDIT_ENTITY_TYPES.GOAL_OPERATION,
+                    entityId: operationId,
+                    metadata: {
+                        previous: operationAudit(previous),
+                        current: operationAudit(updated),
                     },
-                })
-                await this.auditService.record(
-                    {
-                        action: AUDIT_ACTIONS.GOAL_OPERATION_UPDATED,
-                        workspaceId,
-                        userId,
-                        entityType: AUDIT_ENTITY_TYPES.GOAL_OPERATION,
-                        entityId: operationId,
-                        metadata: {
-                            previous: operationAudit(previous),
-                            current: operationAudit(updated),
-                        },
-                    },
-                    tx,
-                )
-                return updated
-            },
-            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-        )
+                },
+                tx,
+            )
+            return updated
+        })
         return mapOperation(operation)
     }
 
@@ -266,28 +261,20 @@ export class GoalsService {
         goalId: string,
         operationId: string,
     ): Promise<void> {
-        await this.prisma.$transaction(
-            async (tx) => {
-                const goal = await this.findGoal(workspaceId, goalId, tx)
-                assertMutable(goal)
-                const operation = goal.operations.find((item) => item.id === operationId)
-                if (!operation) throw new NotFoundException('Goal operation not found')
-                const remaining = goal.operations.filter((item) => item.id !== operationId)
-                if (balanceCents(remaining, goal.initialAmount) < 0) {
-                    throw new ConflictException(NEGATIVE_BALANCE)
-                }
-                await tx.goalOperation.delete({
-                    where: { workspaceId_id: { workspaceId, id: operationId } },
-                })
-                await this.auditOperation(
-                    AUDIT_ACTIONS.GOAL_OPERATION_DELETED,
-                    operation,
-                    userId,
-                    tx,
-                )
-            },
-            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-        )
+        await this.runSerializable(async (tx) => {
+            const goal = await this.findGoal(workspaceId, goalId, tx)
+            assertMutable(goal)
+            const operation = goal.operations.find((item) => item.id === operationId)
+            if (!operation) throw new NotFoundException('Goal operation not found')
+            const remaining = goal.operations.filter((item) => item.id !== operationId)
+            if (balanceCents(remaining, goal.initialAmount) < 0) {
+                throw new ConflictException(NEGATIVE_BALANCE)
+            }
+            await tx.goalOperation.delete({
+                where: { workspaceId_id: { workspaceId, id: operationId } },
+            })
+            await this.auditOperation(AUDIT_ACTIONS.GOAL_OPERATION_DELETED, operation, userId, tx)
+        })
     }
 
     private async context(workspaceId: string) {
@@ -330,6 +317,24 @@ export class GoalsService {
             },
             prisma,
         )
+    }
+
+    private async runSerializable<T>(
+        callback: (tx: Prisma.TransactionClient) => Promise<T>,
+    ): Promise<T> {
+        for (let attempt = 1; attempt <= SERIALIZABLE_RETRY_LIMIT; attempt += 1) {
+            try {
+                return await this.prisma.$transaction(callback, {
+                    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+                })
+            } catch (error) {
+                if (!isSerializationConflict(error) || attempt === SERIALIZABLE_RETRY_LIMIT) {
+                    throw error
+                }
+            }
+        }
+
+        throw new Error('Serializable transaction retry limit exhausted')
     }
 }
 
@@ -445,6 +450,15 @@ function fromCents(value: number): number {
 
 function dateString(date: Date): string {
     return date.toISOString().slice(0, 10)
+}
+
+function isSerializationConflict(error: unknown): boolean {
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === 'P2034'
+    )
 }
 
 function goalAudit(goal: Goal) {

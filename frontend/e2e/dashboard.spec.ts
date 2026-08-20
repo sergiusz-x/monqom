@@ -111,6 +111,11 @@ test.beforeEach(async ({ page }) => {
       return;
     }
 
+    if (path.endsWith(`/workspaces/${workspaceId}/goals`)) {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
     if (path.endsWith(`/workspaces/${workspaceId}/dashboard`)) {
       await route.fulfill({
         json: {
@@ -217,6 +222,29 @@ test("keeps an authenticated session after a page reload", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Add transaction" }),
   ).toBeVisible();
+});
+
+test("opens savings goals inside the authenticated workspace shell", async ({
+  page,
+}) => {
+  await page.goto("/dashboard");
+
+  await page.getByRole("link", { name: "Goals" }).click();
+
+  await expect(page).toHaveURL(/\/goals$/);
+  await expect(
+    page.getByRole("heading", { name: "Savings goals", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("No savings goals yet")).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1280) < 768) {
+    await expect(
+      page.getByRole("navigation", { name: "Mobile navigation" }),
+    ).toBeVisible();
+  } else {
+    await expect(
+      page.getByRole("complementary", { name: "Main navigation" }),
+    ).toBeVisible();
+  }
 });
 
 test("lets a mobile user change theme and log out from settings", async ({

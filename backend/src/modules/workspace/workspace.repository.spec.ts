@@ -2,9 +2,10 @@ import { WorkspaceRepository } from './workspace.repository'
 
 describe('WorkspaceRepository', () => {
     it.each([
-        [{ transactions: 1, budgets: 0 }, true],
-        [{ transactions: 0, budgets: 1 }, true],
-        [{ transactions: 0, budgets: 0 }, false],
+        [{ transactions: 1, budgets: 0, goals: 0 }, true],
+        [{ transactions: 0, budgets: 1, goals: 0 }, true],
+        [{ transactions: 0, budgets: 0, goals: 1 }, true],
+        [{ transactions: 0, budgets: 0, goals: 0 }, false],
     ])('derives the base currency lock from financial records', async (_count, expected) => {
         const prisma = {
             workspace: {
@@ -32,6 +33,7 @@ describe('WorkspaceRepository', () => {
                         select: {
                             transactions: true,
                             budgets: true,
+                            goals: true,
                         },
                     },
                 },

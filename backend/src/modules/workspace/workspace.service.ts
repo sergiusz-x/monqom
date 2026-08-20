@@ -22,7 +22,7 @@ const WORKSPACE_ACCESS_FORBIDDEN_MESSAGE = 'Forbidden'
 const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found'
 export const WORKSPACE_BASE_CURRENCY_LOCKED_CODE = 'WORKSPACE_BASE_CURRENCY_LOCKED'
 const WORKSPACE_BASE_CURRENCY_LOCKED_MESSAGE =
-    'Base currency cannot be changed after a transaction or budget has been created'
+    'Base currency cannot be changed after a transaction, budget, or savings goal has been created'
 
 export interface UpdateWorkspaceSettingsCommand {
     name?: string
