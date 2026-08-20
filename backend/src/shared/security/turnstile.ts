@@ -4,17 +4,20 @@ interface TurnstileResponse {
     success: boolean
 }
 
-export async function verifyTurnstileToken(input: {
-    token?: string
-    remoteIp?: string
-}): Promise<void> {
-    if (process.env.TURNSTILE_ENABLED !== 'true') return
+export async function verifyTurnstileToken(
+    input: {
+        token?: string
+        remoteIp?: string
+    },
+    config: { enabled: boolean; secretKey?: string },
+): Promise<void> {
+    if (!config.enabled) return
     if (!input.token)
         throw new BadRequestException({
             code: 'TURNSTILE_REQUIRED',
             message: 'Security verification is required',
         })
-    const secret = process.env.TURNSTILE_SECRET_KEY
+    const secret = config.secretKey
     if (!secret) throw new ServiceUnavailableException('Security verification is unavailable')
     let response: Response
     try {

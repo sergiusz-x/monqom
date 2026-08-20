@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,7 +37,7 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
@@ -48,13 +51,32 @@ export const ExportApiAxiosParamCreator = function (
   return {
     /**
      *
+     * @param {'csv' | 'json'} format
+     * @param {string} workspaceId
+     * @param {string} [dateFrom]
+     * @param {string} [dateTo]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     exportControllerExportTransactions: async (
+      format: "csv" | "json",
+      workspaceId: string,
+      dateFrom?: string,
+      dateTo?: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/export`;
+      // verify required parameter 'format' is not null or undefined
+      assertParamExists("exportControllerExportTransactions", "format", format);
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "exportControllerExportTransactions",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/export`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -69,6 +91,24 @@ export const ExportApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (format !== undefined) {
+        localVarQueryParameter["format"] = format;
+      }
+
+      if (dateFrom !== undefined) {
+        localVarQueryParameter["date_from"] =
+          (dateFrom as any) instanceof Date
+            ? (dateFrom as any).toISOString().substr(0, 10)
+            : dateFrom;
+      }
+
+      if (dateTo !== undefined) {
+        localVarQueryParameter["date_to"] =
+          (dateTo as any) instanceof Date
+            ? (dateTo as any).toISOString().substr(0, 10)
+            : dateTo;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -96,16 +136,28 @@ export const ExportApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
+     * @param {'csv' | 'json'} format
+     * @param {string} workspaceId
+     * @param {string} [dateFrom]
+     * @param {string} [dateTo]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async exportControllerExportTransactions(
+      format: "csv" | "json",
+      workspaceId: string,
+      dateFrom?: string,
+      dateTo?: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<any>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.exportControllerExportTransactions(
+          format,
+          workspaceId,
+          dateFrom,
+          dateTo,
           options,
         );
       return createRequestFunction(
@@ -131,12 +183,28 @@ export const ExportApiFactory = function (
   return {
     /**
      *
+     * @param {'csv' | 'json'} format
+     * @param {string} workspaceId
+     * @param {string} [dateFrom]
+     * @param {string} [dateTo]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    exportControllerExportTransactions(options?: any): AxiosPromise<void> {
+    exportControllerExportTransactions(
+      format: "csv" | "json",
+      workspaceId: string,
+      dateFrom?: string,
+      dateTo?: string,
+      options?: any,
+    ): AxiosPromise<any> {
       return localVarFp
-        .exportControllerExportTransactions(options)
+        .exportControllerExportTransactions(
+          format,
+          workspaceId,
+          dateFrom,
+          dateTo,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
   };
@@ -151,13 +219,29 @@ export const ExportApiFactory = function (
 export class ExportApi extends BaseAPI {
   /**
    *
+   * @param {'csv' | 'json'} format
+   * @param {string} workspaceId
+   * @param {string} [dateFrom]
+   * @param {string} [dateTo]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof ExportApi
    */
-  public exportControllerExportTransactions(options?: AxiosRequestConfig) {
+  public exportControllerExportTransactions(
+    format: "csv" | "json",
+    workspaceId: string,
+    dateFrom?: string,
+    dateTo?: string,
+    options?: AxiosRequestConfig,
+  ) {
     return ExportApiFp(this.configuration)
-      .exportControllerExportTransactions(options)
+      .exportControllerExportTransactions(
+        format,
+        workspaceId,
+        dateFrom,
+        dateTo,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }

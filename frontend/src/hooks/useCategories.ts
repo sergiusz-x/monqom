@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { categoriesApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
-import type { ApiCategory } from "@/types/api-contracts";
 import { mapCategory } from "@/lib/api-mappers";
 import { getApiErrorMessage } from "@/lib/api-errors";
+import type { ApiCategory } from "@/types/api-contracts";
 export function useCategories(
   workspaceId: string,
   includeArchived = false,
@@ -13,17 +13,15 @@ export function useCategories(
     queryKey: [...queryKeys.categories(workspaceId), { includeArchived, type }],
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiCategory[]>(
-        `/workspaces/${workspaceId}/categories`,
-        {
-          signal,
-          params: {
-            ...(includeArchived ? { include_archived: true } : {}),
-            type,
-          },
-        },
+      const response = await categoriesApi.categoriesControllerListCategories(
+        workspaceId,
+        includeArchived || undefined,
+        type,
+        { signal },
       );
-      return response.data.map(mapCategory);
+      return response.data.map((category) =>
+        mapCategory(category as unknown as ApiCategory),
+      );
     },
   });
   return {

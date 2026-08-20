@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { budgetsApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
-import type { ApiBudgetProgressItem } from "@/types/api-contracts";
 import { mapBudgetProgressItem } from "@/lib/api-mappers";
 import { getApiErrorMessage } from "@/lib/api-errors";
 
@@ -10,9 +9,10 @@ export function useBudgetProgress(workspaceId: string, month: string) {
     queryKey: [...queryKeys.budgets(workspaceId), "progress", month],
     enabled: Boolean(workspaceId && month),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiBudgetProgressItem[]>(
-        `/workspaces/${workspaceId}/budgets/progress`,
-        { params: { month }, signal },
+      const response = await budgetsApi.budgetsControllerListBudgetProgress(
+        month,
+        workspaceId,
+        { signal },
       );
       return response.data.map(mapBudgetProgressItem);
     },

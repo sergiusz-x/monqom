@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common'
 import { randomUUID } from 'crypto'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
@@ -67,23 +68,29 @@ export class CategoriesService {
     ): Promise<CategoryResponse> {
         const value = this.validate(input)
         const type = input.type ?? 'expense'
-        const parentId = value.parentId
-        if (parentId) await this.activeParent(parentId, workspaceId, undefined, type)
-        await this.assertUnique(value.name, parentId, workspaceId, undefined, type)
-        const sortOrder = await this.nextOrder(parentId, workspaceId, type)
-        const category = await this.prisma.category.create({
-            data: {
-                id: `cat_${randomUUID().replace(/-/g, '')}`,
-                workspaceId,
-                parentId,
-                name: value.name,
-                type,
-                icon: value.icon,
-                sortOrder,
-            },
-        })
-        await this.record(AUDIT_ACTIONS.CATEGORY_CREATED, category, userId)
-        return this.map(category, [])
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const parentId = value.parentId
+                if (parentId) await this.activeParent(parentId, workspaceId, undefined, type, tx)
+                await this.assertUnique(value.name, parentId, workspaceId, undefined, type, tx)
+                const sortOrder = await this.nextOrder(parentId, workspaceId, type, tx)
+                const category = await tx.category.create({
+                    data: {
+                        id: `cat_${randomUUID().replace(/-/g, '')}`,
+                        workspaceId,
+                        parentId,
+                        name: value.name,
+                        type,
+                        icon: value.icon,
+                        sortOrder,
+                    },
+                })
+                await this.record(AUDIT_ACTIONS.CATEGORY_CREATED, category, userId, tx)
+                return this.map(category, [])
+            })
+        } catch (error) {
+            throw mapUniqueCategoryError(error)
+        }
     }
 
     async updateCategory(
@@ -97,61 +104,81 @@ export class CategoriesService {
         workspaceId: string,
         userId: string,
     ): Promise<CategoryResponse> {
-        const existing = await this.prisma.category.findFirst({
-            where: { id, workspaceId, deletedAt: null },
-            include: { children: true },
-        })
-        if (!existing) throw new NotFoundException(NOT_FOUND)
-        const value = this.validate(input)
-        if (existing.children.length && value.parentId !== null)
-            throw new BadRequestException('A category with children cannot become a subcategory')
-        if (value.parentId)
-            await this.activeParent(
-                value.parentId,
-                workspaceId,
-                id,
-                existing.type as 'expense' | 'income',
-            )
-        await this.assertUnique(
-            value.name,
-            value.parentId,
-            workspaceId,
-            id,
-            existing.type as 'expense' | 'income',
-        )
-        const category = await this.prisma.category.update({
-            where: { id },
-            data: {
-                name: value.name,
-                icon: value.icon,
-                parentId: value.parentId,
-                ...(value.name !== existing.name ? { systemKey: null } : {}),
-            },
-        })
-        await this.record(AUDIT_ACTIONS.CATEGORY_UPDATED, category, userId)
-        return this.map(category, [])
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const existing = await tx.category.findFirst({
+                    where: { id, workspaceId, deletedAt: null },
+                    include: { children: true },
+                })
+                if (!existing) throw new NotFoundException(NOT_FOUND)
+                const value = this.validate(input)
+                if (existing.children.length && value.parentId !== null)
+                    throw new BadRequestException(
+                        'A category with children cannot become a subcategory',
+                    )
+                if (value.parentId)
+                    await this.activeParent(
+                        value.parentId,
+                        workspaceId,
+                        id,
+                        existing.type as 'expense' | 'income',
+                        tx,
+                    )
+                await this.assertUnique(
+                    value.name,
+                    value.parentId,
+                    workspaceId,
+                    id,
+                    existing.type as 'expense' | 'income',
+                    tx,
+                )
+                const category = await tx.category.update({
+                    where: { id },
+                    data: {
+                        name: value.name,
+                        icon: value.icon,
+                        parentId: value.parentId,
+                        ...(value.name !== existing.name ? { systemKey: null } : {}),
+                    },
+                })
+                await this.record(AUDIT_ACTIONS.CATEGORY_UPDATED, category, userId, tx)
+                return this.map(category, [])
+            })
+        } catch (error) {
+            throw mapUniqueCategoryError(error)
+        }
     }
 
     async reorderCategories(
         items: Array<{ id: string }>,
         workspaceId: string,
+        userId?: string,
     ): Promise<CategoryResponse[]> {
         const ids = items.map((item) => item.id.trim()).filter(Boolean)
         if (!ids.length || new Set(ids).size !== ids.length)
             throw new BadRequestException('Category ids must be unique')
-        const categories = await this.prisma.category.findMany({
-            where: { workspaceId, id: { in: ids }, deletedAt: null },
+        const categories = await this.prisma.$transaction(async (tx) => {
+            const found = await tx.category.findMany({
+                where: { workspaceId, id: { in: ids }, deletedAt: null },
+            })
+            if (found.length !== ids.length || new Set(found.map((c) => c.parentId)).size !== 1)
+                throw new BadRequestException('Categories must be active siblings')
+            for (const [index, id] of ids.entries())
+                await tx.category.update({ where: { id }, data: { sortOrder: index + 1 } })
+            if (userId)
+                await this.audit.record(
+                    {
+                        action: AUDIT_ACTIONS.CATEGORY_REORDERED,
+                        workspaceId,
+                        userId,
+                        entityType: AUDIT_ENTITY_TYPES.WORKSPACE,
+                        entityId: workspaceId,
+                        metadata: { category_ids: ids },
+                    },
+                    tx,
+                )
+            return found
         })
-        if (
-            categories.length !== ids.length ||
-            new Set(categories.map((c) => c.parentId)).size !== 1
-        )
-            throw new BadRequestException('Categories must be active siblings')
-        await this.prisma.$transaction(
-            ids.map((id, index) =>
-                this.prisma.category.update({ where: { id }, data: { sortOrder: index + 1 } }),
-            ),
-        )
         return this.hierarchy(workspaceId, false, categories[0].type as 'expense' | 'income')
     }
 
@@ -160,18 +187,20 @@ export class CategoriesService {
         workspaceId: string,
         userId: string,
     ): Promise<CategoryResponse> {
-        const category = await this.prisma.category.findFirst({
-            where: { id, workspaceId, deletedAt: null },
+        return this.prisma.$transaction(async (tx) => {
+            const category = await tx.category.findFirst({
+                where: { id, workspaceId, deletedAt: null },
+            })
+            if (!category) throw new NotFoundException(NOT_FOUND)
+            const at = new Date()
+            await tx.category.updateMany({
+                where: { workspaceId, OR: [{ id }, { parentId: id }] },
+                data: { deletedAt: at },
+            })
+            const archived = { ...category, deletedAt: at }
+            await this.record(AUDIT_ACTIONS.CATEGORY_ARCHIVED, archived, userId, tx)
+            return this.map(archived, [])
         })
-        if (!category) throw new NotFoundException(NOT_FOUND)
-        const at = new Date()
-        await this.prisma.category.updateMany({
-            where: { workspaceId, OR: [{ id }, { parentId: id }] },
-            data: { deletedAt: at },
-        })
-        const archived = { ...category, deletedAt: at }
-        await this.record(AUDIT_ACTIONS.CATEGORY_ARCHIVED, archived, userId)
-        return this.map(archived, [])
     }
 
     async restoreCategory(
@@ -179,26 +208,48 @@ export class CategoriesService {
         workspaceId: string,
         userId: string,
     ): Promise<CategoryResponse> {
-        const category = await this.prisma.category.findFirst({
-            where: { id, workspaceId, deletedAt: { not: null } },
-        })
-        if (!category) throw new NotFoundException(NOT_FOUND)
-        if (category.parentId) await this.activeParent(category.parentId, workspaceId)
-        await this.prisma.category.updateMany({
-            where: { workspaceId, OR: [{ id }, { parentId: id }] },
-            data: { deletedAt: null },
-        })
-        const restored = { ...category, deletedAt: null }
-        await this.record(AUDIT_ACTIONS.CATEGORY_RESTORED, restored, userId)
-        return this.map(restored, [])
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const category = await tx.category.findFirst({
+                    where: { id, workspaceId, deletedAt: { not: null } },
+                })
+                if (!category) throw new NotFoundException(NOT_FOUND)
+                if (category.parentId)
+                    await this.activeParent(
+                        category.parentId,
+                        workspaceId,
+                        undefined,
+                        undefined,
+                        tx,
+                    )
+                await this.assertUnique(
+                    category.name,
+                    category.parentId,
+                    workspaceId,
+                    category.id,
+                    category.type as 'expense' | 'income',
+                    tx,
+                )
+                await tx.category.updateMany({
+                    where: { workspaceId, OR: [{ id }, { parentId: id }] },
+                    data: { deletedAt: null },
+                })
+                const restored = { ...category, deletedAt: null }
+                await this.record(AUDIT_ACTIONS.CATEGORY_RESTORED, restored, userId, tx)
+                return this.map(restored, [])
+            })
+        } catch (error) {
+            throw mapUniqueCategoryError(error)
+        }
     }
 
     private async hierarchy(
         workspaceId: string,
         includeArchived: boolean,
         type?: 'expense' | 'income',
+        prisma: Prisma.TransactionClient | PrismaService = this.prisma,
     ): Promise<CategoryResponse[]> {
-        const rows = await this.prisma.category.findMany({
+        const rows = await prisma.category.findMany({
             where: {
                 workspaceId,
                 ...(type ? { type } : {}),
@@ -260,8 +311,9 @@ export class CategoriesService {
         workspaceId: string,
         exceptId?: string,
         type?: 'expense' | 'income',
+        prisma: Prisma.TransactionClient | PrismaService = this.prisma,
     ) {
-        const parent = await this.prisma.category.findFirst({
+        const parent = await prisma.category.findFirst({
             where: { id, workspaceId, deletedAt: null, ...(type ? { type } : {}) },
         })
         if (!parent || parent.parentId || parent.id === exceptId)
@@ -273,8 +325,9 @@ export class CategoriesService {
         workspaceId: string,
         exceptId?: string,
         type?: 'expense' | 'income',
+        prisma: Prisma.TransactionClient | PrismaService = this.prisma,
     ) {
-        const duplicate = await this.prisma.category.findFirst({
+        const duplicate = await prisma.category.findFirst({
             where: {
                 workspaceId,
                 parentId,
@@ -293,8 +346,9 @@ export class CategoriesService {
         parentId: string | null,
         workspaceId: string,
         type?: 'expense' | 'income',
+        prisma: Prisma.TransactionClient | PrismaService = this.prisma,
     ) {
-        const last = await this.prisma.category.aggregate({
+        const last = await prisma.category.aggregate({
             where: { workspaceId, parentId, deletedAt: null, ...(type ? { type } : {}) },
             _max: { sortOrder: true },
         })
@@ -310,18 +364,30 @@ export class CategoriesService {
             deletedAt: Date | null
         },
         userId: string,
+        prisma: Prisma.TransactionClient | PrismaService = this.prisma,
     ) {
-        await this.audit.record({
-            action,
-            workspaceId: category.workspaceId,
-            userId,
-            entityType: AUDIT_ENTITY_TYPES.CATEGORY,
-            entityId: category.id,
-            metadata: {
-                name: category.name,
-                parent_id: category.parentId,
-                archived_at: category.deletedAt?.toISOString() ?? null,
+        await this.audit.record(
+            {
+                action,
+                workspaceId: category.workspaceId,
+                userId,
+                entityType: AUDIT_ENTITY_TYPES.CATEGORY,
+                entityId: category.id,
+                metadata: {
+                    name: category.name,
+                    parent_id: category.parentId,
+                    archived_at: category.deletedAt?.toISOString() ?? null,
+                },
             },
-        })
+            prisma,
+        )
     }
+}
+
+function mapUniqueCategoryError(error: unknown): unknown {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+        return new ConflictException(
+            'An active category with this name already exists in this group',
+        )
+    return error
 }

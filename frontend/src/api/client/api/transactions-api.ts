@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,16 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { InlineResponse20010RecentTransactions } from "../model";
+// @ts-ignore
+import type { InlineResponse20011 } from "../model";
+// @ts-ignore
+import type { TransactionBodyDto } from "../model";
 /**
  * TransactionsApi - axios parameter creator
  * @export
@@ -48,21 +57,32 @@ export const TransactionsApiAxiosParamCreator = function (
   return {
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerCreateTransaction: async (
-      body: object,
+      workspaceId: string,
+      transactionBodyDto: TransactionBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
+      // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
         "transactionsControllerCreateTransaction",
-        "body",
-        body,
+        "workspaceId",
+        workspaceId,
       );
-      const localVarPath = `/workspaces/{workspaceId}/transactions`;
+      // verify required parameter 'transactionBodyDto' is not null or undefined
+      assertParamExists(
+        "transactionsControllerCreateTransaction",
+        "transactionBodyDto",
+        transactionBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/transactions`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -89,7 +109,7 @@ export const TransactionsApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        transactionBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -102,20 +122,26 @@ export const TransactionsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerDeleteTransaction: async (
       id: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("transactionsControllerDeleteTransaction", "id", id);
-      const localVarPath =
-        `/workspaces/{workspaceId}/transactions/{id}`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "transactionsControllerDeleteTransaction",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/transactions/{id}`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -148,20 +174,26 @@ export const TransactionsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerGetTransaction: async (
       id: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("transactionsControllerGetTransaction", "id", id);
-      const localVarPath =
-        `/workspaces/{workspaceId}/transactions/{id}`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "transactionsControllerGetTransaction",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/transactions/{id}`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -193,13 +225,53 @@ export const TransactionsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {'expense' | 'income'} [type]
+     * @param {string} [categoryId]
+     * @param {Array<string>} [categoryIds]
+     * @param {'date' | 'category' | 'amount' | 'description' | 'notes' | 'tags' | 'payment_source'} [sortBy]
+     * @param {'asc' | 'desc'} [sortDirection]
+     * @param {string} [paymentSourceId]
+     * @param {string} [tag]
+     * @param {string} [dateFrom]
+     * @param {string} [dateTo]
+     * @param {number} [limit]
+     * @param {number} [offset]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerListTransactions: async (
+      workspaceId: string,
+      type?: "expense" | "income",
+      categoryId?: string,
+      categoryIds?: Array<string>,
+      sortBy?:
+        | "date"
+        | "category"
+        | "amount"
+        | "description"
+        | "notes"
+        | "tags"
+        | "payment_source",
+      sortDirection?: "asc" | "desc",
+      paymentSourceId?: string,
+      tag?: string,
+      dateFrom?: string,
+      dateTo?: string,
+      limit?: number,
+      offset?: number,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/transactions`;
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "transactionsControllerListTransactions",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/transactions`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -214,6 +286,56 @@ export const TransactionsApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (type !== undefined) {
+        localVarQueryParameter["type"] = type;
+      }
+
+      if (categoryId !== undefined) {
+        localVarQueryParameter["category_id"] = categoryId;
+      }
+
+      if (categoryIds) {
+        localVarQueryParameter["category_ids"] = categoryIds;
+      }
+
+      if (sortBy !== undefined) {
+        localVarQueryParameter["sort_by"] = sortBy;
+      }
+
+      if (sortDirection !== undefined) {
+        localVarQueryParameter["sort_direction"] = sortDirection;
+      }
+
+      if (paymentSourceId !== undefined) {
+        localVarQueryParameter["payment_source_id"] = paymentSourceId;
+      }
+
+      if (tag !== undefined) {
+        localVarQueryParameter["tag"] = tag;
+      }
+
+      if (dateFrom !== undefined) {
+        localVarQueryParameter["date_from"] =
+          (dateFrom as any) instanceof Date
+            ? (dateFrom as any).toISOString().substr(0, 10)
+            : dateFrom;
+      }
+
+      if (dateTo !== undefined) {
+        localVarQueryParameter["date_to"] =
+          (dateTo as any) instanceof Date
+            ? (dateTo as any).toISOString().substr(0, 10)
+            : dateTo;
+      }
+
+      if (limit !== undefined) {
+        localVarQueryParameter["limit"] = limit;
+      }
+
+      if (offset !== undefined) {
+        localVarQueryParameter["offset"] = offset;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -232,28 +354,34 @@ export const TransactionsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerUpdateTransaction: async (
       id: string,
-      body: object,
+      workspaceId: string,
+      transactionBodyDto: TransactionBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists("transactionsControllerUpdateTransaction", "id", id);
-      // verify required parameter 'body' is not null or undefined
+      // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
         "transactionsControllerUpdateTransaction",
-        "body",
-        body,
+        "workspaceId",
+        workspaceId,
       );
-      const localVarPath =
-        `/workspaces/{workspaceId}/transactions/{id}`.replace(
-          `{${"id"}}`,
-          encodeURIComponent(String(id)),
-        );
+      // verify required parameter 'transactionBodyDto' is not null or undefined
+      assertParamExists(
+        "transactionsControllerUpdateTransaction",
+        "transactionBodyDto",
+        transactionBodyDto,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/transactions/{id}`
+        .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+        .replace(`{${"workspaceId"}}`, encodeURIComponent(String(workspaceId)));
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -280,7 +408,7 @@ export const TransactionsApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        transactionBodyDto,
         localVarRequestOptions,
         configuration,
       );
@@ -303,19 +431,25 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async transactionsControllerCreateTransaction(
-      body: object,
+      workspaceId: string,
+      transactionBodyDto: TransactionBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20010RecentTransactions>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerCreateTransaction(
-          body,
+          workspaceId,
+          transactionBodyDto,
           options,
         );
       return createRequestFunction(
@@ -328,11 +462,13 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async transactionsControllerDeleteTransaction(
       id: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
       (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
@@ -340,6 +476,7 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerDeleteTransaction(
           id,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -352,18 +489,24 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async transactionsControllerGetTransaction(
       id: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20010RecentTransactions>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerGetTransaction(
           id,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -375,16 +518,62 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {'expense' | 'income'} [type]
+     * @param {string} [categoryId]
+     * @param {Array<string>} [categoryIds]
+     * @param {'date' | 'category' | 'amount' | 'description' | 'notes' | 'tags' | 'payment_source'} [sortBy]
+     * @param {'asc' | 'desc'} [sortDirection]
+     * @param {string} [paymentSourceId]
+     * @param {string} [tag]
+     * @param {string} [dateFrom]
+     * @param {string} [dateTo]
+     * @param {number} [limit]
+     * @param {number} [offset]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async transactionsControllerListTransactions(
+      workspaceId: string,
+      type?: "expense" | "income",
+      categoryId?: string,
+      categoryIds?: Array<string>,
+      sortBy?:
+        | "date"
+        | "category"
+        | "amount"
+        | "description"
+        | "notes"
+        | "tags"
+        | "payment_source",
+      sortDirection?: "asc" | "desc",
+      paymentSourceId?: string,
+      tag?: string,
+      dateFrom?: string,
+      dateTo?: string,
+      limit?: number,
+      offset?: number,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20011>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerListTransactions(
+          workspaceId,
+          type,
+          categoryId,
+          categoryIds,
+          sortBy,
+          sortDirection,
+          paymentSourceId,
+          tag,
+          dateFrom,
+          dateTo,
+          limit,
+          offset,
           options,
         );
       return createRequestFunction(
@@ -397,21 +586,27 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async transactionsControllerUpdateTransaction(
       id: string,
-      body: object,
+      workspaceId: string,
+      transactionBodyDto: TransactionBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20010RecentTransactions>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerUpdateTransaction(
           id,
-          body,
+          workspaceId,
+          transactionBodyDto,
           options,
         );
       return createRequestFunction(
@@ -437,70 +632,134 @@ export const TransactionsApiFactory = function (
   return {
     /**
      *
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerCreateTransaction(
-      body: object,
+      workspaceId: string,
+      transactionBodyDto: TransactionBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20010RecentTransactions> {
       return localVarFp
-        .transactionsControllerCreateTransaction(body, options)
+        .transactionsControllerCreateTransaction(
+          workspaceId,
+          transactionBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerDeleteTransaction(
       id: string,
+      workspaceId: string,
       options?: any,
     ): AxiosPromise<void> {
       return localVarFp
-        .transactionsControllerDeleteTransaction(id, options)
+        .transactionsControllerDeleteTransaction(id, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerGetTransaction(
       id: string,
+      workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20010RecentTransactions> {
       return localVarFp
-        .transactionsControllerGetTransaction(id, options)
+        .transactionsControllerGetTransaction(id, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
+     * @param {string} workspaceId
+     * @param {'expense' | 'income'} [type]
+     * @param {string} [categoryId]
+     * @param {Array<string>} [categoryIds]
+     * @param {'date' | 'category' | 'amount' | 'description' | 'notes' | 'tags' | 'payment_source'} [sortBy]
+     * @param {'asc' | 'desc'} [sortDirection]
+     * @param {string} [paymentSourceId]
+     * @param {string} [tag]
+     * @param {string} [dateFrom]
+     * @param {string} [dateTo]
+     * @param {number} [limit]
+     * @param {number} [offset]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    transactionsControllerListTransactions(options?: any): AxiosPromise<void> {
+    transactionsControllerListTransactions(
+      workspaceId: string,
+      type?: "expense" | "income",
+      categoryId?: string,
+      categoryIds?: Array<string>,
+      sortBy?:
+        | "date"
+        | "category"
+        | "amount"
+        | "description"
+        | "notes"
+        | "tags"
+        | "payment_source",
+      sortDirection?: "asc" | "desc",
+      paymentSourceId?: string,
+      tag?: string,
+      dateFrom?: string,
+      dateTo?: string,
+      limit?: number,
+      offset?: number,
+      options?: any,
+    ): AxiosPromise<InlineResponse20011> {
       return localVarFp
-        .transactionsControllerListTransactions(options)
+        .transactionsControllerListTransactions(
+          workspaceId,
+          type,
+          categoryId,
+          categoryIds,
+          sortBy,
+          sortDirection,
+          paymentSourceId,
+          tag,
+          dateFrom,
+          dateTo,
+          limit,
+          offset,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
      *
      * @param {string} id
-     * @param {object} body
+     * @param {string} workspaceId
+     * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     transactionsControllerUpdateTransaction(
       id: string,
-      body: object,
+      workspaceId: string,
+      transactionBodyDto: TransactionBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20010RecentTransactions> {
       return localVarFp
-        .transactionsControllerUpdateTransaction(id, body, options)
+        .transactionsControllerUpdateTransaction(
+          id,
+          workspaceId,
+          transactionBodyDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
   };
@@ -515,79 +774,143 @@ export const TransactionsApiFactory = function (
 export class TransactionsApi extends BaseAPI {
   /**
    *
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {TransactionBodyDto} transactionBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof TransactionsApi
    */
   public transactionsControllerCreateTransaction(
-    body: object,
+    workspaceId: string,
+    transactionBodyDto: TransactionBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return TransactionsApiFp(this.configuration)
-      .transactionsControllerCreateTransaction(body, options)
+      .transactionsControllerCreateTransaction(
+        workspaceId,
+        transactionBodyDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof TransactionsApi
    */
   public transactionsControllerDeleteTransaction(
     id: string,
+    workspaceId: string,
     options?: AxiosRequestConfig,
   ) {
     return TransactionsApiFp(this.configuration)
-      .transactionsControllerDeleteTransaction(id, options)
+      .transactionsControllerDeleteTransaction(id, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof TransactionsApi
    */
   public transactionsControllerGetTransaction(
     id: string,
+    workspaceId: string,
     options?: AxiosRequestConfig,
   ) {
     return TransactionsApiFp(this.configuration)
-      .transactionsControllerGetTransaction(id, options)
+      .transactionsControllerGetTransaction(id, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
+   * @param {string} workspaceId
+   * @param {'expense' | 'income'} [type]
+   * @param {string} [categoryId]
+   * @param {Array<string>} [categoryIds]
+   * @param {'date' | 'category' | 'amount' | 'description' | 'notes' | 'tags' | 'payment_source'} [sortBy]
+   * @param {'asc' | 'desc'} [sortDirection]
+   * @param {string} [paymentSourceId]
+   * @param {string} [tag]
+   * @param {string} [dateFrom]
+   * @param {string} [dateTo]
+   * @param {number} [limit]
+   * @param {number} [offset]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof TransactionsApi
    */
-  public transactionsControllerListTransactions(options?: AxiosRequestConfig) {
+  public transactionsControllerListTransactions(
+    workspaceId: string,
+    type?: "expense" | "income",
+    categoryId?: string,
+    categoryIds?: Array<string>,
+    sortBy?:
+      | "date"
+      | "category"
+      | "amount"
+      | "description"
+      | "notes"
+      | "tags"
+      | "payment_source",
+    sortDirection?: "asc" | "desc",
+    paymentSourceId?: string,
+    tag?: string,
+    dateFrom?: string,
+    dateTo?: string,
+    limit?: number,
+    offset?: number,
+    options?: AxiosRequestConfig,
+  ) {
     return TransactionsApiFp(this.configuration)
-      .transactionsControllerListTransactions(options)
+      .transactionsControllerListTransactions(
+        workspaceId,
+        type,
+        categoryId,
+        categoryIds,
+        sortBy,
+        sortDirection,
+        paymentSourceId,
+        tag,
+        dateFrom,
+        dateTo,
+        limit,
+        offset,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
    * @param {string} id
-   * @param {object} body
+   * @param {string} workspaceId
+   * @param {TransactionBodyDto} transactionBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof TransactionsApi
    */
   public transactionsControllerUpdateTransaction(
     id: string,
-    body: object,
+    workspaceId: string,
+    transactionBodyDto: TransactionBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return TransactionsApiFp(this.configuration)
-      .transactionsControllerUpdateTransaction(id, body, options)
+      .transactionsControllerUpdateTransaction(
+        id,
+        workspaceId,
+        transactionBodyDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }

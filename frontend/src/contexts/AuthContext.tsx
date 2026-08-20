@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import i18n from "@/i18n";
 import { useToast } from "@/hooks/useToast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,9 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    api
-      .get<User>("/auth/me")
-      .then((res) => updateUser(res.data))
+    authApi
+      .authControllerMe()
+      .then((res) => updateUser(res.data as User))
       .catch(() => updateUser(null))
       .finally(() => setIsLoading(false));
   }, []);
@@ -84,9 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient, showToast]);
 
   async function login(email: string, password: string): Promise<LoginResult> {
-    const res = await api.post<
-      User | { requiresTwoFactor: true; message: string }
-    >("/auth/login", {
+    const res = await authApi.authControllerLogin({
       email,
       password,
     });
@@ -101,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout(): Promise<void> {
-    await api.post("/auth/logout");
+    await authApi.authControllerLogout();
     updateUser(null);
     queryClient.clear();
   }

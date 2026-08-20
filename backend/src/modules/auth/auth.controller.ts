@@ -1,7 +1,6 @@
 import {
     Body,
     Controller,
-    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -12,7 +11,6 @@ import {
     UseGuards,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { Request, Response } from 'express'
 import { AUTH_BASE_ROUTE, AUTH_ROUTES } from './auth.routes'
 import {
@@ -44,10 +42,16 @@ import {
     TwoFactorSetupResponse,
     TwoFactorVerifySetupResponse,
 } from './twoFactor.service'
+import {
+    ApiCsrfResponse,
+    ApiLoginResponse,
+    ApiMessageResponse,
+    ApiTwoFactorLoginResponse,
+    ApiTwoFactorSetupResponse,
+    ApiTwoFactorVerifySetupResponse,
+    ApiUserResponse,
+} from '../../shared/openapi/response-schemas'
 
-const AUTH_LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
-const AUTH_LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5
-const CSRF_TOKEN_RATE_LIMIT_MAX_REQUESTS = 60
 const LOGOUT_SUCCESS_MESSAGE = 'Logged out successfully'
 const TWO_FACTOR_REQUIRED_MESSAGE = 'Two-factor authentication required'
 const TWO_FACTOR_CHALLENGE_REQUIRED_MESSAGE = 'Two-factor authentication challenge required'
@@ -71,24 +75,25 @@ export class AuthController {
     ) {}
 
     @Get(AUTH_ROUTES.csrfToken)
-    @UseGuards(ThrottlerGuard)
-    @Throttle({
-        default: {
-            limit: CSRF_TOKEN_RATE_LIMIT_MAX_REQUESTS,
-            ttl: AUTH_LOGIN_RATE_LIMIT_WINDOW_MS,
-        },
-    })
+    @ApiCsrfResponse()
     getCsrfToken(@Req() req: Request): { csrfToken: string } {
         return { csrfToken: getOrCreateCsrfToken(req) }
     }
 
     @Post(AUTH_ROUTES.register)
+    @ApiUserResponse(HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     async register(
         @Body() body: RegisterDto,
         @Req() req: Request,
     ): Promise<RegisteredUserResponse> {
-        await verifyTurnstileToken({ token: body.turnstile_token, remoteIp: getRequestIp(req) })
+        await verifyTurnstileToken(
+            { token: body.turnstile_token, remoteIp: getRequestIp(req) },
+            {
+                enabled: this.configService.get<boolean>('env.turnstileEnabled', false),
+                secretKey: this.configService.get<string>('env.turnstileSecretKey'),
+            },
+        )
         return this.authService.register({
             email: body.email,
             name: body.name,
@@ -99,14 +104,7 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.login)
-    @UseGuards(ThrottlerGuard)
-    @Throttle({
-        default: {
-            limit: AUTH_LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
-            ttl: AUTH_LOGIN_RATE_LIMIT_WINDOW_MS,
-            blockDuration: AUTH_LOGIN_RATE_LIMIT_WINDOW_MS,
-        },
-    })
+    @ApiLoginResponse()
     @HttpCode(HttpStatus.OK)
     async login(@Body() body: LoginDto, @Req() req: Request): Promise<LoginResponse> {
         const loginResult = await this.authService.login({
@@ -141,6 +139,7 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.twoFactorSetup)
+    @ApiTwoFactorSetupResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async setupTwoFactor(@Req() req: Request): Promise<TwoFactorSetupResponse> {
@@ -148,6 +147,7 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.twoFactorVerifySetup)
+    @ApiTwoFactorVerifySetupResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async verifyTwoFactorSetup(
@@ -158,6 +158,7 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.twoFactorVerify)
+    @ApiTwoFactorLoginResponse()
     @HttpCode(HttpStatus.OK)
     async verifyTwoFactor(
         @Req() req: Request,
@@ -184,6 +185,7 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.twoFactorDisable)
+    @ApiMessageResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async disableTwoFactor(
@@ -196,6 +198,7 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.logout)
+    @ApiMessageResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async logout(
@@ -220,6 +223,7 @@ export class AuthController {
     }
 
     @Get(AUTH_ROUTES.me)
+    @ApiUserResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async me(@Req() req: Request): Promise<AuthenticatedUserResponse> {
@@ -227,30 +231,35 @@ export class AuthController {
     }
 
     @Post(AUTH_ROUTES.verifyEmail)
+    @ApiMessageResponse()
     @HttpCode(HttpStatus.OK)
     async verifyEmail(@Body() body: TokenDto): Promise<AuthActionResponse> {
         return this.authService.verifyEmail({ token: body.token })
     }
 
     @Post(AUTH_ROUTES.resendVerification)
+    @ApiMessageResponse()
     @HttpCode(HttpStatus.OK)
     async resendVerification(@Body() body: EmailDto): Promise<AuthActionResponse> {
         return this.authService.resendVerification({ email: body.email })
     }
 
     @Post(AUTH_ROUTES.forgotPassword)
+    @ApiMessageResponse()
     @HttpCode(HttpStatus.OK)
     async forgotPassword(@Body() body: EmailDto): Promise<AuthActionResponse> {
         return this.authService.forgotPassword({ email: body.email })
     }
 
     @Post(AUTH_ROUTES.resetPassword)
+    @ApiMessageResponse()
     @HttpCode(HttpStatus.OK)
     async resetPassword(@Body() body: ResetPasswordDto): Promise<AuthActionResponse> {
         return this.authService.resetPassword({ token: body.token, newPassword: body.newPassword })
     }
 
     @Post(AUTH_ROUTES.changePassword)
+    @ApiMessageResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async changePassword(
@@ -266,17 +275,6 @@ export class AuthController {
     private getNodeEnv(): string {
         return this.configService.get<string>('env.nodeEnv', 'development')
     }
-
-    @Get(AUTH_ROUTES.sessions)
-    getSessions() {
-        return []
-    }
-
-    @Delete(AUTH_ROUTES.revokeSession)
-    revokeSession() {}
-
-    @Delete(AUTH_ROUTES.revokeAllOtherSessions)
-    revokeAll() {}
 }
 
 function regenerateSession(req: Request): Promise<void> {

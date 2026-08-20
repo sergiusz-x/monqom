@@ -4,9 +4,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       target: migration
+      args:
+        APP_VERSION: ${APP_VERSION:-}
+        GIT_SHA: ${GIT_SHA:-}
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:-${DATABASE_URL}}
     networks:
       - dokploy-network
     restart: "no"
@@ -16,6 +19,9 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-}
+        GIT_SHA: ${GIT_SHA:-}
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -28,6 +34,8 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
       TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-true}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-2}
+      EMAIL_OUTBOX_ENCRYPTION_KEY: ${EMAIL_OUTBOX_ENCRYPTION_KEY}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       migrate:
@@ -43,6 +51,8 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        APP_VERSION: ${APP_VERSION:-}
+        GIT_SHA: ${GIT_SHA:-}
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY}
     depends_on:
       backend:

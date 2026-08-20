@@ -14,7 +14,8 @@ import {
   PendingButton,
   SectionCard,
 } from "@monqom/ui";
-import api from "@/lib/api";
+import { goalsApi } from "@/api/contract";
+import type { CreateGoalDto, UpdateGoalDto } from "@/api/client";
 import { getApiErrorMessage } from "@/lib/api-errors";
 import {
   addMonthsClamped,
@@ -144,20 +145,21 @@ export default function GoalFormPage() {
           navigate(`/goals/${goalId}`);
           return;
         }
-        response = await api.patch<ApiGoal>(
-          `/workspaces/${workspaceId}/goals/${goalId}`,
-          body,
+        response = await goalsApi.goalsControllerUpdate(
+          goalId,
+          workspaceId,
+          body as UpdateGoalDto,
         );
       } else {
-        response = await api.post<ApiGoal>(`/workspaces/${workspaceId}/goals`, {
+        response = await goalsApi.goalsControllerCreate(workspaceId, {
           name: name.trim(),
           target_amount: targetAmount / 100,
           initial_amount: (initialAmount ?? 0) / 100,
           target_date: targetDate,
           include_current_month: includeCurrentMonth,
-        });
+        } as CreateGoalDto);
       }
-      const saved = mapGoal(response.data);
+      const saved = mapGoal(response.data as ApiGoal);
       await queryClient.invalidateQueries({
         queryKey: queryKeys.goals(workspaceId),
       });

@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { budgetsApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
 import type { Budget, BudgetProgressItem } from "@/types/budget";
-import type { ApiBudget, ApiBudgetProgressItem } from "@/types/api-contracts";
 import { mapBudget, mapBudgetProgressItem } from "@/lib/api-mappers";
 import { getApiErrorMessage } from "@/lib/api-errors";
+import type { ApiBudget } from "@/types/api-contracts";
 
 interface BudgetOverview {
   progressItems: BudgetProgressItem[];
@@ -18,19 +18,19 @@ export function useBudgetOverview(workspaceId: string, month: string) {
     queryFn: async ({ signal }): Promise<BudgetOverview> => {
       const [year, monthPart] = month.split("-").map(Number);
       const [progressResponse, budgetsResponse] = await Promise.all([
-        api.get<ApiBudgetProgressItem[]>(
-          `/workspaces/${workspaceId}/budgets/progress`,
-          { params: { month }, signal },
-        ),
-        api.get<ApiBudget[]>(`/workspaces/${workspaceId}/budgets`, {
-          params: { year, month: monthPart },
+        budgetsApi.budgetsControllerListBudgetProgress(month, workspaceId, {
+          signal,
+        }),
+        budgetsApi.budgetsControllerListBudgets(year, monthPart, workspaceId, {
           signal,
         }),
       ]);
 
       return {
         progressItems: progressResponse.data.map(mapBudgetProgressItem),
-        budgets: budgetsResponse.data.map(mapBudget),
+        budgets: budgetsResponse.data.map((budget) =>
+          mapBudget(budget as ApiBudget),
+        ),
       };
     },
   });

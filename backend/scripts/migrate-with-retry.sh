@@ -5,7 +5,7 @@ attempt=1
 max_attempts=10
 
 while [ "$attempt" -le "$max_attempts" ]; do
-  if npm run migrate:deploy; then
+  if node ./node_modules/prisma/build/index.js migrate deploy; then
     exit 0
   fi
 

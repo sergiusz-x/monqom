@@ -25,10 +25,13 @@ export default function SettingsPage() {
     useWorkspace();
   const [activeSection, setActiveSection] = useState<ActiveSection>("profile");
   const { showToast } = useToast(3000);
+  const canConfigure = !workspace?.role || workspace.role !== "member";
   const tabs: Array<{ id: ActiveSection; label: string }> = [
     { id: "profile", label: t("settings.profile") },
     { id: "workspace", label: t("settings.workspace") },
-    { id: "categories", label: t("categoryManagement.tab") },
+    ...(canConfigure
+      ? [{ id: "categories" as const, label: t("categoryManagement.tab") }]
+      : []),
     { id: "privacy", label: t("privacy.tab") },
     { id: "security", label: t("settings.security") },
     { id: "data", label: t("settings.data") },

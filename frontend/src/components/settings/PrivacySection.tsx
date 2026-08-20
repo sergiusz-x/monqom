@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import api from "@/lib/api";
+import { usersApi } from "@/api/contract";
 import type { User } from "@/contexts/AuthContext";
 import { Alert, SectionCard } from "@monqom/ui";
 
@@ -26,10 +26,10 @@ export function PrivacySection({
     setError(null);
     setIsSaving(true);
     try {
-      const response = await api.put<User>("/users/me", {
+      const response = await usersApi.usersControllerUpdateMe({
         hide_salary_amounts: nextValue,
       });
-      setUser(response.data);
+      setUser(response.data as User);
       onSaved(t("privacy.saved"));
     } catch {
       setError(t("privacy.saveError"));

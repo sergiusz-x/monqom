@@ -13,6 +13,8 @@ export interface RuntimeConfig {
     emailFrom?: string
     turnstileSecretKey?: string
     turnstileEnabled: boolean
+    trustProxyHops: number
+    emailOutboxEncryptionKey?: string
     appVersion: string
     gitSha: string
 }
@@ -34,6 +36,12 @@ export default registerAs('env', (): RuntimeConfig => {
         emailFrom: optional(process.env.EMAIL_FROM),
         turnstileSecretKey: optional(process.env.TURNSTILE_SECRET_KEY),
         turnstileEnabled: parseBoolean(process.env.TURNSTILE_ENABLED, nodeEnv === 'production'),
+        trustProxyHops: parseNonNegativeInteger(
+            process.env.TRUST_PROXY_HOPS,
+            nodeEnv === 'production' || nodeEnv === 'staging' ? 1 : 0,
+            'TRUST_PROXY_HOPS',
+        ),
+        emailOutboxEncryptionKey: optional(process.env.EMAIL_OUTBOX_ENCRYPTION_KEY),
         appVersion: optional(process.env.APP_VERSION) ?? 'dev',
         gitSha: optional(process.env.GIT_SHA) ?? 'unknown',
     }
@@ -53,6 +61,7 @@ function validateRuntimeConfig(config: RuntimeConfig): void {
         ['FRONTEND_URL', config.frontendUrl],
         ['RESEND_API_KEY', config.resendApiKey],
         ['EMAIL_FROM', config.emailFrom],
+        ['EMAIL_OUTBOX_ENCRYPTION_KEY', config.emailOutboxEncryptionKey],
     ] as const
     const missing = required.filter(([, value]) => !value).map(([name]) => name)
     if (missing.length)
@@ -61,6 +70,10 @@ function validateRuntimeConfig(config: RuntimeConfig): void {
         throw new Error('SESSION_SECRET must contain at least 32 characters in production')
     if ((config.totpEncryptionKey?.length ?? 0) < 32)
         throw new Error('TOTP_ENCRYPTION_KEY must contain at least 32 characters in production')
+    if ((config.emailOutboxEncryptionKey?.length ?? 0) < 32)
+        throw new Error(
+            'EMAIL_OUTBOX_ENCRYPTION_KEY must contain at least 32 characters in production',
+        )
     if (!isHttpsUrl(config.frontendUrl!))
         throw new Error('FRONTEND_URL must be an HTTPS URL in production')
     if (!config.corsAllowedOrigins.length)
@@ -94,6 +107,16 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
     if (value === 'true') return true
     if (value === 'false') return false
     throw new Error('TURNSTILE_ENABLED must be true or false')
+}
+function parseNonNegativeInteger(
+    value: string | undefined,
+    fallback: number,
+    name: string,
+): number {
+    const parsed = Number(value ?? fallback)
+    if (!Number.isInteger(parsed) || parsed < 0)
+        throw new Error(`${name} must be a non-negative integer`)
+    return parsed
 }
 function optional(value: string | undefined): string | undefined {
     const trimmed = value?.trim()

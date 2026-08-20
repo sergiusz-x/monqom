@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@monqom/ui";
 import { formatApiError } from "@monqom/ui/lib/error-message";
-import api from "@/lib/api";
+import { transactionsApi } from "@/api/contract";
+import type { TransactionBodyDto } from "@/api/client";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useTags } from "@/hooks/useTags";
 import { useFocusOnError } from "@/hooks/useFocusOnError";
@@ -167,16 +168,20 @@ export function useTransactionForm({
       notes: notes.trim() || null,
       tags: selectedTags,
       payment_source_id: selectedPaymentSourceId,
-    };
+    } as TransactionBodyDto;
 
     try {
       if (isEdit && transaction) {
-        await api.put(
-          `/workspaces/${workspaceId}/transactions/${transaction.id}`,
+        await transactionsApi.transactionsControllerUpdateTransaction(
+          transaction.id,
+          workspaceId,
           payload,
         );
       } else {
-        await api.post(`/workspaces/${workspaceId}/transactions`, payload);
+        await transactionsApi.transactionsControllerCreateTransaction(
+          workspaceId,
+          payload,
+        );
       }
       showToast(
         t("transactions.saved", { defaultValue: "Transaction saved" }),

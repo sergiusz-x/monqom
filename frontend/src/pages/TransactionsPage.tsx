@@ -15,7 +15,7 @@ import { TransactionPagination } from "@/components/transactions/TransactionPagi
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal";
 import { paymentSourceName } from "@/lib/payment-sources";
-import api from "@/lib/api";
+import { transactionsApi } from "@/api/contract";
 import type {
   TransactionFilters,
   TransactionSortField,
@@ -238,8 +238,9 @@ export default function TransactionsPage() {
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await api.delete(
-        `/workspaces/${workspaceId}/transactions/${selectedTransaction.id}`,
+      await transactionsApi.transactionsControllerDeleteTransaction(
+        selectedTransaction.id,
+        workspaceId,
       );
       setSelectedTransactionId(null);
       await invalidateFinancialData(queryClient, workspaceId);

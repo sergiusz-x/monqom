@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,12 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { InlineResponse2006 } from "../model";
 /**
  * WorkspaceApi - axios parameter creator
  * @export
@@ -103,7 +108,10 @@ export const WorkspaceApiFp = function (configuration?: Configuration) {
     async workspaceControllerListWorkspaces(
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse2006>>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.workspaceControllerListWorkspaces(
@@ -135,7 +143,9 @@ export const WorkspaceApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    workspaceControllerListWorkspaces(options?: any): AxiosPromise<void> {
+    workspaceControllerListWorkspaces(
+      options?: any,
+    ): AxiosPromise<Array<InlineResponse2006>> {
       return localVarFp
         .workspaceControllerListWorkspaces(options)
         .then((request) => request(axios, basePath));

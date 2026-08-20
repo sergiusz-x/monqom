@@ -13,18 +13,22 @@ import {
     UseGuards,
 } from '@nestjs/common'
 import type { Request } from 'express'
+import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { BUDGETS_BASE_ROUTE } from './budgets.routes'
 import { BudgetProgressResponse, BudgetResponse, BudgetsService } from './budgets.service'
 import { BudgetBodyDto, BudgetProgressQueryDto, ListBudgetsQueryDto } from './budgets.dto'
+import { ApiBudgetProgressResponse, ApiBudgetResponse } from '../../shared/openapi/response-schemas'
 
 @Controller(BUDGETS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
+@ApiParam({ name: 'workspaceId', type: String })
 export class BudgetsController {
     constructor(private readonly budgetsService: BudgetsService) {}
 
     @Get('progress')
+    @ApiBudgetProgressResponse()
     @HttpCode(HttpStatus.OK)
     async listBudgetProgress(
         @Query() query: BudgetProgressQueryDto,
@@ -37,6 +41,7 @@ export class BudgetsController {
     }
 
     @Get()
+    @ApiBudgetResponse(true)
     @HttpCode(HttpStatus.OK)
     async listBudgets(
         @Query() query: ListBudgetsQueryDto,
@@ -49,6 +54,7 @@ export class BudgetsController {
     }
 
     @Post()
+    @ApiBudgetResponse(false, HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     async createBudget(@Body() body: BudgetBodyDto, @Req() req: Request): Promise<BudgetResponse> {
         return this.budgetsService.createBudget(
@@ -59,6 +65,7 @@ export class BudgetsController {
     }
 
     @Put(':id')
+    @ApiBudgetResponse()
     @HttpCode(HttpStatus.OK)
     async updateBudget(
         @Param('id') budgetId: string,

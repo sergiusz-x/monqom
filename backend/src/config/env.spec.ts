@@ -9,6 +9,7 @@ const productionEnvironment = {
     CORS_ALLOWED_ORIGINS: 'https://app.example.test',
     RESEND_API_KEY: 're_test_key',
     EMAIL_FROM: 'Monqom <noreply@example.test>',
+    EMAIL_OUTBOX_ENCRYPTION_KEY: 'c'.repeat(32),
     TURNSTILE_ENABLED: 'true',
     TURNSTILE_SECRET_KEY: 'turnstile-secret',
 }

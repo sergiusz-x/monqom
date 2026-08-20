@@ -7,7 +7,7 @@
 Included in the baseline:
 
 - personal workspaces, categories, transactions, budgets, payment sources, dashboards, and CSV/JSON export;
-- account registration, email verification, password reset, sessions, two-factor authentication, rate limits, temporary lockouts, CSRF protection, and Turnstile support;
+- account registration, email verification, password reset, server-side login sessions, two-factor authentication, rate limits, temporary lockouts, CSRF protection, and Turnstile support;
 - production configuration validation, security headers, structured logging, health/readiness endpoints, and privacy-safe client error handling;
 - self-hosted Docker and Dokploy deployment assets, including a migration service and single-domain API proxy.
 

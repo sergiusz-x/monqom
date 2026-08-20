@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { paymentSourcesApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
 import { getApiErrorMessage } from "@/lib/api-errors";
-import type { ApiPaymentSource } from "@/types/api-contracts";
 import { mapPaymentSource } from "@/lib/api-mappers";
+import type { ApiPaymentSource } from "@/types/api-contracts";
 export type { PaymentSource, PaymentSourceType } from "@/types/payment-source";
 
 export function usePaymentSources(
@@ -14,14 +14,15 @@ export function usePaymentSources(
     queryKey: queryKeys.paymentSources(workspaceId, includeArchived),
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
-      const response = await api.get<ApiPaymentSource[]>(
-        `/workspaces/${workspaceId}/payment-sources`,
-        {
-          params: includeArchived ? { include_archived: true } : undefined,
-          signal,
-        },
+      const response =
+        await paymentSourcesApi.paymentSourcesControllerListPaymentSources(
+          workspaceId,
+          includeArchived || undefined,
+          { signal },
+        );
+      return response.data.map((source) =>
+        mapPaymentSource(source as ApiPaymentSource),
       );
-      return response.data.map(mapPaymentSource);
     },
   });
 

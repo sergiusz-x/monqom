@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,16 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { InlineResponse2005 } from "../model";
+// @ts-ignore
+import type { InlineResponse201 } from "../model";
+// @ts-ignore
+import type { UpdateUserProfileDto } from "../model";
 /**
  * UsersApi - axios parameter creator
  * @export
@@ -86,16 +95,20 @@ export const UsersApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {object} body
+     * @param {UpdateUserProfileDto} updateUserProfileDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     usersControllerUpdateMe: async (
-      body: object,
+      updateUserProfileDto: UpdateUserProfileDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'body' is not null or undefined
-      assertParamExists("usersControllerUpdateMe", "body", body);
+      // verify required parameter 'updateUserProfileDto' is not null or undefined
+      assertParamExists(
+        "usersControllerUpdateMe",
+        "updateUserProfileDto",
+        updateUserProfileDto,
+      );
       const localVarPath = `/users/me`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -123,7 +136,7 @@ export const UsersApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        body,
+        updateUserProfileDto,
         localVarRequestOptions,
         configuration,
       );
@@ -151,7 +164,10 @@ export const UsersApiFp = function (configuration?: Configuration) {
     async usersControllerDeleteMe(
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2005>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.usersControllerDeleteMe(options);
@@ -164,18 +180,24 @@ export const UsersApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {object} body
+     * @param {UpdateUserProfileDto} updateUserProfileDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async usersControllerUpdateMe(
-      body: object,
+      updateUserProfileDto: UpdateUserProfileDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse201>
     > {
       const localVarAxiosArgs =
-        await localVarAxiosParamCreator.usersControllerUpdateMe(body, options);
+        await localVarAxiosParamCreator.usersControllerUpdateMe(
+          updateUserProfileDto,
+          options,
+        );
       return createRequestFunction(
         localVarAxiosArgs,
         globalAxios,
@@ -202,20 +224,23 @@ export const UsersApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    usersControllerDeleteMe(options?: any): AxiosPromise<void> {
+    usersControllerDeleteMe(options?: any): AxiosPromise<InlineResponse2005> {
       return localVarFp
         .usersControllerDeleteMe(options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
-     * @param {object} body
+     * @param {UpdateUserProfileDto} updateUserProfileDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    usersControllerUpdateMe(body: object, options?: any): AxiosPromise<void> {
+    usersControllerUpdateMe(
+      updateUserProfileDto: UpdateUserProfileDto,
+      options?: any,
+    ): AxiosPromise<InlineResponse201> {
       return localVarFp
-        .usersControllerUpdateMe(body, options)
+        .usersControllerUpdateMe(updateUserProfileDto, options)
         .then((request) => request(axios, basePath));
     },
   };
@@ -242,14 +267,17 @@ export class UsersApi extends BaseAPI {
 
   /**
    *
-   * @param {object} body
+   * @param {UpdateUserProfileDto} updateUserProfileDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof UsersApi
    */
-  public usersControllerUpdateMe(body: object, options?: AxiosRequestConfig) {
+  public usersControllerUpdateMe(
+    updateUserProfileDto: UpdateUserProfileDto,
+    options?: AxiosRequestConfig,
+  ) {
     return UsersApiFp(this.configuration)
-      .usersControllerUpdateMe(body, options)
+      .usersControllerUpdateMe(updateUserProfileDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

@@ -13,6 +13,7 @@ import {
     UseGuards,
 } from '@nestjs/common'
 import type { Request } from 'express'
+import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { TRANSACTION_TAGS_BASE_ROUTE, TRANSACTIONS_BASE_ROUTE } from './transactions.routes'
@@ -22,13 +23,20 @@ import {
     TransactionsService,
 } from './transactions.service'
 import { ListTransactionsQueryDto, TransactionBodyDto } from './transactions.dto'
+import {
+    ApiStringArrayResponse,
+    ApiTransactionResponse,
+    ApiTransactionsPageResponse,
+} from '../../shared/openapi/response-schemas'
 
 @Controller(TRANSACTIONS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
+@ApiParam({ name: 'workspaceId', type: String })
 export class TransactionsController {
     constructor(private readonly transactionsService: TransactionsService) {}
 
     @Get()
+    @ApiTransactionsPageResponse()
     @HttpCode(HttpStatus.OK)
     async listTransactions(
         @Query() query: ListTransactionsQueryDto,
@@ -53,6 +61,7 @@ export class TransactionsController {
     }
 
     @Get(':id')
+    @ApiTransactionResponse()
     @HttpCode(HttpStatus.OK)
     async getTransaction(
         @Param('id') transactionId: string,
@@ -65,6 +74,7 @@ export class TransactionsController {
     }
 
     @Post()
+    @ApiTransactionResponse(HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     async createTransaction(
         @Body() body: TransactionBodyDto,
@@ -78,6 +88,7 @@ export class TransactionsController {
     }
 
     @Put(':id')
+    @ApiTransactionResponse()
     @HttpCode(HttpStatus.OK)
     async updateTransaction(
         @Param('id') transactionId: string,
@@ -122,10 +133,12 @@ function toTransactionCommand(body: TransactionBodyDto) {
 
 @Controller(TRANSACTION_TAGS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
+@ApiParam({ name: 'workspaceId', type: String })
 export class TransactionTagsController {
     constructor(private readonly transactionsService: TransactionsService) {}
 
     @Get()
+    @ApiStringArrayResponse()
     @HttpCode(HttpStatus.OK)
     async listWorkspaceTags(@Req() req: Request): Promise<string[]> {
         return this.transactionsService.listWorkspaceTags(req.workspace!.workspaceId)

@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { categoriesApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
 import type { Category } from "@/types/category";
+import type { CategoryBodyDto } from "@/api/client";
 
 export interface CategoryInput {
   name: string;
@@ -39,7 +40,6 @@ function archiveTree(category: Category, isArchived: boolean): Category {
 export function useCategoryMutations(workspaceId: string) {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.categories(workspaceId);
-  const url = (suffix = "") => `/workspaces/${workspaceId}/categories${suffix}`;
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
   const updateArchiveState = async (
@@ -61,22 +61,32 @@ export function useCategoryMutations(workspaceId: string) {
   };
 
   const create = useMutation({
-    mutationFn: (input: CategoryInput) => api.post(url(), input),
+    mutationFn: (input: CategoryInput) =>
+      categoriesApi.categoriesControllerCreateCategory(
+        workspaceId,
+        input as unknown as CategoryBodyDto,
+      ),
     onSuccess: invalidate,
   });
   const update = useMutation({
     mutationFn: ({ id, input }: { id: string; input: CategoryInput }) =>
-      api.patch(url(`/${id}`), input),
+      categoriesApi.categoriesControllerUpdateCategory(
+        id,
+        workspaceId,
+        input as unknown as CategoryBodyDto,
+      ),
     onSuccess: invalidate,
   });
   const hide = useMutation({
-    mutationFn: (id: string) => api.post(url(`/${id}/archive`)),
+    mutationFn: (id: string) =>
+      categoriesApi.categoriesControllerArchiveCategory(id, workspaceId),
     onMutate: (id) => updateArchiveState(id, true),
     onError: (_error, _id, previous) => restoreSnapshot(previous),
     onSettled: invalidate,
   });
   const restore = useMutation({
-    mutationFn: (id: string) => api.post(url(`/${id}/restore`)),
+    mutationFn: (id: string) =>
+      categoriesApi.categoriesControllerRestoreCategory(id, workspaceId),
     onMutate: (id) => updateArchiveState(id, false),
     onError: (_error, _id, previous) => restoreSnapshot(previous),
     onSettled: invalidate,

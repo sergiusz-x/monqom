@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import api from "@/lib/api";
+import { workspaceScopedApi } from "@/api/contract";
 import type { WorkspaceInfo } from "@/hooks/useWorkspace";
 import type { AppTranslationKey } from "@/i18n";
 import { getApiErrorCode } from "@/lib/api-errors";
@@ -55,6 +55,7 @@ export function WorkspaceSection({
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
   const formRef = useFocusOnError(workspaceError);
+  const canEdit = !workspace?.role || workspace.role === "owner";
 
   async function handleWorkspaceSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,15 +77,16 @@ export function WorkspaceSection({
     setWorkspaceError(null);
 
     try {
-      const res = await api.put<Partial<WorkspaceInfo>>(
-        `/workspaces/${workspaceId}`,
-        {
-          name: workspaceName.trim(),
-          timezone,
-          base_currency: baseCurrency,
-        },
-      );
-      onSaved(res.data, t("settings.workspaceSaved"));
+      const res =
+        await workspaceScopedApi.workspaceScopedControllerUpdateWorkspace(
+          workspaceId,
+          {
+            name: workspaceName.trim(),
+            timezone,
+            base_currency: baseCurrency,
+          },
+        );
+      onSaved(res.data as Partial<WorkspaceInfo>, t("settings.workspaceSaved"));
     } catch (error) {
       setWorkspaceError(
         getApiErrorCode(error) === "WORKSPACE_BASE_CURRENCY_LOCKED"
@@ -132,6 +134,7 @@ export function WorkspaceSection({
               value={workspaceName}
               maxLength={100}
               onChange={(event) => setWorkspaceName(event.target.value)}
+              disabled={!canEdit}
             />
           </FormField>
           <FormField
@@ -142,6 +145,7 @@ export function WorkspaceSection({
             <Select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
+              disabled={!canEdit}
             >
               {TIMEZONE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -163,7 +167,7 @@ export function WorkspaceSection({
             <Select
               value={baseCurrency}
               onChange={(event) => setBaseCurrency(event.target.value)}
-              disabled={workspace.baseCurrencyLocked}
+              disabled={!canEdit || workspace.baseCurrencyLocked}
             >
               {SUPPORTED_CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>
@@ -175,6 +179,7 @@ export function WorkspaceSection({
           <PendingButton
             type="submit"
             isPending={isSavingWorkspace}
+            disabled={!canEdit}
             pendingLabel={t("settings.saving")}
           >
             {t("settings.saveWorkspace")}

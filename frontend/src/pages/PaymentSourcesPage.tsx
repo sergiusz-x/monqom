@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/useToast";
 
-import api from "@/lib/api";
+import { paymentSourcesApi } from "@/api/contract";
 
 import { PaymentSourceDialog } from "@/components/payment-sources/PaymentSourceDialog";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
@@ -29,7 +29,8 @@ import {
 export default function PaymentSourcesPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, workspace } = useWorkspace();
+  const canConfigure = !workspace?.role || workspace.role !== "member";
   const { paymentSources, isLoading, error, retry } = usePaymentSources(
     workspaceId ?? "",
     true,
@@ -60,8 +61,9 @@ export default function PaymentSourcesPage() {
     setArchivingId(source.id);
     setActionError(null);
     try {
-      await api.post(
-        `/workspaces/${workspaceId}/payment-sources/${source.id}/archive`,
+      await paymentSourcesApi.paymentSourcesControllerArchivePaymentSource(
+        source.id,
+        workspaceId,
       );
       await queryClient.invalidateQueries({
         queryKey: queryKeys.paymentSourcesRoot(workspaceId),
@@ -81,13 +83,15 @@ export default function PaymentSourcesPage() {
         title={t("paymentSources.title")}
         description={t("paymentSources.description")}
         actions={
-          <Button
-            type="button"
-            onClick={openCreateDialog}
-            disabled={!workspaceId}
-          >
-            {t("paymentSources.add")}
-          </Button>
+          canConfigure ? (
+            <Button
+              type="button"
+              onClick={openCreateDialog}
+              disabled={!workspaceId}
+            >
+              {t("paymentSources.add")}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -108,8 +112,8 @@ export default function PaymentSourcesPage() {
           <EmptyState
             title={t("paymentSources.empty")}
             description={t("paymentSources.emptyDescription")}
-            actionLabel={t("paymentSources.add")}
-            onAction={openCreateDialog}
+            actionLabel={canConfigure ? t("paymentSources.add") : undefined}
+            onAction={canConfigure ? openCreateDialog : undefined}
           />
         ) : (
           <div className="space-y-2">
@@ -129,28 +133,30 @@ export default function PaymentSourcesPage() {
                       : ""}
                   </p>
                 </div>
-                {!source.isArchived && source.systemKey !== "cash" && (
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => openEditDialog(source)}
-                    >
-                      {t("common.edit")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={archivingId === source.id}
-                      onClick={() => {
-                        setActionError(null);
-                        setSourceToArchive(source);
-                      }}
-                    >
-                      {t("paymentSources.archive")}
-                    </Button>
-                  </div>
-                )}
+                {canConfigure &&
+                  !source.isArchived &&
+                  source.systemKey !== "cash" && (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => openEditDialog(source)}
+                      >
+                        {t("common.edit")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={archivingId === source.id}
+                        onClick={() => {
+                          setActionError(null);
+                          setSourceToArchive(source);
+                        }}
+                      >
+                        {t("paymentSources.archive")}
+                      </Button>
+                    </div>
+                  )}
               </Card>
             ))}
           </div>

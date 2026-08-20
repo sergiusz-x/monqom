@@ -38,6 +38,7 @@ model EmailVerificationToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
   token     String    @unique
+  tokenHash String?   @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -53,6 +54,7 @@ model PasswordResetToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
   token     String    @unique
+  tokenHash String?   @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -303,4 +305,34 @@ model AuditEvent {
   @@index([workspaceId])
   @@index([userId])
   @@map("audit_events")
+}
+
+model AuthRateLimit {
+  keyHash         String    @id @map("key_hash")
+  attemptCount    Int       @default(0) @map("attempt_count")
+  windowStartedAt DateTime  @map("window_started_at")
+  blockedUntil    DateTime? @map("blocked_until")
+  expiresAt       DateTime  @map("expires_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("auth_rate_limits")
+}
+
+model EmailOutbox {
+  id               String    @id @default(uuid())
+  kind             String
+  recipient        String
+  encryptedPayload String    @map("encrypted_payload")
+  status           String    @default("pending")
+  attempts         Int       @default(0)
+  availableAt      DateTime  @default(now()) @map("available_at")
+  lockedAt         DateTime? @map("locked_at")
+  sentAt           DateTime? @map("sent_at")
+  lastError        String?   @map("last_error")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, availableAt])
+  @@map("email_outbox")
 }

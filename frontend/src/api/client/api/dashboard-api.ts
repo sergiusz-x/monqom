@@ -13,9 +13,12 @@
  * Do not edit the class manually.
  */
 
+import globalAxios, {
+  type AxiosPromise,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
 import type { Configuration } from "../configuration";
-import type { AxiosPromise, AxiosInstance, AxiosRequestConfig } from "axios";
-import globalAxios from "axios";
 // Some imports not used depending on template conditions
 // @ts-ignore
 import {
@@ -34,10 +37,16 @@ import {
 import {
   BASE_PATH,
   COLLECTION_FORMATS,
-  RequestArgs,
+  type RequestArgs,
   BaseAPI,
   RequiredError,
 } from "../base";
+// @ts-ignore
+import type { InlineResponse20010 } from "../model";
+// @ts-ignore
+import type { InlineResponse20010CategoryBreakdown } from "../model";
+// @ts-ignore
+import type { InlineResponse20010Summary } from "../model";
 /**
  * DashboardApi - axios parameter creator
  * @export
@@ -48,13 +57,33 @@ export const DashboardApiAxiosParamCreator = function (
   return {
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     dashboardControllerGetCategoryBreakdown: async (
+      month: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/dashboard/category-breakdown`;
+      // verify required parameter 'month' is not null or undefined
+      assertParamExists(
+        "dashboardControllerGetCategoryBreakdown",
+        "month",
+        month,
+      );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "dashboardControllerGetCategoryBreakdown",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath =
+        `/workspaces/{workspaceId}/dashboard/category-breakdown`.replace(
+          `{${"workspaceId"}}`,
+          encodeURIComponent(String(workspaceId)),
+        );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -69,6 +98,10 @@ export const DashboardApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (month !== undefined) {
+        localVarQueryParameter["month"] = month;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -86,13 +119,28 @@ export const DashboardApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     dashboardControllerGetOverview: async (
+      month: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/dashboard`;
+      // verify required parameter 'month' is not null or undefined
+      assertParamExists("dashboardControllerGetOverview", "month", month);
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "dashboardControllerGetOverview",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath = `/workspaces/{workspaceId}/dashboard`.replace(
+        `{${"workspaceId"}}`,
+        encodeURIComponent(String(workspaceId)),
+      );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -107,6 +155,10 @@ export const DashboardApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (month !== undefined) {
+        localVarQueryParameter["month"] = month;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -124,13 +176,33 @@ export const DashboardApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     dashboardControllerGetSpendingSummary: async (
+      month: string,
+      workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      const localVarPath = `/workspaces/{workspaceId}/dashboard/spending-summary`;
+      // verify required parameter 'month' is not null or undefined
+      assertParamExists(
+        "dashboardControllerGetSpendingSummary",
+        "month",
+        month,
+      );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "dashboardControllerGetSpendingSummary",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath =
+        `/workspaces/{workspaceId}/dashboard/spending-summary`.replace(
+          `{${"workspaceId"}}`,
+          encodeURIComponent(String(workspaceId)),
+        );
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -145,6 +217,10 @@ export const DashboardApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (month !== undefined) {
+        localVarQueryParameter["month"] = month;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -173,16 +249,25 @@ export const DashboardApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async dashboardControllerGetCategoryBreakdown(
+      month: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20010CategoryBreakdown>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.dashboardControllerGetCategoryBreakdown(
+          month,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -194,16 +279,27 @@ export const DashboardApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async dashboardControllerGetOverview(
+      month: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20010>
     > {
       const localVarAxiosArgs =
-        await localVarAxiosParamCreator.dashboardControllerGetOverview(options);
+        await localVarAxiosParamCreator.dashboardControllerGetOverview(
+          month,
+          workspaceId,
+          options,
+        );
       return createRequestFunction(
         localVarAxiosArgs,
         globalAxios,
@@ -213,16 +309,25 @@ export const DashboardApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async dashboardControllerGetSpendingSummary(
+      month: string,
+      workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20010Summary>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.dashboardControllerGetSpendingSummary(
+          month,
+          workspaceId,
           options,
         );
       return createRequestFunction(
@@ -248,32 +353,50 @@ export const DashboardApiFactory = function (
   return {
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    dashboardControllerGetCategoryBreakdown(options?: any): AxiosPromise<void> {
+    dashboardControllerGetCategoryBreakdown(
+      month: string,
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<InlineResponse20010CategoryBreakdown> {
       return localVarFp
-        .dashboardControllerGetCategoryBreakdown(options)
+        .dashboardControllerGetCategoryBreakdown(month, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    dashboardControllerGetOverview(options?: any): AxiosPromise<void> {
+    dashboardControllerGetOverview(
+      month: string,
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<InlineResponse20010> {
       return localVarFp
-        .dashboardControllerGetOverview(options)
+        .dashboardControllerGetOverview(month, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
      *
+     * @param {string} month
+     * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    dashboardControllerGetSpendingSummary(options?: any): AxiosPromise<void> {
+    dashboardControllerGetSpendingSummary(
+      month: string,
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<InlineResponse20010Summary> {
       return localVarFp
-        .dashboardControllerGetSpendingSummary(options)
+        .dashboardControllerGetSpendingSummary(month, workspaceId, options)
         .then((request) => request(axios, basePath));
     },
   };
@@ -288,37 +411,55 @@ export const DashboardApiFactory = function (
 export class DashboardApi extends BaseAPI {
   /**
    *
+   * @param {string} month
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DashboardApi
    */
-  public dashboardControllerGetCategoryBreakdown(options?: AxiosRequestConfig) {
+  public dashboardControllerGetCategoryBreakdown(
+    month: string,
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
     return DashboardApiFp(this.configuration)
-      .dashboardControllerGetCategoryBreakdown(options)
+      .dashboardControllerGetCategoryBreakdown(month, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
+   * @param {string} month
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DashboardApi
    */
-  public dashboardControllerGetOverview(options?: AxiosRequestConfig) {
+  public dashboardControllerGetOverview(
+    month: string,
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
     return DashboardApiFp(this.configuration)
-      .dashboardControllerGetOverview(options)
+      .dashboardControllerGetOverview(month, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
    *
+   * @param {string} month
+   * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DashboardApi
    */
-  public dashboardControllerGetSpendingSummary(options?: AxiosRequestConfig) {
+  public dashboardControllerGetSpendingSummary(
+    month: string,
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
     return DashboardApiFp(this.configuration)
-      .dashboardControllerGetSpendingSummary(options)
+      .dashboardControllerGetSpendingSummary(month, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

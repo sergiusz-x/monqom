@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
+import { usersApi } from "@/api/contract";
 import type { User } from "@/contexts/AuthContext";
 
 import { useFocusOnError } from "@/hooks/useFocusOnError";
@@ -74,7 +75,7 @@ export function DataSection({
     setIsDeleting(true);
     setDataError(null);
     try {
-      await api.delete("/users/me");
+      await usersApi.usersControllerDeleteMe();
       setUser(null);
       onSaved(t("settings.accountDeleted"));
     } catch {

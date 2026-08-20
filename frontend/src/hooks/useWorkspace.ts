@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { workspaceApi } from "@/api/contract";
 import { queryKeys } from "@/lib/query-client";
 import { getApiErrorMessage } from "@/lib/api-errors";
 
@@ -20,6 +20,7 @@ export interface WorkspaceInfo {
   baseCurrency: string;
   lastPaymentSourceId: string | null;
   baseCurrencyLocked: boolean;
+  role?: "member" | "admin" | "owner";
 }
 
 interface WorkspaceContextValue {
@@ -49,10 +50,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const query = useQuery({
     queryKey: queryKeys.workspaces,
     queryFn: async ({ signal }) => {
-      const response = await api.get<WorkspaceInfo[]>("/workspaces", {
+      const response = await workspaceApi.workspaceControllerListWorkspaces({
         signal,
       });
-      return response.data;
+      return response.data as WorkspaceInfo[];
     },
   });
   const workspaces = query.data ?? EMPTY_WORKSPACES;

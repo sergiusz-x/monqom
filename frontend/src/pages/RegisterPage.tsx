@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
-import api from "@/lib/api";
+import { authApi } from "@/api/contract";
 import i18n from "@/i18n";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
@@ -36,7 +36,7 @@ export default function RegisterPage() {
   async function onSubmit(data: RegisterFormValues) {
     setServerError("");
     try {
-      await api.post("/auth/register", {
+      await authApi.authControllerRegister({
         email: data.email,
         name: data.name,
         password: data.password,

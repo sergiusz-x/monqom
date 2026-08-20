@@ -18,6 +18,7 @@ import {
 } from '../../shared/session/session.config'
 import { AuthActionResponse, AuthenticatedUserResponse, AuthService } from './auth.service'
 import { UpdateUserProfileDto } from './auth.dto'
+import { ApiMessageResponse, ApiUserResponse } from '../../shared/openapi/response-schemas'
 
 @Controller('users')
 @UseGuards(SessionGuard)
@@ -28,6 +29,7 @@ export class UsersController {
     ) {}
 
     @Put('me')
+    @ApiUserResponse()
     @HttpCode(HttpStatus.OK)
     async updateMe(
         @Req() req: Request,
@@ -41,6 +43,7 @@ export class UsersController {
     }
 
     @Delete('me')
+    @ApiMessageResponse()
     @HttpCode(HttpStatus.OK)
     async deleteMe(
         @Req() req: Request,

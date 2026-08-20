@@ -39,7 +39,7 @@ export function createSessionOptions(input: SessionConfigurationInput): session.
         store: shouldUsePostgresStore
             ? new PgSessionStore({
                   conString: input.databaseUrl,
-                  createTableIfMissing: true,
+                  createTableIfMissing: false,
                   tableName: SESSION_STORE_TABLE_NAME,
                   ttl: SESSION_STORE_TTL_SECONDS,
               })

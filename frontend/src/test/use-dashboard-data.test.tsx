@@ -62,9 +62,8 @@ describe("useDashboardData", () => {
 
     expect(mockGet).toHaveBeenCalledTimes(1);
     expect(mockGet).toHaveBeenCalledWith(
-      "/workspaces/ws-1/dashboard",
+      "/workspaces/ws-1/dashboard?month=2026-04",
       expect.objectContaining({
-        params: { month: "2026-04" },
         signal: expect.any(AbortSignal),
       }),
     );

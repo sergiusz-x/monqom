@@ -20,7 +20,7 @@ import { AuthRepository } from './auth.repository'
 import { logger } from '../../shared/utils/logger'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { normalizeCurrency } from '../../shared/currency/currency.service'
-import { sendTransactionalEmail } from '../../shared/email/resend'
+import { EmailOutboxService } from '../../shared/email/email-outbox.service'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
@@ -34,8 +34,6 @@ const PASSWORD_RESET_SUCCESS_MESSAGE = 'Password reset successfully'
 const PASSWORD_CHANGE_SUCCESS_MESSAGE = 'Password changed successfully'
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password'
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address must be verified before logging in'
-const ACCOUNT_LOCKOUT_MS = 15 * 60 * 1000
-const MAX_FAILED_LOGIN_ATTEMPTS = 5
 
 export interface RegisterCommand {
     email: string
@@ -121,6 +119,7 @@ export class AuthService {
         private readonly authRepository: AuthRepository,
         private readonly workspaceService: WorkspaceService,
         private readonly prisma: PrismaService,
+        private readonly emailOutbox: EmailOutboxService,
     ) {}
 
     async register(input: RegisterCommand): Promise<RegisteredUserResponse> {
@@ -181,10 +180,16 @@ export class AuthService {
                     )
                 }
 
+                await this.emailOutbox.enqueue(
+                    'verification',
+                    createdUser.email,
+                    verificationTokenPayload.token,
+                    tx,
+                )
+
                 return createdUser
             })
 
-            await deliverVerificationEmail(user.email, verificationTokenPayload.token)
             exposeVerificationToken('registration', verificationTokenPayload.token)
 
             return mapRegisteredUser(user)
@@ -266,17 +271,10 @@ export class AuthService {
         const isPasswordValid = await argon2.verify(user.passwordHash, password)
 
         if (!isPasswordValid) {
-            const failedLoginCount =
-                typeof user.failedLoginCount === 'number' ? user.failedLoginCount + 1 : 1
-            const lockedUntil =
-                failedLoginCount >= MAX_FAILED_LOGIN_ATTEMPTS
-                    ? new Date(Date.now() + ACCOUNT_LOCKOUT_MS)
-                    : null
             if (typeof user.failedLoginCount === 'number' || user.lockedUntil) {
                 await this.authRepository.recordFailedLoginAttempt?.({
                     userId: user.id,
-                    failedLoginCount: lockedUntil ? 0 : failedLoginCount,
-                    lockedUntil,
+                    attemptedAt: new Date(),
                 })
             }
             throw new UnauthorizedException({
@@ -377,13 +375,23 @@ export class AuthService {
 
         const verificationTokenPayload = createTokenPayload(EMAIL_VERIFICATION_TOKEN_TTL_MS)
 
-        await this.authRepository.createVerificationTokenForUser({
-            userId: user.id,
-            verificationToken: verificationTokenPayload.token,
-            verificationTokenExpiresAt: verificationTokenPayload.expiresAt,
+        await this.prisma.$transaction(async (tx) => {
+            await this.authRepository.createVerificationTokenForUser(
+                {
+                    userId: user.id,
+                    verificationToken: verificationTokenPayload.token,
+                    verificationTokenExpiresAt: verificationTokenPayload.expiresAt,
+                },
+                tx,
+            )
+            await this.emailOutbox.enqueue(
+                'verification',
+                user.email,
+                verificationTokenPayload.token,
+                tx,
+            )
         })
 
-        await deliverVerificationEmail(user.email, verificationTokenPayload.token)
         exposeVerificationToken('resend', verificationTokenPayload.token)
 
         return {
@@ -408,13 +416,23 @@ export class AuthService {
 
         const passwordResetTokenPayload = createTokenPayload(PASSWORD_RESET_TOKEN_TTL_MS)
 
-        await this.authRepository.createPasswordResetTokenForUser({
-            userId: user.id,
-            passwordResetToken: passwordResetTokenPayload.token,
-            passwordResetTokenExpiresAt: passwordResetTokenPayload.expiresAt,
+        await this.prisma.$transaction(async (tx) => {
+            await this.authRepository.createPasswordResetTokenForUser(
+                {
+                    userId: user.id,
+                    passwordResetToken: passwordResetTokenPayload.token,
+                    passwordResetTokenExpiresAt: passwordResetTokenPayload.expiresAt,
+                },
+                tx,
+            )
+            await this.emailOutbox.enqueue(
+                'password_reset',
+                user.email,
+                passwordResetTokenPayload.token,
+                tx,
+            )
         })
 
-        await deliverPasswordResetEmail(user.email, passwordResetTokenPayload.token)
         exposePasswordResetToken(passwordResetTokenPayload.token)
 
         return {
@@ -578,35 +596,6 @@ function buildEmailVerificationUrl(token: string): string {
     const normalizedBaseUrl = baseUrl.replace(/\/+$/, '')
 
     return `${normalizedBaseUrl}/verify-email?token=${encodeURIComponent(token)}`
-}
-
-function buildPasswordResetUrl(token: string): string {
-    const baseUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173'
-    return baseUrl.replace(/\/+$/, '') + '/reset-password?token=' + encodeURIComponent(token)
-}
-
-async function deliverVerificationEmail(email: string, token: string): Promise<void> {
-    const url = buildEmailVerificationUrl(token)
-    await sendTransactionalEmail({
-        to: email,
-        subject: 'Verify your Monqom email address',
-        html:
-            '<p>Verify your email address to activate Monqom.</p><p><a href="' +
-            url +
-            '">Verify email</a></p>',
-    })
-}
-
-async function deliverPasswordResetEmail(email: string, token: string): Promise<void> {
-    const url = buildPasswordResetUrl(token)
-    await sendTransactionalEmail({
-        to: email,
-        subject: 'Reset your Monqom password',
-        html:
-            '<p>Use this link to reset your password.</p><p><a href="' +
-            url +
-            '">Reset password</a></p>',
-    })
 }
 
 function mapRegisteredUser(user: User): RegisteredUserResponse {

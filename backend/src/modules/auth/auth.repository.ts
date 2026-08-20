@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import {
     EmailVerificationToken,
     PasswordResetToken,
@@ -14,8 +15,11 @@ import {
     AuditMetadata,
 } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { createOpaqueDigest } from '../../shared/security/opaque-digest'
 
 const POSTGRES_UNDEFINED_TABLE_ERROR_CODE = '42P01'
+const ACCOUNT_LOCKOUT_MS = 15 * 60 * 1000
+const MAX_FAILED_LOGIN_ATTEMPTS = 5
 
 export interface CreateUserWithVerificationTokenInput {
     email: string
@@ -70,8 +74,7 @@ export interface ChangePasswordInput {
 }
 export interface FailedLoginAttemptInput {
     userId: string
-    failedLoginCount: number
-    lockedUntil: Date | null
+    attemptedAt: Date
 }
 
 export interface ReplaceTwoFactorSetupSecretInput {
@@ -90,11 +93,13 @@ export interface ConsumeRecoveryCodeInput {
     usedAt: Date
 }
 
-export type EmailVerificationTokenWithUser = EmailVerificationToken & {
+export type EmailVerificationTokenWithUser = Omit<EmailVerificationToken, 'tokenHash'> & {
+    tokenHash?: string | null
     user: User
 }
 
-export type PasswordResetTokenWithUser = PasswordResetToken & {
+export type PasswordResetTokenWithUser = Omit<PasswordResetToken, 'tokenHash'> & {
+    tokenHash?: string | null
     user: User
 }
 
@@ -107,6 +112,7 @@ export class AuthRepository {
     constructor(
         private readonly prisma: PrismaService,
         private readonly auditService: AuditService,
+        private readonly configService: ConfigService,
     ) {}
 
     async findUserByEmail(email: string): Promise<User | null> {
@@ -118,10 +124,22 @@ export class AuthRepository {
     }
 
     async recordFailedLoginAttempt(input: FailedLoginAttemptInput): Promise<void> {
-        await this.prisma.user.update({
-            where: { id: input.userId },
-            data: { failedLoginCount: input.failedLoginCount, lockedUntil: input.lockedUntil },
-        })
+        const lockedUntil = new Date(input.attemptedAt.getTime() + ACCOUNT_LOCKOUT_MS)
+        await this.prisma.$executeRaw(Prisma.sql`
+            UPDATE "users"
+            SET
+                "failed_login_count" = CASE
+                    WHEN "failed_login_count" + 1 >= ${MAX_FAILED_LOGIN_ATTEMPTS} THEN 0
+                    ELSE "failed_login_count" + 1
+                END,
+                "locked_until" = CASE
+                    WHEN "failed_login_count" + 1 >= ${MAX_FAILED_LOGIN_ATTEMPTS}
+                        THEN ${lockedUntil}
+                    ELSE NULL
+                END,
+                "updated_at" = ${input.attemptedAt}
+            WHERE "id" = ${input.userId}
+        `)
     }
 
     async clearFailedLoginAttempts(userId: string): Promise<void> {
@@ -160,7 +178,8 @@ export class AuthRepository {
             await tx.emailVerificationToken.create({
                 data: {
                     userId: user.id,
-                    token: input.verificationToken,
+                    token: this.hashToken(input.verificationToken),
+                    tokenHash: this.hashToken(input.verificationToken),
                     expiresAt: input.verificationTokenExpiresAt,
                 },
             })
@@ -191,8 +210,10 @@ export class AuthRepository {
     async findEmailVerificationTokenWithUser(
         token: string,
     ): Promise<EmailVerificationTokenWithUser | null> {
-        return this.prisma.emailVerificationToken.findUnique({
-            where: { token },
+        return this.prisma.emailVerificationToken.findFirst({
+            where: {
+                OR: [{ tokenHash: this.hashToken(token) }, { tokenHash: null, token }],
+            },
             include: { user: true },
         })
     }
@@ -241,12 +262,14 @@ export class AuthRepository {
 
     async createVerificationTokenForUser(
         input: CreateVerificationTokenForUserInput,
+        prisma: AuthPersistenceClient = this.prisma,
     ): Promise<void> {
-        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const createToken = async (tx: AuthPersistenceClient): Promise<void> => {
             await tx.emailVerificationToken.create({
                 data: {
                     userId: input.userId,
-                    token: input.verificationToken,
+                    token: this.hashToken(input.verificationToken),
+                    tokenHash: this.hashToken(input.verificationToken),
                     expiresAt: input.verificationTokenExpiresAt,
                 },
             })
@@ -263,16 +286,23 @@ export class AuthRepository {
                 },
                 tx,
             )
-        })
+        }
+        if (prisma === this.prisma) {
+            await this.prisma.$transaction((tx) => createToken(tx))
+            return
+        }
+        await createToken(prisma)
     }
 
     async createPasswordResetTokenForUser(
         input: CreatePasswordResetTokenForUserInput,
+        prisma: AuthPersistenceClient = this.prisma,
     ): Promise<void> {
-        await this.prisma.passwordResetToken.create({
+        await prisma.passwordResetToken.create({
             data: {
                 userId: input.userId,
-                token: input.passwordResetToken,
+                token: this.hashToken(input.passwordResetToken),
+                tokenHash: this.hashToken(input.passwordResetToken),
                 expiresAt: input.passwordResetTokenExpiresAt,
             },
         })
@@ -281,8 +311,10 @@ export class AuthRepository {
     async findPasswordResetTokenWithUser(
         token: string,
     ): Promise<PasswordResetTokenWithUser | null> {
-        return this.prisma.passwordResetToken.findUnique({
-            where: { token },
+        return this.prisma.passwordResetToken.findFirst({
+            where: {
+                OR: [{ tokenHash: this.hashToken(token) }, { tokenHash: null, token }],
+            },
             include: { user: true },
         })
     }
@@ -568,6 +600,12 @@ export class AuthRepository {
             entityId: input.userId,
             metadata: input.metadata,
         })
+    }
+
+    private hashToken(token: string): string {
+        const digestSecret = this.configService.get<string>('env.sessionSecret')
+        if (!digestSecret) throw new Error('SESSION_SECRET is required for authentication tokens')
+        return createOpaqueDigest(token, 'authentication-token', digestSecret)
     }
 }
 

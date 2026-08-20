@@ -36,8 +36,8 @@ async function bootstrap() {
         }),
     )
 
-    if (nodeEnv === 'production' || nodeEnv === 'staging') {
-        app.set('trust proxy', 1)
+    if (runtimeConfig.trustProxyHops > 0) {
+        app.set('trust proxy', runtimeConfig.trustProxyHops)
     }
 
     app.use(
