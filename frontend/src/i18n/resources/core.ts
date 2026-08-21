@@ -78,8 +78,6 @@ export const enCore = {
   messages: {
     transactionSaved: "Transaction saved successfully.",
     offline: "You are offline. Connect to the internet to access current data.",
-    updateAvailable: "A new version of Monqom is ready.",
-    updateNow: "Update now",
     updateFailed: "The app update could not be prepared. Try again later.",
   },
   workspaceSwitcher: { label: "Active workspace" },
@@ -167,8 +165,6 @@ export const plCore = {
     transactionSaved: "Transakcja została zapisana.",
     offline:
       "Brak połączenia. Połącz się z internetem, aby pobrać aktualne dane.",
-    updateAvailable: "Nowa wersja Monqom jest gotowa.",
-    updateNow: "Aktualizuj teraz",
     updateFailed:
       "Nie udało się przygotować aktualizacji aplikacji. Spróbuj później.",
   },

@@ -17,7 +17,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       injectRegister: false,
       manifest: {
         name: "Monqom",
@@ -44,6 +44,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // injectRegister is disabled because registration is managed by React.
+        // Keep these explicit so updates activate and reload every open client.
+        skipWaiting: true,
+        clientsClaim: true,
         cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
