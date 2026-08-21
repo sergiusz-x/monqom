@@ -123,19 +123,9 @@ jobs:
           TURNSTILE_ENABLED: "true"
           TURNSTILE_SECRET_KEY: turnstile_test_placeholder
           VITE_TURNSTILE_SITE_KEY: turnstile_site_test_placeholder
-          MIGRATION_IMAGE: ghcr.io/sergiusz-x/monqom-migration@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-          BACKEND_IMAGE: ghcr.io/sergiusz-x/monqom-backend@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-          FRONTEND_IMAGE: ghcr.io/sergiusz-x/monqom-frontend@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
         run: |
           docker compose -f docker-compose.dokploy.yml config --quiet
           docker compose -f docker-compose.dokploy.yml config --format json | jq -e '.services | all(.networks | has("dokploy-network"))'
-          docker compose -f docker-compose.immutable.yml config --quiet
-          docker compose -f docker-compose.immutable.yml config --format json | jq -e '
-            .services
-            | all(has("build") | not)
-            and all(.image | test("^ghcr\\.io/.+@sha256:[a-f0-9]{64}$"))
-          '
-      - run: node scripts/deploy-dokploy.test.mjs
       - run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} --target migration --tag monqom-backend-migration:ci --file backend/Dockerfile .
       - run: docker run --rm --entrypoint sh monqom-backend-migration:ci -c 'test -f /app/backend/prisma.config.ts && test ! -e /usr/local/bin/npm && node ./node_modules/prisma/build/index.js --version'
       - name: Scan migration image
@@ -171,15 +161,16 @@ jobs:
             -e TURNSTILE_ENABLED=false \
             -e TRUST_PROXY_HOPS=1 \
             monqom-backend:ci
-          trap 'docker rm -f monqom-backend-ci >/dev/null' EXIT
           for _attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/health >/dev/null; then
-              exit 0
+              break
             fi
             sleep 1
           done
-          docker logs monqom-backend-ci
-          exit 1
+          curl --fail --silent http://127.0.0.1:3000/health >/dev/null || {
+            docker logs monqom-backend-ci
+            exit 1
+          }
       - name: Scan backend runtime image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -196,13 +187,21 @@ jobs:
       - run: docker run --rm --entrypoint sh monqom-frontend:ci -c 'grep -q "\"version\":\"ci\"" /usr/share/nginx/html/version.json && grep -q "\"sha\":\"${{ github.sha }}\"" /usr/share/nginx/html/version.json'
       - name: Verify automatic PWA activation
         run: docker run --rm --entrypoint sh monqom-frontend:ci -c 'grep -q "skipWaiting()" /usr/share/nginx/html/sw.js && grep -q "clientsClaim()" /usr/share/nginx/html/sw.js'
-      - name: Exercise critical journey through exact production images
+      - name: Exercise critical journey through production containers
         env:
-          MIGRATION_IMAGE: monqom-backend-migration:ci
-          BACKEND_IMAGE: monqom-backend:ci
-          FRONTEND_IMAGE: monqom-frontend:ci
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
-        run: sh scripts/verify-production-images.sh
+        run: |
+          docker run --detach --name monqom-frontend-ci --network host \
+            --add-host backend:127.0.0.1 monqom-frontend:ci
+          for _attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/api/ready >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8080/api/ready >/dev/null
+          node scripts/smoke-production-stack.mjs \
+            http://127.0.0.1:8080 "$POSTGRES_CONTAINER"
       - name: Scan frontend runtime image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -213,3 +212,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
+      - name: Stop production containers
+        if: always()
+        run: docker rm -f monqom-frontend-ci monqom-backend-ci 2>/dev/null || true

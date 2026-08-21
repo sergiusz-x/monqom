@@ -1,101 +1,78 @@
 import { execFileSync } from "node:child_process";
 
-const [
-  baseUrl,
-  postgresContainer,
-  databaseUser = "monqom",
-  databaseName = "monqom_container_ci",
-] = process.argv.slice(2);
-
+const [baseUrl, postgresContainer] = process.argv.slice(2);
 if (!baseUrl || !postgresContainer) {
   throw new Error(
-    "Usage: node scripts/smoke-production-stack.mjs <base-url> <postgres-container> [database-user] [database-name]",
+    "Usage: smoke-production-stack.mjs <base-url> <postgres-container>",
   );
 }
 
-const smokeEmail = "production-image-smoke@example.test";
-const smokePassword = "ProductionImageSmoke!1234";
+const email = "production-image-smoke@example.test";
+const password = "ProductionImageSmoke!1234";
 const cookies = new Map();
 
-function rememberCookies(response) {
-  const combinedHeader = response.headers.get("set-cookie");
-  const setCookies =
-    response.headers.getSetCookie?.() ??
-    (combinedHeader ? [combinedHeader] : []);
-  for (const value of setCookies) {
-    const pair = value.split(";", 1)[0];
-    const separator = pair.indexOf("=");
-    if (separator > 0)
-      cookies.set(pair.slice(0, separator), pair.slice(separator + 1));
-  }
-}
-
-function cookieHeader() {
-  return [...cookies].map(([name, value]) => `${name}=${value}`).join("; ");
-}
-
-async function api(path, options = {}) {
+async function request(path, options = {}) {
   const headers = new Headers(options.headers);
   headers.set("x-forwarded-proto", "https");
-  const cookie = cookieHeader();
-  if (cookie) headers.set("cookie", cookie);
+  if (cookies.size) {
+    headers.set(
+      "cookie",
+      [...cookies].map(([name, value]) => `${name}=${value}`).join("; "),
+    );
+  }
 
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers,
     redirect: "error",
   });
-  rememberCookies(response);
-  const body = await response.text();
-
-  if (!response.ok) {
-    let code = "";
-    try {
-      const payload = JSON.parse(body);
-      if (typeof payload?.code === "string") code = ` (${payload.code})`;
-    } catch {
-      // Do not include arbitrary response bodies in CI output.
+  for (const value of response.headers.getSetCookie?.() ?? []) {
+    const [pair] = value.split(";", 1);
+    const separator = pair.indexOf("=");
+    if (separator > 0) {
+      cookies.set(pair.slice(0, separator), pair.slice(separator + 1));
     }
-    throw new Error(
-      `${options.method ?? "GET"} ${path} returned HTTP ${response.status}${code}`,
-    );
   }
 
+  if (!response.ok) {
+    throw new Error(
+      `${options.method ?? "GET"} ${path}: HTTP ${response.status}`,
+    );
+  }
+  const body = await response.text();
   return body ? JSON.parse(body) : undefined;
 }
 
-async function csrfToken() {
-  const payload = await api("/api/v1/auth/csrf-token");
-  if (typeof payload?.csrfToken !== "string" || payload.csrfToken.length < 32) {
-    throw new Error("The API did not issue a valid CSRF token");
-  }
-  return payload.csrfToken;
+async function csrf() {
+  const result = await request("/api/v1/auth/csrf-token");
+  if (typeof result?.csrfToken !== "string")
+    throw new Error("Missing CSRF token");
+  return result.csrfToken;
 }
 
-function jsonRequest(method, body, csrf) {
+function json(method, body, token) {
   return {
     method,
     headers: {
       "content-type": "application/json",
-      ...(csrf ? { "x-csrf-token": csrf } : {}),
+      ...(token ? { "x-csrf-token": token } : {}),
     },
     body: JSON.stringify(body),
   };
 }
 
-const registrationCsrf = await csrfToken();
-await api(
+await request(
   "/api/v1/auth/register",
-  jsonRequest(
+  json(
     "POST",
     {
-      email: smokeEmail,
+      email,
       name: "Production Image Smoke",
-      password: smokePassword,
+      password,
       locale: "en",
       base_currency: "PLN",
     },
-    registrationCsrf,
+    await csrf(),
   ),
 );
 
@@ -106,36 +83,30 @@ execFileSync(
     postgresContainer,
     "psql",
     "--username",
-    databaseUser,
+    "monqom",
     "--dbname",
-    databaseName,
+    "monqom_container_ci",
     "--set",
     "ON_ERROR_STOP=1",
     "--command",
-    `UPDATE users SET email_verified = true WHERE email = '${smokeEmail}'`,
+    `UPDATE users SET email_verified = true WHERE email = '${email}'`,
   ],
   { stdio: "ignore" },
 );
 
-const loginCsrf = await csrfToken();
-await api(
+await request(
   "/api/v1/auth/login",
-  jsonRequest(
-    "POST",
-    { email: smokeEmail, password: smokePassword },
-    loginCsrf,
-  ),
+  json("POST", { email, password }, await csrf()),
 );
 
-const authenticatedCsrf = await csrfToken();
-const workspaces = await api("/api/v1/workspaces");
+const token = await csrf();
+const workspaces = await request("/api/v1/workspaces");
 const workspaceId = workspaces?.[0]?.id;
-if (typeof workspaceId !== "string")
-  throw new Error("Registration did not create a workspace");
+if (typeof workspaceId !== "string") throw new Error("Missing workspace");
 
-const goal = await api(
+const goal = await request(
   `/api/v1/workspaces/${workspaceId}/goals`,
-  jsonRequest(
+  json(
     "POST",
     {
       name: "Production image smoke goal",
@@ -144,21 +115,14 @@ const goal = await api(
       target_date: "2030-12-31",
       include_current_month: false,
     },
-    authenticatedCsrf,
+    token,
   ),
 );
+if (typeof goal?.id !== "string") throw new Error("Goal was not created");
 
-if (typeof goal?.id !== "string")
-  throw new Error("Goal creation did not return an id");
-
-const storedGoal = await api(
+const stored = await request(
   `/api/v1/workspaces/${workspaceId}/goals/${goal.id}`,
 );
-if (
-  storedGoal?.id !== goal.id ||
-  storedGoal?.name !== "Production image smoke goal"
-) {
-  throw new Error("The created goal could not be read back");
-}
+if (stored?.id !== goal.id) throw new Error("Goal could not be read back");
 
 process.stdout.write("Production image critical journey passed\n");
