@@ -5,6 +5,9 @@ on:
     types: [completed]
 permissions:
   contents: write
+  packages: write
+  id-token: write
+  attestations: write
 jobs:
   release:
     if: >-
@@ -13,6 +16,26 @@ jobs:
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: monqom
+          POSTGRES_PASSWORD: monqom
+          POSTGRES_DB: monqom_container_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U monqom -d monqom_container_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      release_tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+      release_sha: ${{ steps.semantic.outputs.new_release_git_head }}
+      migration_image: ${{ steps.digests.outputs.migration_image }}
+      backend_image: ${{ steps.digests.outputs.backend_image }}
+      frontend_image: ${{ steps.digests.outputs.frontend_image }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,3 +55,142 @@ jobs:
         run: >-
           test "$(git rev-parse HEAD)" = "$RELEASE_SHA" &&
           test "$RELEASE_SHA" = "$(git rev-list -n 1 "$RELEASE_TAG")"
+      - name: Log in to GHCR
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build release images once
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
+          RELEASE_SHA: ${{ steps.semantic.outputs.new_release_git_head }}
+        run: |
+          docker build \
+            --build-arg APP_VERSION="$RELEASE_TAG" \
+            --build-arg GIT_SHA="$RELEASE_SHA" \
+            --target migration \
+            --tag "ghcr.io/sergiusz-x/monqom-migration:$RELEASE_TAG" \
+            --file backend/Dockerfile .
+          docker build \
+            --build-arg APP_VERSION="$RELEASE_TAG" \
+            --build-arg GIT_SHA="$RELEASE_SHA" \
+            --target runtime \
+            --tag "ghcr.io/sergiusz-x/monqom-backend:$RELEASE_TAG" \
+            --file backend/Dockerfile .
+          docker build \
+            --build-arg APP_VERSION="$RELEASE_TAG" \
+            --build-arg GIT_SHA="$RELEASE_SHA" \
+            --build-arg VITE_TURNSTILE_SITE_KEY=turnstile_site_release_check \
+            --tag "ghcr.io/sergiusz-x/monqom-frontend:$RELEASE_TAG" \
+            --file frontend/Dockerfile .
+      - name: Exercise critical journey through release images
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          MIGRATION_IMAGE: ghcr.io/sergiusz-x/monqom-migration:${{ steps.semantic.outputs.new_release_git_tag }}
+          BACKEND_IMAGE: ghcr.io/sergiusz-x/monqom-backend:${{ steps.semantic.outputs.new_release_git_tag }}
+          FRONTEND_IMAGE: ghcr.io/sergiusz-x/monqom-frontend:${{ steps.semantic.outputs.new_release_git_tag }}
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: sh scripts/verify-production-images.sh
+      - name: Scan migration release image
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ghcr.io/sergiusz-x/monqom-migration:${{ steps.semantic.outputs.new_release_git_tag }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+      - name: Scan backend release image
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ghcr.io/sergiusz-x/monqom-backend:${{ steps.semantic.outputs.new_release_git_tag }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+      - name: Scan frontend release image
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ghcr.io/sergiusz-x/monqom-frontend:${{ steps.semantic.outputs.new_release_git_tag }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+      - name: Publish verified images and resolve digests
+        if: steps.semantic.outputs.new_release_published == 'true'
+        id: digests
+        env:
+          RELEASE_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
+        run: |
+          migration_name=ghcr.io/sergiusz-x/monqom-migration
+          backend_name=ghcr.io/sergiusz-x/monqom-backend
+          frontend_name=ghcr.io/sergiusz-x/monqom-frontend
+          docker push "$migration_name:$RELEASE_TAG"
+          docker push "$backend_name:$RELEASE_TAG"
+          docker push "$frontend_name:$RELEASE_TAG"
+          migration_digest="$(docker buildx imagetools inspect "$migration_name:$RELEASE_TAG" --format '{{json .Manifest}}' | jq -er '.digest')"
+          backend_digest="$(docker buildx imagetools inspect "$backend_name:$RELEASE_TAG" --format '{{json .Manifest}}' | jq -er '.digest')"
+          frontend_digest="$(docker buildx imagetools inspect "$frontend_name:$RELEASE_TAG" --format '{{json .Manifest}}' | jq -er '.digest')"
+          {
+            echo "migration_digest=$migration_digest"
+            echo "backend_digest=$backend_digest"
+            echo "frontend_digest=$frontend_digest"
+            echo "migration_image=$migration_name@$migration_digest"
+            echo "backend_image=$backend_name@$backend_digest"
+            echo "frontend_image=$frontend_name@$frontend_digest"
+          } >> "$GITHUB_OUTPUT"
+      - name: Attest migration image provenance
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/sergiusz-x/monqom-migration
+          subject-digest: ${{ steps.digests.outputs.migration_digest }}
+          push-to-registry: true
+      - name: Attest backend image provenance
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/sergiusz-x/monqom-backend
+          subject-digest: ${{ steps.digests.outputs.backend_digest }}
+          push-to-registry: true
+      - name: Attest frontend image provenance
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/sergiusz-x/monqom-frontend
+          subject-digest: ${{ steps.digests.outputs.frontend_digest }}
+          push-to-registry: true
+
+  deploy-production:
+    needs: release
+    if: needs.release.outputs.published == 'true' && vars.DOKPLOY_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.release_sha }}
+      - name: Deploy verified digests and roll back application on failure
+        env:
+          DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
+          DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          EXPECTED_GIT_SHA: ${{ needs.release.outputs.release_sha }}
+          MIGRATION_IMAGE: ${{ needs.release.outputs.migration_image }}
+          BACKEND_IMAGE: ${{ needs.release.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.release.outputs.frontend_image }}
+        run: node scripts/deploy-dokploy.mjs
