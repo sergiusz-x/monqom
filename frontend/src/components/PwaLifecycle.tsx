@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@monqom/ui";
 import { useToast } from "@/hooks/useToast";
+
+const SERVICE_WORKER_UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 
 export function PwaLifecycle() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine);
-  const {
-    needRefresh: [needRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration>();
+
+  useRegisterSW({
+    immediate: true,
+    onRegisteredSW(_serviceWorkerUrl, nextRegistration) {
+      setRegistration(nextRegistration);
+    },
     onRegisterError() {
       if (import.meta.env.PROD) {
         showToast(t("messages.updateFailed"), "warning");
@@ -31,6 +35,31 @@ export function PwaLifecycle() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!registration) return;
+
+    const checkForUpdate = () => {
+      if (navigator.onLine) {
+        void registration.update().catch(() => {
+          // A later focus, reconnect, or interval will retry the update.
+        });
+      }
+    };
+
+    const intervalId = window.setInterval(
+      checkForUpdate,
+      SERVICE_WORKER_UPDATE_INTERVAL_MS,
+    );
+    window.addEventListener("focus", checkForUpdate);
+    window.addEventListener("online", checkForUpdate);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", checkForUpdate);
+      window.removeEventListener("online", checkForUpdate);
+    };
+  }, [registration]);
+
   return (
     <>
       {isOffline ? (
@@ -39,21 +68,6 @@ export function PwaLifecycle() {
           className="fixed inset-x-0 top-0 z-[100] bg-warning px-4 py-2 text-center text-sm font-medium text-warning-foreground"
         >
           {t("messages.offline")}
-        </div>
-      ) : null}
-      {needRefresh ? (
-        <div
-          role="status"
-          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[100] mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-lg"
-        >
-          <p className="text-sm font-medium">{t("messages.updateAvailable")}</p>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void updateServiceWorker(true)}
-          >
-            {t("messages.updateNow")}
-          </Button>
         </div>
       ) : null}
     </>
