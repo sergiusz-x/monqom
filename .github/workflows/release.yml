@@ -32,3 +32,30 @@ jobs:
         run: >-
           test "$(git rev-parse HEAD)" = "$RELEASE_SHA" &&
           test "$RELEASE_SHA" = "$(git rev-list -n 1 "$RELEASE_TAG")"
+      - name: Verify production deployment
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          RELEASE_SHA: ${{ steps.semantic.outputs.new_release_git_head }}
+        run: |
+          test -n "$PRODUCTION_URL" || {
+            echo "Set the public PRODUCTION_URL repository variable"
+            exit 1
+          }
+          case "$PRODUCTION_URL" in
+            https://*) ;;
+            *) echo "PRODUCTION_URL must use HTTPS"; exit 1 ;;
+          esac
+          production_url="${PRODUCTION_URL%/}"
+          for _attempt in $(seq 1 60); do
+            deployed_sha="$(curl --fail --silent --show-error --max-time 10 \
+              "$production_url/version.json" | jq -r '.sha // empty' || true)"
+            if [ "$deployed_sha" = "$RELEASE_SHA" ] && \
+              curl --fail --silent --show-error --max-time 10 \
+                "$production_url/api/ready" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production did not become ready on release $RELEASE_SHA"
+          exit 1
