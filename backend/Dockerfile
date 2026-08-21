@@ -16,6 +16,9 @@ RUN pnpm exec prisma generate
 FROM dependencies AS production-dependencies
 WORKDIR /app
 RUN pnpm --filter backend deploy --prod /prod/backend
+WORKDIR /prod/backend
+RUN /app/backend/node_modules/.bin/prisma generate --schema /prod/backend/prisma/schema.prisma \
+    && node -e "require('@prisma/client')"
 
 FROM dependencies AS build
 WORKDIR /app
@@ -55,6 +58,7 @@ COPY backend/prisma.config.ts ./backend/
 WORKDIR /app
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=release /release.env ./backend/release.env
+RUN node -e "require('./backend/node_modules/@prisma/client')"
 USER monqom
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "require('http').get('http://127.0.0.1:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
