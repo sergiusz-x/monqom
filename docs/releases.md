@@ -18,8 +18,10 @@ The tagged commit is immutable. Build and deploy the exact `v*` tag, not an unta
 1. Work is merged to `main` through a pull request with all required checks green.
 2. Semantic-release evaluates Conventional Commits only after the canonical CI succeeds on a push to `main`.
 3. A published `v*` GitHub Release is the immutable deployment input. The release workflow verifies that the new tag resolves to the exact CI-tested `HEAD`.
-4. Dokploy uses its GitHub integration with automatic deployment enabled only for the `Tag` trigger. Branch pushes do not deploy; a newly created release tag does. An existing release tag can be redeployed manually from Dokploy when recovery is required.
-5. Before a production rollout, complete [the release checklist](release-checklist.md) against the exact tagged commit.
+4. The release workflow builds the migration, backend, and frontend images once. It runs the production migration and a critical authenticated savings-goal journey through the frontend proxy, scans all three images, and only then publishes them to GHCR with digest references and provenance attestations.
+5. Immutable production deployment is opt-in. When explicitly enabled, the protected `production` environment deploys the verified `name@sha256` references and checks public readiness plus the expected commit SHA. A sustained failure restores the previous digest-pinned application manifest when one exists; it never reverses a database migration.
+6. The original tagged source build remains the manual bootstrap recovery path. Its automatic tag trigger must be disabled before immutable deployment is enabled, so two deployment mechanisms can never race.
+7. Before a production rollout, complete [the release checklist](release-checklist.md) against the exact tagged commit.
 
 ## Versioning
 
