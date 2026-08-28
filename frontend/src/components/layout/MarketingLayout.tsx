@@ -20,15 +20,36 @@ export default function MarketingLayout() {
             <span className="text-lg font-semibold tracking-tight">Monqom</span>
           </Link>
           <div className="flex items-center gap-2">
-            <nav className="hidden items-center gap-4 text-sm text-muted-foreground lg:flex" aria-label={t("nav.main")}>
-              <a href="#features" className="hover:text-foreground">{t("landing.navigation.features")}</a>
-              <a href="#control" className="hover:text-foreground">{t("landing.navigation.control")}</a>
-              <a href="#self-hosting" className="hover:text-foreground">{t("landing.navigation.selfHosting")}</a>
+            <nav
+              className="hidden items-center gap-4 text-sm text-muted-foreground lg:flex"
+              aria-label={t("nav.main")}
+            >
+              <a href="#features" className="hover:text-foreground">
+                {t("landing.navigation.features")}
+              </a>
+              <a href="#control" className="hover:text-foreground">
+                {t("landing.navigation.control")}
+              </a>
+              <a href="#self-hosting" className="hover:text-foreground">
+                {t("landing.navigation.selfHosting")}
+              </a>
             </nav>
-            <Link to="/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
+            <Link
+              to="/login"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "hidden sm:inline-flex",
+              )}
+            >
               {t("landing.signIn")}
             </Link>
-            <Link to="/register" className={cn(buttonVariants({ size: "sm" }), "hidden sm:inline-flex")}>
+            <Link
+              to="/register"
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "hidden sm:inline-flex",
+              )}
+            >
               {t("landing.createAccount")}
             </Link>
             <PublicPreferences />
