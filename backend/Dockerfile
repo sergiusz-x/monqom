@@ -3,6 +3,7 @@ FROM node:22-alpine AS dependencies
 WORKDIR /app
 ENV CI=true
 RUN corepack enable pnpm
+RUN apk upgrade --no-cache
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY backend/package.json ./backend/
 COPY packages/ui/package.json ./packages/ui/
@@ -29,7 +30,7 @@ WORKDIR /app/backend
 RUN pnpm run build
 
 FROM node:22-alpine AS release
-RUN apk add --no-cache git
+RUN apk upgrade --no-cache && apk add --no-cache git
 WORKDIR /repo
 ARG APP_VERSION
 ARG GIT_SHA
@@ -48,7 +49,8 @@ RUN --mount=type=bind,source=.git,target=/repo/.git,readonly \
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN rm -rf /usr/local/lib/node_modules/npm \
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx \
     && addgroup -S monqom \
     && adduser -S monqom -G monqom
@@ -68,7 +70,8 @@ CMD ["sh", "-c", "set -a; . ./release.env; set +a; exec node dist/main"]
 FROM node:22-alpine AS migration
 WORKDIR /app/backend
 ENV NODE_ENV=production
-RUN rm -rf /usr/local/lib/node_modules/npm \
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx \
     && addgroup -S monqom \
     && adduser -S monqom -G monqom

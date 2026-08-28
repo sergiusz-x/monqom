@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import LandingRoute from "@/components/LandingRoute";
 import MarketingLayout from "@/components/layout/MarketingLayout";
@@ -52,7 +53,10 @@ function renderLanding(overrides: Partial<AuthContextValue> = {}) {
 }
 
 afterEach(async () => {
-  await i18n.changeLanguage("en");
+  cleanup();
+  await act(async () => {
+    await i18n.changeLanguage("en");
+  });
 });
 
 describe("public landing page", () => {
@@ -61,7 +65,7 @@ describe("public landing page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Monqom helps you easily stay in control of your spending and everyday finances.",
+        name: "Understand your money without the complexity.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
@@ -69,25 +73,56 @@ describe("public landing page", () => {
       "/login",
     );
     expect(
-      screen.getByRole("link", { name: "Create account" }),
-    ).toHaveAttribute("href", "/register");
+      screen
+        .getAllByRole("link", { name: "Create account" })
+        .some((link) => link.getAttribute("href") === "/register"),
+    ).toBe(true);
+    expect(
+      screen.getByRole("link", { name: "Self-host Monqom" }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/sergiusz-x/monqom/blob/main/docs/self-hosting.md",
+    );
   });
 
   it("renders the Polish copy", async () => {
-    await i18n.changeLanguage("pl");
+    await act(async () => {
+      await i18n.changeLanguage("pl");
+    });
     renderLanding();
 
     expect(
       screen.getByRole("heading", {
-        name: "Monqom pomaga prosto kontrolować wydatki i codzienne finanse.",
+        name: "Zrozum swoje finanse bez zbędnych komplikacji.",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Zaloguj się" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Załóż konto" }),
+      screen.getAllByRole("link", { name: "Załóż konto" }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("opens a full-size product screenshot preview", async () => {
+    const user = userEvent.setup();
+    renderLanding();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Open full preview: Monqom dashboard in dark mode",
+      }),
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Monqom dashboard in dark mode" }),
     ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close preview" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Monqom dashboard in dark mode" }),
+    ).not.toBeInTheDocument();
   });
 
   it("redirects an authenticated user from root to the dashboard", () => {
