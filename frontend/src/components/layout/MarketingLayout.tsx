@@ -38,17 +38,14 @@ export default function MarketingLayout() {
               to="/login"
               className={cn(
                 buttonVariants({ variant: "ghost", size: "sm" }),
-                "hidden sm:inline-flex",
+                "inline-flex",
               )}
             >
               {t("landing.signIn")}
             </Link>
             <Link
               to="/register"
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                "hidden sm:inline-flex",
-              )}
+              className={cn(buttonVariants({ size: "sm" }), "inline-flex")}
             >
               {t("landing.createAccount")}
             </Link>
