@@ -11,7 +11,7 @@ test("opens public authentication journeys from the landing page", async ({
 
   await expect(
     page.getByRole("heading", {
-      name: "Monqom helps you easily stay in control of your spending and everyday finances.",
+      name: "Understand your money without the complexity.",
     }),
   ).toBeVisible();
 
