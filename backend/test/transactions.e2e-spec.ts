@@ -884,9 +884,7 @@ function createPrismaMock(): PrismaMock {
             findUnique: async ({ where }) => {
                 const workspace = workspaces.find((item) => item.id === where.id)
 
-                return workspace
-                    ? ({ ...workspace, baseCurrency: 'USD' } as never)
-                    : null
+                return workspace ? ({ ...workspace, baseCurrency: 'USD' } as never) : null
             },
         },
         workspaceMembership: {
@@ -1222,7 +1220,7 @@ function listTransactionsForExportFromQuery(query: Prisma.Sql, prismaMock: Prism
                 (category) =>
                     category.workspaceId === transaction.workspaceId &&
                     category.id === transaction.categoryId,
-        )?.name ?? null,
+            )?.name ?? null,
         description: '',
         notes: transaction.notes,
         tags: prismaMock.transactionTags

@@ -25,7 +25,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
             if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
                 const res = exceptionResponse as Record<string, unknown>
                 message = (res.message as string | string[]) || httpException.message
-                error = (res.error as string) || errorLabelForStatus(statusCode) || httpException.name
+                error =
+                    (res.error as string) || errorLabelForStatus(statusCode) || httpException.name
                 code = typeof res.code === 'string' ? res.code : undefined
             } else if (typeof exceptionResponse === 'string') {
                 message = exceptionResponse

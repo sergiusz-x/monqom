@@ -10,7 +10,9 @@ export function createCorsOptions(input: CorsConfigurationInput): CorsOptions {
     const shouldRequireAllowlist = input.nodeEnv === 'production' || input.nodeEnv === 'staging'
 
     if (shouldRequireAllowlist && allowedOrigins.length === 0) {
-        throw new Error('CORS_ALLOWED_ORIGINS environment variable is missing in deployed environments')
+        throw new Error(
+            'CORS_ALLOWED_ORIGINS environment variable is missing in deployed environments',
+        )
     }
 
     return {

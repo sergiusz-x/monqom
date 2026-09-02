@@ -45,11 +45,7 @@ export class CategoriesService {
         workspaceId: string,
     ): Promise<CategoryResponse> {
         const category = findCategory(
-            await this.hierarchy(
-                workspaceId.trim(),
-                input.includeArchived ?? false,
-                input.type,
-            ),
+            await this.hierarchy(workspaceId.trim(), input.includeArchived ?? false, input.type),
             id.trim(),
         )
         if (!category) throw new NotFoundException(NOT_FOUND)

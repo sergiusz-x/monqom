@@ -131,7 +131,9 @@ function consumeTestRateLimit(
     const previous = rateLimits.get(key)
     const active = previous && previous.expiresAt > now
     const attemptCount = active ? previous.attempt_count + 1 : 1
-    const expiresAt = active ? previous.expiresAt : new Date(now.getTime() + AUTH_RATE_LIMIT_WINDOW_MS)
+    const expiresAt = active
+        ? previous.expiresAt
+        : new Date(now.getTime() + AUTH_RATE_LIMIT_WINDOW_MS)
     const result = {
         attempt_count: attemptCount,
         blocked_until: attemptCount > limit ? expiresAt : null,

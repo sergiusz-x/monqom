@@ -227,25 +227,27 @@ describe('Categories endpoints (e2e)', () => {
             .get('/api/v1/workspaces/workspace-1/categories?include_archived=true')
             .expect(200)
 
-        expect(response.body.find((category: { id: string }) => category.id === 'category-parent-entertainment')).toMatchObject(
+        expect(
+            response.body.find(
+                (category: { id: string }) => category.id === 'category-parent-entertainment',
+            ),
+        ).toMatchObject({
+            id: 'category-parent-entertainment',
+            name: 'Entertainment',
+            icon: '🎬',
+            parent_id: null,
+            sort_order: 3,
+            children: [
                 {
-                    id: 'category-parent-entertainment',
-                    name: 'Entertainment',
-                    icon: '🎬',
-                    parent_id: null,
-                    sort_order: 3,
-                    children: [
-                        {
-                            id: 'category-child-streaming',
-                            name: 'Streaming',
-                            icon: '📺',
-                            parent_id: 'category-parent-entertainment',
-                            sort_order: 1,
-                            children: [],
-                        },
-                    ],
+                    id: 'category-child-streaming',
+                    name: 'Streaming',
+                    icon: '📺',
+                    parent_id: 'category-parent-entertainment',
+                    sort_order: 1,
+                    children: [],
                 },
-        )
+            ],
+        })
     })
 
     it('returns a single parent category with nested children', async () => {

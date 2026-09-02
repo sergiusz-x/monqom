@@ -67,9 +67,13 @@ function validateRuntimeConfig(config: RuntimeConfig): void {
     if (missing.length)
         throw new Error(`Missing required deployed environment variables: ${missing.join(', ')}`)
     if ((config.sessionSecret?.length ?? 0) < 32)
-        throw new Error('SESSION_SECRET must contain at least 32 characters in deployed environments')
+        throw new Error(
+            'SESSION_SECRET must contain at least 32 characters in deployed environments',
+        )
     if ((config.totpEncryptionKey?.length ?? 0) < 32)
-        throw new Error('TOTP_ENCRYPTION_KEY must contain at least 32 characters in deployed environments')
+        throw new Error(
+            'TOTP_ENCRYPTION_KEY must contain at least 32 characters in deployed environments',
+        )
     if ((config.emailOutboxEncryptionKey?.length ?? 0) < 32)
         throw new Error(
             'EMAIL_OUTBOX_ENCRYPTION_KEY must contain at least 32 characters in deployed environments',

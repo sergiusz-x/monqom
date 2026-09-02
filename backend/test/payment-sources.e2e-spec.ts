@@ -444,9 +444,9 @@ function createPrismaMock(): PrismaMock {
                                 ? paymentSource.id === where.id
                                 : paymentSource.id !== where.id.not)) &&
                         (where.name === undefined ||
-                            paymentSource.name.toLowerCase() ===
-                                where.name.equals.toLowerCase()) &&
-                        (where.systemKey === undefined || paymentSource.systemKey === where.systemKey) &&
+                            paymentSource.name.toLowerCase() === where.name.equals.toLowerCase()) &&
+                        (where.systemKey === undefined ||
+                            paymentSource.systemKey === where.systemKey) &&
                         (where.deletedAt === undefined ||
                             paymentSource.deletedAt === where.deletedAt),
                 ) ?? null,
