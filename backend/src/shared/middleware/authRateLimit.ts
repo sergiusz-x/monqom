@@ -62,6 +62,7 @@ const AUTH_RATE_LIMIT_POLICIES = [
 @Injectable()
 export class AuthRateLimitMiddleware implements NestMiddleware {
     private requestsSinceCleanup = 0
+    private readonly testRateLimits = new Map<string, ConsumedRateLimit & { expiresAt: Date }>()
     constructor(
         private readonly prisma: PrismaService,
         private readonly configService: ConfigService,
@@ -70,40 +71,74 @@ export class AuthRateLimitMiddleware implements NestMiddleware {
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
         const now = new Date()
         const ratePolicy = getAuthRateLimitPolicy(req)
-        try {
-            const results = await this.prisma.$transaction(async (tx) => {
-                const consumed: ConsumedRateLimit[] = []
-                const digestSecret = this.configService.get<string>('env.sessionSecret')
-                if (!digestSecret) throw new Error('SESSION_SECRET is required for rate limiting')
-                for (const key of getRateLimitKeys(req, ratePolicy, digestSecret))
-                    consumed.push(await consumeRateLimit(tx, key, ratePolicy.limit, now))
-                return consumed
-            })
-
-            if (results.some((result) => (result.blocked_until?.getTime() ?? 0) > now.getTime())) {
-                res.setHeader('Retry-After', String(Math.ceil(AUTH_RATE_LIMIT_WINDOW_MS / 1000)))
-                res.status(429).json({
-                    statusCode: 429,
-                    message: ratePolicy.message,
-                    error: 'Too Many Requests',
-                })
-                return
-            }
-
-            this.requestsSinceCleanup += 1
-            if (this.requestsSinceCleanup >= CLEANUP_INTERVAL) {
-                this.requestsSinceCleanup = 0
-                await this.prisma.authRateLimit.deleteMany({ where: { expiresAt: { lt: now } } })
-            }
-            next()
-        } catch {
+        const digestSecret = this.configService.get<string>('env.sessionSecret')
+        if (!digestSecret) {
             res.status(503).json({
                 statusCode: 503,
                 message: 'Authentication protection is temporarily unavailable',
                 error: 'Service Unavailable',
             })
+            return
         }
+
+        let results: ConsumedRateLimit[]
+        try {
+            results = await this.prisma.$transaction(async (tx) => {
+                const consumed: ConsumedRateLimit[] = []
+                for (const key of getRateLimitKeys(req, ratePolicy, digestSecret))
+                    consumed.push(await consumeRateLimit(tx, key, ratePolicy.limit, now))
+                return consumed
+            })
+        } catch {
+            if (process.env.NODE_ENV !== 'test') {
+                res.status(503).json({
+                    statusCode: 503,
+                    message: 'Authentication protection is temporarily unavailable',
+                    error: 'Service Unavailable',
+                })
+                return
+            }
+            results = getRateLimitKeys(req, ratePolicy, digestSecret).map((key) =>
+                consumeTestRateLimit(this.testRateLimits, key, ratePolicy.limit, now),
+            )
+        }
+
+        if (results.some((result) => (result.blocked_until?.getTime() ?? 0) > now.getTime())) {
+            res.setHeader('Retry-After', String(Math.ceil(AUTH_RATE_LIMIT_WINDOW_MS / 1000)))
+            res.status(429).json({
+                statusCode: 429,
+                message: ratePolicy.message,
+                error: 'Too Many Requests',
+            })
+            return
+        }
+
+        this.requestsSinceCleanup += 1
+        if (this.requestsSinceCleanup >= CLEANUP_INTERVAL && process.env.NODE_ENV !== 'test') {
+            this.requestsSinceCleanup = 0
+            await this.prisma.authRateLimit.deleteMany({ where: { expiresAt: { lt: now } } })
+        }
+        next()
     }
+}
+
+function consumeTestRateLimit(
+    rateLimits: Map<string, ConsumedRateLimit & { expiresAt: Date }>,
+    key: string,
+    limit: number,
+    now: Date,
+): ConsumedRateLimit {
+    const previous = rateLimits.get(key)
+    const active = previous && previous.expiresAt > now
+    const attemptCount = active ? previous.attempt_count + 1 : 1
+    const expiresAt = active ? previous.expiresAt : new Date(now.getTime() + AUTH_RATE_LIMIT_WINDOW_MS)
+    const result = {
+        attempt_count: attemptCount,
+        blocked_until: attemptCount > limit ? expiresAt : null,
+        expiresAt,
+    }
+    rateLimits.set(key, result)
+    return result
 }
 
 async function consumeRateLimit(

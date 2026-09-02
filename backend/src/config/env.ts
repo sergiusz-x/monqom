@@ -53,7 +53,7 @@ export default registerAs('env', (): RuntimeConfig => {
 function validateRuntimeConfig(config: RuntimeConfig): void {
     if (!config.databaseUrl && config.nodeEnv !== 'test')
         throw new Error('DATABASE_URL environment variable is required')
-    if (config.nodeEnv !== 'production') return
+    if (!isDeployedEnvironment(config.nodeEnv)) return
 
     const required = [
         ['SESSION_SECRET', config.sessionSecret],
@@ -65,19 +65,19 @@ function validateRuntimeConfig(config: RuntimeConfig): void {
     ] as const
     const missing = required.filter(([, value]) => !value).map(([name]) => name)
     if (missing.length)
-        throw new Error(`Missing required production environment variables: ${missing.join(', ')}`)
+        throw new Error(`Missing required deployed environment variables: ${missing.join(', ')}`)
     if ((config.sessionSecret?.length ?? 0) < 32)
-        throw new Error('SESSION_SECRET must contain at least 32 characters in production')
+        throw new Error('SESSION_SECRET must contain at least 32 characters in deployed environments')
     if ((config.totpEncryptionKey?.length ?? 0) < 32)
-        throw new Error('TOTP_ENCRYPTION_KEY must contain at least 32 characters in production')
+        throw new Error('TOTP_ENCRYPTION_KEY must contain at least 32 characters in deployed environments')
     if ((config.emailOutboxEncryptionKey?.length ?? 0) < 32)
         throw new Error(
-            'EMAIL_OUTBOX_ENCRYPTION_KEY must contain at least 32 characters in production',
+            'EMAIL_OUTBOX_ENCRYPTION_KEY must contain at least 32 characters in deployed environments',
         )
     if (!isHttpsUrl(config.frontendUrl!))
-        throw new Error('FRONTEND_URL must be an HTTPS URL in production')
+        throw new Error('FRONTEND_URL must be an HTTPS URL in deployed environments')
     if (!config.corsAllowedOrigins.length)
-        throw new Error('CORS_ALLOWED_ORIGINS is required in production')
+        throw new Error('CORS_ALLOWED_ORIGINS is required in deployed environments')
     if (!config.corsAllowedOrigins.includes(config.frontendUrl!))
         throw new Error('CORS_ALLOWED_ORIGINS must include FRONTEND_URL in production')
     if (config.turnstileEnabled && !config.turnstileSecretKey)
@@ -89,6 +89,10 @@ function parseNodeEnv(value: string | undefined): RuntimeConfig['nodeEnv'] {
     if (!SUPPORTED_ENVS.has(nodeEnv))
         throw new Error(`NODE_ENV must be one of: ${[...SUPPORTED_ENVS].join(', ')}`)
     return nodeEnv as RuntimeConfig['nodeEnv']
+}
+
+function isDeployedEnvironment(nodeEnv: RuntimeConfig['nodeEnv']): boolean {
+    return nodeEnv === 'production' || nodeEnv === 'staging'
 }
 function parsePort(value: string | undefined): number {
     const port = Number(value ?? 3000)

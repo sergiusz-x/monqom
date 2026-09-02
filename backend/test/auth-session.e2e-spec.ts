@@ -273,8 +273,7 @@ describe('Auth session management (e2e)', () => {
             expect.objectContaining({
                 statusCode: 429,
                 message: 'Too many login attempts. Please try again later.',
-                error: 'ThrottlerException',
-                stack: expect.any(String),
+                error: 'Too Many Requests',
             }),
         )
     })

@@ -1,6 +1,7 @@
 import {
     BadRequestException,
     ExecutionContext,
+    ForbiddenException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common'

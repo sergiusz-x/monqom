@@ -2,6 +2,7 @@ import {
     BadRequestException,
     CanActivate,
     ExecutionContext,
+    ForbiddenException,
     Injectable,
     NotFoundException,
     UnauthorizedException,
@@ -15,6 +16,7 @@ const AUTHENTICATION_REQUIRED_MESSAGE = 'Authentication required'
 const WORKSPACE_HEADER_NAME = 'x-workspace-id'
 const WORKSPACE_ID_REQUIRED_MESSAGE = 'Workspace id is required'
 const WORKSPACE_NOT_FOUND_MESSAGE = 'Workspace not found'
+const WORKSPACE_ACCESS_FORBIDDEN_MESSAGE = 'Insufficient workspace permissions'
 const WORKSPACE_ROLES_METADATA_KEY = 'workspace_roles'
 
 export const WORKSPACE_ROLES = ['owner', 'admin', 'member'] as const

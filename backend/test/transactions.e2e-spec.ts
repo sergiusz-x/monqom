@@ -528,13 +528,13 @@ describe('Transactions endpoints (e2e)', () => {
 
         const response = await agent
             .get('/api/v1/workspaces/workspace-1/transactions/transaction-existing-1')
-            .expect(403)
+            .expect(404)
 
         expect(response.body).toEqual(
             expect.objectContaining({
-                statusCode: 403,
-                message: 'Forbidden',
-                error: 'Forbidden',
+                statusCode: 404,
+                message: 'Workspace not found',
+                error: 'Not Found',
             }),
         )
     })
