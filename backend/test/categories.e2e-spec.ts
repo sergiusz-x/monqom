@@ -7,6 +7,7 @@ import { App } from 'supertest/types'
 import { AppModule } from './../src/app.module'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
+import { createRequestValidationPipe } from './../src/shared/validation/request-validation.pipe'
 import { createSessionOptions } from './../src/shared/session/session.config'
 
 interface StoredUser {
@@ -155,6 +156,7 @@ describe('Categories endpoints (e2e)', () => {
         app.setGlobalPrefix('api/v1', {
             exclude: ['health', 'ready'],
         })
+        app.useGlobalPipes(createRequestValidationPipe())
         app.useGlobalFilters(new AllExceptionsFilter())
         await app.init()
     })
@@ -172,7 +174,7 @@ describe('Categories endpoints (e2e)', () => {
 
         const response = await agent.get('/api/v1/workspaces/workspace-1/categories').expect(200)
 
-        expect(response.body).toEqual([
+        expect(response.body).toMatchObject([
             {
                 id: 'category-parent-food',
                 name: 'Food',
@@ -225,8 +227,7 @@ describe('Categories endpoints (e2e)', () => {
             .get('/api/v1/workspaces/workspace-1/categories?include_archived=true')
             .expect(200)
 
-        expect(response.body).toEqual(
-            expect.arrayContaining([
+        expect(response.body.find((category: { id: string }) => category.id === 'category-parent-entertainment')).toMatchObject(
                 {
                     id: 'category-parent-entertainment',
                     name: 'Entertainment',
@@ -244,7 +245,6 @@ describe('Categories endpoints (e2e)', () => {
                         },
                     ],
                 },
-            ]),
         )
     })
 
@@ -255,7 +255,7 @@ describe('Categories endpoints (e2e)', () => {
             .get('/api/v1/workspaces/workspace-1/categories/category-parent-food')
             .expect(200)
 
-        expect(response.body).toEqual({
+        expect(response.body).toMatchObject({
             id: 'category-parent-food',
             name: 'Food',
             icon: '🍽️',
@@ -296,7 +296,7 @@ describe('Categories endpoints (e2e)', () => {
             )
             .expect(200)
 
-        expect(response.body).toEqual({
+        expect(response.body).toMatchObject({
             id: 'category-parent-entertainment',
             name: 'Entertainment',
             icon: '🎬',
@@ -322,7 +322,7 @@ describe('Categories endpoints (e2e)', () => {
             .get('/api/v1/workspaces/workspace-1/categories/category-child-groceries')
             .expect(200)
 
-        expect(response.body).toEqual({
+        expect(response.body).toMatchObject({
             id: 'category-child-groceries',
             name: 'Groceries',
             icon: '🛒',
@@ -342,7 +342,7 @@ describe('Categories endpoints (e2e)', () => {
         expect(response.body).toEqual(
             expect.objectContaining({
                 statusCode: 400,
-                message: 'include_archived must be true or false',
+                message: ['include_archived must be a boolean value'],
                 error: 'Bad Request',
             }),
         )

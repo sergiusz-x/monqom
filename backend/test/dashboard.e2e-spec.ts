@@ -119,9 +119,9 @@ interface PrismaMock {
                 }
             }
             _sum: {
-                amount: true
+                baseAmount: true
             }
-        }): Promise<{ _sum: { amount: number } }>
+        }): Promise<{ _sum: { baseAmount: number } }>
         groupBy(args: {
             by: ['categoryId']
             where: {
@@ -134,9 +134,9 @@ interface PrismaMock {
                 }
             }
             _sum: {
-                amount: true
+                baseAmount: true
             }
-        }): Promise<Array<{ categoryId: string; _sum: { amount: number } }>>
+        }): Promise<Array<{ categoryId: string; _sum: { baseAmount: number } }>>
     }
     auditEvent: {
         create(args: {
@@ -211,6 +211,8 @@ describe('Dashboard endpoints (e2e)', () => {
             change_amount: 225.99,
             change_percentage: 56.5,
             direction: 'up',
+            income_total: 777.77,
+            net_total: 151.78,
         })
     })
 
@@ -228,28 +230,32 @@ describe('Dashboard endpoints (e2e)', () => {
             categories: [
                 {
                     category_id: 'category-child-groceries',
-                    category_name: 'Groceries',
+                category_name: 'Groceries',
+                category_system_key: null,
                     category_color: '#16a34a',
                     amount: 300,
                     percentage: 47.92,
                 },
                 {
                     category_id: 'category-child-rent',
-                    category_name: 'Rent',
+                category_name: 'Rent',
+                category_system_key: null,
                     category_color: '#1d4ed8',
                     amount: 200,
                     percentage: 31.95,
                 },
                 {
                     category_id: 'category-child-dining',
-                    category_name: 'Dining Out',
+                category_name: 'Dining Out',
+                category_system_key: null,
                     category_color: '#dc2626',
                     amount: 100.99,
                     percentage: 16.13,
                 },
                 {
                     category_id: 'category-archived',
-                    category_name: 'Archived Category',
+                category_name: 'Archived Category',
+                category_system_key: null,
                     category_color: '#6b7280',
                     amount: 25,
                     percentage: 3.99,
@@ -356,8 +362,11 @@ function createPrismaMock(): PrismaMock {
             },
         },
         workspace: {
-            findUnique: async ({ where }) =>
-                prismaMock.workspaces.find((workspace) => workspace.id === where.id) ?? null,
+            findUnique: async ({ where }) => {
+                const workspace = prismaMock.workspaces.find((item) => item.id === where.id)
+
+                return workspace ? ({ ...workspace, baseCurrency: 'USD' } as never) : null
+            },
         },
         workspaceMembership: {
             findFirst: async ({ where }) => {
@@ -401,7 +410,7 @@ function createPrismaMock(): PrismaMock {
         transaction: {
             aggregate: async ({ where }) => ({
                 _sum: {
-                    amount: prismaMock.transactions.reduce((sum, transaction) => {
+                    baseAmount: prismaMock.transactions.reduce((sum, transaction) => {
                         if (
                             transaction.workspaceId !== where.workspaceId ||
                             transaction.deletedAt !== where.deletedAt ||
@@ -438,9 +447,7 @@ function createPrismaMock(): PrismaMock {
 
                 return Array.from(totalsByCategoryId.entries()).map(([categoryId, amount]) => ({
                     categoryId,
-                    _sum: {
-                        amount,
-                    },
+                    _sum: { baseAmount: amount },
                 }))
             },
         },

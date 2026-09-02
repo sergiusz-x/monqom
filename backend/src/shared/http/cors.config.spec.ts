@@ -40,13 +40,13 @@ describe('createCorsOptions', () => {
         await expect(runOriginCheck(options, 'http://localhost:5173')).resolves.toBe(true)
     })
 
-    it('requires an explicit allowlist in production', () => {
+    it.each(['production', 'staging'] as const)('requires an explicit allowlist in %s', (nodeEnv) => {
         expect(() =>
             createCorsOptions({
-                nodeEnv: 'production',
+                nodeEnv,
                 allowedOrigins: [],
             }),
-        ).toThrow('CORS_ALLOWED_ORIGINS environment variable is missing in production')
+        ).toThrow('CORS_ALLOWED_ORIGINS environment variable is missing in deployed environments')
     })
 })
 

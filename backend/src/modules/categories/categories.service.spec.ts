@@ -100,7 +100,7 @@ describe('CategoriesService', () => {
     })
 
     it('does not return a category outside the current workspace', async () => {
-        prisma.category.findFirst.mockResolvedValue(null)
+        prisma.category.findMany.mockResolvedValue([])
         await expect(service.getCategoryById('missing', {}, 'workspace-1')).rejects.toBeInstanceOf(
             NotFoundException,
         )

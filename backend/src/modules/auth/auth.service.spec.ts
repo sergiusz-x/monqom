@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common'
+import { createHash } from 'crypto'
 import * as argon2 from 'argon2'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { EmailOutboxService } from '../../shared/email/email-outbox.service'
@@ -120,6 +121,7 @@ describe('AuthService', () => {
         expect(createCall.passwordHash).not.toBe(password)
         await expect(argon2.verify(createCall.passwordHash, password)).resolves.toBe(true)
         expect(createCall.verificationToken).toMatch(/^[a-f0-9]{64}$/)
+        expect(createCall.verificationTokenHash).toBe(hashToken(createCall.verificationToken))
         expect(
             Math.abs(createCall.verificationTokenExpiresAt.getTime() - (now + 24 * 60 * 60 * 1000)),
         ).toBeLessThanOrEqual(5000)
@@ -593,7 +595,7 @@ describe('AuthService', () => {
         })
 
         expect(authRepository.findEmailVerificationTokenWithUser).toHaveBeenCalledWith(
-            'verification-token',
+            hashToken('verification-token'),
         )
 
         const consumeCall =
@@ -676,6 +678,7 @@ describe('AuthService', () => {
         expect(authRepository.findUserByEmail).toHaveBeenCalledWith('test@example.com')
         expect(createCall.userId).toBe('user-1')
         expect(createCall.verificationToken).toMatch(/^[a-f0-9]{64}$/)
+        expect(createCall.verificationTokenHash).toBe(hashToken(createCall.verificationToken))
         expect(
             Math.abs(createCall.verificationTokenExpiresAt.getTime() - (now + 24 * 60 * 60 * 1000)),
         ).toBeLessThanOrEqual(5000)
@@ -734,6 +737,7 @@ describe('AuthService', () => {
 
         expect(createCall.userId).toBe('user-1')
         expect(createCall.passwordResetToken).toMatch(/^[a-f0-9]{64}$/)
+        expect(createCall.passwordResetTokenHash).toBe(hashToken(createCall.passwordResetToken))
         expect(
             Math.abs(createCall.passwordResetTokenExpiresAt.getTime() - (now + 60 * 60 * 1000)),
         ).toBeLessThanOrEqual(5000)
@@ -800,7 +804,7 @@ describe('AuthService', () => {
         })
 
         expect(authRepository.findPasswordResetTokenWithUser).toHaveBeenCalledWith(
-            'password-reset-token',
+            hashToken('password-reset-token'),
         )
 
         const resetCall = authRepository.resetPasswordWithToken.mock.calls[0][0]
@@ -981,4 +985,8 @@ function createMockPasswordResetToken(
         user: createMockUser({ emailVerified: true }),
         ...overrides,
     }
+}
+
+function hashToken(token: string): string {
+    return createHash('sha256').update(token, 'utf8').digest('hex')
 }

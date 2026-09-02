@@ -16,6 +16,7 @@ import type { Request } from 'express'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
+import { RequireWorkspaceRole, WorkspaceRoleGuard } from '../../shared/guards/workspace-role.guard'
 import { BUDGETS_BASE_ROUTE } from './budgets.routes'
 import { BudgetProgressResponse, BudgetResponse, BudgetsService } from './budgets.service'
 import { BudgetBodyDto, BudgetProgressQueryDto, ListBudgetsQueryDto } from './budgets.dto'
@@ -55,6 +56,8 @@ export class BudgetsController {
 
     @Post()
     @ApiBudgetResponse(false, HttpStatus.CREATED)
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.CREATED)
     async createBudget(@Body() body: BudgetBodyDto, @Req() req: Request): Promise<BudgetResponse> {
         return this.budgetsService.createBudget(
@@ -66,6 +69,8 @@ export class BudgetsController {
 
     @Put(':id')
     @ApiBudgetResponse()
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.OK)
     async updateBudget(
         @Param('id') budgetId: string,
@@ -81,6 +86,8 @@ export class BudgetsController {
     }
 
     @Delete(':id')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteBudget(@Param('id') budgetId: string, @Req() req: Request): Promise<void> {
         await this.budgetsService.deleteBudget(

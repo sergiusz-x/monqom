@@ -277,6 +277,8 @@ describe('Auth password reset (e2e)', () => {
     })
 
     it('rejects expired password reset tokens', async () => {
+        process.env.NODE_ENV = 'development'
+
         prismaMock.users.push(
             await createStoredUser({
                 id: 'user-1',
@@ -298,7 +300,7 @@ describe('Auth password reset (e2e)', () => {
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/reset-password')
             .send({
-                token: prismaMock.passwordResetTokens[0].token,
+                token: getLoggedPasswordResetToken(),
                 newPassword: 'OceanStoneBridge!1234',
             })
             .expect(400)
@@ -335,6 +337,8 @@ describe('Auth password reset (e2e)', () => {
     })
 
     it('still resets the password when the postgres session table is unavailable', async () => {
+        process.env.NODE_ENV = 'development'
+
         prismaMock.failSessionDeletionWithMissingTable = true
         prismaMock.users.push(
             await createStoredUser({
@@ -355,7 +359,7 @@ describe('Auth password reset (e2e)', () => {
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/reset-password')
             .send({
-                token: prismaMock.passwordResetTokens[0].token,
+                token: getLoggedPasswordResetToken(),
                 newPassword: 'OceanStoneBridge!1234',
             })
             .expect(200)
@@ -376,6 +380,8 @@ describe('Auth password reset (e2e)', () => {
     })
 
     it('validates new passwords with the same rules as registration', async () => {
+        process.env.NODE_ENV = 'development'
+
         prismaMock.users.push(
             await createStoredUser({
                 id: 'user-1',
@@ -395,7 +401,7 @@ describe('Auth password reset (e2e)', () => {
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/reset-password')
             .send({
-                token: prismaMock.passwordResetTokens[0].token,
+                token: getLoggedPasswordResetToken(),
                 newPassword: 'weak',
             })
             .expect(400)

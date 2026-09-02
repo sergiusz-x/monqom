@@ -10,6 +10,7 @@ declare module 'express-session' {
         twoFactorChallenge?: {
             userId: string
             sessionVersion: number
+            failedAttempts: number
         }
     }
 }

@@ -8,6 +8,7 @@ import type { Request } from 'express'
 import type { SessionData } from 'express-session'
 import { WorkspaceRepository } from '../../modules/workspace/workspace.repository'
 import { WorkspaceGuard } from './workspace.guard'
+import { Reflector } from '@nestjs/core'
 
 type SessionRequest = Omit<Partial<Request>, 'headers' | 'params' | 'session'> & {
     headers?: Request['headers']
@@ -20,6 +21,7 @@ describe('WorkspaceGuard', () => {
     let workspaceRepository: jest.Mocked<
         Pick<WorkspaceRepository, 'findWorkspaceById' | 'findWorkspaceAccess'>
     >
+    let reflector: { getAllAndOverride: jest.Mock }
 
     beforeEach(() => {
         workspaceRepository = {
@@ -27,7 +29,11 @@ describe('WorkspaceGuard', () => {
             findWorkspaceAccess: jest.fn(),
         }
 
-        guard = new WorkspaceGuard(workspaceRepository as unknown as WorkspaceRepository)
+        reflector = { getAllAndOverride: jest.fn().mockReturnValue(undefined) }
+        guard = new WorkspaceGuard(
+            workspaceRepository as unknown as WorkspaceRepository,
+            reflector as unknown as Reflector,
+        )
     })
 
     it('attaches workspace context from route params for members', async () => {
@@ -92,6 +98,23 @@ describe('WorkspaceGuard', () => {
             role: 'member',
         })
         expect(workspaceRepository.findWorkspaceById).not.toHaveBeenCalled()
+    })
+
+    it('rejects a member when the handler requires an elevated workspace role', async () => {
+        const request: SessionRequest = {
+            headers: {},
+            params: { workspaceId: 'workspace-2' },
+            session: { auth: { userId: 'user-1', sessionVersion: 1 } },
+        }
+        reflector.getAllAndOverride.mockReturnValue(['owner', 'admin'])
+        workspaceRepository.findWorkspaceAccess.mockResolvedValue({
+            workspaceId: 'workspace-2',
+            role: 'member',
+        } as never)
+
+        await expect(guard.canActivate(createExecutionContext(request))).rejects.toBeInstanceOf(
+            ForbiddenException,
+        )
     })
 
     it('rejects requests without an authenticated session', async () => {
@@ -176,8 +199,10 @@ describe('WorkspaceGuard', () => {
 
 function createExecutionContext(request: SessionRequest): ExecutionContext {
     return {
+        getHandler: () => undefined,
+        getClass: () => undefined,
         switchToHttp: () => ({
             getRequest: () => request as Request,
         }),
-    } as ExecutionContext
+    } as unknown as ExecutionContext
 }

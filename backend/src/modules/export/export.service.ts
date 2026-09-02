@@ -198,6 +198,10 @@ function validateDateFilterValue(
             return undefined
         }
 
+        if (options.boundary === 'end') {
+            date.setUTCHours(23, 59, 59, 999)
+        }
+
         return date
     }
 
