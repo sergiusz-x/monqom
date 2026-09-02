@@ -44,16 +44,12 @@ export class CategoriesService {
         input: { includeArchived?: boolean; type?: 'expense' | 'income' },
         workspaceId: string,
     ): Promise<CategoryResponse> {
-        const category = await this.prisma.category.findFirst({
-            where: {
-                id: id.trim(),
-                workspaceId: workspaceId.trim(),
-                ...(input.includeArchived ? {} : { deletedAt: null }),
-                ...(input.type ? { type: input.type } : {}),
-            },
-        })
+        const category = findCategory(
+            await this.hierarchy(workspaceId.trim(), input.includeArchived ?? false, input.type),
+            id.trim(),
+        )
         if (!category) throw new NotFoundException(NOT_FOUND)
-        return this.map(category, [])
+        return category
     }
 
     async createCategory(
@@ -390,4 +386,18 @@ function mapUniqueCategoryError(error: unknown): unknown {
             'An active category with this name already exists in this group',
         )
     return error
+}
+
+function findCategory(
+    categories: CategoryResponse[],
+    categoryId: string,
+): CategoryResponse | undefined {
+    for (const category of categories) {
+        if (category.id === categoryId) return category
+
+        const child = findCategory(category.children, categoryId)
+        if (child) return child
+    }
+
+    return undefined
 }

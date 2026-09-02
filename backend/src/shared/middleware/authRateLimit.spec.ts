@@ -35,13 +35,19 @@ describe('AuthRateLimitMiddleware', () => {
     })
 
     it('fails closed when the shared limiter is unavailable', async () => {
+        const nodeEnv = process.env.NODE_ENV
+        process.env.NODE_ENV = 'production'
         const prisma = {
             $transaction: jest.fn().mockRejectedValue(new Error('database unavailable')),
         } as unknown as PrismaService
         const middleware = new AuthRateLimitMiddleware(prisma, createConfigService())
         const { response, status, json } = createResponse()
 
-        await middleware.use(createRequest('/api/v1/auth/login'), response, jest.fn())
+        try {
+            await middleware.use(createRequest('/api/v1/auth/login'), response, jest.fn())
+        } finally {
+            process.env.NODE_ENV = nodeEnv
+        }
 
         expect(status).toHaveBeenCalledWith(503)
         expect(json).toHaveBeenCalledWith({

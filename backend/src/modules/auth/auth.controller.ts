@@ -55,6 +55,7 @@ import {
 const LOGOUT_SUCCESS_MESSAGE = 'Logged out successfully'
 const TWO_FACTOR_REQUIRED_MESSAGE = 'Two-factor authentication required'
 const TWO_FACTOR_CHALLENGE_REQUIRED_MESSAGE = 'Two-factor authentication challenge required'
+const MAX_TWO_FACTOR_CHALLENGE_ATTEMPTS = 5
 
 type LoginResponse =
     | AuthenticatedUserResponse
@@ -119,6 +120,7 @@ export class AuthController {
             req.session.twoFactorChallenge = {
                 userId: loginResult.userId,
                 sessionVersion: loginResult.sessionVersion,
+                failedAttempts: 0,
             }
             await saveSession(req)
 
@@ -170,10 +172,18 @@ export class AuthController {
             throw new UnauthorizedException(TWO_FACTOR_CHALLENGE_REQUIRED_MESSAGE)
         }
 
-        const loginResult = finalizeTwoFactorSession(
-            req,
-            await this.twoFactorService.verifyLogin(challenge, { token: body.token }),
-        )
+        let verifiedLoginResult: TwoFactorLoginVerificationResponse
+
+        try {
+            verifiedLoginResult = await this.twoFactorService.verifyLogin(challenge, {
+                token: body.token,
+            })
+        } catch (error) {
+            await recordFailedTwoFactorChallengeAttempt(req, challenge)
+            throw error
+        }
+
+        const loginResult = finalizeTwoFactorSession(req, verifiedLoginResult)
 
         await this.authService.recordSuccessfulLogin({
             userId: loginResult.id,
@@ -317,6 +327,20 @@ function destroySession(req: Request): Promise<void> {
             resolve()
         })
     })
+}
+
+async function recordFailedTwoFactorChallengeAttempt(
+    req: Request,
+    challenge: NonNullable<Request['session']['twoFactorChallenge']>,
+): Promise<void> {
+    challenge.failedAttempts += 1
+
+    if (challenge.failedAttempts >= MAX_TWO_FACTOR_CHALLENGE_ATTEMPTS) {
+        await destroySession(req)
+        return
+    }
+
+    await saveSession(req)
 }
 
 function getRequestIp(req: Request): string | undefined {

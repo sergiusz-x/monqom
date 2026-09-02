@@ -55,7 +55,7 @@ describe('ExportService', () => {
         expect(transactionsRepository.listTransactionsForExport).toHaveBeenCalledWith({
             workspaceId: 'workspace-1',
             dateFrom: new Date('2026-03-21T00:00:00.000Z'),
-            dateTo: new Date('2026-03-22T00:00:00.000Z'),
+            dateTo: new Date('2026-03-22T23:59:59.999Z'),
             limit: 500,
             offset: 0,
         })

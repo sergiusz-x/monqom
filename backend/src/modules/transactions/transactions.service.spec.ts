@@ -495,7 +495,7 @@ describe('TransactionsService', () => {
                 paymentSourceId: 'payment-source-2',
                 tag: 'FOOD',
                 dateFrom: new Date('2026-03-21T00:00:00.000Z'),
-                dateTo: new Date('2026-03-22T00:00:00.000Z'),
+                dateTo: new Date('2026-03-22T23:59:59.999Z'),
                 limit: 1,
                 offset: 1,
             },
@@ -510,7 +510,7 @@ describe('TransactionsService', () => {
                 paymentSourceId: 'payment-source-2',
                 tag: 'FOOD',
                 dateFrom: new Date('2026-03-21T00:00:00.000Z'),
-                dateTo: new Date('2026-03-22T00:00:00.000Z'),
+                dateTo: new Date('2026-03-22T23:59:59.999Z'),
             },
             prisma,
         )

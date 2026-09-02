@@ -25,7 +25,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
             if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
                 const res = exceptionResponse as Record<string, unknown>
                 message = (res.message as string | string[]) || httpException.message
-                error = (res.error as string) || httpException.name
+                error =
+                    (res.error as string) || errorLabelForStatus(statusCode) || httpException.name
                 code = typeof res.code === 'string' ? res.code : undefined
             } else if (typeof exceptionResponse === 'string') {
                 message = exceptionResponse
@@ -79,6 +80,19 @@ function errorCodeForStatus(status: number): string {
     }
 
     return codes[status] ?? 'INTERNAL_ERROR'
+}
+
+function errorLabelForStatus(status: number): string | undefined {
+    const labels: Partial<Record<number, string>> = {
+        [HttpStatus.BAD_REQUEST]: 'Bad Request',
+        [HttpStatus.UNAUTHORIZED]: 'Unauthorized',
+        [HttpStatus.FORBIDDEN]: 'Forbidden',
+        [HttpStatus.NOT_FOUND]: 'Not Found',
+        [HttpStatus.CONFLICT]: 'Conflict',
+        [HttpStatus.TOO_MANY_REQUESTS]: 'Too Many Requests',
+    }
+
+    return labels[status]
 }
 
 function formatLogMessage(message: string | string[]): string {
