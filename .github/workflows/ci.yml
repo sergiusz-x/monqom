@@ -150,7 +150,7 @@ jobs:
             -e NODE_ENV=production \
             -e DATABASE_URL=postgresql://monqom:monqom@host.docker.internal:5432/monqom_container_ci \
             monqom-backend-migration:ci
-          docker run --detach --name monqom-backend-ci --network monqom-ci \
+          docker run --detach --name monqom-backend-ci --network monqom-ci -p 3000:3000 \
             --add-host host.docker.internal:host-gateway \
             -e NODE_ENV=production \
             -e DATABASE_URL=postgresql://monqom:monqom@host.docker.internal:5432/monqom_container_ci \
