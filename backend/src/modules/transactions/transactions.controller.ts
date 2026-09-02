@@ -16,6 +16,7 @@ import type { Request } from 'express'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
+import { RequireWorkspaceRole, WorkspaceRoleGuard } from '../../shared/guards/workspace-role.guard'
 import { TRANSACTION_TAGS_BASE_ROUTE, TRANSACTIONS_BASE_ROUTE } from './transactions.routes'
 import {
     CreateTransactionResponse,
@@ -75,6 +76,8 @@ export class TransactionsController {
 
     @Post()
     @ApiTransactionResponse(HttpStatus.CREATED)
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.CREATED)
     async createTransaction(
         @Body() body: TransactionBodyDto,
@@ -89,6 +92,8 @@ export class TransactionsController {
 
     @Put(':id')
     @ApiTransactionResponse()
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.OK)
     async updateTransaction(
         @Param('id') transactionId: string,
@@ -104,6 +109,8 @@ export class TransactionsController {
     }
 
     @Delete(':id')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteTransaction(
         @Param('id') transactionId: string,

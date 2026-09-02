@@ -54,6 +54,7 @@ interface StoredPaymentSource {
     workspaceId: string
     name: string
     type: string
+    systemKey: string | null
     createdAt: Date
     updatedAt: Date
     deletedAt: Date | null
@@ -89,6 +90,10 @@ interface PrismaMock {
             where: { userId: string; workspaceId: string }
             select: { role: boolean; workspace: { select: { id: boolean } } }
         }): Promise<{ role: string; workspace: { id: string } } | null>
+        updateMany(args: {
+            where: { workspaceId: string; lastPaymentSourceId: string }
+            data: { lastPaymentSourceId: string }
+        }): Promise<{ count: number }>
     }
     category: {
         findFirst(args: {
@@ -100,7 +105,13 @@ interface PrismaMock {
             data: { workspaceId: string; name: string; type: string }
         }): Promise<StoredPaymentSource>
         findFirst(args: {
-            where: { workspaceId: string; id: string; deletedAt?: null }
+            where: {
+                workspaceId: string
+                id?: string | { not: string }
+                name?: { equals: string; mode: 'insensitive' }
+                systemKey?: string
+                deletedAt?: null
+            }
         }): Promise<StoredPaymentSource | null>
         findMany(args: {
             where: { workspaceId: string; deletedAt?: null }
@@ -185,6 +196,7 @@ describe('Payment sources endpoints (e2e)', () => {
                 workspace_id: 'workspace-1',
                 name: 'Cash Wallet',
                 type: 'cash',
+                system_key: 'cash',
                 is_archived: false,
                 archived_at: null,
                 created_at: '2026-03-24T10:00:00.000Z',
@@ -203,6 +215,7 @@ describe('Payment sources endpoints (e2e)', () => {
             workspace_id: 'workspace-1',
             name: 'Main Card',
             type: 'credit_card',
+            system_key: null,
             is_archived: false,
             archived_at: null,
             created_at: '2026-03-24T12:00:00.000Z',
@@ -214,6 +227,7 @@ describe('Payment sources endpoints (e2e)', () => {
             .send({
                 name: 'Travel Card',
                 type: 'debit_card',
+                system_key: null,
             })
             .expect(200)
 
@@ -222,6 +236,7 @@ describe('Payment sources endpoints (e2e)', () => {
             workspace_id: 'workspace-1',
             name: 'Travel Card',
             type: 'debit_card',
+            system_key: null,
             is_archived: false,
             archived_at: null,
             created_at: '2026-03-24T12:00:00.000Z',
@@ -237,6 +252,7 @@ describe('Payment sources endpoints (e2e)', () => {
             workspace_id: 'workspace-1',
             name: 'Travel Card',
             type: 'debit_card',
+            system_key: null,
             is_archived: true,
             archived_at: '2026-03-24T12:02:00.000Z',
             created_at: '2026-03-24T12:00:00.000Z',
@@ -253,6 +269,7 @@ describe('Payment sources endpoints (e2e)', () => {
                 workspace_id: 'workspace-1',
                 name: 'Cash Wallet',
                 type: 'cash',
+                system_key: 'cash',
                 is_archived: false,
                 archived_at: null,
                 created_at: '2026-03-24T10:00:00.000Z',
@@ -270,6 +287,7 @@ describe('Payment sources endpoints (e2e)', () => {
                 workspace_id: 'workspace-1',
                 name: 'Cash Wallet',
                 type: 'cash',
+                system_key: 'cash',
                 is_archived: false,
                 archived_at: null,
                 created_at: '2026-03-24T10:00:00.000Z',
@@ -280,6 +298,7 @@ describe('Payment sources endpoints (e2e)', () => {
                 workspace_id: 'workspace-1',
                 name: 'Travel Card',
                 type: 'debit_card',
+                system_key: null,
                 is_archived: true,
                 archived_at: '2026-03-24T12:02:00.000Z',
                 created_at: '2026-03-24T12:00:00.000Z',
@@ -301,15 +320,23 @@ describe('Payment sources endpoints (e2e)', () => {
     it('rejects using an archived payment source for a new transaction', async () => {
         const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
 
+        const createdPaymentSource = await agent
+            .post('/api/v1/workspaces/workspace-1/payment-sources')
+            .send({ name: 'Temporary card', type: 'credit_card' })
+            .expect(201)
+
         await agent
-            .post('/api/v1/workspaces/workspace-1/payment-sources/payment-source-1/archive')
+            .post(
+                `/api/v1/workspaces/workspace-1/payment-sources/${createdPaymentSource.body.id}/archive`,
+            )
             .expect(200)
 
         const response = await agent.post('/api/v1/workspaces/workspace-1/transactions').send({
             amount: 12.5,
             date: '2026-03-24',
+            description: 'Archived source check',
             category_id: 'category-1',
-            payment_source_id: 'payment-source-1',
+            payment_source_id: createdPaymentSource.body.id,
         })
 
         expect(response.status).toBe(404)
@@ -362,8 +389,11 @@ function createPrismaMock(): PrismaMock {
             },
         },
         workspace: {
-            findUnique: async ({ where }) =>
-                workspaces.find((workspace) => workspace.id === where.id) ?? null,
+            findUnique: async ({ where }) => {
+                const workspace = workspaces.find((item) => item.id === where.id)
+
+                return workspace ? ({ ...workspace, baseCurrency: 'USD' } as never) : null
+            },
         },
         workspaceMembership: {
             findFirst: async ({ where }) =>
@@ -379,6 +409,7 @@ function createPrismaMock(): PrismaMock {
                             id: membership.workspaceId,
                         },
                     }))[0] ?? null,
+            updateMany: async () => ({ count: 0 }),
         },
         category: {
             findFirst: async ({ where }) =>
@@ -395,6 +426,7 @@ function createPrismaMock(): PrismaMock {
                     workspaceId: data.workspaceId,
                     name: data.name,
                     type: data.type,
+                    systemKey: null,
                     createdAt: timestamp,
                     updatedAt: timestamp,
                     deletedAt: null,
@@ -407,7 +439,14 @@ function createPrismaMock(): PrismaMock {
                 paymentSources.find(
                     (paymentSource) =>
                         paymentSource.workspaceId === where.workspaceId &&
-                        paymentSource.id === where.id &&
+                        (where.id === undefined ||
+                            (typeof where.id === 'string'
+                                ? paymentSource.id === where.id
+                                : paymentSource.id !== where.id.not)) &&
+                        (where.name === undefined ||
+                            paymentSource.name.toLowerCase() === where.name.equals.toLowerCase()) &&
+                        (where.systemKey === undefined ||
+                            paymentSource.systemKey === where.systemKey) &&
                         (where.deletedAt === undefined ||
                             paymentSource.deletedAt === where.deletedAt),
                 ) ?? null,
@@ -551,6 +590,7 @@ async function seedPaymentSourcesFixture(prismaMock: PrismaMock): Promise<void> 
         workspaceId: 'workspace-1',
         name: 'Cash Wallet',
         type: 'cash',
+        systemKey: 'cash',
         createdAt: new Date('2026-03-24T10:00:00.000Z'),
         updatedAt: new Date('2026-03-24T10:00:00.000Z'),
         deletedAt: null,

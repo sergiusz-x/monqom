@@ -65,6 +65,17 @@ interface StoredWorkspaceMembership {
     userId: string
     workspaceId: string
     role: string
+    lastPaymentSourceId: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+interface StoredPaymentSource {
+    id: string
+    workspaceId: string
+    name: string
+    type: string
+    systemKey: string
     createdAt: Date
     updatedAt: Date
 }
@@ -122,8 +133,16 @@ interface FakeTransactionClient {
     }
     workspaceMembership: {
         create(args: {
-            data: Pick<StoredWorkspaceMembership, 'userId' | 'workspaceId' | 'role'>
+            data: Pick<
+                StoredWorkspaceMembership,
+                'userId' | 'workspaceId' | 'role' | 'lastPaymentSourceId'
+            >
         }): Promise<StoredWorkspaceMembership>
+    }
+    paymentSource: {
+        create(args: {
+            data: Pick<StoredPaymentSource, 'workspaceId' | 'name' | 'type' | 'systemKey'>
+        }): Promise<StoredPaymentSource>
     }
     category: {
         upsert(args: {
@@ -140,6 +159,7 @@ interface PrismaMock extends FakeTransactionClient {
     auditEvents: StoredAuditEvent[]
     workspaces: StoredWorkspace[]
     workspaceMemberships: StoredWorkspaceMembership[]
+    paymentSources: StoredPaymentSource[]
     categories: StoredCategory[]
     failNextCategoryUpsert: boolean
     $transaction<T>(callback: (tx: FakeTransactionClient) => Promise<T>): Promise<T>
@@ -184,7 +204,8 @@ describe('Auth registration (e2e)', () => {
         const password = 'GraniteHarbor!1234'
         const expectedCategoryCount =
             DEFAULT_CATEGORY_SEEDS.length +
-            DEFAULT_CATEGORY_SEEDS.reduce((total, parent) => total + parent.children.length, 0)
+            DEFAULT_CATEGORY_SEEDS.reduce((total, parent) => total + parent.children.length, 0) +
+            9
 
         process.env.NODE_ENV = 'development'
 
@@ -217,6 +238,9 @@ describe('Auth registration (e2e)', () => {
 
         const storedUser = prismaMock.users[0]
         const storedVerificationToken = prismaMock.verificationTokens[0]
+        const rawVerificationToken = getLoggedVerificationToken(
+            'Email verification token generated for registration',
+        )
         const storedWorkspace = prismaMock.workspaces[0]
         const storedMembership = prismaMock.workspaceMemberships[0]
 
@@ -226,6 +250,7 @@ describe('Auth registration (e2e)', () => {
         await expect(argon2.verify(storedUser.passwordHash, password)).resolves.toBe(true)
         expect(storedVerificationToken.userId).toBe(storedUser.id)
         expect(storedVerificationToken.token).toMatch(/^[a-f0-9]{64}$/)
+        expect(storedVerificationToken.token).toBe(hashToken(rawVerificationToken))
         expect(storedVerificationToken.usedAt).toBeNull()
         expect(prismaMock.auditEvents[0]).toEqual(
             expect.objectContaining({
@@ -272,7 +297,7 @@ describe('Auth registration (e2e)', () => {
             'Email verification token generated for registration',
             expect.objectContaining({
                 context_name: 'AuthService',
-                verification_token: storedVerificationToken.token,
+                verification_token: rawVerificationToken,
             }),
         )
     })
@@ -313,16 +338,11 @@ describe('Auth registration (e2e)', () => {
             })
             .expect(201)
 
-        const storedVerificationToken = prismaMock.verificationTokens[0]
-
         expect(logger.info).toHaveBeenCalledWith(
             'Email verification token generated for registration',
             expect.objectContaining({
                 context_name: 'AuthService',
-                verification_token_last6: storedVerificationToken.token.slice(-6),
-                verification_token_fingerprint: createHash('sha256')
-                    .update(storedVerificationToken.token)
-                    .digest('hex'),
+                verification_token_last6: expect.any(String),
             }),
         )
 
@@ -457,7 +477,11 @@ describe('Auth registration (e2e)', () => {
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/verify-email')
-            .send({ token: prismaMock.verificationTokens[0].token })
+            .send({
+                token: getLoggedVerificationToken(
+                    'Email verification token generated for registration',
+                ),
+            })
             .expect(400)
 
         expect(response.body).toEqual(
@@ -516,9 +540,13 @@ describe('Auth registration (e2e)', () => {
         expect(prismaMock.verificationTokens).toHaveLength(2)
 
         const resentToken = prismaMock.verificationTokens[1]
+        const resentRawToken = getLoggedVerificationToken(
+            'Email verification token generated for resend',
+        )
 
         expect(resentToken.userId).toBe(prismaMock.users[0].id)
         expect(resentToken.token).not.toBe(originalToken)
+        expect(resentToken.token).toBe(hashToken(resentRawToken))
         expect(resentToken.usedAt).toBeNull()
         expect(
             Math.abs(resentToken.expiresAt.getTime() - (now + 24 * 60 * 60 * 1000)),
@@ -537,7 +565,7 @@ describe('Auth registration (e2e)', () => {
             'Email verification token generated for resend',
             expect.objectContaining({
                 context_name: 'AuthService',
-                verification_token: resentToken.token,
+                verification_token: resentRawToken,
             }),
         )
     })
@@ -690,12 +718,14 @@ function createPrismaMock(): PrismaMock {
     const auditEvents: StoredAuditEvent[] = []
     const workspaces: StoredWorkspace[] = []
     const workspaceMemberships: StoredWorkspaceMembership[] = []
+    const paymentSources: StoredPaymentSource[] = []
     const categories: StoredCategory[] = []
     let userCounter = 0
     let verificationTokenCounter = 0
     let auditEventCounter = 0
     let workspaceCounter = 0
     let workspaceMembershipCounter = 0
+    let paymentSourceCounter = 0
     let failNextCategoryUpsert = false
 
     const transactionClient: FakeTransactionClient = {
@@ -831,12 +861,28 @@ function createPrismaMock(): PrismaMock {
                     userId: data.userId,
                     workspaceId: data.workspaceId,
                     role: data.role,
+                    lastPaymentSourceId: data.lastPaymentSourceId,
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }
 
                 workspaceMemberships.push(membership)
                 return membership
+            },
+        },
+        paymentSource: {
+            create: async ({ data }) => {
+                paymentSourceCounter += 1
+
+                const paymentSource: StoredPaymentSource = {
+                    id: `payment-source-${paymentSourceCounter}`,
+                    ...data,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+
+                paymentSources.push(paymentSource)
+                return paymentSource
             },
         },
         category: {
@@ -880,6 +926,7 @@ function createPrismaMock(): PrismaMock {
         auditEvents,
         workspaces,
         workspaceMemberships,
+        paymentSources,
         categories,
         get failNextCategoryUpsert() {
             return failNextCategoryUpsert
@@ -895,12 +942,14 @@ function createPrismaMock(): PrismaMock {
                 auditEvents: auditEvents.map((auditEvent) => ({ ...auditEvent })),
                 workspaces: workspaces.map((workspace) => ({ ...workspace })),
                 workspaceMemberships: workspaceMemberships.map((membership) => ({ ...membership })),
+                paymentSources: paymentSources.map((paymentSource) => ({ ...paymentSource })),
                 categories: categories.map((category) => ({ ...category })),
                 userCounter,
                 verificationTokenCounter,
                 auditEventCounter,
                 workspaceCounter,
                 workspaceMembershipCounter,
+                paymentSourceCounter,
                 failNextCategoryUpsert,
             }
 
@@ -912,12 +961,14 @@ function createPrismaMock(): PrismaMock {
                 replaceContents(auditEvents, snapshot.auditEvents)
                 replaceContents(workspaces, snapshot.workspaces)
                 replaceContents(workspaceMemberships, snapshot.workspaceMemberships)
+                replaceContents(paymentSources, snapshot.paymentSources)
                 replaceContents(categories, snapshot.categories)
                 userCounter = snapshot.userCounter
                 verificationTokenCounter = snapshot.verificationTokenCounter
                 auditEventCounter = snapshot.auditEventCounter
                 workspaceCounter = snapshot.workspaceCounter
                 workspaceMembershipCounter = snapshot.workspaceMembershipCounter
+                paymentSourceCounter = snapshot.paymentSourceCounter
                 failNextCategoryUpsert = snapshot.failNextCategoryUpsert
                 throw error
             }
@@ -942,4 +993,8 @@ function getLoggedVerificationToken(message: string): string {
     expect(verificationToken).toEqual(expect.any(String))
 
     return verificationToken as string
+}
+
+function hashToken(token: string): string {
+    return createHash('sha256').update(token, 'utf8').digest('hex')
 }

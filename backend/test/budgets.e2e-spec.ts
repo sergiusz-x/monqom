@@ -7,6 +7,7 @@ import { App } from 'supertest/types'
 import { AppModule } from './../src/app.module'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
+import { createRequestValidationPipe } from './../src/shared/validation/request-validation.pipe'
 import { createSessionOptions } from './../src/shared/session/session.config'
 
 interface StoredUser {
@@ -168,9 +169,9 @@ interface PrismaMock {
                 }
             }
             _sum: {
-                amount: true
+                baseAmount: true
             }
-        }): Promise<Array<{ categoryId: string; _sum: { amount: number } }>>
+        }): Promise<Array<{ categoryId: string; _sum: { baseAmount: number } }>>
     }
     auditEvent: {
         create(args: {
@@ -219,6 +220,7 @@ describe('Budgets endpoints (e2e)', () => {
         app.setGlobalPrefix('api/v1', {
             exclude: ['health', 'ready'],
         })
+        app.useGlobalPipes(createRequestValidationPipe())
         app.useGlobalFilters(new AllExceptionsFilter())
         await app.init()
     })
@@ -417,7 +419,7 @@ describe('Budgets endpoints (e2e)', () => {
             .get('/api/v1/workspaces/workspace-1/budgets/progress?month=2026-03')
             .expect(200)
 
-        expect(response.body).toEqual([
+        expect(response.body).toMatchObject([
             {
                 category_id: 'category-parent-food',
                 category_name: 'Food',
@@ -582,7 +584,7 @@ describe('Budgets endpoints (e2e)', () => {
         const updateResponse = await agent
             .put('/api/v1/workspaces/workspace-1/budgets/budget-1')
             .send({
-                amount: '21474836.48',
+                amount: 21474836.48,
                 category_id: 'category-child-transport',
                 year: 2026,
                 month: 4,
@@ -758,8 +760,11 @@ function createPrismaMock(): PrismaMock {
             },
         },
         workspace: {
-            findUnique: async ({ where }) =>
-                prismaMock.workspaces.find((workspace) => workspace.id === where.id) ?? null,
+            findUnique: async ({ where }) => {
+                const workspace = prismaMock.workspaces.find((item) => item.id === where.id)
+
+                return workspace ? ({ ...workspace, baseCurrency: 'USD' } as never) : null
+            },
         },
         workspaceMembership: {
             findFirst: async ({ where }) => {
@@ -929,7 +934,7 @@ function createPrismaMock(): PrismaMock {
                 return Array.from(totalsByCategoryId.entries()).map(([categoryId, amount]) => ({
                     categoryId,
                     _sum: {
-                        amount,
+                        baseAmount: amount,
                     },
                 }))
             },

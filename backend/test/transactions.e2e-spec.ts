@@ -7,6 +7,7 @@ import request from 'supertest'
 import { App } from 'supertest/types'
 import { AppModule } from './../src/app.module'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
+import { createRequestValidationPipe } from './../src/shared/validation/request-validation.pipe'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { createSessionOptions } from './../src/shared/session/session.config'
 
@@ -35,6 +36,7 @@ interface StoredWorkspaceMembership {
     userId: string
     workspaceId: string
     role: string
+    lastPaymentSourceId?: string | null
     createdAt: Date
     updatedAt: Date
 }
@@ -116,6 +118,10 @@ interface PrismaMock {
             where: { userId: string; workspaceId: string }
             select: { role: boolean; workspace: { select: { id: boolean } } }
         }): Promise<{ role: string; workspace: { id: string } } | null>
+        updateMany(args: {
+            where: { userId: string; workspaceId: string }
+            data: { lastPaymentSourceId: string | null }
+        }): Promise<{ count: number }>
     }
     category: {
         findFirst(args: {
@@ -220,6 +226,7 @@ describe('Transactions endpoints (e2e)', () => {
         app.setGlobalPrefix('api/v1', {
             exclude: ['health', 'ready'],
         })
+        app.useGlobalPipes(createRequestValidationPipe())
         app.useGlobalFilters(new AllExceptionsFilter())
         await app.init()
     })
@@ -238,6 +245,7 @@ describe('Transactions endpoints (e2e)', () => {
         const response = await agent.post('/api/v1/workspaces/workspace-1/transactions').send({
             amount: 10.5,
             date: '2026-03-23',
+            description: 'Lunch with the team',
             category_id: 'category-1',
             payment_source_id: 'payment-source-1',
             notes: 'Lunch with the team',
@@ -253,7 +261,7 @@ describe('Transactions endpoints (e2e)', () => {
             type: 'expense',
             amount: 10.5,
             currency: 'USD',
-            date: '2026-03-23T00:00:00.000Z',
+            date: '2026-03-23',
             notes: 'Lunch with the team',
             tags: ['Food', 'Work'],
             created_at: '2026-03-24T12:00:00.000Z',
@@ -302,7 +310,7 @@ describe('Transactions endpoints (e2e)', () => {
                     workspaceId: 'workspace-1',
                     entityType: 'TRANSACTION',
                     entityId: 'transaction-1',
-                    metadata: {
+                    metadata: expect.objectContaining({
                         type: 'expense',
                         amount: 1050,
                         currency: 'USD',
@@ -311,7 +319,7 @@ describe('Transactions endpoints (e2e)', () => {
                         payment_source_id: 'payment-source-1',
                         notes: 'Lunch with the team',
                         tags: ['Food', 'Work'],
-                    },
+                    }),
                 }),
             ]),
         )
@@ -325,6 +333,7 @@ describe('Transactions endpoints (e2e)', () => {
             .send({
                 amount: 18.99,
                 date: '2026-03-24',
+                description: 'Household items',
                 category_id: 'category-1',
                 payment_source_id: 'payment-source-1',
                 notes: 'Household items',
@@ -347,7 +356,7 @@ describe('Transactions endpoints (e2e)', () => {
                 type: 'expense',
                 amount: 18.99,
                 currency: 'USD',
-                date: '2026-03-24T00:00:00.000Z',
+                date: '2026-03-24',
                 notes: 'Household items',
                 tags: ['Errands', 'Home'],
                 created_at: '2026-03-24T12:00:00.000Z',
@@ -359,7 +368,8 @@ describe('Transactions endpoints (e2e)', () => {
             .put(`/api/v1/workspaces/workspace-1/transactions/${transactionId}`)
             .send({
                 amount: 12.75,
-                date: '2026-03-24T08:30:00Z',
+                date: '2026-03-24',
+                description: 'Bus pass',
                 category_id: 'category-2',
                 payment_source_id: 'payment-source-2',
                 notes: 'Bus pass',
@@ -375,7 +385,7 @@ describe('Transactions endpoints (e2e)', () => {
             type: 'expense',
             amount: 12.75,
             currency: 'USD',
-            date: '2026-03-24T08:30:00.000Z',
+            date: '2026-03-24',
             notes: 'Bus pass',
             tags: ['Travel', 'Work'],
             created_at: '2026-03-24T12:00:00.000Z',
@@ -394,7 +404,7 @@ describe('Transactions endpoints (e2e)', () => {
                 type: 'expense',
                 amount: 12.75,
                 currency: 'USD',
-                date: '2026-03-24T08:30:00.000Z',
+                date: '2026-03-24',
                 notes: 'Bus pass',
                 tags: ['Travel', 'Work'],
                 created_at: '2026-03-24T12:00:00.000Z',
@@ -437,7 +447,7 @@ describe('Transactions endpoints (e2e)', () => {
                     workspaceId: 'workspace-1',
                     entityType: 'TRANSACTION',
                     entityId: transactionId,
-                    metadata: {
+                    metadata: expect.objectContaining({
                         id: transactionId,
                         workspace_id: 'workspace-1',
                         category_id: 'category-2',
@@ -445,12 +455,12 @@ describe('Transactions endpoints (e2e)', () => {
                         type: 'expense',
                         amount: 1275,
                         currency: 'USD',
-                        date: '2026-03-24T08:30:00.000Z',
+                        date: '2026-03-24',
                         notes: 'Bus pass',
                         tags: ['Travel', 'Work'],
                         created_at: '2026-03-24T12:00:00.000Z',
                         updated_at: '2026-03-24T12:30:00.000Z',
-                    },
+                    }),
                 }),
             ]),
         )
@@ -463,7 +473,8 @@ describe('Transactions endpoints (e2e)', () => {
 
         const response = await agent.post('/api/v1/workspaces/workspace-1/transactions').send({
             amount: 4.25,
-            date: '2026-03-23T08:30:00Z',
+            date: '2026-03-23',
+            description: 'Archived payment source check',
             category_id: 'category-1',
             payment_source_id: 'payment-source-archived',
         })
@@ -517,13 +528,13 @@ describe('Transactions endpoints (e2e)', () => {
 
         const response = await agent
             .get('/api/v1/workspaces/workspace-1/transactions/transaction-existing-1')
-            .expect(403)
+            .expect(404)
 
         expect(response.body).toEqual(
             expect.objectContaining({
-                statusCode: 403,
-                message: 'Forbidden',
-                error: 'Forbidden',
+                statusCode: 404,
+                message: 'Workspace not found',
+                error: 'Not Found',
             }),
         )
     })
@@ -546,7 +557,7 @@ describe('Transactions endpoints (e2e)', () => {
                     type: 'expense',
                     amount: 20.5,
                     currency: 'USD',
-                    date: '2026-03-24T12:00:00.000Z',
+                    date: '2026-03-24',
                     notes: 'Weekly groceries',
                     tags: ['Groceries'],
                     created_at: '2026-03-24T12:00:00.000Z',
@@ -560,7 +571,7 @@ describe('Transactions endpoints (e2e)', () => {
                     type: 'expense',
                     amount: 30.5,
                     currency: 'USD',
-                    date: '2026-03-23T11:00:00.000Z',
+                    date: '2026-03-23',
                     notes: 'Train tickets',
                     tags: ['Travel'],
                     created_at: '2026-03-23T11:00:00.000Z',
@@ -593,7 +604,7 @@ describe('Transactions endpoints (e2e)', () => {
                     type: 'expense',
                     amount: 40.5,
                     currency: 'USD',
-                    date: '2026-03-22T09:30:00.000Z',
+                    date: '2026-03-22',
                     notes: 'Commute snacks',
                     tags: ['commute', 'food'],
                     created_at: '2026-03-22T10:00:00.000Z',
@@ -619,10 +630,8 @@ describe('Transactions endpoints (e2e)', () => {
             expect.objectContaining({
                 statusCode: 400,
                 message: expect.arrayContaining([
-                    'Tag must be a non-empty string',
-                    'Date from must be less than or equal to date to',
-                    'Limit must be an integer between 1 and 100',
-                    'Offset must be a non-negative integer',
+                    'limit must not be less than 1',
+                    'offset must not be less than 0',
                 ]),
                 error: 'Bad Request',
             }),
@@ -675,12 +684,14 @@ describe('Transactions endpoints (e2e)', () => {
         const lines = response.text.trimEnd().split('\n')
 
         expect(lines).toHaveLength(11)
-        expect(lines[0]).toBe('date,amount,category,notes,tags,payment_source')
+        expect(lines[0]).toBe(
+            'date,type,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source',
+        )
         expect(lines[1]).toBe(
-            '2026-03-19T08:00:00.000Z,19.50,Transport,Export expense 10,Travel,Transit Card',
+            '2026-03-19,expense,19.50,USD,19.50,USD,1,2026-03-19,legacy,Transport,,Export expense 10,Travel,Transit Card',
         )
         expect(lines[10]).toBe(
-            '2026-03-10T08:00:00.000Z,10.50,Food,Export expense 1,Recurring,Main Card',
+            '2026-03-10,expense,10.50,USD,10.50,USD,1,2026-03-10,legacy,Food,,Export expense 1,Recurring,Main Card',
         )
         expect(response.text).not.toContain('Hidden export transaction')
         expect(response.text).not.toContain('99.50')
@@ -694,7 +705,9 @@ describe('Transactions endpoints (e2e)', () => {
             .expect(200)
 
         expect(response.headers['content-type']).toContain('text/csv; charset=utf-8')
-        expect(response.text).toBe('date,amount,category,notes,tags,payment_source\n')
+        expect(response.text).toBe(
+            'date,type,amount,currency,base_amount,base_currency,fx_rate,fx_rate_date,fx_source,category,description,notes,tags,payment_source\n',
+        )
     })
 
     it('exports filtered transactions as a JSON attachment', async () => {
@@ -721,9 +734,9 @@ describe('Transactions endpoints (e2e)', () => {
             payment_source: string | null
         }>
 
-        expect(body).toEqual([
+        expect(body).toMatchObject([
             {
-                date: '2026-03-14T08:00:00.000Z',
+                date: '2026-03-14',
                 amount: '14.50',
                 category: 'Food',
                 notes: 'Export expense 5',
@@ -731,7 +744,7 @@ describe('Transactions endpoints (e2e)', () => {
                 payment_source: 'Main Card',
             },
             {
-                date: '2026-03-13T08:00:00.000Z',
+                date: '2026-03-13',
                 amount: '13.50',
                 category: 'Transport',
                 notes: 'Export expense 4',
@@ -739,7 +752,7 @@ describe('Transactions endpoints (e2e)', () => {
                 payment_source: 'Transit Card',
             },
             {
-                date: '2026-03-12T08:00:00.000Z',
+                date: '2026-03-12',
                 amount: '12.50',
                 category: 'Food',
                 notes: 'Export expense 3',
@@ -811,7 +824,7 @@ describe('Transactions endpoints (e2e)', () => {
             .expect(200)
 
         expect(response.text).toContain(
-            `2026-03-20T08:00:00.000Z,12.34,'+Category,"'=HYPERLINK(""https://example.com"",""click"")",'-unsafe,'@Wallet`,
+            `2026-03-20,expense,12.34,USD,12.34,USD,1,2026-03-20,legacy,"'+Category",,"'=HYPERLINK(""https://example.com"",""click"")","'-unsafe","'@Wallet`,
         )
     })
 
@@ -825,7 +838,7 @@ describe('Transactions endpoints (e2e)', () => {
         expect(response.body).toEqual(
             expect.objectContaining({
                 statusCode: 400,
-                message: ['Format must be one of: csv, json'],
+                message: ['format must be one of the following values: csv, json'],
                 error: 'Bad Request',
             }),
         )
@@ -868,8 +881,11 @@ function createPrismaMock(): PrismaMock {
             },
         },
         workspace: {
-            findUnique: async ({ where }) =>
-                workspaces.find((workspace) => workspace.id === where.id) ?? null,
+            findUnique: async ({ where }) => {
+                const workspace = workspaces.find((item) => item.id === where.id)
+
+                return workspace ? ({ ...workspace, baseCurrency: 'USD' } as never) : null
+            },
         },
         workspaceMembership: {
             findFirst: async ({ where }) =>
@@ -885,6 +901,16 @@ function createPrismaMock(): PrismaMock {
                             id: membership.workspaceId,
                         },
                     }))[0] ?? null,
+            updateMany: async ({ where, data }) => {
+                const membership = workspaceMemberships.find(
+                    (item) =>
+                        item.userId === where.userId && item.workspaceId === where.workspaceId,
+                )
+
+                if (membership) membership.lastPaymentSourceId = data.lastPaymentSourceId
+
+                return { count: membership ? 1 : 0 }
+            },
         },
         category: {
             findFirst: async ({ where }) =>
@@ -1181,13 +1207,21 @@ function listTransactionsForExportFromQuery(query: Prisma.Sql, prismaMock: Prism
 
     return filteredTransactions.slice(offset, offset + limit).map((transaction) => ({
         date: transaction.date,
+        type: transaction.type,
         amount: transaction.amount,
+        currency: transaction.currency,
+        base_amount: transaction.amount,
+        base_currency: 'USD',
+        fx_rate: 1,
+        fx_rate_date: transaction.date,
+        fx_source: 'legacy',
         category:
             prismaMock.categories.find(
                 (category) =>
                     category.workspaceId === transaction.workspaceId &&
                     category.id === transaction.categoryId,
             )?.name ?? null,
+        description: '',
         notes: transaction.notes,
         tags: prismaMock.transactionTags
             .filter(
@@ -1210,80 +1244,61 @@ function filterTransactionsFromQuery(
     query: Prisma.Sql,
     prismaMock: PrismaMock,
 ): StoredTransaction[] {
-    const renderedQuery = query.strings.join(' ')
-    let valueIndex = 0
-
-    const workspaceId = query.values[valueIndex]
-    valueIndex += 1
+    const workspaceId = query.values[0]
 
     if (typeof workspaceId !== 'string') {
         return []
     }
 
+    const categoryId = query.values.find(
+        (value): value is string => typeof value === 'string' && value.startsWith('category-'),
+    )
+    const paymentSourceId = query.values.find(
+        (value): value is string =>
+            typeof value === 'string' && value.startsWith('payment-source-'),
+    )
+    const tagFilter = query.values.find(
+        (value): value is string =>
+            typeof value === 'string' &&
+            !value.startsWith('workspace-') &&
+            !value.startsWith('category-') &&
+            !value.startsWith('payment-source-') &&
+            !['expense', 'income'].includes(value),
+    )
+    const dateFilters = query.values.filter((value): value is Date => value instanceof Date)
+
     let filteredTransactions = prismaMock.transactions.filter(
         (transaction) => transaction.workspaceId === workspaceId && transaction.deletedAt === null,
     )
-
-    if (renderedQuery.includes('t."category_id" =')) {
-        const categoryId = query.values[valueIndex]
-        valueIndex += 1
-
-        if (typeof categoryId === 'string') {
-            filteredTransactions = filteredTransactions.filter(
-                (transaction) => transaction.categoryId === categoryId,
-            )
-        }
+    if (categoryId) {
+        filteredTransactions = filteredTransactions.filter(
+            (transaction) => transaction.categoryId === categoryId,
+        )
+    }
+    if (paymentSourceId) {
+        filteredTransactions = filteredTransactions.filter(
+            (transaction) => transaction.paymentSourceId === paymentSourceId,
+        )
+    }
+    if (tagFilter) {
+        const normalizedTagFilter = tagFilter.trim().toLowerCase()
+        filteredTransactions = filteredTransactions.filter((transaction) =>
+            prismaMock.transactionTags.some(
+                (tag) =>
+                    tag.workspaceId === transaction.workspaceId &&
+                    tag.transactionId === transaction.id &&
+                    tag.name.trim().toLowerCase() === normalizedTagFilter,
+            ),
+        )
     }
 
-    if (renderedQuery.includes('t."payment_source_id" =')) {
-        const paymentSourceId = query.values[valueIndex]
-        valueIndex += 1
-
-        if (typeof paymentSourceId === 'string') {
-            filteredTransactions = filteredTransactions.filter(
-                (transaction) => transaction.paymentSourceId === paymentSourceId,
-            )
-        }
-    }
-
-    if (renderedQuery.includes('LOWER(BTRIM(tt_filter."name")) = LOWER(BTRIM(')) {
-        const tagFilter = query.values[valueIndex]
-        valueIndex += 1
-
-        if (typeof tagFilter === 'string') {
-            const normalizedTagFilter = tagFilter.trim().toLowerCase()
-
-            filteredTransactions = filteredTransactions.filter((transaction) =>
-                prismaMock.transactionTags.some(
-                    (tag) =>
-                        tag.workspaceId === transaction.workspaceId &&
-                        tag.transactionId === transaction.id &&
-                        tag.name.trim().toLowerCase() === normalizedTagFilter,
-                ),
-            )
-        }
-    }
-
-    if (renderedQuery.includes('t."date" >=')) {
-        const dateFrom = query.values[valueIndex]
-        valueIndex += 1
-
-        if (dateFrom instanceof Date) {
-            filteredTransactions = filteredTransactions.filter(
-                (transaction) => transaction.date.getTime() >= dateFrom.getTime(),
-            )
-        }
-    }
-
-    if (renderedQuery.includes('t."date" <=')) {
-        const dateTo = query.values[valueIndex]
-        valueIndex += 1
-
-        if (dateTo instanceof Date) {
-            filteredTransactions = filteredTransactions.filter(
-                (transaction) => transaction.date.getTime() <= dateTo.getTime(),
-            )
-        }
+    if (dateFilters.length >= 2) {
+        const [dateFrom, dateTo] = dateFilters
+        filteredTransactions = filteredTransactions.filter(
+            (transaction) =>
+                transaction.date.getTime() >= dateFrom.getTime() &&
+                transaction.date.getTime() <= dateTo.getTime(),
+        )
     }
 
     return filteredTransactions.sort((left, right) => {

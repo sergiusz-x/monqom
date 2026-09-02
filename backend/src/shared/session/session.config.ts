@@ -21,7 +21,7 @@ export interface SessionConfigurationInput {
 
 export function createSessionOptions(input: SessionConfigurationInput): session.SessionOptions {
     const PgSessionStore = connectPgSimple(session)
-    const shouldUsePostgresStore = isProductionEnvironment(input.nodeEnv)
+    const shouldUsePostgresStore = isDeployedEnvironment(input.nodeEnv)
 
     if (shouldUsePostgresStore && !input.databaseUrl) {
         throw new Error(
@@ -53,7 +53,7 @@ export function createSessionCookieOptions(nodeEnv: string): session.CookieOptio
         maxAge: SESSION_TTL_MS,
         path: '/',
         sameSite: 'lax',
-        secure: isProductionEnvironment(nodeEnv),
+        secure: isDeployedEnvironment(nodeEnv),
     }
 }
 
@@ -62,7 +62,7 @@ export function createSessionCookieClearingOptions(nodeEnv: string): ResponseCoo
         httpOnly: true,
         path: '/',
         sameSite: 'lax',
-        secure: isProductionEnvironment(nodeEnv),
+        secure: isDeployedEnvironment(nodeEnv),
     }
 }
 
@@ -73,7 +73,7 @@ function resolveSessionSecret(input: SessionConfigurationInput): string {
         return configuredSessionSecret
     }
 
-    if (isProductionEnvironment(input.nodeEnv)) {
+    if (isDeployedEnvironment(input.nodeEnv)) {
         throw new Error('SESSION_SECRET environment variable is missing')
     }
 
@@ -92,6 +92,6 @@ function resolveSessionSecret(input: SessionConfigurationInput): string {
     return generatedDevelopmentSessionSecret
 }
 
-function isProductionEnvironment(nodeEnv: string): boolean {
-    return nodeEnv === 'production'
+function isDeployedEnvironment(nodeEnv: string): boolean {
+    return nodeEnv === 'production' || nodeEnv === 'staging'
 }

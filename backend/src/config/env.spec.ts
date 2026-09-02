@@ -33,6 +33,14 @@ describe('production environment configuration', () => {
         expect(config.turnstileEnabled).toBe(true)
     })
 
+    it('applies the same mandatory security configuration to staging', () => {
+        process.env.NODE_ENV = 'staging'
+        expect(envConfig().nodeEnv).toBe('staging')
+
+        delete process.env.SESSION_SECRET
+        expect(() => envConfig()).toThrow('Missing required deployed environment variables')
+    })
+
     it('rejects a weak session secret', () => {
         process.env.SESSION_SECRET = 'too-short'
 

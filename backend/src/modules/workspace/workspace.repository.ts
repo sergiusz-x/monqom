@@ -84,7 +84,10 @@ export class WorkspaceRepository {
             ...workspace,
             lastPaymentSourceId: memberships[0].lastPaymentSourceId,
             role: memberships[0].role,
-            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0 || _count.goals > 0,
+            baseCurrencyLocked:
+                (_count?.transactions ?? 0) > 0 ||
+                (_count?.budgets ?? 0) > 0 ||
+                (_count?.goals ?? 0) > 0,
         }))
     }
 
@@ -112,7 +115,10 @@ export class WorkspaceRepository {
         const { _count, ...details } = workspace
         return {
             ...details,
-            baseCurrencyLocked: _count.transactions > 0 || _count.budgets > 0 || _count.goals > 0,
+            baseCurrencyLocked:
+                (_count?.transactions ?? 0) > 0 ||
+                (_count?.budgets ?? 0) > 0 ||
+                (_count?.goals ?? 0) > 0,
         }
     }
 

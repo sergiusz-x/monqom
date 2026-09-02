@@ -237,9 +237,23 @@ function validatePaymentSourceInput(input: PaymentSourceCommand): ValidatedPayme
 
     return {
         name: validateNameValue(input.name, errors),
-        type: input.type,
+        type: validateTypeValue(input.type, errors),
         errors,
     }
+}
+
+function validateTypeValue(
+    value: string,
+    errors: string[],
+): PaymentSourceCommand['type'] | undefined {
+    const normalizedValue = value?.trim()
+
+    if (!normalizedValue || !PAYMENT_SOURCE_TYPES.includes(normalizedValue as never)) {
+        errors.push('Payment source type is invalid')
+        return undefined
+    }
+
+    return normalizedValue as PaymentSourceCommand['type']
 }
 
 function validateNameValue(value: string, errors: string[]): string | undefined {

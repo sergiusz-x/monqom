@@ -48,6 +48,7 @@ interface StoredWorkspaceMembership {
     userId: string
     workspaceId: string
     role: string
+    lastPaymentSourceId?: string | null
     createdAt: Date
     updatedAt: Date
 }
@@ -162,6 +163,7 @@ describe('Workspace membership endpoints (e2e)', () => {
                 name: "Ada Lovelace's Finances",
                 type: 'personal',
                 timezone: 'UTC',
+                baseCurrencyLocked: false,
                 createdAt: '2026-03-23T10:00:00.000Z',
                 updatedAt: '2026-03-23T10:00:00.000Z',
             },
@@ -178,6 +180,7 @@ describe('Workspace membership endpoints (e2e)', () => {
             name: "Ada Lovelace's Finances",
             type: 'personal',
             timezone: 'UTC',
+            baseCurrencyLocked: false,
             createdAt: '2026-03-23T10:00:00.000Z',
             updatedAt: '2026-03-23T10:00:00.000Z',
         })
@@ -256,9 +259,36 @@ function createPrismaMock(): PrismaMock {
                 return workspaces
                     .filter((workspace) => accessibleWorkspaceIds.has(workspace.id))
                     .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+                    .map((workspace) => ({
+                        ...workspace,
+                        memberships: workspaceMemberships
+                            .filter(
+                                (membership) =>
+                                    membership.userId === where.memberships.some.userId &&
+                                    membership.workspaceId === workspace.id,
+                            )
+                            .map((membership) => ({
+                                lastPaymentSourceId: membership.lastPaymentSourceId,
+                            })),
+                        _count: {
+                            transactions: 0,
+                            budgets: 0,
+                        },
+                    })) as never
             },
-            findUnique: async ({ where }) =>
-                workspaces.find((workspace) => workspace.id === where.id) ?? null,
+            findUnique: async ({ where }) => {
+                const workspace = workspaces.find((item) => item.id === where.id)
+
+                if (!workspace) return null
+
+                return {
+                    ...workspace,
+                    _count: {
+                        transactions: 0,
+                        budgets: 0,
+                    },
+                } as never
+            },
         },
         workspaceMembership: {
             findFirst: async ({ where }) =>

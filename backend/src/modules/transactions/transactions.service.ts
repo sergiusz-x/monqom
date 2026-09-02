@@ -29,7 +29,7 @@ export interface CreateTransactionCommand {
     amount: number
     currency?: string
     date: string
-    description: string
+    description?: string
     categoryId: string
     notes?: string | null
     tags?: string[]
@@ -555,6 +555,10 @@ function validateDateFilterValue(
             return undefined
         }
 
+        if (options.boundary === 'end') {
+            date.setUTCHours(23, 59, 59, 999)
+        }
+
         return date
     }
 
@@ -646,7 +650,12 @@ function normalizeNotes(value: string | null | undefined): string | null {
     return normalizedValue.length > 0 ? normalizedValue : null
 }
 
-function validateDescriptionValue(value: string, errors: string[]): string | undefined {
+function validateDescriptionValue(value: string | undefined, errors: string[]): string | undefined {
+    if (value === undefined || value === null) {
+        errors.push('Description is required')
+        return undefined
+    }
+
     const normalizedValue = value.trim()
 
     if (normalizedValue.length === 0) {
