@@ -8,6 +8,7 @@ import {
     Req,
     Res,
     UnauthorizedException,
+    BadRequestException,
     UseGuards,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -36,6 +37,7 @@ import {
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { getOrCreateCsrfToken } from '../../shared/security/csrf'
 import { verifyTurnstileToken } from '../../shared/security/turnstile'
+import { validateRegistrationInput } from '../../shared/utils/validation'
 import {
     TwoFactorLoginVerificationResponse,
     TwoFactorService,
@@ -88,6 +90,9 @@ export class AuthController {
         @Body() body: RegisterDto,
         @Req() req: Request,
     ): Promise<RegisteredUserResponse> {
+        const validation = validateRegistrationInput(body)
+        if (validation.errors.length > 0) throw new BadRequestException(validation.errors)
+
         await verifyTurnstileToken(
             { token: body.turnstile_token, remoteIp: getRequestIp(req) },
             {

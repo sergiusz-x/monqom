@@ -7,7 +7,9 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 
 import { getApiErrorMessage } from "@/lib/api-errors";
+import { passwordValidationRules } from "@/lib/password-validation";
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
+import { turnstileConfigured } from "@/lib/turnstile";
 import { Alert, FormField, Input, PendingButton } from "@monqom/ui";
 
 interface RegisterFormValues {
@@ -22,6 +24,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetCount, setTurnstileResetCount] = useState(0);
   const onTurnstileTokenChange = useCallback(
     (token: string | null) => setTurnstileToken(token),
     [],
@@ -35,6 +38,11 @@ export default function RegisterPage() {
 
   async function onSubmit(data: RegisterFormValues) {
     setServerError("");
+    if (turnstileConfigured && !turnstileToken) {
+      setServerError(t("auth.securityVerificationRequired"));
+      return;
+    }
+
     try {
       await authApi.authControllerRegister({
         email: data.email,
@@ -47,6 +55,8 @@ export default function RegisterPage() {
       navigate("/verify-email", { replace: true });
     } catch (err: unknown) {
       setServerError(getApiErrorMessage(err));
+      setTurnstileToken(null);
+      setTurnstileResetCount((count) => count + 1);
     }
   }
 
@@ -97,7 +107,7 @@ export default function RegisterPage() {
             placeholder="••••••••"
             {...register("password", {
               required: t("auth.requiredPassword"),
-              minLength: { value: 8, message: t("auth.minPassword") },
+              ...passwordValidationRules(t),
             })}
           />
         </FormField>
@@ -123,12 +133,16 @@ export default function RegisterPage() {
             {serverError}
           </Alert>
         )}
-        <TurnstileWidget onTokenChange={onTurnstileTokenChange} />
+        <TurnstileWidget
+          onTokenChange={onTurnstileTokenChange}
+          resetCount={turnstileResetCount}
+        />
         <PendingButton
           type="submit"
           isPending={isSubmitting}
           pendingLabel={t("auth.creating")}
           className="w-full"
+          disabled={turnstileConfigured && !turnstileToken}
         >
           {t("auth.signUp")}
         </PendingButton>
