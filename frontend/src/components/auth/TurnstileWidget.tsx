@@ -15,6 +15,7 @@ declare global {
         },
       ) => string;
       remove: (widgetId: string) => void;
+      reset?: (widgetId: string) => void;
     };
   }
 }
@@ -23,8 +24,10 @@ const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 export function TurnstileWidget({
   onTokenChange,
+  resetCount = 0,
 }: {
   onTokenChange: (token: string | null) => void;
+  resetCount?: number;
 }) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +63,14 @@ export function TurnstileWidget({
       script.remove();
     };
   }, [onTokenChange]);
+
+  useEffect(() => {
+    if (resetCount === 0) return;
+
+    onTokenChange(null);
+    if (widgetIdRef.current && window.turnstile?.reset)
+      window.turnstile.reset(widgetIdRef.current);
+  }, [onTokenChange, resetCount]);
   if (!SITE_KEY) return null;
   if (failed)
     return (

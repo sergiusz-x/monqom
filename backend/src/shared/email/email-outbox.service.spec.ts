@@ -71,4 +71,50 @@ describe('EmailOutboxService', () => {
             }),
         )
     })
+
+    it('records a delivery failure and schedules a retry for a claimed message', async () => {
+        const create = jest.fn().mockResolvedValue(undefined)
+        const update = jest.fn().mockResolvedValue(undefined)
+        const queryRaw = jest.fn()
+        const prisma = {
+            emailOutbox: { create, update },
+            emailVerificationToken: { deleteMany: jest.fn() },
+            passwordResetToken: { deleteMany: jest.fn() },
+            $transaction: jest.fn().mockResolvedValue(undefined),
+            $queryRaw: queryRaw,
+        }
+        const delivery = { send: jest.fn().mockRejectedValue(new Error('provider unavailable')) }
+        const service = new EmailOutboxService(prisma as never, delivery as never, config)
+        await service.enqueue('verification', 'user@example.test', 'verification-token')
+
+        const row = {
+            id: '41f0e43c-335a-4b13-bf49-918d243b2d9c',
+            kind: 'verification',
+            recipient: create.mock.calls[0][0].data.recipient,
+            encryptedPayload: create.mock.calls[0][0].data.encryptedPayload,
+            status: 'processing',
+            attempts: 0,
+            availableAt: new Date(),
+            lockedAt: new Date(),
+            sentAt: null,
+            lastError: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        } satisfies EmailOutbox
+        queryRaw.mockResolvedValue([row])
+
+        await service.processBatch()
+
+        expect(update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: row.id },
+                data: expect.objectContaining({
+                    status: 'pending',
+                    attempts: 1,
+                    lastError: 'provider unavailable',
+                    lockedAt: null,
+                }),
+            }),
+        )
+    })
 })

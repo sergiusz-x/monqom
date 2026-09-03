@@ -6,6 +6,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { useTranslation } from "react-i18next";
 
 import { getApiErrorMessage } from "@/lib/api-errors";
+import { passwordValidationRules } from "@/lib/password-validation";
 import { Alert, FormField, Input, PendingButton } from "@monqom/ui";
 
 interface ResetPasswordFormValues {
@@ -94,7 +95,7 @@ export default function ResetPasswordPage() {
             placeholder="••••••••"
             {...register("newPassword", {
               required: t("auth.requiredNewPassword"),
-              minLength: { value: 8, message: t("auth.minPassword") },
+              ...passwordValidationRules(t),
             })}
           />
         </FormField>

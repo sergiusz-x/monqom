@@ -95,7 +95,19 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
                 WHERE "created_at" >= ${oldest} AND "attempts" < ${MAX_ATTEMPTS} AND "available_at" <= ${now}
                   AND ("status" = 'pending' OR ("status" = 'processing' AND "locked_at" < ${staleBefore}))
                 ORDER BY "created_at" FOR UPDATE SKIP LOCKED LIMIT 20
-            ) RETURNING *
+            ) RETURNING
+                "id",
+                "kind",
+                "recipient",
+                "encrypted_payload" AS "encryptedPayload",
+                "status",
+                "attempts",
+                "available_at" AS "availableAt",
+                "locked_at" AS "lockedAt",
+                "sent_at" AS "sentAt",
+                "last_error" AS "lastError",
+                "created_at" AS "createdAt",
+                "updated_at" AS "updatedAt"
         `)
     }
 

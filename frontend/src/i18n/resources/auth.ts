@@ -38,7 +38,11 @@ export const enAuth = {
     requiredEmail: "Email is required",
     requiredPassword: "Password is required",
     requiredName: "Name is required",
-    minPassword: "Minimum 8 characters",
+    minPassword: "Use at least 16 characters",
+    passwordUppercase: "Include at least one uppercase letter",
+    passwordNumber: "Include at least one number",
+    passwordSpecialCharacter: "Include at least one special character",
+    passwordTooCommon: "Choose a less predictable password",
     passwordMismatch: "Passwords do not match",
     confirmRequired: "Please confirm your password",
     twoFactor: "Two-factor authentication",
@@ -74,6 +78,8 @@ export const enAuth = {
     securityVerification: "Security verification",
     securityVerificationFailed:
       "Security verification could not load. Please refresh and try again.",
+    securityVerificationRequired:
+      "Complete the security verification before creating your account.",
   },
 } as const;
 
@@ -115,7 +121,11 @@ export const plAuth = {
     requiredEmail: "Adres e-mail jest wymagany",
     requiredPassword: "Hasło jest wymagane",
     requiredName: "Imię i nazwisko jest wymagane",
-    minPassword: "Minimum 8 znaków",
+    minPassword: "Użyj co najmniej 16 znaków",
+    passwordUppercase: "Dodaj co najmniej jedną wielką literę",
+    passwordNumber: "Dodaj co najmniej jedną cyfrę",
+    passwordSpecialCharacter: "Dodaj co najmniej jeden znak specjalny",
+    passwordTooCommon: "Wybierz mniej przewidywalne hasło",
     passwordMismatch: "Hasła nie są takie same",
     confirmRequired: "Potwierdź hasło",
     twoFactor: "Uwierzytelnianie dwuskładnikowe",
@@ -151,5 +161,7 @@ export const plAuth = {
     securityVerification: "Weryfikacja bezpieczeństwa",
     securityVerificationFailed:
       "Nie udało się załadować weryfikacji bezpieczeństwa. Odśwież stronę i spróbuj ponownie.",
+    securityVerificationRequired:
+      "Ukończ weryfikację bezpieczeństwa przed utworzeniem konta.",
   },
 } as const satisfies TranslationShape<typeof enAuth>;

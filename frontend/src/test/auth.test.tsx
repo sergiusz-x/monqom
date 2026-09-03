@@ -436,11 +436,11 @@ describe("ResetPasswordPage", () => {
 
     await userEvent.type(
       screen.getByLabelText(/^new password$/i),
-      "newpassword1",
+      "GraniteHarbor2026!",
     );
     await userEvent.type(
       screen.getByLabelText(/confirm new password/i),
-      "newpassword1",
+      "GraniteHarbor2026!",
     );
     await userEvent.click(
       screen.getByRole("button", { name: /reset password/i }),
@@ -453,7 +453,7 @@ describe("ResetPasswordPage", () => {
     });
     expect(mockApi.post).toHaveBeenCalledWith("/auth/reset-password", {
       token: "valid",
-      newPassword: "newpassword1",
+      newPassword: "GraniteHarbor2026!",
     });
   });
 
@@ -468,7 +468,7 @@ describe("ResetPasswordPage", () => {
       screen.getByRole("button", { name: /reset password/i }),
     );
     await waitFor(() => {
-      expect(screen.getByText(/minimum 8 characters/i)).toBeInTheDocument();
+      expect(screen.getByText(/at least 16 characters/i)).toBeInTheDocument();
     });
   });
 });
