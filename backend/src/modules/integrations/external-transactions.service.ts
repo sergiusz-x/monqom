@@ -6,6 +6,7 @@ import { WorkspaceService } from '../workspace/workspace.service'
 import { MachinePrincipal } from './integration-credential.service'
 import { ExternalTransactionBodyDto } from './external-transactions.dto'
 import { ExternalTransactionOwnershipService } from './external-transaction-ownership.service'
+import { normalizeExternalTransactionId } from './external-transaction-contract'
 
 @Injectable()
 export class ExternalTransactionsService {
@@ -30,7 +31,7 @@ export class ExternalTransactionsService {
         const transaction = await this.ownership.findOwnedTransaction(
             principal.workspaceId,
             principal.integrationId,
-            normalizeExternalId(externalId),
+            normalizeExternalTransactionId(externalId),
         )
         return mapTransaction(transaction)
     }
@@ -44,13 +45,14 @@ export class ExternalTransactionsService {
     ) {
         if (
             body.external_id !== undefined &&
-            normalizeExternalId(body.external_id) !== normalizeExternalId(externalId)
+            normalizeExternalTransactionId(body.external_id) !==
+                normalizeExternalTransactionId(externalId)
         ) {
             throw new BadRequestException('External id cannot be changed')
         }
         const command = await this.toCommand(principal.workspaceId, {
             ...body,
-            external_id: normalizeExternalId(externalId),
+            external_id: normalizeExternalTransactionId(externalId),
         })
         const result = await this.ownership.updateIdempotently(
             principal,
@@ -70,7 +72,7 @@ export class ExternalTransactionsService {
         return this.ownership.deleteIdempotently(
             principal,
             idempotencyKey,
-            normalizeExternalId(externalId),
+            normalizeExternalTransactionId(externalId),
             expectedVersion,
         )
     }
@@ -141,7 +143,7 @@ export class ExternalTransactionsService {
             date,
         )
         return {
-            externalId: normalizeExternalId(body.external_id ?? ''),
+            externalId: normalizeExternalTransactionId(body.external_id ?? ''),
             type: body.type ?? 'expense',
             amount,
             currency,
@@ -164,12 +166,6 @@ function parseDate(value: string): Date {
     if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value)
         throw new BadRequestException('Date must be a valid calendar date in YYYY-MM-DD format')
     return date
-}
-
-function normalizeExternalId(value: string): string {
-    const normalized = value?.trim()
-    if (!normalized) throw new BadRequestException('External id is required')
-    return normalized
 }
 
 function mapTransaction(

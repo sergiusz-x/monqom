@@ -16,10 +16,10 @@ import {
     TransactionsRepository,
 } from '../transactions/transactions.repository'
 import { MachinePrincipal } from './integration-credential.service'
+import { normalizeExternalTransactionId } from './external-transaction-contract'
 
 const IDEMPOTENCY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7e]{16,128}$/
-const MAX_EXTERNAL_ID_BYTES = 200
 
 export interface ExternalTransactionCreateCommand {
     externalId: string
@@ -211,7 +211,7 @@ export class ExternalTransactionOwnershipService {
         expectedVersion: number,
         now = new Date(),
     ): Promise<{ replayed: boolean }> {
-        const normalizedExternalId = normalizeExternalId(externalId)
+        const normalizedExternalId = normalizeExternalTransactionId(externalId)
         const claim: IdempotencyClaim = {
             integrationId: principal.integrationId,
             key: normalizeIdempotencyKey(idempotencyKey),
@@ -455,9 +455,7 @@ function normalizeIdempotencyKey(value: string): string {
 function normalizeCreateCommand(
     input: ExternalTransactionCreateCommand,
 ): ExternalTransactionCreateCommand {
-    const externalId = input.externalId?.trim()
-    if (!externalId || Buffer.byteLength(externalId, 'utf8') > MAX_EXTERNAL_ID_BYTES)
-        throw new BadRequestException('External id must contain between 1 and 200 UTF-8 bytes')
+    const externalId = normalizeExternalTransactionId(input.externalId)
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0)
         throw new BadRequestException('Amount must be a positive integer in minor units')
     if (input.type !== 'expense' && input.type !== 'income')
@@ -480,13 +478,6 @@ function normalizeCreateCommand(
         notes: input.notes?.trim() || null,
         tags: [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))].sort(),
     }
-}
-
-function normalizeExternalId(value: string): string {
-    const normalized = value.trim()
-    if (!normalized || Buffer.byteLength(normalized, 'utf8') > MAX_EXTERNAL_ID_BYTES)
-        throw new BadRequestException('External id must contain between 1 and 200 UTF-8 bytes')
-    return normalized
 }
 
 function machineAuditMetadata(principal: MachinePrincipal): Prisma.InputJsonObject {

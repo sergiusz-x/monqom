@@ -4,7 +4,6 @@ import {
     Delete,
     Get,
     Headers,
-    HttpException,
     HttpCode,
     HttpStatus,
     Param,
@@ -22,6 +21,7 @@ import {
 } from './integration-credential.guard'
 import { ExternalTransactionBodyDto } from './external-transactions.dto'
 import { ExternalTransactionsService } from './external-transactions.service'
+import { parseExternalTransactionEtag } from './external-transaction-contract'
 
 @Controller('workspaces/:workspaceId')
 @UseGuards(IntegrationCredentialGuard)
@@ -81,7 +81,7 @@ export class ExternalTransactionsController {
             req.machine!,
             key,
             externalId,
-            parseEtag(ifMatch),
+            parseExternalTransactionEtag(ifMatch),
             body,
         )
         response.setHeader('ETag', `"tx-v${result.version}"`)
@@ -103,7 +103,12 @@ export class ExternalTransactionsController {
         @Headers('idempotency-key') key: string,
         @Headers('if-match') ifMatch: string | undefined,
     ) {
-        await this.service.remove(req.machine!, key, externalId, parseEtag(ifMatch))
+        await this.service.remove(
+            req.machine!,
+            key,
+            externalId,
+            parseExternalTransactionEtag(ifMatch),
+        )
     }
 
     @Get('external-categories')
@@ -117,10 +122,4 @@ export class ExternalTransactionsController {
     async paymentSources(@Req() req: Request) {
         return this.service.listPaymentSources(req.machine!)
     }
-}
-
-function parseEtag(value: string | undefined): number {
-    const match = /^"tx-v([1-9]\d*)"$/.exec(value ?? '')
-    if (!match) throw new HttpException('If-Match is required', HttpStatus.PRECONDITION_REQUIRED)
-    return Number(match[1])
 }
