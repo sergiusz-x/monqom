@@ -218,6 +218,20 @@ export class TwoFactorService {
         }
     }
 
+    async verifyStepUp(userId: string, token?: string): Promise<void> {
+        const user = await this.authRepository.findUserById(userId)
+        if (!user) throw new UnauthorizedException('Authentication required')
+        if (!user.totpEnabled) return
+        const normalized = token?.trim()
+        if (!normalized || !user.totpSecretEncrypted) {
+            throw new UnauthorizedException(INVALID_TWO_FACTOR_TOKEN_MESSAGE)
+        }
+        const secret = decryptLoginSecret(user.totpSecretEncrypted)
+        if (isValidTotpToken(secret, normalized)) return
+        if (await this.consumeRecoveryCode(userId, normalized)) return
+        throw new UnauthorizedException(INVALID_TWO_FACTOR_TOKEN_MESSAGE)
+    }
+
     private async consumeRecoveryCode(userId: string, token: string): Promise<boolean> {
         const normalizedToken = normalizeRecoveryCode(token)
         const recoveryCodes = await this.authRepository.listUnusedRecoveryCodes(userId)

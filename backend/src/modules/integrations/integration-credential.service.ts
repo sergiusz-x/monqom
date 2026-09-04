@@ -176,6 +176,57 @@ export class IntegrationCredentialService {
         })
     }
 
+    async rotateCredential(
+        credentialId: string,
+        expiresAt: Date,
+        now = new Date(),
+    ): Promise<CreatedIntegrationCredential> {
+        const expiry = validateExpiry(expiresAt, now)
+        const material = createIntegrationCredentialToken()
+        return this.prisma.$transaction(async (tx) => {
+            const previous = await tx.integrationCredential.findUnique({
+                where: { id: requireTrimmed(credentialId, 'Credential id') },
+                include: { categoryRestrictions: true, paymentSourceRestrictions: true },
+            })
+            if (!previous || previous.status !== 'active' || previous.revokedAt) {
+                throw new UnauthorizedException('Integration credential cannot be rotated')
+            }
+            const replacement = await tx.integrationCredential.create({
+                data: {
+                    integrationId: previous.integrationId,
+                    tokenPrefix: material.tokenPrefix,
+                    tokenDigest: digestIntegrationToken(material.token),
+                    expiresAt: expiry,
+                    scopes: previous.scopes,
+                    categoryAllowlistEnabled: previous.categoryAllowlistEnabled,
+                    paymentSourceAllowlistEnabled: previous.paymentSourceAllowlistEnabled,
+                    cidrAllowlistEnabled: previous.cidrAllowlistEnabled,
+                    allowedCidrs: previous.allowedCidrs,
+                    categoryRestrictions: {
+                        create: previous.categoryRestrictions.map(({ categoryId }) => ({
+                            categoryId,
+                        })),
+                    },
+                    paymentSourceRestrictions: {
+                        create: previous.paymentSourceRestrictions.map(({ paymentSourceId }) => ({
+                            paymentSourceId,
+                        })),
+                    },
+                },
+            })
+            await tx.integrationCredential.update({
+                where: { id: previous.id },
+                data: { status: 'revoked', revokedAt: now },
+            })
+            return {
+                credentialId: replacement.id,
+                token: material.token,
+                tokenPrefix: material.tokenPrefix,
+                expiresAt: replacement.expiresAt,
+            }
+        })
+    }
+
     async authenticateAuthorizationHeader(
         authorization: string | undefined,
         clientIp: string | undefined,

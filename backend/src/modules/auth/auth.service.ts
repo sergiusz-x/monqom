@@ -520,6 +520,14 @@ export class AuthService {
         }
     }
 
+    async verifyCurrentPassword(userId: string, currentPassword: string): Promise<void> {
+        const user = await this.authRepository.findUserById(userId)
+        if (!user) throw new UnauthorizedException('Authentication required')
+        if (!(await argon2.verify(user.passwordHash, currentPassword))) {
+            throw new UnauthorizedException('Current password is incorrect')
+        }
+    }
+
     async deleteAuthenticatedUser(userId: string): Promise<AuthActionResponse> {
         await this.getAuthenticatedUser(userId)
         await this.authRepository.deleteUserAccount(userId)
