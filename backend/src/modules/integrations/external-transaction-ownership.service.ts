@@ -293,36 +293,6 @@ export class ExternalTransactionOwnershipService {
         return transaction
     }
 
-    /** Future update endpoint seam; this predicate cannot target manual or foreign rows. */
-    async updateOwnedTransaction(
-        workspaceId: string,
-        integrationId: string,
-        externalId: string,
-        data: Prisma.TransactionUpdateManyMutationInput,
-        prisma: TransactionsPersistenceClient = this.prisma,
-    ): Promise<boolean> {
-        const result = await prisma.transaction.updateMany({
-            where: { workspaceId, integrationId, externalId, deletedAt: null },
-            data,
-        })
-        return result.count === 1
-    }
-
-    /** Future delete endpoint seam; soft deletion intentionally does not release the external id. */
-    async softDeleteOwnedTransaction(
-        workspaceId: string,
-        integrationId: string,
-        externalId: string,
-        now = new Date(),
-        prisma: TransactionsPersistenceClient = this.prisma,
-    ): Promise<boolean> {
-        const result = await prisma.transaction.updateMany({
-            where: { workspaceId, integrationId, externalId, deletedAt: null },
-            data: { deletedAt: now },
-        })
-        return result.count === 1
-    }
-
     async cleanupExpiredIdempotency(now = new Date()): Promise<number> {
         const result = await this.prisma.integrationIdempotencyRecord.deleteMany({
             where: { status: 'completed', expiresAt: { lte: now } },
