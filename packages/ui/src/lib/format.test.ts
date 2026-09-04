@@ -99,6 +99,15 @@ describe("format.ts", () => {
       expect(formatCurrency(1234.5, "JPY")).toBe("¥1,235");
       getLocaleMock.mockRestore();
     });
+
+    test("supports an explicit fixed-decimal monetary policy", () => {
+      expect(
+        formatCurrency(12, "HUF", "en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      ).toBe("HUF 12.00");
+    });
   });
 
   describe("formatNumber", () => {

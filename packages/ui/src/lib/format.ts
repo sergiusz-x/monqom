@@ -55,10 +55,15 @@ export function formatCurrency(
   value: number,
   currency: string = "USD",
   locale: string = getLocale(),
+  fractionDigits?: Pick<
+    Intl.NumberFormatOptions,
+    "minimumFractionDigits" | "maximumFractionDigits"
+  >,
 ): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
+    ...fractionDigits,
   }).format(value);
 }
 
