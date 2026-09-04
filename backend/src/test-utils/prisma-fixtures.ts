@@ -28,6 +28,8 @@ export function createTransactionFixture(overrides: Partial<Transaction> = {}): 
         workspaceId: 'workspace-1',
         categoryId: 'category-1',
         paymentSourceId: 'payment-source-1',
+        integrationId: null,
+        externalId: null,
         type: 'expense',
         amount: 1050,
         currency: 'USD',

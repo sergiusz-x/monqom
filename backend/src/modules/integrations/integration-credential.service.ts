@@ -18,7 +18,9 @@ export interface MachinePrincipal {
     credentialId: string
     workspaceId: string
     scopes: readonly IntegrationScope[]
+    categoryAllowlistEnabled: boolean
     allowedCategoryIds: readonly string[]
+    paymentSourceAllowlistEnabled: boolean
     allowedPaymentSourceIds: readonly string[]
     allowedCidrs: readonly string[]
 }
@@ -288,7 +290,9 @@ export class IntegrationCredentialService {
             credentialId: credential.id,
             workspaceId: credential.integration.workspaceId,
             scopes: credential.scopes as IntegrationScope[],
+            categoryAllowlistEnabled: credential.categoryAllowlistEnabled,
             allowedCategoryIds: credential.categoryRestrictions.map(({ categoryId }) => categoryId),
+            paymentSourceAllowlistEnabled: credential.paymentSourceAllowlistEnabled,
             allowedPaymentSourceIds: credential.paymentSourceRestrictions.map(
                 ({ paymentSourceId }) => paymentSourceId,
             ),

@@ -6,7 +6,10 @@ import { PrismaService } from '../../shared/database/prisma.service'
 
 export interface CreateTransactionRecordInput {
     workspaceId: string
-    userId: string
+    /** Omitted for a machine-owned transaction; machine activity has no user session. */
+    userId?: string
+    integrationId?: string
+    externalId?: string
     categoryId: string
     paymentSourceId: string
     type: string
@@ -148,6 +151,7 @@ export class TransactionsRepository {
             where: {
                 workspaceId,
                 id: categoryId,
+                deletedAt: null,
             },
         })
     }
@@ -180,6 +184,8 @@ export class TransactionsRepository {
                     workspaceId: input.workspaceId,
                     categoryId: input.categoryId,
                     paymentSourceId: input.paymentSourceId,
+                    ...(input.integrationId ? { integrationId: input.integrationId } : {}),
+                    ...(input.externalId ? { externalId: input.externalId } : {}),
                     type: input.type,
                     amount: input.amount,
                     currency: input.currency,
@@ -193,15 +199,17 @@ export class TransactionsRepository {
                 },
             })
 
-            await tx.workspaceMembership.updateMany({
-                where: {
-                    userId: input.userId,
-                    workspaceId: input.workspaceId,
-                },
-                data: {
-                    lastPaymentSourceId: input.paymentSourceId ?? null,
-                },
-            })
+            if (input.userId) {
+                await tx.workspaceMembership.updateMany({
+                    where: {
+                        userId: input.userId,
+                        workspaceId: input.workspaceId,
+                    },
+                    data: {
+                        lastPaymentSourceId: input.paymentSourceId ?? null,
+                    },
+                })
+            }
 
             const tags = await Promise.all(
                 normalizedTags.map((name) =>
@@ -219,7 +227,7 @@ export class TransactionsRepository {
                 {
                     action: AUDIT_ACTIONS.TRANSACTION_CREATED,
                     workspaceId: input.workspaceId,
-                    userId: input.userId,
+                    ...(input.userId ? { userId: input.userId } : {}),
                     entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
                     entityId: transaction.id,
                     metadata: {

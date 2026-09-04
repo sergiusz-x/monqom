@@ -8,7 +8,9 @@ const principal: MachinePrincipal = {
     credentialId: 'credential-1',
     workspaceId: 'workspace-1',
     scopes: ['transactions:create'],
+    categoryAllowlistEnabled: false,
     allowedCategoryIds: [],
+    paymentSourceAllowlistEnabled: false,
     allowedPaymentSourceIds: [],
     allowedCidrs: [],
 }
