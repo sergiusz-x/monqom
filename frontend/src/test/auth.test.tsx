@@ -155,12 +155,14 @@ describe("AuthProvider", () => {
 
     const rejectHandler =
       mockApi.interceptors.response.use.mock.calls.at(-1)?.[1];
-    await expect(
-      rejectHandler({
-        response: { status: 401 },
-        config: { url: "/workspaces" },
-      }),
-    ).rejects.toBeDefined();
+    await act(async () => {
+      await expect(
+        rejectHandler({
+          response: { status: 401 },
+          config: { url: "/workspaces" },
+        }),
+      ).rejects.toBeDefined();
+    });
 
     await waitFor(() =>
       expect(screen.getByTestId("name")).toHaveTextContent("none"),
@@ -501,5 +503,3 @@ describe("ResendVerificationPage", () => {
   });
 });
 
-// ─── unused suppress warning ───────────────────────────────────────────────
-void act;
