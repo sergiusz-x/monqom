@@ -15,6 +15,7 @@ import { AuditModule } from './shared/audit/audit.module'
 import { DatabaseModule } from './shared/database/database.module'
 import { CurrencyModule } from './shared/currency/currency.module'
 import { EmailModule } from './shared/email/email.module'
+import { IntegrationsModule } from './modules/integrations/integrations.module'
 
 @Module({
     imports: [
@@ -37,6 +38,7 @@ import { EmailModule } from './shared/email/email.module'
         CurrencyModule,
         EmailModule,
         GoalsModule,
+        IntegrationsModule,
     ],
 })
 export class AppModule {}
