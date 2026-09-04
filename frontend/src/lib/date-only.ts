@@ -21,6 +21,18 @@ export function normalizeDateOnly(value: string): string | null {
   return candidate;
 }
 
+export function parseDateOnlyParts(
+  value: string,
+): [year: number, month: number, day: number] | null {
+  const normalized = normalizeDateOnly(value);
+  if (!normalized) return null;
+  return [
+    Number(normalized.slice(0, 4)),
+    Number(normalized.slice(5, 7)),
+    Number(normalized.slice(8, 10)),
+  ];
+}
+
 export function formatDateOnly(
   value: string,
   options: Intl.DateTimeFormatOptions = {
