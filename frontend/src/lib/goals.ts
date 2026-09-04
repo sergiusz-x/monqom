@@ -95,16 +95,6 @@ export function previewMonthlyAmount(input: {
   };
 }
 
-export function formatDateOnly(value: string, locale: string): string {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
 function dateParts(year: number, month: number, day: number): string {
   return `${year.toString().padStart(4, "0")}-${month
     .toString()

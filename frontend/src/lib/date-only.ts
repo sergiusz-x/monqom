@@ -28,11 +28,12 @@ export function formatDateOnly(
     month: "short",
     day: "numeric",
   },
+  locale: string = getIntlLocale(),
 ): string {
   const normalized = normalizeDateOnly(value);
   if (!normalized) return value;
   const [year, month, day] = normalized.split("-").map(Number);
-  return new Intl.DateTimeFormat(getIntlLocale(), {
+  return new Intl.DateTimeFormat(locale, {
     ...options,
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year, month - 1, day)));
@@ -46,12 +47,12 @@ export function formatShortDate(value: string): string {
   });
 }
 
-export function formatLongDate(value: string): string {
+export function formatLongDate(value: string, locale?: string): string {
   return formatDateOnly(value, {
     year: "numeric",
     month: "long",
     day: "numeric",
-  });
+  }, locale);
 }
 
 export function getDateOnlyInTimeZone(date: Date, timeZone: string): string {
