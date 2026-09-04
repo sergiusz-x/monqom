@@ -16,7 +16,12 @@ export function useBudgetOverview(workspaceId: string, month: string) {
     queryKey: [...queryKeys.budgets(workspaceId), "overview", month],
     enabled: Boolean(workspaceId && month),
     queryFn: async ({ signal }): Promise<BudgetOverview> => {
-      const [year, monthPart] = month.split("-").map(Number);
+      const [yearPart, monthPartValue] = month.split("-");
+      const year = Number(yearPart);
+      const monthPart = Number(monthPartValue);
+      if (!Number.isInteger(year) || !Number.isInteger(monthPart)) {
+        throw new Error("Month must use YYYY-MM format");
+      }
       const [progressResponse, budgetsResponse] = await Promise.all([
         budgetsApi.budgetsControllerListBudgetProgress(month, workspaceId, {
           signal,

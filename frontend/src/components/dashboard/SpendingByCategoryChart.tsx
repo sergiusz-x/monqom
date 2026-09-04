@@ -44,7 +44,7 @@ function colorForCategory(categoryId: string, color: string | null): string {
       (total + character.charCodeAt(0) * (index + 1)) % 997,
     0,
   );
-  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length] ?? FALLBACK_COLORS[0]!;
 }
 
 export function SpendingByCategoryChart({

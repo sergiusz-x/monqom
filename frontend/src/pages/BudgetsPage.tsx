@@ -163,7 +163,13 @@ export default function BudgetsPage() {
     }
     const amount = minorUnitsToMajorAmount(form.amountMinorUnits);
 
-    const [year, monthPart] = month.split("-").map(Number);
+    const [yearPart, monthPartValue] = month.split("-");
+    const year = Number(yearPart);
+    const monthPart = Number(monthPartValue);
+    if (!Number.isInteger(year) || !Number.isInteger(monthPart)) {
+      setSubmitError(t("budgets.saveError"));
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError(null);
     setFieldErrors({});

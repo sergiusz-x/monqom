@@ -149,9 +149,8 @@ export function CategorySelector({
       setFocusedIndex((i) => (i > 0 ? i - 1 : 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (focusedIndex >= 0 && focusedIndex < visibleItems.length) {
-        selectItem(visibleItems[focusedIndex].id);
-      }
+      const focusedItem = visibleItems[focusedIndex];
+      if (focusedItem) selectItem(focusedItem.id);
     }
   }
 
