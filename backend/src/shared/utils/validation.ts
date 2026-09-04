@@ -289,6 +289,13 @@ export function validateMoneyAmountValue(
     return amountCents
 }
 
+/** Trim a required identifier or text field consistently across domain services. */
+export function normalizeRequiredValue(value: string, fieldName: string): string {
+    const normalizedValue = value.trim()
+    if (normalizedValue.length === 0) throw new BadRequestException(`${fieldName} is required`)
+    return normalizedValue
+}
+
 function validateEmailValue(input: string, errors: string[]): string | undefined {
     if (input.trim().length === 0) {
         errors.push('Email is required')
@@ -303,3 +310,4 @@ function validateEmailValue(input: string, errors: string[]): string | undefined
 
     return email
 }
+import { BadRequestException } from '@nestjs/common'

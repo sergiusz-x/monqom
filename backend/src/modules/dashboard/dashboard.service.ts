@@ -6,6 +6,7 @@ import {
     TransactionsRepository,
 } from '../transactions/transactions.repository'
 import type { CreateTransactionResponse } from '../transactions/transactions.service'
+import { normalizeRequiredValue } from '../../shared/utils/validation'
 
 export interface DashboardMonthCommand {
     month: string
@@ -331,16 +332,6 @@ function validateDashboardMonthInput(input: DashboardMonthCommand): ValidatedDas
         previousStartDate: new Date(Date.UTC(year, monthIndex - 1, 1)),
         previousEndDateExclusive: new Date(Date.UTC(year, monthIndex, 1)),
     }
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function determineDirection(changeAmountCents: number): 'up' | 'down' | 'flat' {

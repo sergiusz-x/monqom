@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { validateMoneyAmountValue } from '../../shared/utils/validation'
+import { normalizeRequiredValue, validateMoneyAmountValue } from '../../shared/utils/validation'
 import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
 import { WorkspaceService } from '../workspace/workspace.service'
 import {
@@ -696,16 +696,6 @@ function validateTagsValue(value: string[] | undefined, errors: string[]): strin
     }
 
     return normalizedTags
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function mapCreateTransactionResponse(transaction: TransactionWithTags): CreateTransactionResponse {

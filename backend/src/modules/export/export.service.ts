@@ -4,6 +4,7 @@ import {
     ListTransactionsForExportQuery,
     TransactionsRepository,
 } from '../transactions/transactions.repository'
+import { normalizeRequiredValue } from '../../shared/utils/validation'
 
 const DEFAULT_EXPORT_BATCH_SIZE = 500
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
@@ -207,16 +208,6 @@ function validateDateFilterValue(
 
     errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
     return undefined
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function getContentType(format: ExportFormat): string {

@@ -5,7 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { validateMoneyAmountValue } from '../../shared/utils/validation'
+import { normalizeRequiredValue, validateMoneyAmountValue } from '../../shared/utils/validation'
 import { Budget } from '@prisma/client'
 import { BudgetsPersistenceClient, BudgetsRepository } from './budgets.repository'
 import { calculateBudgetProgress } from './budget-progress.calculator'
@@ -434,16 +434,6 @@ function validateRequiredIdValue(
     }
 
     return value.trim()
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function mapBudgetResponse(budget: Budget): BudgetResponse {
