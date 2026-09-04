@@ -69,4 +69,20 @@ describe('IntegrationCredentialGuard', () => {
             ForbiddenException,
         )
     })
+
+    it('authorizes a lifecycle operation only when its exact scope is present', async () => {
+        const updatePrincipal = { ...principal, scopes: ['transactions:update-own'] as const }
+        const auth = {
+            authenticateAuthorizationHeader: jest.fn().mockResolvedValue(updatePrincipal),
+        }
+        const reflector = {
+            getAllAndOverride: jest.fn().mockReturnValue(['transactions:update-own']),
+        }
+        const guard = new IntegrationCredentialGuard(
+            auth as never as IntegrationCredentialService,
+            { consumeCredential: jest.fn(), consumeFailedAuthentication: jest.fn() } as never,
+            reflector as never as Reflector,
+        )
+        await expect(guard.canActivate(context().context as never)).resolves.toBe(true)
+    })
 })

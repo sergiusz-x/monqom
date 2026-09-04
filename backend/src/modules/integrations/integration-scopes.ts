@@ -9,10 +9,13 @@ export const INTEGRATION_SCOPES = [
 
 export type IntegrationScope = (typeof INTEGRATION_SCOPES)[number]
 
-const INITIAL_INTEGRATION_SCOPES = new Set<IntegrationScope>([
+const IMPLEMENTED_INTEGRATION_SCOPES = new Set<IntegrationScope>([
     'transactions:create',
     'categories:read',
     'payment-sources:read',
+    'transactions:read-own',
+    'transactions:update-own',
+    'transactions:delete-own',
 ])
 
 export function isIntegrationScope(value: string): value is IntegrationScope {
@@ -22,7 +25,7 @@ export function isIntegrationScope(value: string): value is IntegrationScope {
 export function areInitialIntegrationScopes(scopes: readonly string[]): boolean {
     return scopes.every(
         (scope): scope is IntegrationScope =>
-            isIntegrationScope(scope) && INITIAL_INTEGRATION_SCOPES.has(scope),
+            isIntegrationScope(scope) && IMPLEMENTED_INTEGRATION_SCOPES.has(scope),
     )
 }
 

@@ -3,10 +3,13 @@ import {
     ConflictException,
     Injectable,
     NotFoundException,
+    PreconditionFailedException,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { createHash } from 'crypto'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { AuditService } from '../../shared/audit/audit.service'
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import {
     TransactionWithTags,
     TransactionsPersistenceClient,
@@ -43,7 +46,7 @@ export interface ExternalTransactionCreateResult {
 interface IdempotencyClaim {
     integrationId: string
     key: string
-    operation: 'create'
+    operation: 'create' | 'update' | 'delete'
     targetExternalId: string
     fingerprint: string
 }
@@ -56,6 +59,7 @@ export class ExternalTransactionOwnershipService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly transactionsRepository: TransactionsRepository,
+        private readonly auditService: AuditService,
     ) {}
 
     async createIdempotently(
@@ -95,6 +99,7 @@ export class ExternalTransactionOwnershipService {
                         description: command.description,
                         notes: command.notes,
                         tags: command.tags,
+                        auditMetadata: machineAuditMetadata(principal),
                     },
                     tx,
                 )
@@ -113,6 +118,163 @@ export class ExternalTransactionOwnershipService {
                 return this.replayCompletedClaim(claim)
             if (isUniqueConstraint(error))
                 throw new ConflictException('External transaction already exists')
+            throw error
+        }
+    }
+
+    async updateIdempotently(
+        principal: MachinePrincipal,
+        idempotencyKey: string,
+        expectedVersion: number,
+        input: ExternalTransactionCreateCommand,
+        now = new Date(),
+    ): Promise<ExternalTransactionCreateResult> {
+        const command = normalizeCreateCommand(input)
+        const claim: IdempotencyClaim = {
+            integrationId: principal.integrationId,
+            key: normalizeIdempotencyKey(idempotencyKey),
+            operation: 'update',
+            targetExternalId: command.externalId,
+            fingerprint: fingerprintExternalTransactionUpdate(command, expectedVersion),
+        }
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const record = await this.createIdempotencyClaim(tx, claim, now)
+                const existing = await this.findOwnedTransaction(
+                    principal.workspaceId,
+                    principal.integrationId,
+                    command.externalId,
+                    tx,
+                )
+                if (existing.version !== expectedVersion)
+                    throw new PreconditionFailedException('Transaction version does not match')
+                await this.assertAllowedReferences(principal, command, tx)
+                const transaction = await this.transactionsRepository.updateTransactionWithTags(
+                    {
+                        workspaceId: principal.workspaceId,
+                        transactionId: existing.id,
+                        expectedVersion,
+                        categoryId: command.categoryId,
+                        paymentSourceId: command.paymentSourceId,
+                        type: command.type,
+                        amount: command.amount,
+                        currency: command.currency,
+                        baseAmount: command.baseAmount,
+                        fxRate: command.fxRate,
+                        fxRateDate: command.fxRateDate,
+                        fxSource: command.fxSource,
+                        date: command.date,
+                        description: command.description,
+                        notes: command.notes,
+                        tags: command.tags,
+                    },
+                    tx,
+                )
+                if (!transaction)
+                    throw new PreconditionFailedException('Transaction version does not match')
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.TRANSACTION_UPDATED,
+                        workspaceId: principal.workspaceId,
+                        entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                        entityId: transaction.id,
+                        metadata: {
+                            ...machineAuditMetadata(principal),
+                            external_id: command.externalId,
+                            previous_version: existing.version,
+                            version: transaction.version,
+                        },
+                    },
+                    tx,
+                )
+                await tx.integrationIdempotencyRecord.update({
+                    where: { id: record.id },
+                    data: {
+                        status: 'completed',
+                        responseStatus: 200,
+                        responseBody: serializeTransaction(transaction),
+                    },
+                })
+                return { transaction, replayed: false }
+            })
+        } catch (error) {
+            if (error instanceof ExistingIdempotencyClaimError)
+                return this.replayCompletedClaim(claim)
+            throw error
+        }
+    }
+
+    async deleteIdempotently(
+        principal: MachinePrincipal,
+        idempotencyKey: string,
+        externalId: string,
+        expectedVersion: number,
+        now = new Date(),
+    ): Promise<{ replayed: boolean }> {
+        const normalizedExternalId = normalizeExternalId(externalId)
+        const claim: IdempotencyClaim = {
+            integrationId: principal.integrationId,
+            key: normalizeIdempotencyKey(idempotencyKey),
+            operation: 'delete',
+            targetExternalId: normalizedExternalId,
+            fingerprint: fingerprintExternalTransactionDelete(
+                normalizedExternalId,
+                expectedVersion,
+            ),
+        }
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const record = await this.createIdempotencyClaim(tx, claim, now)
+                const existing = await this.findOwnedTransaction(
+                    principal.workspaceId,
+                    principal.integrationId,
+                    normalizedExternalId,
+                    tx,
+                )
+                if (existing.version !== expectedVersion)
+                    throw new PreconditionFailedException('Transaction version does not match')
+                const deleted = await tx.transaction.updateMany({
+                    where: {
+                        id: existing.id,
+                        workspaceId: principal.workspaceId,
+                        integrationId: principal.integrationId,
+                        externalId: normalizedExternalId,
+                        version: expectedVersion,
+                        deletedAt: null,
+                    },
+                    data: { deletedAt: now, version: { increment: 1 } },
+                })
+                if (deleted.count !== 1)
+                    throw new PreconditionFailedException('Transaction version does not match')
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.TRANSACTION_DELETED,
+                        workspaceId: principal.workspaceId,
+                        entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                        entityId: existing.id,
+                        metadata: {
+                            ...machineAuditMetadata(principal),
+                            external_id: normalizedExternalId,
+                            version: expectedVersion,
+                        },
+                    },
+                    tx,
+                )
+                await tx.integrationIdempotencyRecord.update({
+                    where: { id: record.id },
+                    data: {
+                        status: 'completed',
+                        responseStatus: 204,
+                        responseBody: { deleted: true },
+                    },
+                })
+                return { replayed: false }
+            })
+        } catch (error) {
+            if (error instanceof ExistingIdempotencyClaimError) {
+                await this.assertCompletedReplay(claim)
+                return { replayed: true }
+            }
             throw error
         }
     }
@@ -194,6 +356,11 @@ export class ExternalTransactionOwnershipService {
     private async replayCompletedClaim(
         claim: IdempotencyClaim,
     ): Promise<ExternalTransactionCreateResult> {
+        const record = await this.assertCompletedReplay(claim)
+        return { transaction: deserializeTransaction(record.responseBody), replayed: true }
+    }
+
+    private async assertCompletedReplay(claim: IdempotencyClaim) {
         const record = await this.prisma.integrationIdempotencyRecord.findUnique({
             where: {
                 integrationId_keyDigest: {
@@ -212,7 +379,7 @@ export class ExternalTransactionOwnershipService {
         }
         if (record.status !== 'completed')
             throw new ConflictException('Idempotency request is in progress')
-        return { transaction: deserializeTransaction(record.responseBody), replayed: true }
+        return record
     }
 
     private async assertAllowedReferences(
@@ -258,6 +425,24 @@ export function fingerprintExternalTransactionCreate(
         .digest('hex')
 }
 
+export function fingerprintExternalTransactionUpdate(
+    input: ExternalTransactionCreateCommand,
+    expectedVersion: number,
+): string {
+    return createHash('sha256')
+        .update(stableJson({ ...normalizeCreateCommand(input), expectedVersion }), 'utf8')
+        .digest('hex')
+}
+
+export function fingerprintExternalTransactionDelete(
+    externalId: string,
+    expectedVersion: number,
+): string {
+    return createHash('sha256')
+        .update(stableJson({ externalId, expectedVersion }), 'utf8')
+        .digest('hex')
+}
+
 function normalizeIdempotencyKey(value: string): string {
     if (typeof value !== 'string' || !IDEMPOTENCY_KEY_PATTERN.test(value)) {
         throw new BadRequestException(
@@ -297,6 +482,17 @@ function normalizeCreateCommand(
     }
 }
 
+function normalizeExternalId(value: string): string {
+    const normalized = value.trim()
+    if (!normalized || Buffer.byteLength(normalized, 'utf8') > MAX_EXTERNAL_ID_BYTES)
+        throw new BadRequestException('External id must contain between 1 and 200 UTF-8 bytes')
+    return normalized
+}
+
+function machineAuditMetadata(principal: MachinePrincipal): Prisma.InputJsonObject {
+    return { integration_id: principal.integrationId, credential_id: principal.credentialId }
+}
+
 function serializeTransaction(transaction: TransactionWithTags): Prisma.InputJsonObject {
     return {
         id: transaction.id,
@@ -306,6 +502,7 @@ function serializeTransaction(transaction: TransactionWithTags): Prisma.InputJso
         integrationId: transaction.integrationId,
         externalId: transaction.externalId,
         type: transaction.type,
+        version: transaction.version,
         amount: transaction.amount,
         currency: transaction.currency,
         baseAmount: transaction.baseAmount,
@@ -336,6 +533,7 @@ function deserializeTransaction(value: Prisma.JsonValue | null): TransactionWith
         integrationId: typeof body.integrationId === 'string' ? body.integrationId : null,
         externalId: typeof body.externalId === 'string' ? body.externalId : null,
         type: String(body.type),
+        version: Number(body.version),
         amount: Number(body.amount),
         currency: String(body.currency),
         baseAmount: Number(body.baseAmount),

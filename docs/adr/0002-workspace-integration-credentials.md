@@ -162,10 +162,9 @@ future operation does not require broadening an existing scope:
 | `categories:read`         | List minimal active category metadata allowed by the credential       |
 | `payment-sources:read`    | List minimal active payment-source metadata allowed by the credential |
 
-The first release can issue only `transactions:create`, `categories:read`, and
-`payment-sources:read`. Update, delete, and transaction-read scopes are reserved but cannot be
-selected, granted, or used until a separate reviewed implementation exposes their endpoints.
-Consequently, an initial integration cannot modify or delete any transaction after creation.
+The lifecycle release can issue each of the six exact scopes. They remain independently granted:
+`transactions:create` never implies transaction lookup, update, or deletion, and metadata scopes
+never imply a transaction operation. Empty scopes authenticate but authorize no endpoint.
 
 Scope comparison is exact and case-sensitive. There are no wildcards, implied scopes, role-derived
 scopes, `all`, `admin`, or full-access option. An empty scope set authenticates but authorizes no
@@ -178,18 +177,17 @@ transaction collection endpoint.
 
 ### Endpoint-to-scope matrix
 
-The public route names are provider-neutral. Only the create and metadata routes in this table are
-implemented in the first release; rows marked future define reserved authorization boundaries, not
-active API surface:
+The public route names are provider-neutral. Each route is independently guarded; no scope implies
+another capability or exposes a collection of financial records:
 
-| Method and route                                               | Required scope            | Additional rule                           |
-| -------------------------------------------------------------- | ------------------------- | ----------------------------------------- |
-| `POST /api/v1/workspaces/:workspaceId/external-transactions`   | `transactions:create`     | `Idempotency-Key` required                |
-| Future: exact transaction lookup                               | `transactions:read-own`   | Exact integration ownership               |
-| Future: exact transaction replacement                          | `transactions:update-own` | `Idempotency-Key` and `If-Match` required |
-| Future: exact transaction deletion                             | `transactions:delete-own` | `Idempotency-Key` and `If-Match` required |
-| `GET /api/v1/workspaces/:workspaceId/external-categories`      | `categories:read`         | Active allowed metadata only              |
-| `GET /api/v1/workspaces/:workspaceId/external-payment-sources` | `payment-sources:read`    | Active allowed metadata only              |
+| Method and route                                                           | Required scope            | Additional rule                           |
+| -------------------------------------------------------------------------- | ------------------------- | ----------------------------------------- |
+| `POST /api/v1/workspaces/:workspaceId/external-transactions`               | `transactions:create`     | `Idempotency-Key` required                |
+| `GET /api/v1/workspaces/:workspaceId/external-transactions/:externalId`    | `transactions:read-own`   | Exact integration ownership               |
+| `PUT /api/v1/workspaces/:workspaceId/external-transactions/:externalId`    | `transactions:update-own` | `Idempotency-Key` and `If-Match` required |
+| `DELETE /api/v1/workspaces/:workspaceId/external-transactions/:externalId` | `transactions:delete-own` | `Idempotency-Key` and `If-Match` required |
+| `GET /api/v1/workspaces/:workspaceId/external-categories`                  | `categories:read`         | Active allowed metadata only              |
+| `GET /api/v1/workspaces/:workspaceId/external-payment-sources`             | `payment-sources:read`    | Active allowed metadata only              |
 
 Machine principals are routed through dedicated authentication and scope guards, never through
 `SessionGuard`. Browser-session endpoints continue to reject bearer-only machine authentication.

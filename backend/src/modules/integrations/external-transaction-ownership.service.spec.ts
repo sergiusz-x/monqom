@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ConflictException, NotFoundException } from '@nestjs/common'
+import { ConflictException, NotFoundException, PreconditionFailedException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import {
     ExternalTransactionCreateCommand,
@@ -39,6 +39,7 @@ describe('ExternalTransactionOwnershipService', () => {
         workspaceId: 'workspace-1',
         integrationId: 'integration-1',
         externalId: 'bank-1',
+        version: 1,
         categoryId: 'category-1',
         paymentSourceId: 'source-1',
         type: 'expense',
@@ -82,7 +83,9 @@ describe('ExternalTransactionOwnershipService', () => {
             findActivePaymentSourceById: jest.fn(),
             createTransactionWithTags: jest.fn(),
         }
-        service = new ExternalTransactionOwnershipService(prisma, repository)
+        service = new ExternalTransactionOwnershipService(prisma, repository, {
+            record: jest.fn(),
+        } as any)
         prisma.integrationIdempotencyRecord.create.mockResolvedValue({ id: 'record-1' })
         prisma.integrationIdempotencyRecord.update.mockResolvedValue({})
         repository.findCategoryById.mockResolvedValue({ id: 'category-1', type: 'expense' })
@@ -177,5 +180,30 @@ describe('ExternalTransactionOwnershipService', () => {
             ),
         ).rejects.toBeInstanceOf(NotFoundException)
         expect(repository.createTransactionWithTags).not.toHaveBeenCalled()
+    })
+
+    it('rejects an update with a stale strong ETag before mutation', async () => {
+        prisma.transaction.findFirst.mockResolvedValue({ ...transaction, version: 2 })
+        await expect(
+            service.updateIdempotently(principal, '0123456789abcdef', 1, command),
+        ).rejects.toBeInstanceOf(PreconditionFailedException)
+        expect(repository.createTransactionWithTags).not.toHaveBeenCalled()
+    })
+
+    it('soft deletes an owned record once with its version in the database predicate', async () => {
+        prisma.transaction.findFirst.mockResolvedValue(transaction)
+        prisma.transaction.updateMany.mockResolvedValue({ count: 1 })
+        await expect(
+            service.deleteIdempotently(principal, '1234567890abcdef', 'bank-1', 1),
+        ).resolves.toEqual({ replayed: false })
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    integrationId: 'integration-1',
+                    version: 1,
+                    deletedAt: null,
+                }),
+            }),
+        )
     })
 })

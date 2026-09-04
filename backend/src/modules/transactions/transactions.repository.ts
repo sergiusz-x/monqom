@@ -23,11 +23,13 @@ export interface CreateTransactionRecordInput {
     description: string
     notes: string | null
     tags: string[]
+    auditMetadata?: Prisma.InputJsonObject
 }
 
 export interface UpdateTransactionRecordInput {
     workspaceId: string
     transactionId: string
+    expectedVersion?: number
     userId?: string
     previousTransaction?: TransactionWithTags
     categoryId: string
@@ -252,6 +254,7 @@ export class TransactionsRepository {
                               }
                             : {}),
                         tags: normalizedTags,
+                        ...(input.auditMetadata ?? {}),
                     },
                 },
                 tx,
@@ -305,6 +308,9 @@ export class TransactionsRepository {
                     workspaceId: input.workspaceId,
                     id: input.transactionId,
                     deletedAt: null,
+                    ...(input.expectedVersion !== undefined
+                        ? { version: input.expectedVersion }
+                        : {}),
                 },
                 data: {
                     categoryId: input.categoryId,
@@ -319,6 +325,7 @@ export class TransactionsRepository {
                     date: input.date,
                     description: input.description,
                     notes: input.notes,
+                    ...(input.expectedVersion !== undefined ? { version: { increment: 1 } } : {}),
                 },
             })
 

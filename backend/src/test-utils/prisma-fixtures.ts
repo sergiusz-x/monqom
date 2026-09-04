@@ -30,6 +30,7 @@ export function createTransactionFixture(overrides: Partial<Transaction> = {}): 
         paymentSourceId: 'payment-source-1',
         integrationId: null,
         externalId: null,
+        version: 1,
         type: 'expense',
         amount: 1050,
         currency: 'USD',

@@ -180,6 +180,7 @@ model Transaction {
   externalId      String? @map("external_id")
 
   type        String   @default("expense")
+  version     Int      @default(1)
   amount      Int // stored as integer minor units (cents)
   currency    String
   baseAmount  Int      @default(0) @map("base_amount")
