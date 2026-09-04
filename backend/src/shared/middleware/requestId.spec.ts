@@ -32,4 +32,21 @@ describe('requestIdMiddleware', () => {
         expect(mockResponse.setHeader).toHaveBeenCalledWith('x-request-id', 'custom-id-123')
         expect(nextFunction).toHaveBeenCalled()
     })
+
+    it.each([
+        ['multiple header values', ['first-id', 'second-id']],
+        ['spaces', 'request id'],
+        ['control characters', 'request\n-id'],
+        ['an oversized value', 'a'.repeat(129)],
+    ])('generates a new UUID for %s', (_, suppliedId) => {
+        mockRequest.headers = { 'x-request-id': suppliedId }
+
+        requestIdMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
+
+        expect(mockRequest.id).toMatch(
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+        )
+        expect(mockResponse.setHeader).toHaveBeenCalledWith('x-request-id', mockRequest.id)
+        expect(nextFunction).toHaveBeenCalled()
+    })
 })
