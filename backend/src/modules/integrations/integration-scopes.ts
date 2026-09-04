@@ -22,7 +22,7 @@ export function isIntegrationScope(value: string): value is IntegrationScope {
     return (INTEGRATION_SCOPES as readonly string[]).includes(value)
 }
 
-export function areInitialIntegrationScopes(scopes: readonly string[]): boolean {
+export function areSupportedIntegrationScopes(scopes: readonly string[]): boolean {
     return scopes.every(
         (scope): scope is IntegrationScope =>
             isIntegrationScope(scope) && IMPLEMENTED_INTEGRATION_SCOPES.has(scope),
@@ -31,7 +31,7 @@ export function areInitialIntegrationScopes(scopes: readonly string[]): boolean 
 
 export function normalizeIntegrationScopes(scopes: readonly string[]): IntegrationScope[] {
     const normalized = [...new Set(scopes.map((scope) => scope.trim()))]
-    if (!areInitialIntegrationScopes(normalized)) {
+    if (!areSupportedIntegrationScopes(normalized)) {
         throw new Error('Integration scopes contain an unsupported capability')
     }
     return normalized.sort() as IntegrationScope[]

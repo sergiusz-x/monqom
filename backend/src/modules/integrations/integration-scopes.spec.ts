@@ -1,10 +1,11 @@
-import { areInitialIntegrationScopes, normalizeIntegrationScopes } from './integration-scopes'
+import { areSupportedIntegrationScopes, normalizeIntegrationScopes } from './integration-scopes'
 
 describe('integration scopes', () => {
-    it('accepts only scopes active in the first release', () => {
-        expect(areInitialIntegrationScopes(['transactions:create', 'categories:read'])).toBe(true)
-        expect(areInitialIntegrationScopes(['transactions:update-own'])).toBe(false)
-        expect(areInitialIntegrationScopes(['*'])).toBe(false)
+    it('accepts each exact lifecycle scope but no wildcard', () => {
+        expect(areSupportedIntegrationScopes(['transactions:create', 'categories:read'])).toBe(true)
+        expect(areSupportedIntegrationScopes(['transactions:update-own'])).toBe(true)
+        expect(areSupportedIntegrationScopes(['transactions:delete-own'])).toBe(true)
+        expect(areSupportedIntegrationScopes(['*'])).toBe(false)
     })
 
     it('deduplicates scopes without broadening permissions', () => {
