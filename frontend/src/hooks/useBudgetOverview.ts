@@ -4,6 +4,7 @@ import { queryKeys } from "@/lib/query-client";
 import type { Budget, BudgetProgressItem } from "@/types/budget";
 import { mapBudget, mapBudgetProgressItem } from "@/lib/api-mappers";
 import { getApiErrorMessage } from "@/lib/api-errors";
+import { parseYearMonth } from "@/lib/date-only";
 import type { ApiBudget } from "@/types/api-contracts";
 
 interface BudgetOverview {
@@ -16,12 +17,11 @@ export function useBudgetOverview(workspaceId: string, month: string) {
     queryKey: [...queryKeys.budgets(workspaceId), "overview", month],
     enabled: Boolean(workspaceId && month),
     queryFn: async ({ signal }): Promise<BudgetOverview> => {
-      const [yearPart, monthPartValue] = month.split("-");
-      const year = Number(yearPart);
-      const monthPart = Number(monthPartValue);
-      if (!Number.isInteger(year) || !Number.isInteger(monthPart)) {
+      const parsedMonth = parseYearMonth(month);
+      if (!parsedMonth) {
         throw new Error("Month must use YYYY-MM format");
       }
+      const [year, monthPart] = parsedMonth;
       const [progressResponse, budgetsResponse] = await Promise.all([
         budgetsApi.budgetsControllerListBudgetProgress(month, workspaceId, {
           signal,

@@ -20,6 +20,7 @@ import { queryKeys } from "@/lib/query-client";
 import {
   formatMonth,
   getMonthInTimeZone,
+  parseYearMonth,
   shiftMonth as shiftCalendarMonth,
 } from "@/lib/date-only";
 import {
@@ -163,13 +164,12 @@ export default function BudgetsPage() {
     }
     const amount = minorUnitsToMajorAmount(form.amountMinorUnits);
 
-    const [yearPart, monthPartValue] = month.split("-");
-    const year = Number(yearPart);
-    const monthPart = Number(monthPartValue);
-    if (!Number.isInteger(year) || !Number.isInteger(monthPart)) {
+    const parsedMonth = parseYearMonth(month);
+    if (!parsedMonth) {
       setSubmitError(t("budgets.saveError"));
       return;
     }
+    const [year, monthPart] = parsedMonth;
     setIsSubmitting(true);
     setSubmitError(null);
     setFieldErrors({});

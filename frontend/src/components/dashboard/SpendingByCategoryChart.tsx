@@ -13,7 +13,7 @@ import { useNavigate } from "react-router";
 import type { CategoryBreakdown } from "@/types/dashboard";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { formatCurrency } from "@/lib/money";
-import { formatMonth } from "@/lib/date-only";
+import { formatMonth, getMonthDateRange } from "@/lib/date-only";
 import { useMemo } from "react";
 import { EmptyState, SectionCard } from "@monqom/ui";
 
@@ -27,15 +27,6 @@ const FALLBACK_COLORS = [
   "var(--chart-7)",
   "var(--chart-8)",
 ];
-
-function monthDateRange(month: string): { dateFrom: string; dateTo: string } {
-  const [yearPart, monthPart] = month.split("-");
-  const lastDay = new Date(Number(yearPart), Number(monthPart), 0).getDate();
-  return {
-    dateFrom: `${month}-01`,
-    dateTo: `${month}-${String(lastDay).padStart(2, "0")}`,
-  };
-}
 
 function colorForCategory(categoryId: string, color: string | null): string {
   if (color) return color;
@@ -56,7 +47,7 @@ export function SpendingByCategoryChart({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { dateFrom, dateTo } = monthDateRange(month);
+  const { dateFrom, dateTo } = getMonthDateRange(month);
   const categories = [...breakdown.categories]
     .sort(
       (a, b) =>

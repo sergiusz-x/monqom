@@ -1,6 +1,7 @@
 import { getIntlLocale } from "@/lib/locale";
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
 export function normalizeDateOnly(value: string): string | null {
   const candidate = value.slice(0, 10);
@@ -33,6 +34,13 @@ export function parseDateOnlyParts(
   ];
 }
 
+export function parseYearMonth(
+  value: string,
+): [year: number, month: number] | null {
+  if (!YEAR_MONTH_PATTERN.test(value)) return null;
+  return [Number(value.slice(0, 4)), Number(value.slice(5, 7))];
+}
+
 export function formatDateOnly(
   value: string,
   options: Intl.DateTimeFormatOptions = {
@@ -42,9 +50,9 @@ export function formatDateOnly(
   },
   locale: string = getIntlLocale(),
 ): string {
-  const normalized = normalizeDateOnly(value);
-  if (!normalized) return value;
-  const [year, month, day] = normalized.split("-").map(Number);
+  const parts = parseDateOnlyParts(value);
+  if (!parts) return value;
+  const [year, month, day] = parts;
   return new Intl.DateTimeFormat(locale, {
     ...options,
     timeZone: "UTC",
@@ -85,7 +93,9 @@ export function getMonthInTimeZone(date: Date, timeZone: string): string {
 }
 
 export function shiftMonth(month: string, delta: number): string {
-  const [year, monthPart] = month.split("-").map(Number);
+  const parts = parseYearMonth(month);
+  if (!parts) return month;
+  const [year, monthPart] = parts;
   const date = new Date(Date.UTC(year, monthPart - 1 + delta, 1));
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
@@ -95,8 +105,9 @@ function formatMonthName(
   monthStyle: "short" | "long",
   includeYear: boolean,
 ): string {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return month;
-  const [year, monthPart] = month.split("-").map(Number);
+  const parts = parseYearMonth(month);
+  if (!parts) return month;
+  const [year, monthPart] = parts;
   return new Intl.DateTimeFormat(getIntlLocale(), {
     month: monthStyle,
     year: includeYear ? "numeric" : undefined,
@@ -116,7 +127,9 @@ export function getMonthDateRange(month: string): {
   dateFrom: string;
   dateTo: string;
 } {
-  const [year, monthPart] = month.split("-").map(Number);
+  const parts = parseYearMonth(month);
+  if (!parts) throw new RangeError("Expected a valid YYYY-MM month");
+  const [year, monthPart] = parts;
   const lastDay = new Date(Date.UTC(year, monthPart, 0)).getUTCDate();
   return {
     dateFrom: `${month}-01`,
