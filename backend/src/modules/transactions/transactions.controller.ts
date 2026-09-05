@@ -9,10 +9,8 @@ import {
     Post,
     Query,
     Put,
-    Req,
     UseGuards,
 } from '@nestjs/common'
-import type { Request } from 'express'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
@@ -29,6 +27,7 @@ import {
     ApiTransactionResponse,
     ApiTransactionsPageResponse,
 } from '../../shared/openapi/response-schemas'
+import { CurrentUserId, CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 
 @Controller(TRANSACTIONS_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -41,7 +40,7 @@ export class TransactionsController {
     @HttpCode(HttpStatus.OK)
     async listTransactions(
         @Query() query: ListTransactionsQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<ListTransactionsResponse> {
         return this.transactionsService.listTransactions(
             {
@@ -57,7 +56,7 @@ export class TransactionsController {
                 limit: query.limit,
                 offset: query.offset,
             },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
 
@@ -66,11 +65,11 @@ export class TransactionsController {
     @HttpCode(HttpStatus.OK)
     async getTransaction(
         @Param('id') transactionId: string,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<CreateTransactionResponse> {
         return this.transactionsService.getTransactionById(
             transactionId,
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
 
@@ -81,12 +80,13 @@ export class TransactionsController {
     @HttpCode(HttpStatus.CREATED)
     async createTransaction(
         @Body() body: TransactionBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<CreateTransactionResponse> {
         return this.transactionsService.createTransaction(
             toTransactionCommand(body),
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
 
@@ -98,13 +98,14 @@ export class TransactionsController {
     async updateTransaction(
         @Param('id') transactionId: string,
         @Body() body: TransactionBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<CreateTransactionResponse> {
         return this.transactionsService.updateTransaction(
             toTransactionCommand(body),
             transactionId,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
 
@@ -114,12 +115,13 @@ export class TransactionsController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteTransaction(
         @Param('id') transactionId: string,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<void> {
         await this.transactionsService.deleteTransaction(
             transactionId,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
 }
@@ -147,7 +149,7 @@ export class TransactionTagsController {
     @Get()
     @ApiStringArrayResponse()
     @HttpCode(HttpStatus.OK)
-    async listWorkspaceTags(@Req() req: Request): Promise<string[]> {
-        return this.transactionsService.listWorkspaceTags(req.workspace!.workspaceId)
+    async listWorkspaceTags(@CurrentWorkspaceId() workspaceId: string): Promise<string[]> {
+        return this.transactionsService.listWorkspaceTags(workspaceId)
     }
 }

@@ -7,15 +7,14 @@ import {
     HttpStatus,
     Param,
     Post,
-    Req,
     UseGuards,
 } from '@nestjs/common'
-import type { Request } from 'express'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { RequireWorkspaceRole, WorkspaceRoleGuard } from '../../shared/guards/workspace-role.guard'
 import { CreateIntegrationCredentialDto, CredentialStepUpDto } from './integration-management.dto'
 import { IntegrationManagementService } from './integration-management.service'
+import { CurrentUserId, CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 
 @Controller('workspaces/:workspaceId/integrations')
 @UseGuards(SessionGuard, WorkspaceGuard, WorkspaceRoleGuard)
@@ -25,34 +24,38 @@ export class IntegrationManagementController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    async create(@Req() req: Request, @Body() body: CreateIntegrationCredentialDto) {
-        return this.managementService.create(
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
-            body,
-        )
+    async create(
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+        @Body() body: CreateIntegrationCredentialDto,
+    ) {
+        return this.managementService.create(workspaceId, userId, body)
     }
 
     @Get()
-    async list(@Req() req: Request) {
-        return this.managementService.list(req.workspace!.workspaceId)
+    async list(@CurrentWorkspaceId() workspaceId: string) {
+        return this.managementService.list(workspaceId)
     }
 
     @Get(':integrationId')
-    async get(@Req() req: Request, @Param('integrationId') integrationId: string) {
-        return this.managementService.get(req.workspace!.workspaceId, integrationId)
+    async get(
+        @CurrentWorkspaceId() workspaceId: string,
+        @Param('integrationId') integrationId: string,
+    ) {
+        return this.managementService.get(workspaceId, integrationId)
     }
 
     @Post(':integrationId/credentials/:credentialId/revoke')
     async revoke(
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
         @Param('integrationId') integrationId: string,
         @Param('credentialId') credentialId: string,
         @Body() body: CredentialStepUpDto,
     ) {
         return this.managementService.revoke(
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
             integrationId,
             credentialId,
             body,
@@ -61,14 +64,15 @@ export class IntegrationManagementController {
 
     @Post(':integrationId/credentials/:credentialId/rotate')
     async rotate(
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
         @Param('integrationId') integrationId: string,
         @Param('credentialId') credentialId: string,
         @Body() body: CreateIntegrationCredentialDto,
     ) {
         return this.managementService.rotate(
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
             integrationId,
             credentialId,
             body,
@@ -77,12 +81,12 @@ export class IntegrationManagementController {
 
     @Delete(':integrationId/credentials/:credentialId')
     async remove(
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
         @Param('integrationId') integrationId: string,
         @Param('credentialId') credentialId: string,
     ) {
         return this.managementService.remove(
-            req.workspace!.workspaceId,
+            workspaceId,
             integrationId,
             credentialId,
         )

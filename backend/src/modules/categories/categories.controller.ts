@@ -9,10 +9,8 @@ import {
     Post,
     Put,
     Query,
-    Req,
     UseGuards,
 } from '@nestjs/common'
-import type { Request } from 'express'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
@@ -21,6 +19,7 @@ import { CATEGORIES_BASE_ROUTE } from './categories.routes'
 import { CategoriesService, CategoryResponse } from './categories.service'
 import { CategoriesQueryDto, CategoryBodyDto, CategoryOrderBodyDto } from './categories.dto'
 import { ApiCategoryResponse } from '../../shared/openapi/response-schemas'
+import { CurrentUserId, CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 @Controller(CATEGORIES_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
 @ApiParam({ name: 'workspaceId', type: String })
@@ -28,22 +27,22 @@ export class CategoriesController {
     constructor(private readonly categoriesService: CategoriesService) {}
     @Get() @ApiCategoryResponse(true) @HttpCode(HttpStatus.OK) async listCategories(
         @Query() query: CategoriesQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<CategoryResponse[]> {
         return this.categoriesService.listCategories(
             { includeArchived: query.include_archived, type: query.type },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
     @Get(':id') @ApiCategoryResponse() @HttpCode(HttpStatus.OK) async getCategory(
         @Param('id') id: string,
         @Query() query: CategoriesQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<CategoryResponse> {
         return this.categoriesService.getCategoryById(
             id,
             { includeArchived: query.include_archived, type: query.type },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
     @Post()
@@ -53,12 +52,13 @@ export class CategoriesController {
     @HttpCode(HttpStatus.CREATED)
     async createCategory(
         @Body() body: CategoryBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<CategoryResponse> {
         return this.categoriesService.createCategory(
             body,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
     @Patch(':id')
@@ -68,13 +68,14 @@ export class CategoriesController {
     async updateCategory(
         @Param('id') id: string,
         @Body() body: CategoryBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<CategoryResponse> {
         return this.categoriesService.updateCategory(
             id,
             body,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
     @Put('order')
@@ -83,34 +84,43 @@ export class CategoriesController {
     @RequireWorkspaceRole('admin')
     async reorderCategories(
         @Body() body: CategoryOrderBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<CategoryResponse[]> {
         return this.categoriesService.reorderCategories(
             body.items,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
     @Post(':id/archive')
     @ApiCategoryResponse()
     @UseGuards(WorkspaceRoleGuard)
     @RequireWorkspaceRole('admin')
-    async archiveCategory(@Param('id') id: string, @Req() req: Request): Promise<CategoryResponse> {
+    async archiveCategory(
+        @Param('id') id: string,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+    ): Promise<CategoryResponse> {
         return this.categoriesService.archiveCategory(
             id,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
     @Post(':id/restore')
     @ApiCategoryResponse()
     @UseGuards(WorkspaceRoleGuard)
     @RequireWorkspaceRole('admin')
-    async restoreCategory(@Param('id') id: string, @Req() req: Request): Promise<CategoryResponse> {
+    async restoreCategory(
+        @Param('id') id: string,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+    ): Promise<CategoryResponse> {
         return this.categoriesService.restoreCategory(
             id,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
 }

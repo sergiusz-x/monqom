@@ -53,6 +53,7 @@ import {
     ApiTwoFactorVerifySetupResponse,
     ApiUserResponse,
 } from '../../shared/openapi/response-schemas'
+import { CurrentUserId } from '../../shared/http/request-context.decorator'
 
 const LOGOUT_SUCCESS_MESSAGE = 'Logged out successfully'
 const TWO_FACTOR_REQUIRED_MESSAGE = 'Two-factor authentication required'
@@ -149,8 +150,8 @@ export class AuthController {
     @ApiTwoFactorSetupResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
-    async setupTwoFactor(@Req() req: Request): Promise<TwoFactorSetupResponse> {
-        return this.twoFactorService.setup(req.session.auth!.userId)
+    async setupTwoFactor(@CurrentUserId() userId: string): Promise<TwoFactorSetupResponse> {
+        return this.twoFactorService.setup(userId)
     }
 
     @Post(AUTH_ROUTES.twoFactorVerifySetup)
@@ -158,10 +159,10 @@ export class AuthController {
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async verifyTwoFactorSetup(
-        @Req() req: Request,
         @Body() body: TokenDto,
+        @CurrentUserId() userId: string,
     ): Promise<TwoFactorVerifySetupResponse> {
-        return this.twoFactorService.verifySetup(req.session.auth!.userId, { token: body.token })
+        return this.twoFactorService.verifySetup(userId, { token: body.token })
     }
 
     @Post(AUTH_ROUTES.twoFactorVerify)
@@ -204,10 +205,10 @@ export class AuthController {
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async disableTwoFactor(
-        @Req() req: Request,
         @Body() body: CurrentPasswordDto,
+        @CurrentUserId() userId: string,
     ): Promise<AuthActionResponse> {
-        return this.twoFactorService.disable(req.session.auth!.userId, {
+        return this.twoFactorService.disable(userId, {
             currentPassword: body.currentPassword,
         })
     }
@@ -241,8 +242,8 @@ export class AuthController {
     @ApiUserResponse()
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
-    async me(@Req() req: Request): Promise<AuthenticatedUserResponse> {
-        return this.authService.getAuthenticatedUser(req.session.auth!.userId)
+    async me(@CurrentUserId() userId: string): Promise<AuthenticatedUserResponse> {
+        return this.authService.getAuthenticatedUser(userId)
     }
 
     @Post(AUTH_ROUTES.verifyEmail)
@@ -278,10 +279,10 @@ export class AuthController {
     @UseGuards(SessionGuard)
     @HttpCode(HttpStatus.OK)
     async changePassword(
-        @Req() req: Request,
         @Body() body: ChangePasswordDto,
+        @CurrentUserId() userId: string,
     ): Promise<AuthActionResponse> {
-        return this.authService.changePassword(req.session.auth!.userId, {
+        return this.authService.changePassword(userId, {
             currentPassword: body.currentPassword,
             newPassword: body.newPassword,
         })

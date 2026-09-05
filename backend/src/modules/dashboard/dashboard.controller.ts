@@ -1,5 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Query, Req, UseGuards } from '@nestjs/common'
-import type { Request } from 'express'
+import { Controller, Get, HttpCode, HttpStatus, Query, UseGuards } from '@nestjs/common'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
@@ -16,6 +15,7 @@ import {
     ApiDashboardResponse,
     ApiSpendingSummaryResponse,
 } from '../../shared/openapi/response-schemas'
+import { CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 
 @Controller(DASHBOARD_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -28,9 +28,9 @@ export class DashboardController {
     @HttpCode(HttpStatus.OK)
     async getOverview(
         @Query() query: DashboardMonthQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<DashboardOverviewResponse> {
-        return this.dashboardService.getOverview({ month: query.month }, req.workspace!.workspaceId)
+        return this.dashboardService.getOverview({ month: query.month }, workspaceId)
     }
 
     @Get('spending-summary')
@@ -38,11 +38,11 @@ export class DashboardController {
     @HttpCode(HttpStatus.OK)
     async getSpendingSummary(
         @Query() query: DashboardMonthQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<SpendingSummaryResponse> {
         return this.dashboardService.getSpendingSummary(
             { month: query.month },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
 
@@ -51,11 +51,11 @@ export class DashboardController {
     @HttpCode(HttpStatus.OK)
     async getCategoryBreakdown(
         @Query() query: DashboardMonthQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<CategoryBreakdownResponse> {
         return this.dashboardService.getCategoryBreakdown(
             { month: query.month },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
 }
