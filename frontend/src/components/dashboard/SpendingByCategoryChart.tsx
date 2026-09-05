@@ -26,7 +26,7 @@ const FALLBACK_COLORS = [
   "var(--chart-6)",
   "var(--chart-7)",
   "var(--chart-8)",
-];
+] as const;
 
 function colorForCategory(categoryId: string, color: string | null): string {
   if (color) return color;
@@ -35,7 +35,7 @@ function colorForCategory(categoryId: string, color: string | null): string {
       (total + character.charCodeAt(0) * (index + 1)) % 997,
     0,
   );
-  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length] ?? FALLBACK_COLORS[0]!;
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length] ?? FALLBACK_COLORS[0];
 }
 
 export function SpendingByCategoryChart({
@@ -48,19 +48,23 @@ export function SpendingByCategoryChart({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dateFrom, dateTo } = getMonthDateRange(month);
-  const categories = [...breakdown.categories]
-    .sort(
-      (a, b) =>
-        b.amount - a.amount || a.categoryName.localeCompare(b.categoryName),
-    )
-    .map((category) => ({
-      ...category,
-      name: translateSystemLabel(
-        t,
-        category.categorySystemKey,
-        category.categoryName,
-      ),
-    }));
+  const categories = useMemo(
+    () =>
+      [...breakdown.categories]
+        .sort(
+          (a, b) =>
+            b.amount - a.amount || a.categoryName.localeCompare(b.categoryName),
+        )
+        .map((category) => ({
+          ...category,
+          name: translateSystemLabel(
+            t,
+            category.categorySystemKey,
+            category.categoryName,
+          ),
+        })),
+    [breakdown.categories, t],
+  );
   const hasSpending = categories.length > 0 && breakdown.totalSpending > 0;
   const monthLabel = useMemo(() => formatMonth(month), [month]);
 
@@ -124,7 +128,7 @@ export function SpendingByCategoryChart({
                     number | string | readonly (number | string)[] | undefined,
                 ) =>
                   formatCurrency(
-                    Number(Array.isArray(value) ? value[0] : (value ?? 0)),
+                    Number(Array.isArray(value) ? (value[0] ?? 0) : (value ?? 0)),
                     breakdown.currency,
                   )
                 }
