@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
-import { validateMoneyAmountValue } from '../../shared/utils/validation'
+import { parseDateOnly, validateMoneyAmountValue } from '../../shared/utils/validation'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { MachinePrincipal } from './integration-credential.service'
 import { ExternalTransactionBodyDto } from './external-transactions.dto'
@@ -162,8 +162,8 @@ export class ExternalTransactionsService {
 }
 
 function parseDate(value: string): Date {
-    const date = new Date(`${value}T00:00:00.000Z`)
-    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value)
+    const date = parseDateOnly(value)
+    if (!date)
         throw new BadRequestException('Date must be a valid calendar date in YYYY-MM-DD format')
     return date
 }
