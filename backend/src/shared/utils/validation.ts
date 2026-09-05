@@ -1,6 +1,7 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MONEY_AMOUNT_REGEX = /^\d+(?:\.\d{1,2})?$/
 const ISO_DATE_ONLY_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/
+const YEAR_MONTH_REGEX = /^(\d{4})-(0[1-9]|1[0-2])$/
 
 const COMMON_PASSWORD_PATTERNS = [
     'password',
@@ -267,7 +268,7 @@ export function validateMoneyAmountValue(
         return undefined
     }
 
-    const [wholePart, fractionalPart = ''] = normalizedValue.split('.')
+    const [wholePart = '', fractionalPart = ''] = normalizedValue.split('.')
     const amountCents =
         Number.parseInt(wholePart, 10) * 100 +
         Number.parseInt(fractionalPart.padEnd(2, '0') || '0', 10)
@@ -318,6 +319,15 @@ export function parseDateOnly(value: string): Date | undefined {
     }
 
     return date
+}
+
+/** Parse an ISO year-month value after validating its calendar month. */
+export function parseYearMonth(value: string): [year: number, month: number] | undefined {
+    const match = YEAR_MONTH_REGEX.exec(value)
+    if (!match) return undefined
+
+    const [, yearText = '', monthText = ''] = match
+    return [Number.parseInt(yearText, 10), Number.parseInt(monthText, 10)]
 }
 
 function validateEmailValue(input: string, errors: string[]): string | undefined {

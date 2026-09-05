@@ -6,7 +6,7 @@ import {
     TransactionsRepository,
 } from '../transactions/transactions.repository'
 import type { CreateTransactionResponse } from '../transactions/transactions.service'
-import { normalizeRequiredValue } from '../../shared/utils/validation'
+import { normalizeRequiredValue, parseYearMonth } from '../../shared/utils/validation'
 
 export interface DashboardMonthCommand {
     month: string
@@ -329,14 +329,13 @@ function validateDashboardMonthInput(input: DashboardMonthCommand): ValidatedDas
     }
 
     const normalizedMonth = input.month.trim()
-    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(normalizedMonth)
-
-    if (!match) {
+    const parsedMonth = parseYearMonth(normalizedMonth)
+    if (!parsedMonth) {
         throw new BadRequestException(['Month must use YYYY-MM format'])
     }
 
-    const year = Number.parseInt(match[1], 10)
-    const monthIndex = Number.parseInt(match[2], 10) - 1
+    const [year, month] = parsedMonth
+    const monthIndex = month - 1
 
     return {
         month: normalizedMonth,

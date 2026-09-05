@@ -5,7 +5,11 @@ import {
     NotFoundException,
 } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { normalizeRequiredValue, validateMoneyAmountValue } from '../../shared/utils/validation'
+import {
+    normalizeRequiredValue,
+    parseYearMonth,
+    validateMoneyAmountValue,
+} from '../../shared/utils/validation'
 import { Budget } from '@prisma/client'
 import { BudgetsPersistenceClient, BudgetsRepository } from './budgets.repository'
 import { calculateBudgetProgress } from './budget-progress.calculator'
@@ -399,14 +403,12 @@ function validateBudgetProgressMonthInput(
     }
 
     const normalizedMonth = input.month.trim()
-    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(normalizedMonth)
-
-    if (!match) {
+    const parsedMonth = parseYearMonth(normalizedMonth)
+    if (!parsedMonth) {
         throw new BadRequestException(['Month must use YYYY-MM format'])
     }
 
-    const year = Number.parseInt(match[1], 10)
-    const month = Number.parseInt(match[2], 10)
+    const [year, month] = parsedMonth
 
     return {
         year,
