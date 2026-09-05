@@ -7,11 +7,11 @@ import {
     randomBytes,
     type CipherGCMTypes,
 } from 'crypto'
-import type { User } from '@prisma/client'
 import * as QRCode from 'qrcode'
 import * as speakeasy from 'speakeasy'
 import { type RecoveryCodeRecord, AuthRepository } from './auth.repository'
 import type { AuthActionResponse, AuthenticatedSessionUserResponse } from './auth.service'
+import { mapAuthenticatedSessionUser } from './auth-user.mapper'
 import {
     validateCurrentPasswordInput,
     validateVerificationTokenInput,
@@ -251,21 +251,6 @@ export class TwoFactorService {
         }
 
         return false
-    }
-}
-
-function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {
-    return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        locale: user.locale,
-        hideSalaryAmounts: user.hideSalaryAmounts,
-        emailVerified: user.emailVerified,
-        totpEnabled: user.totpEnabled,
-        sessionVersion: user.sessionVersion,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
     }
 }
 

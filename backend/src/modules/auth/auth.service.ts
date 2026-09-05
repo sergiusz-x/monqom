@@ -21,6 +21,7 @@ import { logger } from '../../shared/utils/logger'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { normalizeCurrency } from '../../shared/currency/currency.service'
 import { EmailOutboxService } from '../../shared/email/email-outbox.service'
+import { mapAuthenticatedSessionUser, mapRegisteredUser } from './auth-user.mapper'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
@@ -606,20 +607,6 @@ function buildEmailVerificationUrl(token: string): string {
     return `${normalizedBaseUrl}/verify-email?token=${encodeURIComponent(token)}`
 }
 
-function mapRegisteredUser(user: User): RegisteredUserResponse {
-    return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        locale: user.locale,
-        hideSalaryAmounts: user.hideSalaryAmounts,
-        emailVerified: user.emailVerified,
-        totpEnabled: user.totpEnabled,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-    }
-}
-
 function validateChangePasswordInput(input: ChangePasswordCommand): {
     currentPassword?: string
     newPassword?: string
@@ -670,13 +657,6 @@ function validateUserProfileInput(input: UpdateUserProfileCommand): {
     }
 
     return { name, locale, hideSalaryAmounts, errors }
-}
-
-function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {
-    return {
-        ...mapRegisteredUser(user),
-        sessionVersion: user.sessionVersion,
-    }
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
