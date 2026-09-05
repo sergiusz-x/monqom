@@ -11,6 +11,7 @@ import { createRequestValidationPipe } from './../src/shared/validation/request-
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { createSessionOptions } from './../src/shared/session/session.config'
 import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
+import { EmailOutboxService } from './../src/shared/email/email-outbox.service'
 
 interface StoredUser {
     id: string
@@ -200,10 +201,12 @@ interface PrismaMock {
 describe('Transactions endpoints (e2e)', () => {
     let app: INestApplication<App>
     let prismaMock: PrismaMock
+    const originalNodeEnv = process.env.NODE_ENV
     const originalSessionSecret = process.env.SESSION_SECRET
 
     beforeEach(async () => {
         prismaMock = createPrismaMock()
+        process.env.NODE_ENV = 'test'
         process.env.SESSION_SECRET = 'test-session-secret'
 
         await seedTransactionFixture(prismaMock)
@@ -213,6 +216,8 @@ describe('Transactions endpoints (e2e)', () => {
         })
             .overrideProvider(PrismaService)
             .useValue(prismaMock)
+            .overrideProvider(EmailOutboxService)
+            .useValue({ enqueue: jest.fn(), processBatch: jest.fn() })
             .compile()
 
         app = moduleFixture.createNestApplication()
@@ -237,6 +242,7 @@ describe('Transactions endpoints (e2e)', () => {
     })
 
     afterAll(() => {
+        process.env.NODE_ENV = originalNodeEnv
         process.env.SESSION_SECRET = originalSessionSecret
     })
 

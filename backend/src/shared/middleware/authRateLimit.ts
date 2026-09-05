@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { NextFunction, Request, Response } from 'express'
 import { PrismaService } from '../database/prisma.service'
 import { createOpaqueDigest } from '../security/opaque-digest'
+import { RuntimeConfig } from '../../config/env'
 
 const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 const DEFAULT_LIMIT = 5
@@ -90,7 +91,7 @@ export class AuthRateLimitMiddleware implements NestMiddleware {
                 return consumed
             })
         } catch {
-            if (process.env.NODE_ENV !== 'test') {
+            if (!this.isTestEnvironment()) {
                 res.status(503).json({
                     statusCode: 503,
                     message: 'Authentication protection is temporarily unavailable',
@@ -114,11 +115,15 @@ export class AuthRateLimitMiddleware implements NestMiddleware {
         }
 
         this.requestsSinceCleanup += 1
-        if (this.requestsSinceCleanup >= CLEANUP_INTERVAL && process.env.NODE_ENV !== 'test') {
+        if (this.requestsSinceCleanup >= CLEANUP_INTERVAL && !this.isTestEnvironment()) {
             this.requestsSinceCleanup = 0
             await this.prisma.authRateLimit.deleteMany({ where: { expiresAt: { lt: now } } })
         }
         next()
+    }
+
+    private isTestEnvironment(): boolean {
+        return this.configService.get<RuntimeConfig>('env', { infer: true })?.nodeEnv === 'test'
     }
 }
 

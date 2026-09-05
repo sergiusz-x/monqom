@@ -34,6 +34,7 @@ interface StoredPasswordResetToken {
     id: string
     userId: string
     token: string
+    tokenHash: string | null
     expiresAt: Date
     usedAt: Date | null
     createdAt: Date
@@ -69,12 +70,12 @@ interface FakeTransactionClient {
         }): Promise<StoredUser>
     }
     passwordResetToken: {
-        findUnique(args: {
-            where: { token: string }
+        findFirst(args: {
+            where: { OR: Array<{ tokenHash: string } | { tokenHash: null; token: string }> }
             include: { user: true }
         }): Promise<(StoredPasswordResetToken & { user: StoredUser }) | null>
         create(args: {
-            data: Pick<StoredPasswordResetToken, 'userId' | 'token' | 'expiresAt'>
+            data: Pick<StoredPasswordResetToken, 'userId' | 'token' | 'tokenHash' | 'expiresAt'>
         }): Promise<StoredPasswordResetToken>
         updateMany(args: {
             where: {
@@ -472,8 +473,20 @@ function createPrismaMock(): PrismaMock {
             },
         },
         passwordResetToken: {
-            findUnique: async ({ where, include }) => {
-                const token = passwordResetTokens.find((item) => item.token === where.token) ?? null
+            findFirst: async ({ where, include }) => {
+                const tokenHash = where.OR.find(
+                    (condition): condition is { tokenHash: string } => condition.tokenHash !== null,
+                )?.tokenHash
+                const legacyToken = where.OR.find(
+                    (condition): condition is { tokenHash: null; token: string } =>
+                        condition.tokenHash === null,
+                )?.token
+                const token =
+                    passwordResetTokens.find(
+                        (item) =>
+                            item.tokenHash === tokenHash ||
+                            (item.tokenHash === null && item.token === legacyToken),
+                    ) ?? null
 
                 if (!token || !include.user) {
                     return null
@@ -497,6 +510,7 @@ function createPrismaMock(): PrismaMock {
                     id: `password-reset-token-${passwordResetTokenCounter}`,
                     userId: data.userId,
                     token: data.token,
+                    tokenHash: data.tokenHash,
                     expiresAt: data.expiresAt,
                     usedAt: null,
                     createdAt: new Date(),

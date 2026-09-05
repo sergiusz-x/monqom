@@ -3,12 +3,12 @@ import { Test, TestingModule } from '@nestjs/testing'
 import request from 'supertest'
 import { App } from 'supertest/types'
 import * as argon2 from 'argon2'
-import { createHash } from 'crypto'
 import { AppModule } from './../src/app.module'
 import { DEFAULT_CATEGORY_SEEDS } from './../src/modules/workspaces/seeds/01_default_categories'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { logger } from './../src/shared/utils/logger'
+import { createOpaqueDigest } from './../src/shared/security/opaque-digest'
 import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
 
 jest.mock('./../src/shared/utils/logger', () => ({
@@ -34,6 +34,7 @@ interface StoredEmailVerificationToken {
     id: string
     userId: string
     token: string
+    tokenHash: string | null
     expiresAt: Date
     usedAt: Date | null
     createdAt: Date
@@ -106,12 +107,12 @@ interface FakeTransactionClient {
         }): Promise<StoredUser>
     }
     emailVerificationToken: {
-        findUnique(args: {
-            where: { token: string }
+        findFirst(args: {
+            where: { OR: Array<{ tokenHash: string } | { tokenHash: null; token: string }> }
             include: { user: true }
         }): Promise<(StoredEmailVerificationToken & { user: StoredUser }) | null>
         create(args: {
-            data: Pick<StoredEmailVerificationToken, 'userId' | 'token' | 'expiresAt'>
+            data: Pick<StoredEmailVerificationToken, 'userId' | 'token' | 'tokenHash' | 'expiresAt'>
         }): Promise<StoredEmailVerificationToken>
         updateMany(args: {
             where: { userId: string; usedAt: null }
@@ -773,9 +774,20 @@ function createPrismaMock(): PrismaMock {
             },
         },
         emailVerificationToken: {
-            findUnique: async ({ where, include }) => {
+            findFirst: async ({ where, include }) => {
+                const tokenHash = where.OR.find(
+                    (condition): condition is { tokenHash: string } => condition.tokenHash !== null,
+                )?.tokenHash
+                const legacyToken = where.OR.find(
+                    (condition): condition is { tokenHash: null; token: string } =>
+                        condition.tokenHash === null,
+                )?.token
                 const verificationToken =
-                    verificationTokens.find((item) => item.token === where.token) ?? null
+                    verificationTokens.find(
+                        (item) =>
+                            item.tokenHash === tokenHash ||
+                            (item.tokenHash === null && item.token === legacyToken),
+                    ) ?? null
 
                 if (!verificationToken || !include.user) {
                     return null
@@ -799,6 +811,7 @@ function createPrismaMock(): PrismaMock {
                     id: `verification-token-${verificationTokenCounter}`,
                     userId: data.userId,
                     token: data.token,
+                    tokenHash: data.tokenHash,
                     expiresAt: data.expiresAt,
                     usedAt: null,
                     createdAt: new Date(),
@@ -1006,5 +1019,5 @@ function getLoggedVerificationToken(message: string): string {
 }
 
 function hashToken(token: string): string {
-    return createHash('sha256').update(token, 'utf8').digest('hex')
+    return createOpaqueDigest(token, 'authentication-token', 'test-session-secret')
 }
