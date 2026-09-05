@@ -68,7 +68,7 @@ describe("useDashboardData", () => {
       }),
     );
     expect(result.current.summary?.currentTotal).toBe(100);
-    expect(result.current.categoryBreakdown?.categories[0].amount).toBe(100);
+    expect(result.current.categoryBreakdown?.categories[0]?.amount).toBe(100);
     expect(result.current.spendingTrend).toEqual([
       { month: "2025-11", total: 0 },
       { month: "2025-12", total: 10 },
