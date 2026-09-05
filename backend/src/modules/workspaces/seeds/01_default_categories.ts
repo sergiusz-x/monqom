@@ -303,7 +303,7 @@ export async function seedIncomeCategoriesForWorkspace(
                 workspaceId,
                 parentId: null,
                 name: parent.name,
-                systemKey: keys[parent.name],
+                systemKey: requiredSystemKey(keys, parent.name),
                 icon: parent.icon,
                 sortOrder: parentIndex + 1,
                 deletedAt: null,
@@ -314,7 +314,7 @@ export async function seedIncomeCategoriesForWorkspace(
                 workspaceId,
                 parentId: null,
                 name: parent.name,
-                systemKey: keys[parent.name],
+                systemKey: requiredSystemKey(keys, parent.name),
                 icon: parent.icon,
                 sortOrder: parentIndex + 1,
                 deletedAt: null,
@@ -329,7 +329,7 @@ export async function seedIncomeCategoriesForWorkspace(
                     workspaceId,
                     parentId,
                     name,
-                    systemKey: keys[name],
+                    systemKey: requiredSystemKey(keys, name),
                     icon,
                     sortOrder: childIndex + 1,
                     deletedAt: null,
@@ -340,7 +340,7 @@ export async function seedIncomeCategoriesForWorkspace(
                     workspaceId,
                     parentId,
                     name,
-                    systemKey: keys[name],
+                    systemKey: requiredSystemKey(keys, name),
                     icon,
                     sortOrder: childIndex + 1,
                     deletedAt: null,
@@ -349,4 +349,10 @@ export async function seedIncomeCategoriesForWorkspace(
             })
         }
     }
+}
+
+function requiredSystemKey(keys: Record<string, string>, name: string): string {
+    const systemKey = keys[name]
+    if (!systemKey) throw new Error(`Missing system key for default category: ${name}`)
+    return systemKey
 }
