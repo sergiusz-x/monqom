@@ -25,6 +25,7 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
     ) {}
 
     onModuleInit(): void {
+        if (this.isTestEnvironment()) return
         this.timer = setInterval(() => void this.processBatch(), 5_000)
         this.timer.unref()
         void this.processBatch()
@@ -161,6 +162,10 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
             this.configService.get<RuntimeConfig>('env', { infer: true })?.frontendUrl ??
             'http://localhost:5173'
         ).replace(/\/+$/, '')
+    }
+
+    private isTestEnvironment(): boolean {
+        return this.configService.get<RuntimeConfig>('env', { infer: true })?.nodeEnv === 'test'
     }
 
     private encrypt(value: string): string {

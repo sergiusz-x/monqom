@@ -293,7 +293,7 @@ describe('Dashboard endpoints (e2e)', () => {
         )
     })
 
-    it('forbids non-members from accessing workspace dashboard data', async () => {
+    it('does not disclose dashboard data for non-member workspaces', async () => {
         prismaMock.users.push(
             await createStoredUser({
                 id: 'user-2',
@@ -308,13 +308,13 @@ describe('Dashboard endpoints (e2e)', () => {
 
         const response = await agent
             .get('/api/v1/workspaces/workspace-1/dashboard/spending-summary?month=2026-03')
-            .expect(403)
+            .expect(404)
 
         expect(response.body).toEqual(
             expect.objectContaining({
-                statusCode: 403,
-                message: 'Forbidden',
-                error: 'Forbidden',
+                statusCode: 404,
+                message: 'Workspace not found',
+                error: 'Not Found',
             }),
         )
     })
