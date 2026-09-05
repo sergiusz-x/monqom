@@ -54,6 +54,7 @@ import {
     ApiUserResponse,
 } from '../../shared/openapi/response-schemas'
 import { CurrentUserId } from '../../shared/http/request-context.decorator'
+import { destroySession } from '../../shared/session/session-lifecycle'
 
 const LOGOUT_SUCCESS_MESSAGE = 'Logged out successfully'
 const TWO_FACTOR_REQUIRED_MESSAGE = 'Two-factor authentication required'
@@ -312,19 +313,6 @@ function regenerateSession(req: Request): Promise<void> {
 function saveSession(req: Request): Promise<void> {
     return new Promise((resolve, reject) => {
         req.session.save((error) => {
-            if (error) {
-                reject(error)
-                return
-            }
-
-            resolve()
-        })
-    })
-}
-
-function destroySession(req: Request): Promise<void> {
-    return new Promise((resolve, reject) => {
-        req.session.destroy((error) => {
             if (error) {
                 reject(error)
                 return

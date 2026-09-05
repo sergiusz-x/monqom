@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import * as argon2 from 'argon2'
-import { User } from '@prisma/client'
 import {
     validateEmailInput,
     validateLoginInput,

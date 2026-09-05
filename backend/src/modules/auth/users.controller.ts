@@ -20,6 +20,7 @@ import { AuthActionResponse, AuthenticatedUserResponse, AuthService } from './au
 import { UpdateUserProfileDto } from './auth.dto'
 import { ApiMessageResponse, ApiUserResponse } from '../../shared/openapi/response-schemas'
 import { CurrentUserId } from '../../shared/http/request-context.decorator'
+import { destroySession } from '../../shared/session/session-lifecycle'
 
 @Controller('users')
 @UseGuards(SessionGuard)
@@ -63,15 +64,3 @@ export class UsersController {
     }
 }
 
-function destroySession(req: Request): Promise<void> {
-    return new Promise((resolve, reject) => {
-        req.session.destroy((error) => {
-            if (error) {
-                reject(error)
-                return
-            }
-
-            resolve()
-        })
-    })
-}
