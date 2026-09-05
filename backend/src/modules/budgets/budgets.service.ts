@@ -19,6 +19,7 @@ import {
     basisPointsToDisplayPercentage,
     centsToDisplayAmount,
 } from '../../shared/currency/display-values'
+import { isPrismaUniqueConstraintError } from '../../shared/database/prisma-errors'
 
 const BUDGET_ALREADY_EXISTS_MESSAGE = 'Budget already exists for category and month'
 const BUDGET_CATEGORY_CHILD_REQUIRED_MESSAGE = 'Budget category must be a child category'
@@ -219,7 +220,7 @@ export class BudgetsService {
 
                 return mapBudgetResponse(budget)
             } catch (error) {
-                if (isUniqueConstraintError(error)) {
+                if (isPrismaUniqueConstraintError(error)) {
                     throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
                 }
 
@@ -322,7 +323,7 @@ export class BudgetsService {
 
                 return mapBudgetResponse(budget)
             } catch (error) {
-                if (isUniqueConstraintError(error)) {
+                if (isPrismaUniqueConstraintError(error)) {
                     throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
                 }
 
@@ -486,13 +487,4 @@ function mapBudgetProgressResponse(progress: {
                 ? null
                 : basisPointsToDisplayPercentage(progress.percentageBasisPoints),
     }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === 'P2002'
-    )
 }

@@ -22,6 +22,7 @@ import { WorkspaceService } from '../workspace/workspace.service'
 import { normalizeCurrency } from '../../shared/currency/currency.service'
 import { EmailOutboxService } from '../../shared/email/email-outbox.service'
 import { mapAuthenticatedSessionUser, mapRegisteredUser } from './auth-user.mapper'
+import { isPrismaUniqueConstraintError } from '../../shared/database/prisma-errors'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
@@ -195,7 +196,7 @@ export class AuthService {
 
             return mapRegisteredUser(user)
         } catch (error) {
-            if (isUniqueConstraintError(error)) {
+            if (isPrismaUniqueConstraintError(error)) {
                 throw new ConflictException({
                     code: 'EMAIL_ALREADY_EXISTS',
                     message: 'A user with this email already exists',
@@ -657,15 +658,6 @@ function validateUserProfileInput(input: UpdateUserProfileCommand): {
     }
 
     return { name, locale, hideSalaryAmounts, errors }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === 'P2002'
-    )
 }
 
 function createSessionAuditMetadata(ipAddress?: string): Record<string, string> {
