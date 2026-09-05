@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { getRequiredArrayItem } from '../../test-utils/prisma-fixtures'
 import { IntegrationManagementService } from './integration-management.service'
 
 describe('IntegrationManagementService', () => {
@@ -44,7 +45,8 @@ describe('IntegrationManagementService', () => {
         ])
         const result = await service.list('workspace-1')
         expect(JSON.stringify(result)).not.toContain('never-return')
-        expect(result[0].credentials[0]).toEqual(
+        const integration = getRequiredArrayItem(result, 0)
+        expect(getRequiredArrayItem(integration.credentials, 0)).toEqual(
             expect.objectContaining({ token_prefix: 'mqic_safe-prefix' }),
         )
     })

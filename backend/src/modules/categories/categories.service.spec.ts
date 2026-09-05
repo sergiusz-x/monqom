@@ -5,7 +5,17 @@ import { CategoriesService } from './categories.service'
 
 describe('CategoriesService', () => {
     let service: CategoriesService
-    let prisma: { category: Record<string, jest.Mock>; $transaction: jest.Mock }
+    let prisma: {
+        category: {
+            findMany: jest.Mock
+            findFirst: jest.Mock
+            create: jest.Mock
+            update: jest.Mock
+            updateMany: jest.Mock
+            aggregate: jest.Mock
+        }
+        $transaction: jest.Mock
+    }
     let audit: { record: jest.Mock }
 
     beforeEach(() => {
