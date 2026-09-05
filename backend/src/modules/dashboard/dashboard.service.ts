@@ -277,7 +277,10 @@ function buildSpendingSummary(
 }
 
 function parseMonthStart(month: string): Date {
-    const [year, monthPart] = month.split('-').map(Number)
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month)
+    if (!match) throw new Error('Expected a valid YYYY-MM month')
+    const year = Number(match[1])
+    const monthPart = Number(match[2])
     return new Date(Date.UTC(year, monthPart - 1, 1))
 }
 
