@@ -1,5 +1,21 @@
 import { Prisma, type Transaction, type User } from '@prisma/client'
 
+/** Read a mock argument while failing clearly when the expected call was not made. */
+export function getMockCallArgument<T>(
+    mock: { mock: { calls: ReadonlyArray<ReadonlyArray<unknown>> } },
+    callIndex = 0,
+    argumentIndex = 0,
+): T {
+    const call = mock.mock.calls[callIndex]
+    const argument = call?.[argumentIndex]
+
+    if (argument === undefined) {
+        throw new Error(`Expected mock call ${callIndex + 1} argument ${argumentIndex + 1}`)
+    }
+
+    return argument as T
+}
+
 export function createUserFixture(overrides: Partial<User> = {}): User {
     return {
         id: 'user-1',

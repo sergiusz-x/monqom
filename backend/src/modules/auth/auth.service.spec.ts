@@ -5,7 +5,7 @@ import { EmailOutboxService } from '../../shared/email/email-outbox.service'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 import { logger } from '../../shared/utils/logger'
-import { createUserFixture } from '../../test-utils/prisma-fixtures'
+import { createUserFixture, getMockCallArgument } from '../../test-utils/prisma-fixtures'
 
 jest.mock('../../shared/utils/logger', () => ({
     logger: {
@@ -113,7 +113,9 @@ describe('AuthService', () => {
             password,
         })
 
-        const createCall = authRepository.createUserWithVerificationToken.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createUserWithVerificationToken']>[0]
+        >(authRepository.createUserWithVerificationToken)
 
         expect(createCall.email).toBe('test@example.com')
         expect(createCall.name).toBe('Ada Lovelace')
@@ -365,7 +367,9 @@ describe('AuthService', () => {
             password: 'GraniteHarbor!1234',
         })
 
-        const createCall = authRepository.createUserWithVerificationToken.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createUserWithVerificationToken']>[0]
+        >(authRepository.createUserWithVerificationToken)
         expect(logger.info).toHaveBeenCalledWith(
             'Email verification token generated for registration',
             expect.objectContaining({
@@ -596,8 +600,9 @@ describe('AuthService', () => {
             'verification-token',
         )
 
-        const consumeCall =
-            authRepository.consumeVerificationTokensAndMarkEmailVerified.mock.calls[0][0]
+        const consumeCall = getMockCallArgument<
+            Parameters<AuthRepository['consumeVerificationTokensAndMarkEmailVerified']>[0]
+        >(authRepository.consumeVerificationTokensAndMarkEmailVerified)
 
         expect(consumeCall.userId).toBe('user-1')
         expect(Math.abs(consumeCall.verifiedAt.getTime() - now)).toBeLessThanOrEqual(5000)
@@ -671,7 +676,9 @@ describe('AuthService', () => {
             message: 'Verification email sent',
         })
 
-        const createCall = authRepository.createVerificationTokenForUser.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createVerificationTokenForUser']>[0]
+        >(authRepository.createVerificationTokenForUser)
 
         expect(authRepository.findUserByEmail).toHaveBeenCalledWith('test@example.com')
         expect(createCall.userId).toBe('user-1')
@@ -730,7 +737,9 @@ describe('AuthService', () => {
                 'If an account with that email exists, a password reset link has been generated',
         })
 
-        const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createPasswordResetTokenForUser']>[0]
+        >(authRepository.createPasswordResetTokenForUser)
 
         expect(createCall.userId).toBe('user-1')
         expect(createCall.passwordResetToken).toMatch(/^[a-f0-9]{64}$/)
@@ -752,7 +761,9 @@ describe('AuthService', () => {
 
         await service.forgotPassword({ email: 'test@example.com' })
 
-        const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createPasswordResetTokenForUser']>[0]
+        >(authRepository.createPasswordResetTokenForUser)
         expect(logger.info).toHaveBeenCalledWith(
             'Password reset token generated for forgot-password',
             expect.objectContaining({
@@ -803,7 +814,9 @@ describe('AuthService', () => {
             'password-reset-token',
         )
 
-        const resetCall = authRepository.resetPasswordWithToken.mock.calls[0][0]
+        const resetCall = getMockCallArgument<
+            Parameters<AuthRepository['resetPasswordWithToken']>[0]
+        >(authRepository.resetPasswordWithToken)
 
         expect(resetCall.tokenId).toBe('password-reset-token-1')
         expect(resetCall.userId).toBe('user-1')
@@ -895,7 +908,9 @@ describe('AuthService', () => {
             }),
         ).resolves.toEqual({ message: 'Password changed successfully' })
 
-        const changeCall = authRepository.changePassword.mock.calls[0][0]
+        const changeCall = getMockCallArgument<Parameters<AuthRepository['changePassword']>[0]>(
+            authRepository.changePassword,
+        )
         expect(changeCall.userId).toBe('user-1')
         await expect(argon2.verify(changeCall.passwordHash, 'OceanStoneBridge!1234')).resolves.toBe(
             true,
