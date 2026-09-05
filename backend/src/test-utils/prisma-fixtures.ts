@@ -16,6 +16,13 @@ export function getMockCallArgument<T>(
     return argument as T
 }
 
+/** Read an expected test value from an array without hiding a missing fixture. */
+export function getRequiredArrayItem<T>(items: readonly T[], index: number): T {
+    const item = items[index]
+    if (item === undefined) throw new Error(`Expected array item at index ${index}`)
+    return item
+}
+
 export function createUserFixture(overrides: Partial<User> = {}): User {
     return {
         id: 'user-1',
