@@ -176,6 +176,7 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
         const parts = value.split('.')
         if (parts.length !== 3) throw new Error('Invalid outbox payload')
         const [iv, tag, encrypted] = parts.map((part) => Buffer.from(part, 'base64url'))
+        if (!iv || !tag || !encrypted) throw new Error('Invalid outbox payload')
         const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey(), iv)
         decipher.setAuthTag(tag)
         return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')

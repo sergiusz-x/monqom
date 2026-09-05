@@ -451,6 +451,10 @@ export class AuthRepository {
                                 (remainingMembership) => remainingMembership.role === 'admin',
                             ) ?? remainingMemberships[0]
 
+                        if (!successor) {
+                            throw new Error('Expected a remaining workspace member')
+                        }
+
                         await tx.workspaceMembership.update({
                             where: { id: successor.id },
                             data: { role: 'owner' },
