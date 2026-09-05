@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { normalizeRequiredValue, validateMoneyAmountValue } from '../../shared/utils/validation'
+import {
+    normalizeRequiredValue,
+    parseDateOnly,
+    validateMoneyAmountValue,
+} from '../../shared/utils/validation'
 import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
 import { WorkspaceService } from '../workspace/workspace.service'
 import {
@@ -16,7 +20,6 @@ import {
 const CATEGORY_NOT_FOUND_MESSAGE = 'Category not found'
 const EXPENSE_TRANSACTION_TYPE = 'expense'
 const INCOME_TRANSACTION_TYPE = 'income'
-const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const DEFAULT_TRANSACTION_LIST_LIMIT = 20
 const MAX_TAGS_PER_TRANSACTION = 10
 const MAX_CATEGORY_FILTERS = 100
@@ -499,24 +502,8 @@ function validateDateValue(value: string, errors: string[]): Date | undefined {
 
     const normalizedValue = value.trim()
 
-    if (ISO_DATE_ONLY_REGEX.test(normalizedValue)) {
-        const [year, month, day] = normalizedValue
-            .split('-')
-            .map((part) => Number.parseInt(part, 10))
-        const date = new Date(Date.UTC(year, month - 1, day))
-
-        if (
-            Number.isNaN(date.getTime()) ||
-            date.getUTCFullYear() !== year ||
-            date.getUTCMonth() !== month - 1 ||
-            date.getUTCDate() !== day
-        ) {
-            errors.push('Date must be a valid calendar date in YYYY-MM-DD format')
-            return undefined
-        }
-
-        return date
-    }
+    const date = parseDateOnly(normalizedValue)
+    if (date) return date
 
     errors.push('Date must be a valid calendar date in YYYY-MM-DD format')
     return undefined
@@ -538,27 +525,11 @@ function validateDateFilterValue(
 
     const normalizedValue = value.trim()
 
-    if (ISO_DATE_ONLY_REGEX.test(normalizedValue)) {
-        const [year, month, day] = normalizedValue
-            .split('-')
-            .map((part) => Number.parseInt(part, 10))
-
-        const date = new Date(Date.UTC(year, month - 1, day))
-
-        if (
-            Number.isNaN(date.getTime()) ||
-            date.getUTCFullYear() !== year ||
-            date.getUTCMonth() !== month - 1 ||
-            date.getUTCDate() !== day
-        ) {
-            errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
-            return undefined
-        }
-
+    const date = parseDateOnly(normalizedValue)
+    if (date) {
         if (options.boundary === 'end') {
             date.setUTCHours(23, 59, 59, 999)
         }
-
         return date
     }
 

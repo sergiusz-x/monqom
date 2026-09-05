@@ -284,15 +284,25 @@ function parseMonthStart(month: string): Date {
     return new Date(Date.UTC(year, monthPart - 1, 1))
 }
 
-function getMonthSequence(endMonth: string, count: number): string[] {
-    const end = parseMonthStart(endMonth)
+function getMonthSequence(endMonth: string, count: number): [string, ...string[]] {
+    if (!Number.isSafeInteger(count) || count < 1) {
+        throw new Error('Month sequence count must be a positive integer')
+    }
 
-    return Array.from({ length: count }, (_, index) => {
+    const end = parseMonthStart(endMonth)
+    const months = Array.from({ length: count }, (_, index) => {
         const value = new Date(
             Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - count + 1 + index, 1),
         )
         return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, '0')}`
     })
+    const firstMonth = months[0]
+
+    if (!firstMonth) {
+        throw new Error('Month sequence must not be empty')
+    }
+
+    return [firstMonth, ...months.slice(1)]
 }
 
 function mapRecentTransaction(transaction: ListedTransactionRecord): CreateTransactionResponse {

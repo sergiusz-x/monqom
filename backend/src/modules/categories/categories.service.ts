@@ -175,7 +175,11 @@ export class CategoriesService {
                 )
             return found
         })
-        return this.hierarchy(workspaceId, false, categories[0].type as 'expense' | 'income')
+        const firstCategory = categories[0]
+        if (!firstCategory) {
+            throw new BadRequestException('Categories must be active siblings')
+        }
+        return this.hierarchy(workspaceId, false, firstCategory.type as 'expense' | 'income')
     }
 
     async archiveCategory(
