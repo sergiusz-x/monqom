@@ -82,10 +82,16 @@ export function getDateOnlyInTimeZone(date: Date, timeZone: string): string {
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(date);
-  const values = Object.fromEntries(
-    parts.map((part) => [part.type, part.value]),
-  );
-  return `${values.year}-${values.month}-${values.day}`;
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+  const year = values.get("year");
+  const month = values.get("month");
+  const day = values.get("day");
+
+  if (!year || !month || !day) {
+    throw new Error("Intl.DateTimeFormat did not provide a complete calendar date");
+  }
+
+  return `${year}-${month}-${day}`;
 }
 
 export function getMonthInTimeZone(date: Date, timeZone: string): string {
