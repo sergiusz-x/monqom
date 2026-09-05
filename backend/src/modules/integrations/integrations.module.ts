@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { AuthModule } from '../auth/auth.module'
+import { AuthCoreModule } from '../auth/auth-core.module'
 import { TransactionsModule } from '../transactions/transactions.module'
 import { WorkspaceModule } from '../workspace/workspace.module'
 import { CurrencyModule } from '../../shared/currency/currency.module'
@@ -13,7 +14,7 @@ import { ExternalTransactionsController } from './external-transactions.controll
 import { ExternalTransactionsService } from './external-transactions.service'
 
 @Module({
-    imports: [AuthModule, TransactionsModule, WorkspaceModule, CurrencyModule],
+    imports: [AuthModule, AuthCoreModule, TransactionsModule, WorkspaceModule, CurrencyModule],
     controllers: [IntegrationManagementController, ExternalTransactionsController],
     providers: [
         IntegrationCredentialService,

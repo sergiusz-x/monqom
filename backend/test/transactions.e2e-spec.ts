@@ -10,6 +10,7 @@ import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filt
 import { createRequestValidationPipe } from './../src/shared/validation/request-validation.pipe'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { createSessionOptions } from './../src/shared/session/session.config'
+import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
 
 interface StoredUser {
     id: string
@@ -1293,7 +1294,8 @@ function filterTransactionsFromQuery(
     }
 
     if (dateFilters.length >= 2) {
-        const [dateFrom, dateTo] = dateFilters
+        const dateFrom = getRequiredArrayItem(dateFilters, 0)
+        const dateTo = getRequiredArrayItem(dateFilters, 1)
         filteredTransactions = filteredTransactions.filter(
             (transaction) =>
                 transaction.date.getTime() >= dateFrom.getTime() &&

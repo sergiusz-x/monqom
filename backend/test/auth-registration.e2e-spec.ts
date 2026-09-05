@@ -9,6 +9,7 @@ import { DEFAULT_CATEGORY_SEEDS } from './../src/modules/workspaces/seeds/01_def
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { logger } from './../src/shared/utils/logger'
+import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
 
 jest.mock('./../src/shared/utils/logger', () => ({
     logger: {
@@ -91,6 +92,9 @@ interface StoredCategory {
 }
 
 interface FakeTransactionClient {
+    emailOutbox: {
+        create(args: { data: unknown }): Promise<unknown>
+    }
     user: {
         findUnique(args: { where: { email: string } }): Promise<StoredUser | null>
         create(args: {
@@ -171,11 +175,13 @@ describe('Auth registration (e2e)', () => {
     let app: INestApplication<App>
     let prismaMock: PrismaMock
     const originalNodeEnv = process.env.NODE_ENV
+    const originalSessionSecret = process.env.SESSION_SECRET
 
     beforeEach(async () => {
         prismaMock = createPrismaMock()
         jest.clearAllMocks()
         process.env.NODE_ENV = 'test'
+        process.env.SESSION_SECRET = 'test-session-secret'
 
         const moduleFixture: TestingModule = await Test.createTestingModule({
             imports: [AppModule],
@@ -198,6 +204,7 @@ describe('Auth registration (e2e)', () => {
 
     afterAll(() => {
         process.env.NODE_ENV = originalNodeEnv
+        process.env.SESSION_SECRET = originalSessionSecret
     })
 
     it('creates a user, stores a hashed password, and logs a verification token', async () => {
@@ -236,13 +243,13 @@ describe('Auth registration (e2e)', () => {
         expect(prismaMock.workspaceMemberships).toHaveLength(1)
         expect(prismaMock.categories).toHaveLength(expectedCategoryCount)
 
-        const storedUser = prismaMock.users[0]
-        const storedVerificationToken = prismaMock.verificationTokens[0]
+        const storedUser = getRequiredArrayItem(prismaMock.users, 0)
+        const storedVerificationToken = getRequiredArrayItem(prismaMock.verificationTokens, 0)
         const rawVerificationToken = getLoggedVerificationToken(
             'Email verification token generated for registration',
         )
-        const storedWorkspace = prismaMock.workspaces[0]
-        const storedMembership = prismaMock.workspaceMemberships[0]
+        const storedWorkspace = getRequiredArrayItem(prismaMock.workspaces, 0)
+        const storedMembership = getRequiredArrayItem(prismaMock.workspaceMemberships, 0)
 
         expect(storedUser.email).toBe('ada@example.com')
         expect(storedUser.emailVerified).toBe(false)
@@ -252,7 +259,7 @@ describe('Auth registration (e2e)', () => {
         expect(storedVerificationToken.token).toMatch(/^[a-f0-9]{64}$/)
         expect(storedVerificationToken.token).toBe(hashToken(rawVerificationToken))
         expect(storedVerificationToken.usedAt).toBeNull()
-        expect(prismaMock.auditEvents[0]).toEqual(
+        expect(getRequiredArrayItem(prismaMock.auditEvents, 0)).toEqual(
             expect.objectContaining({
                 action: 'USER_REGISTERED',
                 userId: storedUser.id,
@@ -434,15 +441,15 @@ describe('Auth registration (e2e)', () => {
         expect(verifyResponse.body).toEqual({
             message: 'Email verified successfully',
         })
-        expect(prismaMock.users[0].emailVerified).toBe(true)
-        expect(prismaMock.verificationTokens[0].usedAt).toBeInstanceOf(Date)
+        expect(getRequiredArrayItem(prismaMock.users, 0).emailVerified).toBe(true)
+        expect(getRequiredArrayItem(prismaMock.verificationTokens, 0).usedAt).toBeInstanceOf(Date)
         expect(prismaMock.auditEvents).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
                     action: 'USER_EMAIL_VERIFIED',
-                    userId: prismaMock.users[0].id,
+                    userId: getRequiredArrayItem(prismaMock.users, 0).id,
                     entityType: 'USER',
-                    entityId: prismaMock.users[0].id,
+                    entityId: getRequiredArrayItem(prismaMock.users, 0).id,
                 }),
             ]),
         )
@@ -473,7 +480,7 @@ describe('Auth registration (e2e)', () => {
             })
             .expect(201)
 
-        prismaMock.verificationTokens[0].expiresAt = new Date(Date.now() - 1000)
+        getRequiredArrayItem(prismaMock.verificationTokens, 0).expiresAt = new Date(Date.now() - 1000)
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/verify-email')
@@ -491,8 +498,8 @@ describe('Auth registration (e2e)', () => {
                 error: 'Bad Request',
             }),
         )
-        expect(prismaMock.users[0].emailVerified).toBe(false)
-        expect(prismaMock.verificationTokens[0].usedAt).toBeNull()
+        expect(getRequiredArrayItem(prismaMock.users, 0).emailVerified).toBe(false)
+        expect(getRequiredArrayItem(prismaMock.verificationTokens, 0).usedAt).toBeNull()
     })
 
     it('returns 400 for unknown verification tokens', async () => {
@@ -527,7 +534,7 @@ describe('Auth registration (e2e)', () => {
             })
             .expect(201)
 
-        const originalToken = prismaMock.verificationTokens[0].token
+        const originalToken = getRequiredArrayItem(prismaMock.verificationTokens, 0).token
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/resend-verification')
@@ -539,12 +546,12 @@ describe('Auth registration (e2e)', () => {
         })
         expect(prismaMock.verificationTokens).toHaveLength(2)
 
-        const resentToken = prismaMock.verificationTokens[1]
+        const resentToken = getRequiredArrayItem(prismaMock.verificationTokens, 1)
         const resentRawToken = getLoggedVerificationToken(
             'Email verification token generated for resend',
         )
 
-        expect(resentToken.userId).toBe(prismaMock.users[0].id)
+        expect(resentToken.userId).toBe(getRequiredArrayItem(prismaMock.users, 0).id)
         expect(resentToken.token).not.toBe(originalToken)
         expect(resentToken.token).toBe(hashToken(resentRawToken))
         expect(resentToken.usedAt).toBeNull()
@@ -555,9 +562,9 @@ describe('Auth registration (e2e)', () => {
             expect.arrayContaining([
                 expect.objectContaining({
                     action: 'USER_EMAIL_VERIFICATION_RESENT',
-                    userId: prismaMock.users[0].id,
+                    userId: getRequiredArrayItem(prismaMock.users, 0).id,
                     entityType: 'USER',
-                    entityId: prismaMock.users[0].id,
+                    entityId: getRequiredArrayItem(prismaMock.users, 0).id,
                 }),
             ]),
         )
@@ -729,6 +736,9 @@ function createPrismaMock(): PrismaMock {
     let failNextCategoryUpsert = false
 
     const transactionClient: FakeTransactionClient = {
+        emailOutbox: {
+            create: async () => ({}),
+        },
         user: {
             findUnique: async ({ where }) =>
                 users.find((user) => user.email === where.email) ?? null,
