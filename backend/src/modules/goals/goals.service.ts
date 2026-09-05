@@ -8,6 +8,7 @@ import { Goal, GoalOperation, Prisma } from '@prisma/client'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { parseDateOnly } from '../../shared/utils/validation'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { CreateGoalDto, GoalOperationDto, UpdateGoalDto } from './goals.dto'
 import {
@@ -403,10 +404,11 @@ function parseOperationDate(value: string, today: Date): Date {
 }
 
 function parseDate(value: string, field: string): Date {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-    if (!match) throw new BadRequestException(`${field} must use YYYY-MM-DD format`)
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
-    if (dateString(date) !== value) throw new BadRequestException(`${field} must be a valid date`)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new BadRequestException(`${field} must use YYYY-MM-DD format`)
+    }
+    const date = parseDateOnly(value)
+    if (!date) throw new BadRequestException(`${field} must be a valid date`)
     return date
 }
 
