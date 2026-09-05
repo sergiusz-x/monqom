@@ -7,6 +7,10 @@ import {
 } from '../transactions/transactions.repository'
 import type { CreateTransactionResponse } from '../transactions/transactions.service'
 import { normalizeRequiredValue, parseYearMonth } from '../../shared/utils/validation'
+import {
+    basisPointsToDisplayPercentage,
+    centsToDisplayAmount,
+} from '../../shared/currency/display-values'
 
 export interface DashboardMonthCommand {
     month: string
@@ -132,7 +136,7 @@ export class DashboardService {
             category_breakdown: categoryBreakdown,
             spending_trend: trendMonths.map((month) => ({
                 month,
-                total: convertAmountToDisplayValue(totalsByMonth.get(month) ?? 0),
+                total: centsToDisplayAmount(totalsByMonth.get(month) ?? 0),
             })),
             recent_transactions: recentTransactions.map(mapRecentTransaction),
         }
@@ -221,7 +225,7 @@ export class DashboardService {
         return {
             month,
             currency,
-            total_spending: convertAmountToDisplayValue(totalSpendingCents),
+            total_spending: centsToDisplayAmount(totalSpendingCents),
             categories: categorySpend
                 .map((entry) => {
                     const category = categoriesById.get(entry.categoryId)
@@ -231,8 +235,8 @@ export class DashboardService {
                         category_name: category?.name ?? 'Unknown category',
                         category_system_key: category?.systemKey ?? null,
                         category_color: category?.color ?? null,
-                        amount: convertAmountToDisplayValue(entry.amount),
-                        percentage: convertBasisPointsToDisplayValue(
+                        amount: centsToDisplayAmount(entry.amount),
+                        percentage: basisPointsToDisplayPercentage(
                             calculatePercentageBasisPoints(entry.amount, totalSpendingCents),
                         ),
                     }
@@ -266,13 +270,13 @@ function buildSpendingSummary(
     return {
         month,
         currency,
-        current_total: convertAmountToDisplayValue(currentTotalCents),
-        previous_total: convertAmountToDisplayValue(previousTotalCents),
-        change_amount: convertAmountToDisplayValue(changeAmountCents),
+        current_total: centsToDisplayAmount(currentTotalCents),
+        previous_total: centsToDisplayAmount(previousTotalCents),
+        change_amount: centsToDisplayAmount(changeAmountCents),
         change_percentage: calculateChangePercentage(currentTotalCents, previousTotalCents),
         direction: determineDirection(changeAmountCents),
-        income_total: convertAmountToDisplayValue(incomeTotalCents),
-        net_total: convertAmountToDisplayValue(incomeTotalCents - currentTotalCents),
+        income_total: centsToDisplayAmount(incomeTotalCents),
+        net_total: centsToDisplayAmount(incomeTotalCents - currentTotalCents),
     }
 }
 
@@ -312,7 +316,7 @@ function mapRecentTransaction(transaction: ListedTransactionRecord): CreateTrans
         category_id: transaction.category_id,
         payment_source_id: transaction.payment_source_id!,
         type: transaction.type,
-        amount: convertAmountToDisplayValue(transaction.amount),
+        amount: centsToDisplayAmount(transaction.amount),
         currency: transaction.currency,
         date: transaction.date.toISOString().slice(0, 10),
         description: transaction.description,
@@ -370,28 +374,9 @@ function calculateChangePercentage(
         ((currentTotalCents - previousTotalCents) * 10000) / previousTotalCents,
     )
 
-    return convertBasisPointsToDisplayValue(basisPoints)
+    return basisPointsToDisplayPercentage(basisPoints)
 }
 
 function calculatePercentageBasisPoints(amountCents: number, totalAmountCents: number): number {
     return Math.round((amountCents * 10000) / totalAmountCents)
-}
-
-function convertAmountToDisplayValue(amountInCents: number): number {
-    return Number((amountInCents / 100).toFixed(2))
-}
-
-function convertBasisPointsToDisplayValue(basisPoints: number): number {
-    const sign = basisPoints < 0 ? '-' : ''
-    const absoluteBasisPoints = Math.abs(basisPoints)
-    const wholePart = Math.trunc(absoluteBasisPoints / 100)
-    const fractionalPart = absoluteBasisPoints % 100
-
-    if (fractionalPart === 0) {
-        return Number(`${sign}${wholePart}`)
-    }
-
-    return Number(
-        `${sign}${wholePart}.${fractionalPart.toString().padStart(2, '0').replace(/0+$/, '')}`,
-    )
 }

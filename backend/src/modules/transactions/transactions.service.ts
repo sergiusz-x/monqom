@@ -7,6 +7,7 @@ import {
 } from '../../shared/utils/validation'
 import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
 import { WorkspaceService } from '../workspace/workspace.service'
+import { centsToDisplayAmount } from '../../shared/currency/display-values'
 import {
     ListedTransactionRecord,
     ListTransactionsFilters,
@@ -676,7 +677,7 @@ function mapCreateTransactionResponse(transaction: TransactionWithTags): CreateT
         category_id: transaction.categoryId,
         payment_source_id: transaction.paymentSourceId,
         type: transaction.type,
-        amount: convertAmountToDisplayValue(transaction.amount),
+        amount: centsToDisplayAmount(transaction.amount),
         currency: transaction.currency,
         date: transaction.date.toISOString().slice(0, 10),
         description: transaction.description,
@@ -696,7 +697,7 @@ function mapListedTransactionResponse(
         category_id: transaction.category_id,
         payment_source_id: transaction.payment_source_id!,
         type: transaction.type,
-        amount: convertAmountToDisplayValue(transaction.amount),
+        amount: centsToDisplayAmount(transaction.amount),
         currency: transaction.currency,
         date: transaction.date.toISOString().slice(0, 10),
         description: transaction.description,
@@ -705,8 +706,4 @@ function mapListedTransactionResponse(
         created_at: transaction.created_at,
         updated_at: transaction.updated_at,
     }
-}
-
-function convertAmountToDisplayValue(amountInCents: number): number {
-    return Number((amountInCents / 100).toFixed(2))
 }
