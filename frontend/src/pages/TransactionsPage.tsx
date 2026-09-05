@@ -25,10 +25,9 @@ import { useToast } from "@/hooks/useToast";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
-import type { TFunction } from "i18next";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
-import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { categorySystemKeys } from "@/lib/category-system-keys";
+import { buildCategoryLabels } from "@/lib/category-labels";
 import {
   buildTransactionListParams,
   DEFAULT_TRANSACTION_FILTERS,
@@ -41,31 +40,6 @@ import {
 import { Alert, RetryAlert } from "@monqom/ui";
 
 const PAGE_SIZE = 20;
-
-function buildCategoryMap(
-  categories: Array<{
-    id: string;
-    name: string;
-    systemKey?: string | null;
-    children: Array<{ id: string; name: string; systemKey?: string | null }>;
-  }>,
-  t: TFunction,
-): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const category of categories) {
-    const parentName = translateSystemLabel(
-      t,
-      category.systemKey,
-      category.name,
-    );
-    map[category.id] = parentName;
-    for (const child of category.children) {
-      const childName = translateSystemLabel(t, child.systemKey, child.name);
-      map[child.id] = `${parentName} / ${childName}`;
-    }
-  }
-  return map;
-}
 
 export default function TransactionsPage() {
   const { t } = useTranslation();
@@ -182,7 +156,7 @@ export default function TransactionsPage() {
   );
 
   const categoryMap = useMemo(
-    () => buildCategoryMap(categories, t),
+    () => buildCategoryLabels(categories, t),
     [categories, t],
   );
   const paymentSourceMap = useMemo(

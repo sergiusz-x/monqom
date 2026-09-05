@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { transactionsApi } from "@/api/contract";
 import { getApiErrorStatus } from "@/lib/api-errors";
 import { categorySystemKeys } from "@/lib/category-system-keys";
@@ -15,7 +14,6 @@ import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
-import type { Category } from "@/types/category";
 import type { ApiTransaction } from "@/types/api-contracts";
 import { mapTransaction } from "@/lib/api-mappers";
 import { queryKeys } from "@/lib/query-client";
@@ -23,7 +21,7 @@ import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { formatLongDate } from "@/lib/date-only";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 
-import { translateSystemLabel } from "@/i18n/translate-system-label";
+import { buildCategoryLabels } from "@/lib/category-labels";
 import {
   Alert,
   AsyncState,
@@ -34,21 +32,6 @@ import {
   buttonVariants,
   cardVariants,
 } from "@monqom/ui";
-
-function buildCategoryLabels(
-  categories: Category[],
-  t: TFunction,
-): Record<string, string> {
-  const labels: Record<string, string> = {};
-  const visit = (category: Category, parentLabel?: string) => {
-    const ownLabel = translateSystemLabel(t, category.systemKey, category.name);
-    const label = parentLabel ? `${parentLabel} / ${ownLabel}` : ownLabel;
-    labels[category.id] = label;
-    category.children.forEach((child) => visit(child, label));
-  };
-  categories.forEach((category) => visit(category));
-  return labels;
-}
 
 export default function TransactionDetailPage() {
   const { t } = useTranslation();
