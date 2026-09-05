@@ -27,6 +27,15 @@ export function paymentSourceName(
     : source.name;
 }
 
+export function paymentSourceLabels(
+  sources: ReadonlyArray<Pick<PaymentSource, "id" | "name" | "systemKey">>,
+  translate: TFunction,
+): Record<string, string> {
+  return Object.fromEntries(
+    sources.map((source) => [source.id, paymentSourceName(source, translate)]),
+  );
+}
+
 export function paymentSourceTypeLabel(
   type: PaymentSourceType,
   translate: TFunction,

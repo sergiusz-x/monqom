@@ -7,7 +7,7 @@ import { transactionsApi } from "@/api/contract";
 import { getApiErrorStatus } from "@/lib/api-errors";
 import { categorySystemKeys } from "@/lib/category-system-keys";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
-import { paymentSourceName } from "@/lib/payment-sources";
+import { paymentSourceLabels } from "@/lib/payment-sources";
 import { useCategories } from "@/hooks/useCategories";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useToast } from "@/hooks/useToast";
@@ -88,14 +88,8 @@ export default function TransactionDetailPage() {
     () => buildCategoryLabels(categories, t),
     [categories, t],
   );
-  const paymentSourceLabels = useMemo(
-    () =>
-      Object.fromEntries(
-        paymentSources.map((source) => [
-          source.id,
-          paymentSourceName(source, t),
-        ]),
-      ),
+  const paymentSourceLabelMap = useMemo(
+    () => paymentSourceLabels(paymentSources, t),
     [paymentSources, t],
   );
 
@@ -195,7 +189,7 @@ export default function TransactionDetailPage() {
   const categoryLabel =
     categoryLabels[transaction.categoryId] ?? t("dashboard.uncategorized");
   const paymentSourceLabel = transaction.paymentSourceId
-    ? (paymentSourceLabels[transaction.paymentSourceId] ?? t("common.none"))
+    ? (paymentSourceLabelMap[transaction.paymentSourceId] ?? t("common.none"))
     : t("common.none");
 
   return (

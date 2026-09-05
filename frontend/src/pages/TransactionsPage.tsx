@@ -14,7 +14,7 @@ import { TransactionListSkeleton } from "@/components/transactions/TransactionLi
 import { TransactionPagination } from "@/components/transactions/TransactionPagination";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal";
-import { paymentSourceName } from "@/lib/payment-sources";
+import { paymentSourceLabels } from "@/lib/payment-sources";
 import { transactionsApi } from "@/api/contract";
 import type {
   TransactionFilters,
@@ -160,13 +160,7 @@ export default function TransactionsPage() {
     [categories, t],
   );
   const paymentSourceMap = useMemo(
-    () =>
-      Object.fromEntries(
-        paymentSources.map((source) => [
-          source.id,
-          paymentSourceName(source, t),
-        ]),
-      ),
+    () => paymentSourceLabels(paymentSources, t),
     [paymentSources, t],
   );
 
