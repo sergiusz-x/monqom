@@ -7,6 +7,7 @@ import { AppModule } from './../src/app.module'
 import { DEFAULT_CATEGORY_SEEDS } from './../src/modules/workspaces/seeds/01_default_categories'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
 import { PrismaService } from './../src/shared/database/prisma.service'
+import { EmailOutboxService } from './../src/shared/email/email-outbox.service'
 import { logger } from './../src/shared/utils/logger'
 import { createOpaqueDigest } from './../src/shared/security/opaque-digest'
 import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
@@ -172,14 +173,22 @@ interface PrismaMock extends FakeTransactionClient {
     $disconnect(): Promise<void>
 }
 
+interface CapturedEmail {
+    kind: 'verification' | 'password_reset'
+    recipient: string
+    token: string
+}
+
 describe('Auth registration (e2e)', () => {
     let app: INestApplication<App>
     let prismaMock: PrismaMock
+    let capturedEmails: CapturedEmail[]
     const originalNodeEnv = process.env.NODE_ENV
     const originalSessionSecret = process.env.SESSION_SECRET
 
     beforeEach(async () => {
         prismaMock = createPrismaMock()
+        capturedEmails = []
         jest.clearAllMocks()
         process.env.NODE_ENV = 'test'
         process.env.SESSION_SECRET = 'test-session-secret'
@@ -189,6 +198,14 @@ describe('Auth registration (e2e)', () => {
         })
             .overrideProvider(PrismaService)
             .useValue(prismaMock)
+            .overrideProvider(EmailOutboxService)
+            .useValue({
+                enqueue: jest.fn(
+                    async (kind: CapturedEmail['kind'], recipient: string, token: string) => {
+                        capturedEmails.push({ kind, recipient, token })
+                    },
+                ),
+            })
             .compile()
 
         app = moduleFixture.createNestApplication()
@@ -208,14 +225,12 @@ describe('Auth registration (e2e)', () => {
         process.env.SESSION_SECRET = originalSessionSecret
     })
 
-    it('creates a user, stores a hashed password, and logs a verification token', async () => {
+    it('creates a user, stores a hashed password, and queues a verification token', async () => {
         const password = 'GraniteHarbor!1234'
         const expectedCategoryCount =
             DEFAULT_CATEGORY_SEEDS.length +
             DEFAULT_CATEGORY_SEEDS.reduce((total, parent) => total + parent.children.length, 0) +
             9
-
-        process.env.NODE_ENV = 'development'
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/register')
@@ -246,9 +261,7 @@ describe('Auth registration (e2e)', () => {
 
         const storedUser = getRequiredArrayItem(prismaMock.users, 0)
         const storedVerificationToken = getRequiredArrayItem(prismaMock.verificationTokens, 0)
-        const rawVerificationToken = getLoggedVerificationToken(
-            'Email verification token generated for registration',
-        )
+        const rawVerificationToken = getCapturedVerificationToken(capturedEmails)
         const storedWorkspace = getRequiredArrayItem(prismaMock.workspaces, 0)
         const storedMembership = getRequiredArrayItem(prismaMock.workspaceMemberships, 0)
 
@@ -305,7 +318,7 @@ describe('Auth registration (e2e)', () => {
             'Email verification token generated for registration',
             expect.objectContaining({
                 context_name: 'AuthService',
-                verification_token: rawVerificationToken,
+                verification_token_last6: rawVerificationToken.slice(-6),
             }),
         )
     })
@@ -335,8 +348,6 @@ describe('Auth registration (e2e)', () => {
     })
 
     it('logs only masked verification token metadata in production mode for the MVP flow', async () => {
-        process.env.NODE_ENV = 'production'
-
         await request(app.getHttpServer())
             .post('/api/v1/auth/register')
             .send({
@@ -418,9 +429,7 @@ describe('Auth registration (e2e)', () => {
         expect(prismaMock.users).toHaveLength(0)
     })
 
-    it('verifies a token captured from the registration log and rejects reuse', async () => {
-        process.env.NODE_ENV = 'development'
-
+    it('verifies a token captured from email delivery and rejects reuse', async () => {
         await request(app.getHttpServer())
             .post('/api/v1/auth/register')
             .send({
@@ -430,9 +439,7 @@ describe('Auth registration (e2e)', () => {
             })
             .expect(201)
 
-        const verificationToken = getLoggedVerificationToken(
-            'Email verification token generated for registration',
-        )
+        const verificationToken = getCapturedVerificationToken(capturedEmails)
 
         const verifyResponse = await request(app.getHttpServer())
             .post('/api/v1/auth/verify-email')
@@ -470,8 +477,6 @@ describe('Auth registration (e2e)', () => {
     })
 
     it('returns 400 for expired verification tokens', async () => {
-        process.env.NODE_ENV = 'development'
-
         await request(app.getHttpServer())
             .post('/api/v1/auth/register')
             .send({
@@ -486,9 +491,7 @@ describe('Auth registration (e2e)', () => {
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/verify-email')
             .send({
-                token: getLoggedVerificationToken(
-                    'Email verification token generated for registration',
-                ),
+                token: getCapturedVerificationToken(capturedEmails),
             })
             .expect(400)
 
@@ -524,8 +527,6 @@ describe('Auth registration (e2e)', () => {
     it('resends a new verification token for unverified users', async () => {
         const now = Date.now()
 
-        process.env.NODE_ENV = 'development'
-
         await request(app.getHttpServer())
             .post('/api/v1/auth/register')
             .send({
@@ -548,9 +549,7 @@ describe('Auth registration (e2e)', () => {
         expect(prismaMock.verificationTokens).toHaveLength(2)
 
         const resentToken = getRequiredArrayItem(prismaMock.verificationTokens, 1)
-        const resentRawToken = getLoggedVerificationToken(
-            'Email verification token generated for resend',
-        )
+        const resentRawToken = getCapturedVerificationToken(capturedEmails)
 
         expect(resentToken.userId).toBe(getRequiredArrayItem(prismaMock.users, 0).id)
         expect(resentToken.token).not.toBe(originalToken)
@@ -573,14 +572,12 @@ describe('Auth registration (e2e)', () => {
             'Email verification token generated for resend',
             expect.objectContaining({
                 context_name: 'AuthService',
-                verification_token: resentRawToken,
+                verification_token_last6: resentRawToken.slice(-6),
             }),
         )
     })
 
     it('returns a generic resend response after the account is already verified', async () => {
-        process.env.NODE_ENV = 'development'
-
         await request(app.getHttpServer())
             .post('/api/v1/auth/register')
             .send({
@@ -590,9 +587,7 @@ describe('Auth registration (e2e)', () => {
             })
             .expect(201)
 
-        const verificationToken = getLoggedVerificationToken(
-            'Email verification token generated for registration',
-        )
+        const verificationToken = getCapturedVerificationToken(capturedEmails)
 
         await request(app.getHttpServer())
             .post('/api/v1/auth/verify-email')
@@ -1007,15 +1002,12 @@ function replaceContents<T>(target: T[], source: T[]): void {
     target.splice(0, target.length, ...source)
 }
 
-function getLoggedVerificationToken(message: string): string {
-    const verificationLogCall = (logger.info as jest.Mock).mock.calls.find(
-        ([loggedMessage]) => loggedMessage === message,
-    )
-    const verificationToken = verificationLogCall?.[1]?.verification_token
+function getCapturedVerificationToken(capturedEmails: CapturedEmail[]): string {
+    const email = [...capturedEmails].reverse().find((entry) => entry.kind === 'verification')
 
-    expect(verificationToken).toEqual(expect.any(String))
+    expect(email?.token).toEqual(expect.any(String))
 
-    return verificationToken as string
+    return email?.token as string
 }
 
 function hashToken(token: string): string {

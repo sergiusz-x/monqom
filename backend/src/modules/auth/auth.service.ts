@@ -22,6 +22,7 @@ import { normalizeCurrency } from '../../shared/currency/currency.service'
 import { EmailOutboxService } from '../../shared/email/email-outbox.service'
 import { mapAuthenticatedSessionUser, mapRegisteredUser } from './auth-user.mapper'
 import { isPrismaUniqueConstraintError } from '../../shared/database/prisma-errors'
+import { ConfigService } from '@nestjs/config'
 
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000
@@ -121,6 +122,7 @@ export class AuthService {
         private readonly workspaceService: WorkspaceService,
         private readonly prisma: PrismaService,
         private readonly emailOutbox: EmailOutboxService,
+        private readonly configService: ConfigService,
     ) {}
 
     async register(input: RegisterCommand): Promise<RegisteredUserResponse> {
@@ -191,7 +193,7 @@ export class AuthService {
                 return createdUser
             })
 
-            exposeVerificationToken('registration', verificationTokenPayload.token)
+            this.exposeVerificationToken('registration', verificationTokenPayload.token)
 
             return mapRegisteredUser(user)
         } catch (error) {
@@ -393,7 +395,7 @@ export class AuthService {
             )
         })
 
-        exposeVerificationToken('resend', verificationTokenPayload.token)
+        this.exposeVerificationToken('resend', verificationTokenPayload.token)
 
         return {
             message: EMAIL_VERIFICATION_SENT_MESSAGE,
@@ -434,7 +436,7 @@ export class AuthService {
             )
         })
 
-        exposePasswordResetToken(passwordResetTokenPayload.token)
+        this.exposePasswordResetToken(passwordResetTokenPayload.token)
 
         return {
             message: PASSWORD_RESET_SENT_MESSAGE,
@@ -537,6 +539,64 @@ export class AuthService {
             message: 'Account deleted successfully',
         }
     }
+
+    private exposeVerificationToken(
+        reason: 'registration' | 'resend',
+        verificationToken: string,
+    ): void {
+        const verificationUrl = this.buildEmailVerificationUrl(verificationToken)
+
+        this.exposeSensitiveToken({
+            message: `Email verification token generated for ${reason}`,
+            fullTokenKey: 'verification_token',
+            maskedTokenKey: 'verification_token_last6',
+            token: verificationToken,
+            developmentMetadata: {
+                verification_url: verificationUrl,
+            },
+        })
+    }
+
+    private exposePasswordResetToken(passwordResetToken: string): void {
+        this.exposeSensitiveToken({
+            message: 'Password reset token generated for forgot-password',
+            fullTokenKey: 'password_reset_token',
+            maskedTokenKey: 'password_reset_token_last6',
+            token: passwordResetToken,
+        })
+    }
+
+    private exposeSensitiveToken(input: {
+        message: string
+        fullTokenKey: string
+        maskedTokenKey: string
+        token: string
+        developmentMetadata?: Record<string, string>
+    }): void {
+        const shouldLogFullToken = this.configService.get<string>('env.nodeEnv') === 'development'
+
+        if (shouldLogFullToken) {
+            logger.info(input.message, {
+                context_name: AuthService.name,
+                [input.fullTokenKey]: input.token,
+                ...input.developmentMetadata,
+            })
+
+            return
+        }
+
+        logger.info(input.message, {
+            context_name: AuthService.name,
+            [input.maskedTokenKey]: input.token.slice(-6),
+        })
+    }
+
+    private buildEmailVerificationUrl(token: string): string {
+        const baseUrl = this.configService.get<string>('env.frontendUrl') ?? 'http://localhost:5173'
+        const normalizedBaseUrl = baseUrl.replace(/\/+$/, '')
+
+        return `${normalizedBaseUrl}/verify-email?token=${encodeURIComponent(token)}`
+    }
 }
 
 function createTokenPayload(ttlMs: number): {
@@ -547,64 +607,6 @@ function createTokenPayload(ttlMs: number): {
         token: randomBytes(32).toString('hex'),
         expiresAt: new Date(Date.now() + ttlMs),
     }
-}
-
-function exposeVerificationToken(
-    reason: 'registration' | 'resend',
-    verificationToken: string,
-): void {
-    const verificationUrl = buildEmailVerificationUrl(verificationToken)
-
-    exposeSensitiveToken({
-        message: `Email verification token generated for ${reason}`,
-        fullTokenKey: 'verification_token',
-        maskedTokenKey: 'verification_token_last6',
-        token: verificationToken,
-        developmentMetadata: {
-            verification_url: verificationUrl,
-        },
-    })
-}
-
-function exposePasswordResetToken(passwordResetToken: string): void {
-    exposeSensitiveToken({
-        message: 'Password reset token generated for forgot-password',
-        fullTokenKey: 'password_reset_token',
-        maskedTokenKey: 'password_reset_token_last6',
-        token: passwordResetToken,
-    })
-}
-
-function exposeSensitiveToken(input: {
-    message: string
-    fullTokenKey: string
-    maskedTokenKey: string
-    token: string
-    developmentMetadata?: Record<string, string>
-}): void {
-    const shouldLogFullToken = process.env.NODE_ENV === 'development'
-
-    if (shouldLogFullToken) {
-        logger.info(input.message, {
-            context_name: AuthService.name,
-            [input.fullTokenKey]: input.token,
-            ...input.developmentMetadata,
-        })
-
-        return
-    }
-
-    logger.info(input.message, {
-        context_name: AuthService.name,
-        [input.maskedTokenKey]: input.token.slice(-6),
-    })
-}
-
-function buildEmailVerificationUrl(token: string): string {
-    const baseUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173'
-    const normalizedBaseUrl = baseUrl.replace(/\/+$/, '')
-
-    return `${normalizedBaseUrl}/verify-email?token=${encodeURIComponent(token)}`
 }
 
 function validateChangePasswordInput(input: ChangePasswordCommand): {

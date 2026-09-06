@@ -6,6 +6,7 @@ import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 import { logger } from '../../shared/utils/logger'
 import { createUserFixture, getMockCallArgument } from '../../test-utils/prisma-fixtures'
+import { ConfigService } from '@nestjs/config'
 
 jest.mock('../../shared/utils/logger', () => ({
     logger: {
@@ -39,7 +40,8 @@ describe('AuthService', () => {
         $transaction: jest.Mock
     }
     let emailOutbox: { enqueue: jest.Mock }
-    const originalNodeEnv = process.env.NODE_ENV
+    let runtimeConfig: { nodeEnv: string; frontendUrl?: string }
+    let configService: Pick<ConfigService, 'get'>
 
     beforeEach(() => {
         transactionClient = {}
@@ -67,26 +69,30 @@ describe('AuthService', () => {
             ),
         }
         emailOutbox = { enqueue: jest.fn() }
+        runtimeConfig = { nodeEnv: 'test' }
+        configService = {
+            get: jest.fn((key: string, fallback?: unknown) => {
+                if (key === 'env.nodeEnv') return runtimeConfig.nodeEnv
+                if (key === 'env.frontendUrl') return runtimeConfig.frontendUrl ?? fallback
+                return fallback
+            }),
+        }
 
         service = new AuthService(
             authRepository as unknown as AuthRepository,
             workspaceService as unknown as WorkspaceService,
             prisma as never,
             emailOutbox as unknown as EmailOutboxService,
+            configService as ConfigService,
         )
         jest.clearAllMocks()
-        process.env.NODE_ENV = 'test'
-    })
-
-    afterAll(() => {
-        process.env.NODE_ENV = originalNodeEnv
     })
 
     it('registers a user with a hashed password and verification token', async () => {
         const now = Date.now()
         const password = 'GraniteHarbor!1234'
 
-        process.env.NODE_ENV = 'development'
+        runtimeConfig.nodeEnv = 'development'
 
         authRepository.findUserByEmail.mockResolvedValue(null)
         authRepository.createUserWithVerificationToken.mockImplementation(async (input) =>
@@ -359,7 +365,7 @@ describe('AuthService', () => {
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         } as never)
 
-        process.env.NODE_ENV = 'production'
+        runtimeConfig.nodeEnv = 'production'
 
         await service.register({
             email: 'test@example.com',
@@ -668,7 +674,7 @@ describe('AuthService', () => {
     it('resends a verification token for an existing unverified user', async () => {
         const now = Date.now()
 
-        process.env.NODE_ENV = 'development'
+        runtimeConfig.nodeEnv = 'development'
         authRepository.findUserByEmail.mockResolvedValue(createMockUser())
         authRepository.createVerificationTokenForUser.mockResolvedValue(undefined)
 
@@ -728,7 +734,7 @@ describe('AuthService', () => {
     it('creates a password reset token for an existing user and logs it', async () => {
         const now = Date.now()
 
-        process.env.NODE_ENV = 'development'
+        runtimeConfig.nodeEnv = 'development'
         authRepository.findUserByEmail.mockResolvedValue(createMockUser({ emailVerified: true }))
         authRepository.createPasswordResetTokenForUser.mockResolvedValue(undefined)
 
