@@ -83,7 +83,9 @@ export class WorkspaceRepository {
         return workspaces.map(({ memberships, _count, ...workspace }) => {
             const membership = memberships[0]
             if (!membership) {
-                throw new Error('Workspace query returned a workspace without the requested membership')
+                throw new Error(
+                    'Workspace query returned a workspace without the requested membership',
+                )
             }
 
             return {

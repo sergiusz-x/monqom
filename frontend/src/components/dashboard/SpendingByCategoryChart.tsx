@@ -128,7 +128,9 @@ export function SpendingByCategoryChart({
                     number | string | readonly (number | string)[] | undefined,
                 ) =>
                   formatCurrency(
-                    Number(Array.isArray(value) ? (value[0] ?? 0) : (value ?? 0)),
+                    Number(
+                      Array.isArray(value) ? (value[0] ?? 0) : (value ?? 0),
+                    ),
                     breakdown.currency,
                   )
                 }

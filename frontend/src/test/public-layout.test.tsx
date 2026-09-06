@@ -75,9 +75,7 @@ describe("PublicLayout preferences", () => {
     renderPublicLayout();
 
     await act(async () => {
-      await user.click(
-        screen.getByRole("button", { name: "Change language" }),
-      );
+      await user.click(screen.getByRole("button", { name: "Change language" }));
     });
 
     expect(localStorage.getItem("monqom-language")).toBe("pl");

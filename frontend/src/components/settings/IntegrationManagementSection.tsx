@@ -129,7 +129,10 @@ const SCOPE_COPY = {
 } as const;
 
 function flattenCategories(categories: Category[]): Category[] {
-  return categories.flatMap((category) => [category, ...flattenCategories(category.children)]);
+  return categories.flatMap((category) => [
+    category,
+    ...flattenCategories(category.children),
+  ]);
 }
 
 function defaultExpiry() {
@@ -195,12 +198,14 @@ export function IntegrationManagementSection({
   }, []);
   const selectableCategories = useMemo(
     () =>
-      flattenCategories([...expenseCategories, ...incomeCategories]).map((category) => ({
-        id: category.id,
-        label: translateSystemLabel(t, category.systemKey, category.name),
-        icon: category.icon,
-        depth: category.parentId ? 1 : 0,
-      })),
+      flattenCategories([...expenseCategories, ...incomeCategories]).map(
+        (category) => ({
+          id: category.id,
+          label: translateSystemLabel(t, category.systemKey, category.name),
+          icon: category.icon,
+          depth: category.parentId ? 1 : 0,
+        }),
+      ),
     [expenseCategories, incomeCategories, t],
   );
   const selectablePaymentSources = useMemo(
@@ -611,7 +616,9 @@ export function IntegrationManagementSection({
                 </FormField>
               </>
             )}
-            {step === 2 && <ScopePicker scopes={scopes} setScopes={setScopes} />}
+            {step === 2 && (
+              <ScopePicker scopes={scopes} setScopes={setScopes} />
+            )}
             {step === 3 && (
               <PolicyPicker
                 label={t("integrations.categoryPolicy")}
@@ -836,8 +843,14 @@ export function IntegrationManagementSection({
               variant="outline"
               onClick={() => setSecretVisible((visible) => !visible)}
             >
-              {secretVisible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-              {secretVisible ? t("integrations.hideToken") : t("integrations.revealToken")}
+              {secretVisible ? (
+                <EyeOff size={16} aria-hidden="true" />
+              ) : (
+                <Eye size={16} aria-hidden="true" />
+              )}
+              {secretVisible
+                ? t("integrations.hideToken")
+                : t("integrations.revealToken")}
             </Button>
           </div>
           <a
@@ -875,7 +888,8 @@ export function IntegrationManagementSection({
 
 function WizardHeader({ step }: { step: number }) {
   const { t } = useTranslation();
-  const stepKey = STEP_KEYS[Math.min(Math.max(step - 1, 0), STEP_KEYS.length - 1)]!;
+  const stepKey =
+    STEP_KEYS[Math.min(Math.max(step - 1, 0), STEP_KEYS.length - 1)]!;
   return (
     <header>
       <div className="flex items-start justify-between gap-4">
@@ -883,7 +897,10 @@ function WizardHeader({ step }: { step: number }) {
           <p className="text-sm font-medium text-primary">
             {t("integrations.step", { current: step, total: STEP_KEYS.length })}
           </p>
-          <h3 id="integration-wizard-title" className="mt-1 text-lg font-semibold">
+          <h3
+            id="integration-wizard-title"
+            className="mt-1 text-lg font-semibold"
+          >
             {t(STEP_COPY[stepKey].title)}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -897,9 +914,18 @@ function WizardHeader({ step }: { step: number }) {
       <ProgressBar
         className="mt-4"
         value={(step / STEP_KEYS.length) * 100}
-        ariaLabel={t("integrations.step", { current: step, total: STEP_KEYS.length })}
+        ariaLabel={t("integrations.step", {
+          current: step,
+          total: STEP_KEYS.length,
+        })}
       />
-      <ol className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label={t("integrations.step", { current: step, total: STEP_KEYS.length })}>
+      <ol
+        className="mt-4 flex gap-2 overflow-x-auto pb-1"
+        aria-label={t("integrations.step", {
+          current: step,
+          total: STEP_KEYS.length,
+        })}
+      >
         {STEP_KEYS.map((key, index) => (
           <li key={key} className="min-w-20 shrink-0">
             <div className="flex items-center gap-2">
@@ -918,7 +944,9 @@ function WizardHeader({ step }: { step: number }) {
               <span
                 aria-current={index + 1 === step ? "step" : undefined}
                 className={`truncate text-xs ${
-                  index + 1 === step ? "font-semibold text-foreground" : "text-muted-foreground"
+                  index + 1 === step
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground"
                 }`}
               >
                 {t(STEP_COPY[key].short)}
@@ -963,27 +991,69 @@ function IntegrationSummary({
   ) =>
     ids
       .map((id) => items.find((item) => item.id === id))
-      .filter((item): item is { id: string; label: string; icon?: string | null } => Boolean(item))
+      .filter(
+        (item): item is { id: string; label: string; icon?: string | null } =>
+          Boolean(item),
+      )
       .map((item) => `${item.icon ?? ""} ${item.label}`.trim());
   const categoryNames = selectedNames(categoryIds, categories);
   const sourceNames = selectedNames(sourceIds, paymentSources);
-  const ipRanges = cidrs.split("\n").map((value) => value.trim()).filter(Boolean);
+  const ipRanges = cidrs
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
   const rows = [
     [t("integrations.summaryName"), name],
-    [t("integrations.summaryExpiry"), new Date(`${expiry}T12:00:00`).toLocaleDateString()],
-    [t("integrations.summaryPermissions"), scopes.length ? scopes.map((scope) => t(SCOPE_COPY[scope].title)).join(", ") : t("integrations.noScopes")],
-    [t("integrations.categoryPolicy"), categoryRestricted ? (categoryNames.length ? categoryNames.join(", ") : t("integrations.noneSelected")) : t("integrations.unrestricted")],
-    [t("integrations.sourcePolicy"), sourceRestricted ? (sourceNames.length ? sourceNames.join(", ") : t("integrations.noneSelected")) : t("integrations.unrestricted")],
-    [t("integrations.ipAccess"), cidrEnabled ? (ipRanges.length ? ipRanges.join(", ") : t("integrations.noneSelected")) : t("integrations.unrestricted")],
+    [
+      t("integrations.summaryExpiry"),
+      new Date(`${expiry}T12:00:00`).toLocaleDateString(),
+    ],
+    [
+      t("integrations.summaryPermissions"),
+      scopes.length
+        ? scopes.map((scope) => t(SCOPE_COPY[scope].title)).join(", ")
+        : t("integrations.noScopes"),
+    ],
+    [
+      t("integrations.categoryPolicy"),
+      categoryRestricted
+        ? categoryNames.length
+          ? categoryNames.join(", ")
+          : t("integrations.noneSelected")
+        : t("integrations.unrestricted"),
+    ],
+    [
+      t("integrations.sourcePolicy"),
+      sourceRestricted
+        ? sourceNames.length
+          ? sourceNames.join(", ")
+          : t("integrations.noneSelected")
+        : t("integrations.unrestricted"),
+    ],
+    [
+      t("integrations.ipAccess"),
+      cidrEnabled
+        ? ipRanges.length
+          ? ipRanges.join(", ")
+          : t("integrations.noneSelected")
+        : t("integrations.unrestricted"),
+    ],
   ] as const;
   return (
     <div className="rounded-lg border border-border bg-muted/40 p-4">
       <h4 className="font-semibold">{t("integrations.reviewTitle")}</h4>
-      <p className="mt-1 text-sm text-muted-foreground">{t("integrations.reviewDescription")}</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {t("integrations.reviewDescription")}
+      </p>
       <dl className="mt-4 space-y-3 text-sm">
         {rows.map(([label, value]) => (
-          <div key={label} className="border-b border-border/70 pb-3 last:border-0 last:pb-0">
-            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+          <div
+            key={label}
+            className="border-b border-border/70 pb-3 last:border-0 last:pb-0"
+          >
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {label}
+            </dt>
             <dd className="mt-1 break-words">{value}</dd>
           </div>
         ))}
@@ -1024,7 +1094,10 @@ function ScopePicker({
         <fieldset key={label} className="rounded-lg border border-border p-4">
           <legend className="px-1 text-sm font-semibold">{t(label)}</legend>
           {values.map((scope) => (
-            <label key={scope} className="mt-3 flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-muted">
+            <label
+              key={scope}
+              className="mt-3 flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-muted"
+            >
               <input
                 className="mt-0.5 size-4"
                 type="checkbox"
@@ -1038,7 +1111,9 @@ function ScopePicker({
                 }
               />
               <span>
-                <span className="block text-sm font-medium">{t(SCOPE_COPY[scope].title)}</span>
+                <span className="block text-sm font-medium">
+                  {t(SCOPE_COPY[scope].title)}
+                </span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
                   {t(SCOPE_COPY[scope].description)}
                 </span>
@@ -1061,7 +1136,13 @@ function PolicyPicker({
   label: string;
   restricted: boolean;
   setRestricted: (value: boolean) => void;
-  items: { id: string; label: string; icon?: string | null; detail?: string; depth?: number }[];
+  items: {
+    id: string;
+    label: string;
+    icon?: string | null;
+    detail?: string;
+    depth?: number;
+  }[];
   selected: string[];
   setSelected: (value: string[]) => void;
 }) {
@@ -1077,8 +1158,12 @@ function PolicyPicker({
           onChange={() => setRestricted(false)}
         />
         <span>
-          <span className="block font-medium">{t("integrations.unrestricted")}</span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">{t("integrations.unrestrictedHint")}</span>
+          <span className="block font-medium">
+            {t("integrations.unrestricted")}
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {t("integrations.unrestrictedHint")}
+          </span>
         </span>
       </label>
       <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-sm">
@@ -1089,14 +1174,21 @@ function PolicyPicker({
           onChange={() => setRestricted(true)}
         />
         <span>
-          <span className="block font-medium">{t("integrations.restricted")}</span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">{t("integrations.restrictedHint")}</span>
+          <span className="block font-medium">
+            {t("integrations.restricted")}
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {t("integrations.restrictedHint")}
+          </span>
         </span>
       </label>
       {restricted && (
         <div className="max-h-48 space-y-1 overflow-y-auto rounded-md bg-muted/50 p-2">
           {items.map((item) => (
-            <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-md p-2 text-sm hover:bg-background">
+            <label
+              key={item.id}
+              className="flex cursor-pointer items-center gap-3 rounded-md p-2 text-sm hover:bg-background"
+            >
               <input
                 className="size-4"
                 type="checkbox"
@@ -1110,9 +1202,16 @@ function PolicyPicker({
                 }
               />
               {item.icon && <span aria-hidden="true">{item.icon}</span>}
-              <span className="min-w-0" style={{ paddingLeft: `${(item.depth ?? 0) * 12}px` }}>
+              <span
+                className="min-w-0"
+                style={{ paddingLeft: `${(item.depth ?? 0) * 12}px` }}
+              >
                 <span className="block truncate">{item.label}</span>
-                {item.detail && <span className="block text-xs text-muted-foreground">{item.detail}</span>}
+                {item.detail && (
+                  <span className="block text-xs text-muted-foreground">
+                    {item.detail}
+                  </span>
+                )}
               </span>
             </label>
           ))}
@@ -1138,16 +1237,45 @@ function IpAccessPicker({
     <fieldset className="space-y-3 rounded-lg border border-border p-4">
       <legend className="sr-only">{t("integrations.ipAccess")}</legend>
       <label className="flex cursor-pointer items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-        <input className="mt-0.5 size-4" type="radio" checked={!enabled} onChange={() => setEnabled(false)} />
-        <span><span className="block font-medium">{t("integrations.unrestricted")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("integrations.ipUnrestrictedHint")}</span></span>
+        <input
+          className="mt-0.5 size-4"
+          type="radio"
+          checked={!enabled}
+          onChange={() => setEnabled(false)}
+        />
+        <span>
+          <span className="block font-medium">
+            {t("integrations.unrestricted")}
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {t("integrations.ipUnrestrictedHint")}
+          </span>
+        </span>
       </label>
       <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-sm">
-        <input className="mt-0.5 size-4" type="radio" checked={enabled} onChange={() => setEnabled(true)} />
-        <span><span className="block font-medium">{t("integrations.enableCidr")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("integrations.ipRestrictedHint")}</span></span>
+        <input
+          className="mt-0.5 size-4"
+          type="radio"
+          checked={enabled}
+          onChange={() => setEnabled(true)}
+        />
+        <span>
+          <span className="block font-medium">
+            {t("integrations.enableCidr")}
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {t("integrations.ipRestrictedHint")}
+          </span>
+        </span>
       </label>
       {enabled && (
         <FormField id="integration-cidrs" label={t("integrations.cidrs")}>
-          <textarea className="min-h-24 w-full rounded-md border border-input bg-background p-2 font-mono text-sm" value={cidrs} onChange={(event) => setCidrs(event.target.value)} placeholder="203.0.113.0/24" />
+          <textarea
+            className="min-h-24 w-full rounded-md border border-input bg-background p-2 font-mono text-sm"
+            value={cidrs}
+            onChange={(event) => setCidrs(event.target.value)}
+            placeholder="203.0.113.0/24"
+          />
         </FormField>
       )}
     </fieldset>

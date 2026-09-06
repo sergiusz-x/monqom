@@ -21,6 +21,8 @@ describe('GoalsController authorization policy', () => {
     })
 
     it.each(['list', 'get'] as const)('keeps %s available to workspace members', (method) => {
-        expect(Reflect.getMetadata(WORKSPACE_ROLE_KEY, GoalsController.prototype[method])).toBeUndefined()
+        expect(
+            Reflect.getMetadata(WORKSPACE_ROLE_KEY, GoalsController.prototype[method]),
+        ).toBeUndefined()
     })
 })

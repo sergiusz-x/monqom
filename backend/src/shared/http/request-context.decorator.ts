@@ -1,4 +1,9 @@
-import { BadRequestException, createParamDecorator, type ExecutionContext, UnauthorizedException } from '@nestjs/common'
+import {
+    BadRequestException,
+    createParamDecorator,
+    type ExecutionContext,
+    UnauthorizedException,
+} from '@nestjs/common'
 import type { Request } from 'express'
 
 const AUTHENTICATION_REQUIRED_MESSAGE = 'Authentication required'
@@ -28,6 +33,7 @@ export const CurrentUserId = createParamDecorator((_: unknown, context: Executio
     getAuthenticatedUserId(context.switchToHttp().getRequest<Request>()),
 )
 
-export const CurrentWorkspaceId = createParamDecorator((_: unknown, context: ExecutionContext): string =>
-    getWorkspaceId(context.switchToHttp().getRequest<Request>()),
+export const CurrentWorkspaceId = createParamDecorator(
+    (_: unknown, context: ExecutionContext): string =>
+        getWorkspaceId(context.switchToHttp().getRequest<Request>()),
 )

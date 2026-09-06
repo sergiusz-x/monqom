@@ -29,13 +29,11 @@ describe('ExternalTransactionsService', () => {
         }
         workspace = { getWorkspaceById: jest.fn().mockResolvedValue({ baseCurrency: 'PLN' }) }
         currency = {
-            getHistoricalQuote: jest
-                .fn()
-                .mockResolvedValue({
-                    rate: 1,
-                    rateDate: new Date('2026-09-04T00:00:00.000Z'),
-                    source: 'ecb-frankfurter',
-                }),
+            getHistoricalQuote: jest.fn().mockResolvedValue({
+                rate: 1,
+                rateDate: new Date('2026-09-04T00:00:00.000Z'),
+                source: 'ecb-frankfurter',
+            }),
         }
         prisma = { category: { findMany: jest.fn() }, paymentSource: { findMany: jest.fn() } }
         service = new ExternalTransactionsService(ownership, workspace, currency, prisma)

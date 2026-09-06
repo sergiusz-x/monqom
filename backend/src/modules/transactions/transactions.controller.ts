@@ -67,10 +67,7 @@ export class TransactionsController {
         @Param('id') transactionId: string,
         @CurrentWorkspaceId() workspaceId: string,
     ): Promise<CreateTransactionResponse> {
-        return this.transactionsService.getTransactionById(
-            transactionId,
-            workspaceId,
-        )
+        return this.transactionsService.getTransactionById(transactionId, workspaceId)
     }
 
     @Post()
@@ -118,11 +115,7 @@ export class TransactionsController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<void> {
-        await this.transactionsService.deleteTransaction(
-            transactionId,
-            workspaceId,
-            userId,
-        )
+        await this.transactionsService.deleteTransaction(transactionId, workspaceId, userId)
     }
 }
 

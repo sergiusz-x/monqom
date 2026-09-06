@@ -125,7 +125,9 @@ describe("BudgetsPage", () => {
     await user.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
-    expect(mockApi.post.mock.calls[0]?.[0]).toContain("/workspaces/ws-1/budgets");
+    expect(mockApi.post.mock.calls[0]?.[0]).toContain(
+      "/workspaces/ws-1/budgets",
+    );
     expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
       category_id: "cat-1",
       amount: 250,

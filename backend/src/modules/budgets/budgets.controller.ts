@@ -34,10 +34,7 @@ export class BudgetsController {
         @Query() query: BudgetProgressQueryDto,
         @CurrentWorkspaceId() workspaceId: string,
     ): Promise<BudgetProgressResponse[]> {
-        return this.budgetsService.listBudgetProgress(
-            { month: query.month },
-            workspaceId,
-        )
+        return this.budgetsService.listBudgetProgress({ month: query.month }, workspaceId)
     }
 
     @Get()
@@ -63,11 +60,7 @@ export class BudgetsController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<BudgetResponse> {
-        return this.budgetsService.createBudget(
-            toBudgetCommand(body),
-            workspaceId,
-            userId,
-        )
+        return this.budgetsService.createBudget(toBudgetCommand(body), workspaceId, userId)
     }
 
     @Put(':id')
@@ -98,11 +91,7 @@ export class BudgetsController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<void> {
-        await this.budgetsService.deleteBudget(
-            budgetId,
-            workspaceId,
-            userId,
-        )
+        await this.budgetsService.deleteBudget(budgetId, workspaceId, userId)
     }
 }
 

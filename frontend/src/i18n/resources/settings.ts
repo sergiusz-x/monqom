@@ -104,7 +104,8 @@ export const enSettings = {
     restrictions:
       "Categories: {{categories}} · Sources: {{sources}} · IP ranges: {{cidrs}}",
     unrestricted: "Unrestricted",
-    unrestrictedHint: "The integration can use every active item in this workspace.",
+    unrestrictedHint:
+      "The integration can use every active item in this workspace.",
     restrictedHint: "Choose exactly which items the integration can use.",
     ipAccess: "IP address access",
     ipUnrestrictedHint: "Requests can come from any IP address.",
@@ -141,10 +142,8 @@ export const enSettings = {
     deleted: "Key deleted",
     rotateWarning:
       "The old key will stop working immediately. Update your importer with the new key.",
-    revokeWarning:
-      "This key will stop working immediately.",
-    deleteWarning:
-      "This permanently removes the revoked key from this list.",
+    revokeWarning: "This key will stop working immediately.",
+    deleteWarning: "This permanently removes the revoked key from this list.",
     confirmRotate: "Replace key",
     confirmRevoke: "Revoke key",
     confirmDelete: "Delete key",
@@ -181,9 +180,11 @@ export const enSettings = {
     scopeCreateTitle: "Create transactions",
     scopeCreateDescription: "Add imported transactions.",
     scopeUpdateTitle: "Update its transactions",
-    scopeUpdateDescription: "Change only transactions this integration created.",
+    scopeUpdateDescription:
+      "Change only transactions this integration created.",
     scopeDeleteTitle: "Delete its transactions",
-    scopeDeleteDescription: "Delete only transactions this integration created.",
+    scopeDeleteDescription:
+      "Delete only transactions this integration created.",
     scopeReadOwnTitle: "Read its transactions",
     scopeReadOwnDescription: "Read only transactions this integration created.",
     scopeCategoriesTitle: "Read categories",
@@ -312,8 +313,10 @@ export const plSettings = {
     restrictions:
       "Kategorie: {{categories}} · Źródła: {{sources}} · Zakresy IP: {{cidrs}}",
     unrestricted: "Bez ograniczeń",
-    unrestrictedHint: "Integracja może używać wszystkich aktywnych pozycji w tym workspace.",
-    restrictedHint: "Wybierz dokładnie, których pozycji może używać integracja.",
+    unrestrictedHint:
+      "Integracja może używać wszystkich aktywnych pozycji w tym workspace.",
+    restrictedHint:
+      "Wybierz dokładnie, których pozycji może używać integracja.",
     ipAccess: "Dostęp z adresów IP",
     ipUnrestrictedHint: "Żądania mogą przychodzić z dowolnego adresu IP.",
     ipRestrictedHint: "Akceptuj żądania tylko z podanych niżej zakresów IP.",
@@ -349,8 +352,7 @@ export const plSettings = {
     deleted: "Usunięto klucz",
     rotateWarning:
       "Stary klucz przestanie działać od razu. Zmień klucz w importerze.",
-    revokeWarning:
-      "Ten klucz przestanie działać od razu.",
+    revokeWarning: "Ten klucz przestanie działać od razu.",
     deleteWarning: "To trwale usunie unieważniony klucz z tej listy.",
     confirmRotate: "Wymień klucz",
     confirmRevoke: "Unieważnij klucz",
@@ -361,7 +363,8 @@ export const plSettings = {
     copyToken: "Kopiuj klucz",
     revealToken: "Pokaż klucz",
     hideToken: "Ukryj klucz",
-    secretHidden: "Klucz jest ukryty, dopóki nie wybierzesz opcji jego pokazania.",
+    secretHidden:
+      "Klucz jest ukryty, dopóki nie wybierzesz opcji jego pokazania.",
     documentation: "Przeczytaj dokumentację API",
     secretAcknowledgement:
       "Zapisałem klucz i rozumiem, że nie będzie można go ponownie wyświetlić.",
@@ -375,10 +378,12 @@ export const plSettings = {
     stepPermissionsDescription: "Dodaj tylko to, czego potrzebuje importer.",
     stepCategoriesShort: "Kategorie",
     stepCategoriesTitle: "Wybierz dostęp do kategorii",
-    stepCategoriesDescription: "Wybierz wszystkie kategorie albo tylko wybrane.",
+    stepCategoriesDescription:
+      "Wybierz wszystkie kategorie albo tylko wybrane.",
     stepSourcesShort: "Źródła",
     stepSourcesTitle: "Wybierz dostęp do źródeł płatności",
-    stepSourcesDescription: "Wybierz wszystkie źródła płatności albo tylko wybrane.",
+    stepSourcesDescription:
+      "Wybierz wszystkie źródła płatności albo tylko wybrane.",
     stepIpShort: "Dostęp IP",
     stepIpTitle: "Wybierz dostęp z adresów IP",
     stepIpDescription: "Dopuść każdy adres IP albo tylko wybrane zakresy.",
@@ -388,11 +393,14 @@ export const plSettings = {
     scopeCreateTitle: "Tworzenie transakcji",
     scopeCreateDescription: "Dodawanie importowanych transakcji.",
     scopeUpdateTitle: "Edycja własnych transakcji",
-    scopeUpdateDescription: "Zmiana tylko transakcji utworzonych przez tę integrację.",
+    scopeUpdateDescription:
+      "Zmiana tylko transakcji utworzonych przez tę integrację.",
     scopeDeleteTitle: "Usuwanie własnych transakcji",
-    scopeDeleteDescription: "Usuwanie tylko transakcji utworzonych przez tę integrację.",
+    scopeDeleteDescription:
+      "Usuwanie tylko transakcji utworzonych przez tę integrację.",
     scopeReadOwnTitle: "Odczyt własnych transakcji",
-    scopeReadOwnDescription: "Odczyt tylko transakcji utworzonych przez tę integrację.",
+    scopeReadOwnDescription:
+      "Odczyt tylko transakcji utworzonych przez tę integrację.",
     scopeCategoriesTitle: "Odczyt kategorii",
     scopeCategoriesDescription: "Odczyt ID kategorii do importu.",
     scopeSourcesTitle: "Odczyt źródeł płatności",

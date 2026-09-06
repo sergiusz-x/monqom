@@ -55,11 +55,7 @@ export class CategoriesController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<CategoryResponse> {
-        return this.categoriesService.createCategory(
-            body,
-            workspaceId,
-            userId,
-        )
+        return this.categoriesService.createCategory(body, workspaceId, userId)
     }
     @Patch(':id')
     @ApiCategoryResponse()
@@ -71,12 +67,7 @@ export class CategoriesController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<CategoryResponse> {
-        return this.categoriesService.updateCategory(
-            id,
-            body,
-            workspaceId,
-            userId,
-        )
+        return this.categoriesService.updateCategory(id, body, workspaceId, userId)
     }
     @Put('order')
     @ApiCategoryResponse(true)
@@ -87,11 +78,7 @@ export class CategoriesController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<CategoryResponse[]> {
-        return this.categoriesService.reorderCategories(
-            body.items,
-            workspaceId,
-            userId,
-        )
+        return this.categoriesService.reorderCategories(body.items, workspaceId, userId)
     }
     @Post(':id/archive')
     @ApiCategoryResponse()
@@ -102,11 +89,7 @@ export class CategoriesController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<CategoryResponse> {
-        return this.categoriesService.archiveCategory(
-            id,
-            workspaceId,
-            userId,
-        )
+        return this.categoriesService.archiveCategory(id, workspaceId, userId)
     }
     @Post(':id/restore')
     @ApiCategoryResponse()
@@ -117,10 +100,6 @@ export class CategoriesController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<CategoryResponse> {
-        return this.categoriesService.restoreCategory(
-            id,
-            workspaceId,
-            userId,
-        )
+        return this.categoriesService.restoreCategory(id, workspaceId, userId)
     }
 }

@@ -479,9 +479,7 @@ function mapBudgetProgressResponse(progress: {
         limit: budgetAmount,
         spent: centsToDisplayAmount(progress.spentCents),
         remaining:
-            progress.remainingCents === null
-                ? null
-                : centsToDisplayAmount(progress.remainingCents),
+            progress.remainingCents === null ? null : centsToDisplayAmount(progress.remainingCents),
         percentage:
             progress.percentageBasisPoints === null
                 ? null

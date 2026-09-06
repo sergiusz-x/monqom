@@ -40,10 +40,7 @@ export class DashboardController {
         @Query() query: DashboardMonthQueryDto,
         @CurrentWorkspaceId() workspaceId: string,
     ): Promise<SpendingSummaryResponse> {
-        return this.dashboardService.getSpendingSummary(
-            { month: query.month },
-            workspaceId,
-        )
+        return this.dashboardService.getSpendingSummary({ month: query.month }, workspaceId)
     }
 
     @Get('category-breakdown')
@@ -53,9 +50,6 @@ export class DashboardController {
         @Query() query: DashboardMonthQueryDto,
         @CurrentWorkspaceId() workspaceId: string,
     ): Promise<CategoryBreakdownResponse> {
-        return this.dashboardService.getCategoryBreakdown(
-            { month: query.month },
-            workspaceId,
-        )
+        return this.dashboardService.getCategoryBreakdown({ month: query.month }, workspaceId)
     }
 }

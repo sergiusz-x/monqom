@@ -115,12 +115,7 @@ export class GoalsController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ) {
-        return this.goalsService.createOperation(
-            workspaceId,
-            userId,
-            goalId,
-            body,
-        )
+        return this.goalsService.createOperation(workspaceId, userId, goalId, body)
     }
 
     @Patch(':goalId/operations/:operationId')
@@ -134,13 +129,7 @@ export class GoalsController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ) {
-        return this.goalsService.updateOperation(
-            workspaceId,
-            userId,
-            goalId,
-            operationId,
-            body,
-        )
+        return this.goalsService.updateOperation(workspaceId, userId, goalId, operationId, body)
     }
 
     @Delete(':goalId/operations/:operationId')
@@ -153,11 +142,6 @@ export class GoalsController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<void> {
-        await this.goalsService.deleteOperation(
-            workspaceId,
-            userId,
-            goalId,
-            operationId,
-        )
+        await this.goalsService.deleteOperation(workspaceId, userId, goalId, operationId)
     }
 }

@@ -201,7 +201,6 @@ export class WorkspaceService {
 
         return createWorkspace(prisma)
     }
-
 }
 
 function validateWorkspaceSettingsInput(input: UpdateWorkspaceSettingsCommand): {

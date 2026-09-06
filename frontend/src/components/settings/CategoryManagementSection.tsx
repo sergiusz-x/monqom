@@ -618,14 +618,20 @@ type CategoryValidationKey =
   | "categoryManagement.iconInvalid";
 type CategoryValidationTranslator = (key: CategoryValidationKey) => string;
 
-function validateName(name: string, t: CategoryValidationTranslator): string | null {
+function validateName(
+  name: string,
+  t: CategoryValidationTranslator,
+): string | null {
   const normalized = name.trim();
   if (!normalized) return t("categoryManagement.nameRequired");
   if (normalized.length > 100) return t("categoryManagement.nameTooLong");
   return null;
 }
 
-function validateIcon(icon: string, t: CategoryValidationTranslator): string | null {
+function validateIcon(
+  icon: string,
+  t: CategoryValidationTranslator,
+): string | null {
   const normalized = icon.trim();
   if (!normalized) return null;
   return /^\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic})*$/u.test(

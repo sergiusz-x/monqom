@@ -85,10 +85,6 @@ export class PaymentSourcesController {
         @CurrentWorkspaceId() workspaceId: string,
         @CurrentUserId() userId: string,
     ): Promise<PaymentSourceResponse> {
-        return this.paymentSourcesService.archivePaymentSource(
-            paymentSourceId,
-            workspaceId,
-            userId,
-        )
+        return this.paymentSourcesService.archivePaymentSource(paymentSourceId, workspaceId, userId)
     }
 }

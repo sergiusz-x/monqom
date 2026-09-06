@@ -108,10 +108,15 @@ describe('IntegrationManagementService', () => {
     })
 
     it('hides an integration after its last revoked credential is deleted', async () => {
-        prisma.integrationCredential.findFirst.mockResolvedValue({ ...credential, status: 'revoked' })
+        prisma.integrationCredential.findFirst.mockResolvedValue({
+            ...credential,
+            status: 'revoked',
+        })
         prisma.integrationCredential.count.mockResolvedValue(0)
 
-        await expect(service.remove('workspace-1', 'integration-1', 'credential-1')).resolves.toEqual({
+        await expect(
+            service.remove('workspace-1', 'integration-1', 'credential-1'),
+        ).resolves.toEqual({
             deleted: true,
         })
 

@@ -5,7 +5,10 @@ import { App } from 'supertest/types'
 import { ExternalTransactionsController } from '../src/modules/integrations/external-transactions.controller'
 import { ExternalTransactionsService } from '../src/modules/integrations/external-transactions.service'
 import { IntegrationCredentialGuard } from '../src/modules/integrations/integration-credential.guard'
-import { IntegrationCredentialService, MachinePrincipal } from '../src/modules/integrations/integration-credential.service'
+import {
+    IntegrationCredentialService,
+    MachinePrincipal,
+} from '../src/modules/integrations/integration-credential.service'
 import { IntegrationRateLimitService } from '../src/modules/integrations/integration-rate-limit.service'
 import { createRequestValidationPipe } from '../src/shared/validation/request-validation.pipe'
 import { csrfProtectionMiddleware } from '../src/shared/security/csrf'

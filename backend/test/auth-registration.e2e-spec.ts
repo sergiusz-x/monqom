@@ -486,7 +486,9 @@ describe('Auth registration (e2e)', () => {
             })
             .expect(201)
 
-        getRequiredArrayItem(prismaMock.verificationTokens, 0).expiresAt = new Date(Date.now() - 1000)
+        getRequiredArrayItem(prismaMock.verificationTokens, 0).expiresAt = new Date(
+            Date.now() - 1000,
+        )
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/verify-email')

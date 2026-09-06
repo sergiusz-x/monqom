@@ -186,7 +186,9 @@ describe('Auth two-factor authentication (e2e)', () => {
             qrCodeDataUrl: expect.stringMatching(/^data:image\/png;base64,/),
         })
         expect(getRequiredArrayItem(prismaMock.users, 0).totpEnabled).toBe(false)
-        expect(getRequiredArrayItem(prismaMock.users, 0).totpSecretEncrypted).toEqual(expect.any(String))
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpSecretEncrypted).toEqual(
+            expect.any(String),
+        )
         expect(getRequiredArrayItem(prismaMock.users, 0).totpSecretEncrypted).not.toBe(
             setupResponse.body.secret,
         )

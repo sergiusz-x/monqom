@@ -301,7 +301,9 @@ describe('Auth password reset (e2e)', () => {
             })
             .expect(200)
 
-        getRequiredArrayItem(prismaMock.passwordResetTokens, 0).expiresAt = new Date(Date.now() - 1000)
+        getRequiredArrayItem(prismaMock.passwordResetTokens, 0).expiresAt = new Date(
+            Date.now() - 1000,
+        )
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/reset-password')

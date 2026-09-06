@@ -68,11 +68,15 @@ export function formatShortDate(value: string): string {
 }
 
 export function formatLongDate(value: string, locale?: string): string {
-  return formatDateOnly(value, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }, locale);
+  return formatDateOnly(
+    value,
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+    locale,
+  );
 }
 
 export function getDateOnlyInTimeZone(date: Date, timeZone: string): string {
@@ -88,7 +92,9 @@ export function getDateOnlyInTimeZone(date: Date, timeZone: string): string {
   const day = values.get("day");
 
   if (!year || !month || !day) {
-    throw new Error("Intl.DateTimeFormat did not provide a complete calendar date");
+    throw new Error(
+      "Intl.DateTimeFormat did not provide a complete calendar date",
+    );
   }
 
   return `${year}-${month}-${day}`;
