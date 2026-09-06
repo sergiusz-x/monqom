@@ -14,6 +14,7 @@ import {
 import { ApiParam, ApiTags } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
+import { RequireWorkspaceRole, WorkspaceRoleGuard } from '../../shared/guards/workspace-role.guard'
 import { CreateGoalDto, GoalOperationDto, ListGoalsQueryDto, UpdateGoalDto } from './goals.dto'
 import { GOALS_BASE_ROUTE } from './goals.routes'
 import { GoalsService } from './goals.service'
@@ -40,6 +41,8 @@ export class GoalsController {
     }
 
     @Post()
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @ApiGoalResponse(false, HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     create(
@@ -51,6 +54,8 @@ export class GoalsController {
     }
 
     @Patch(':goalId')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @ApiGoalResponse()
     update(
         @Param('goalId') goalId: string,
@@ -62,6 +67,8 @@ export class GoalsController {
     }
 
     @Post(':goalId/archive')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @ApiGoalResponse()
     @HttpCode(HttpStatus.OK)
     archive(
@@ -73,6 +80,8 @@ export class GoalsController {
     }
 
     @Post(':goalId/restore')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @ApiGoalResponse()
     @HttpCode(HttpStatus.OK)
     restore(
@@ -84,6 +93,8 @@ export class GoalsController {
     }
 
     @Delete(':goalId')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.NO_CONTENT)
     async delete(
         @Param('goalId') goalId: string,
@@ -94,6 +105,8 @@ export class GoalsController {
     }
 
     @Post(':goalId/operations')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @ApiGoalOperationResponse(HttpStatus.CREATED)
     @HttpCode(HttpStatus.CREATED)
     createOperation(
@@ -111,6 +124,8 @@ export class GoalsController {
     }
 
     @Patch(':goalId/operations/:operationId')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @ApiGoalOperationResponse()
     updateOperation(
         @Param('goalId') goalId: string,
@@ -129,6 +144,8 @@ export class GoalsController {
     }
 
     @Delete(':goalId/operations/:operationId')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteOperation(
         @Param('goalId') goalId: string,

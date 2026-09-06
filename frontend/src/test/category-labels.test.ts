@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildCategoryLabels } from "@/lib/category-labels";
 import type { Category } from "@/types/category";
+import type { TFunction } from "i18next";
 
 function category(overrides: Partial<Category>): Category {
   return {
@@ -16,7 +17,9 @@ function category(overrides: Partial<Category>): Category {
 
 describe("buildCategoryLabels", () => {
   it("builds full paths for arbitrarily nested categories", () => {
-    const translate = vi.fn((key: string, fallback?: string) => fallback ?? key);
+    const translate = vi.fn(
+      (key: string, fallback?: string) => fallback ?? key,
+    );
     const categories = [
       category({
         id: "food",
@@ -38,7 +41,9 @@ describe("buildCategoryLabels", () => {
       }),
     ];
 
-    expect(buildCategoryLabels(categories, translate)).toEqual({
+    expect(
+      buildCategoryLabels(categories, translate as unknown as TFunction),
+    ).toEqual({
       food: "Food",
       groceries: "Food / Groceries",
       market: "Food / Groceries / Market",

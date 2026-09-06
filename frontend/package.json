@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
     "lint": "node ../scripts/check-typography.mjs && node ../scripts/check-i18n-literals.mjs && eslint .",

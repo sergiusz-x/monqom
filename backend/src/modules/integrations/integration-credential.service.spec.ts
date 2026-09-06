@@ -115,4 +115,62 @@ describe('IntegrationCredentialService', () => {
             service.authenticateAuthorizationHeader(undefined, '127.0.0.1', now),
         ).rejects.toBeInstanceOf(UnauthorizedException)
     })
+
+    it('records a rotation without recording a bearer value', async () => {
+        const audit = { record: jest.fn().mockResolvedValue(undefined) }
+        const previous = {
+            id: 'credential-1',
+            integrationId: 'integration-1',
+            tokenPrefix: 'mqic_previous',
+            status: 'active',
+            revokedAt: null,
+            scopes: ['transactions:create'],
+            categoryAllowlistEnabled: false,
+            paymentSourceAllowlistEnabled: false,
+            cidrAllowlistEnabled: false,
+            allowedCidrs: [],
+            categoryRestrictions: [],
+            paymentSourceRestrictions: [],
+            integration: { workspaceId: 'workspace-1', createdByUserId: 'user-1' },
+        }
+        const transaction = {
+            integrationCredential: {
+                findUnique: jest.fn().mockResolvedValue(previous),
+                create: jest.fn().mockResolvedValue({
+                    id: 'credential-2',
+                    tokenPrefix: 'mqic_replacement',
+                    expiresAt: new Date('2026-10-01T00:00:00.000Z'),
+                }),
+                update: jest.fn().mockResolvedValue({}),
+            },
+            auditEvent: { create: jest.fn() },
+        }
+        const rotatePrisma = {
+            $transaction: jest.fn((callback) => callback(transaction)),
+        }
+        const rotatingService = new IntegrationCredentialService(
+            rotatePrisma as never as PrismaService,
+            audit as never as AuditService,
+        )
+
+        await rotatingService.rotateCredential(
+            'credential-1',
+            new Date('2026-10-01T00:00:00.000Z'),
+            now,
+        )
+
+        expect(audit.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: 'INTEGRATION_CREDENTIAL_ROTATED',
+                entityId: 'credential-2',
+                metadata: expect.objectContaining({
+                    previous_credential_id: 'credential-1',
+                    previous_token_prefix: 'mqic_previous',
+                    token_prefix: 'mqic_replacement',
+                }),
+            }),
+            transaction,
+        )
+        expect(JSON.stringify(audit.record.mock.calls)).not.toContain('mqic_abcdefghijkl')
+    })
 })

@@ -188,7 +188,11 @@ export class IntegrationCredentialService {
         return this.prisma.$transaction(async (tx) => {
             const previous = await tx.integrationCredential.findUnique({
                 where: { id: requireTrimmed(credentialId, 'Credential id') },
-                include: { categoryRestrictions: true, paymentSourceRestrictions: true },
+                include: {
+                    integration: { select: { workspaceId: true, createdByUserId: true } },
+                    categoryRestrictions: true,
+                    paymentSourceRestrictions: true,
+                },
             })
             if (!previous || previous.status !== 'active' || previous.revokedAt) {
                 throw new UnauthorizedException('Integration credential cannot be rotated')
@@ -220,6 +224,22 @@ export class IntegrationCredentialService {
                 where: { id: previous.id },
                 data: { status: 'revoked', revokedAt: now },
             })
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ROTATED,
+                    workspaceId: previous.integration.workspaceId,
+                    userId: previous.integration.createdByUserId,
+                    entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
+                    entityId: replacement.id,
+                    metadata: {
+                        integration_id: previous.integrationId,
+                        previous_credential_id: previous.id,
+                        previous_token_prefix: previous.tokenPrefix,
+                        token_prefix: replacement.tokenPrefix,
+                    },
+                },
+                tx,
+            )
             return {
                 credentialId: replacement.id,
                 token: material.token,

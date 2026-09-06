@@ -7,6 +7,7 @@ import {
   DashboardApi,
   ExportApi,
   GoalsApi,
+  IntegrationsApi,
   PaymentSourcesApi,
   TransactionTagsApi,
   TransactionsApi,
@@ -65,6 +66,11 @@ export const categoriesApi = new CategoriesApi(
 export const dashboardApi = new DashboardApi(undefined, "", generatedTransport);
 export const exportApi = new ExportApi(undefined, "", generatedTransport);
 export const goalsApi = new GoalsApi(undefined, "", generatedTransport);
+export const integrationsApi = new IntegrationsApi(
+  undefined,
+  "",
+  generatedTransport,
+);
 export const paymentSourcesApi = new PaymentSourcesApi(
   undefined,
   "",

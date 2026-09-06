@@ -5501,6 +5501,517 @@
                 },
                 "tags": ["Goals"]
             }
+        },
+        "/workspaces/{workspaceId}/integrations": {
+            "post": {
+                "operationId": "IntegrationManagementController_create",
+                "parameters": [
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {}
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateIntegrationCredentialDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IssuedIntegrationCredentialResponseDto"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["integrations"]
+            },
+            "get": {
+                "operationId": "IntegrationManagementController_list",
+                "parameters": [
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/IntegrationResponseDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["integrations"]
+            }
+        },
+        "/workspaces/{workspaceId}/integrations/{integrationId}": {
+            "get": {
+                "operationId": "IntegrationManagementController_get",
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IntegrationResponseDto"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["integrations"]
+            }
+        },
+        "/workspaces/{workspaceId}/integrations/{integrationId}/credentials/{credentialId}/revoke": {
+            "post": {
+                "operationId": "IntegrationManagementController_revoke",
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "credentialId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {}
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CredentialStepUpDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RevokedIntegrationCredentialResponseDto"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["integrations"]
+            }
+        },
+        "/workspaces/{workspaceId}/integrations/{integrationId}/credentials/{credentialId}/rotate": {
+            "post": {
+                "operationId": "IntegrationManagementController_rotate",
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "credentialId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {}
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RotateIntegrationCredentialDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RotatedIntegrationCredentialResponseDto"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["integrations"]
+            }
+        },
+        "/workspaces/{workspaceId}/integrations/{integrationId}/credentials/{credentialId}": {
+            "delete": {
+                "operationId": "IntegrationManagementController_remove",
+                "parameters": [
+                    {
+                        "name": "integrationId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "credentialId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeletedIntegrationCredentialResponseDto"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["integrations"]
+            }
+        },
+        "/workspaces/{workspaceId}/external-transactions": {
+            "post": {
+                "operationId": "ExternalTransactionsController_create",
+                "parameters": [
+                    {
+                        "name": "idempotency-key",
+                        "required": true,
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 16,
+                            "maxLength": 128
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExternalTransactionBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "tags": ["ExternalTransactions"]
+            }
+        },
+        "/workspaces/{workspaceId}/external-transactions/{externalId}": {
+            "get": {
+                "operationId": "ExternalTransactionsController_get",
+                "parameters": [
+                    {
+                        "name": "externalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "tags": ["ExternalTransactions"]
+            },
+            "put": {
+                "operationId": "ExternalTransactionsController_update",
+                "parameters": [
+                    {
+                        "name": "externalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "idempotency-key",
+                        "required": true,
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "\"tx-v1\""
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 16,
+                            "maxLength": 128
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExternalTransactionBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "tags": ["ExternalTransactions"]
+            },
+            "delete": {
+                "operationId": "ExternalTransactionsController_remove",
+                "parameters": [
+                    {
+                        "name": "externalId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "idempotency-key",
+                        "required": true,
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "\"tx-v1\""
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 16,
+                            "maxLength": 128
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "tags": ["ExternalTransactions"]
+            }
+        },
+        "/workspaces/{workspaceId}/external-categories": {
+            "get": {
+                "operationId": "ExternalTransactionsController_categories",
+                "parameters": [
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "tags": ["ExternalTransactions"]
+            }
+        },
+        "/workspaces/{workspaceId}/external-payment-sources": {
+            "get": {
+                "operationId": "ExternalTransactionsController_paymentSources",
+                "parameters": [
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "tags": ["ExternalTransactions"]
+            }
         }
     },
     "info": {
@@ -5872,6 +6383,331 @@
                     }
                 },
                 "required": ["type", "amount", "date"]
+            },
+            "CreateIntegrationCredentialDto": {
+                "type": "object",
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "format": "password"
+                    },
+                    "two_factor_token": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "scopes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "category_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "category_allowlist_enabled": {
+                        "type": "boolean"
+                    },
+                    "payment_source_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "payment_source_allowlist_enabled": {
+                        "type": "boolean"
+                    },
+                    "allowed_cidrs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "cidr_allowlist_enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": ["current_password", "name", "expires_at", "scopes"]
+            },
+            "IssuedIntegrationCredentialResponseDto": {
+                "type": "object",
+                "properties": {
+                    "integration_id": {
+                        "type": "string"
+                    },
+                    "credential_id": {
+                        "type": "string"
+                    },
+                    "token": {
+                        "type": "string"
+                    },
+                    "token_prefix": {
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "integration_id",
+                    "credential_id",
+                    "token",
+                    "token_prefix",
+                    "expires_at"
+                ]
+            },
+            "IntegrationCreatorResponseDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": ["id", "name"]
+            },
+            "IntegrationCredentialResponseDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "token_prefix": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "revoked_at": {
+                        "type": "object",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "last_used_at": {
+                        "type": "object",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "scopes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "category_allowlist_enabled": {
+                        "type": "boolean"
+                    },
+                    "category_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "payment_source_allowlist_enabled": {
+                        "type": "boolean"
+                    },
+                    "payment_source_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "cidr_allowlist_enabled": {
+                        "type": "boolean"
+                    },
+                    "allowed_cidrs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "token_prefix",
+                    "status",
+                    "created_at",
+                    "expires_at",
+                    "scopes",
+                    "category_allowlist_enabled",
+                    "category_ids",
+                    "payment_source_allowlist_enabled",
+                    "payment_source_ids",
+                    "cidr_allowlist_enabled",
+                    "allowed_cidrs"
+                ]
+            },
+            "IntegrationResponseDto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "$ref": "#/components/schemas/IntegrationCreatorResponseDto"
+                    },
+                    "credentials": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IntegrationCredentialResponseDto"
+                        }
+                    }
+                },
+                "required": ["id", "name", "status", "created_at", "created_by", "credentials"]
+            },
+            "CredentialStepUpDto": {
+                "type": "object",
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "format": "password"
+                    },
+                    "two_factor_token": {
+                        "type": "string"
+                    }
+                },
+                "required": ["current_password"]
+            },
+            "RevokedIntegrationCredentialResponseDto": {
+                "type": "object",
+                "properties": {
+                    "revoked": {
+                        "type": "boolean"
+                    }
+                },
+                "required": ["revoked"]
+            },
+            "RotateIntegrationCredentialDto": {
+                "type": "object",
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "format": "password"
+                    },
+                    "two_factor_token": {
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": ["current_password", "expires_at"]
+            },
+            "RotatedIntegrationCredentialResponseDto": {
+                "type": "object",
+                "properties": {
+                    "credential_id": {
+                        "type": "string"
+                    },
+                    "token": {
+                        "type": "string"
+                    },
+                    "token_prefix": {
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    }
+                },
+                "required": ["credential_id", "token", "token_prefix", "expires_at"]
+            },
+            "DeletedIntegrationCredentialResponseDto": {
+                "type": "object",
+                "properties": {
+                    "deleted": {
+                        "type": "boolean"
+                    }
+                },
+                "required": ["deleted"]
+            },
+            "ExternalTransactionBodyDto": {
+                "type": "object",
+                "properties": {
+                    "external_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": ["expense", "income"],
+                        "default": "expense"
+                    },
+                    "amount": {
+                        "type": "string",
+                        "description": "Positive fixed two-decimal amount string",
+                        "example": "12.34"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "example": "PLN"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "category_id": {
+                        "type": "string"
+                    },
+                    "payment_source_id": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "object",
+                        "nullable": true,
+                        "maxLength": 2000
+                    },
+                    "tags": {
+                        "maxItems": 10,
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "amount",
+                    "currency",
+                    "date",
+                    "description",
+                    "category_id",
+                    "payment_source_id"
+                ]
             }
         }
     }

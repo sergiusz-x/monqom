@@ -47,6 +47,38 @@ describe('CSRF protection', () => {
         expect(response.status).not.toHaveBeenCalled()
     })
 
+    it('defers external integration API mutations to bearer-token authentication', () => {
+        const request = {
+            method: 'POST',
+            path: '/api/v1/workspaces/workspace-id/external-transactions',
+            session: {},
+            get: jest.fn(),
+        } as never as Request
+        const response = createResponse()
+        const next = jest.fn() as NextFunction
+
+        csrfProtectionMiddleware(request, response, next)
+
+        expect(next).toHaveBeenCalledTimes(1)
+        expect(response.status).not.toHaveBeenCalled()
+    })
+
+    it('keeps CSRF protection on non-integration mutations', () => {
+        const request = {
+            method: 'POST',
+            path: '/api/v1/workspaces/workspace-id/transactions',
+            session: {},
+            get: jest.fn(),
+        } as never as Request
+        const response = createResponse()
+        const next = jest.fn() as NextFunction
+
+        csrfProtectionMiddleware(request, response, next)
+
+        expect(next).not.toHaveBeenCalled()
+        expect(response.status).toHaveBeenCalledWith(403)
+    })
+
     it.each([undefined, 'wrong-token'])(
         'rejects a mutation with an absent or invalid token',
         (requestToken) => {

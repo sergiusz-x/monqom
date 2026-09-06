@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core'
 import type { Request } from 'express'
 
 export type WorkspaceRole = 'member' | 'admin' | 'owner'
-const WORKSPACE_ROLE_KEY = 'workspace-minimum-role'
+export const WORKSPACE_ROLE_KEY = 'workspace-minimum-role'
 const ROLE_RANK: Record<WorkspaceRole, number> = { member: 1, admin: 2, owner: 3 }
 
 export const RequireWorkspaceRole = (role: WorkspaceRole) => SetMetadata(WORKSPACE_ROLE_KEY, role)

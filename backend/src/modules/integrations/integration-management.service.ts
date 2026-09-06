@@ -3,7 +3,10 @@ import type { IntegrationCredential } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { AuthService } from '../auth/auth.service'
 import { TwoFactorService } from '../auth/twoFactor.service'
-import { CreateIntegrationCredentialDto } from './integration-management.dto'
+import {
+    CreateIntegrationCredentialDto,
+    RotateIntegrationCredentialDto,
+} from './integration-management.dto'
 import { IntegrationCredentialService } from './integration-credential.service'
 
 @Injectable()
@@ -16,9 +19,8 @@ export class IntegrationManagementService {
     ) {}
 
     async create(workspaceId: string, userId: string, body: CreateIntegrationCredentialDto) {
-        const expiresAt = new Date(body.expires_at)
-        if (Number.isNaN(expiresAt.getTime()))
-            throw new BadRequestException('Credential expiry is invalid')
+        const expiresAt = this.parseExpiry(body.expires_at)
+        this.requireExplicitResourcePolicies(body)
         await this.authService.verifyCurrentPassword(userId, body.current_password)
         await this.twoFactorService.verifyStepUp(userId, body.two_factor_token)
         await this.validateRestrictions(workspaceId, body)
@@ -50,14 +52,24 @@ export class IntegrationManagementService {
 
     async list(workspaceId: string) {
         const integrations = await this.prisma.integration.findMany({
-            where: { workspaceId },
-            include: { credentials: true },
+            where: { workspaceId, status: { not: 'deleted' }, credentials: { some: {} } },
+            include: {
+                createdBy: { select: { id: true, name: true } },
+                credentials: {
+                    include: {
+                        categoryRestrictions: { select: { categoryId: true } },
+                        paymentSourceRestrictions: { select: { paymentSourceId: true } },
+                    },
+                },
+            },
             orderBy: { createdAt: 'desc' },
         })
         return integrations.map((integration) => ({
             id: integration.id,
             name: integration.name,
             status: integration.status,
+            created_at: integration.createdAt,
+            created_by: { id: integration.createdBy.id, name: integration.createdBy.name },
             credentials: integration.credentials.map((credential) =>
                 this.safeCredential(credential),
             ),
@@ -67,13 +79,23 @@ export class IntegrationManagementService {
     async get(workspaceId: string, integrationId: string) {
         const integration = await this.prisma.integration.findFirst({
             where: { id: integrationId, workspaceId },
-            include: { credentials: true },
+            include: {
+                createdBy: { select: { id: true, name: true } },
+                credentials: {
+                    include: {
+                        categoryRestrictions: { select: { categoryId: true } },
+                        paymentSourceRestrictions: { select: { paymentSourceId: true } },
+                    },
+                },
+            },
         })
         if (!integration) throw new NotFoundException('Integration not found')
         return {
             id: integration.id,
             name: integration.name,
             status: integration.status,
+            created_at: integration.createdAt,
+            created_by: { id: integration.createdBy.id, name: integration.createdBy.name },
             credentials: integration.credentials.map((credential) =>
                 this.safeCredential(credential),
             ),
@@ -98,13 +120,11 @@ export class IntegrationManagementService {
         userId: string,
         integrationId: string,
         credentialId: string,
-        body: CreateIntegrationCredentialDto,
+        body: RotateIntegrationCredentialDto,
     ) {
         const previous = await this.assertCredential(workspaceId, integrationId, credentialId)
         if (previous.status !== 'active') throw new BadRequestException('Credential is not active')
-        const expiresAt = new Date(body.expires_at)
-        if (Number.isNaN(expiresAt.getTime()))
-            throw new BadRequestException('Credential expiry is invalid')
+        const expiresAt = this.parseExpiry(body.expires_at)
         await this.authService.verifyCurrentPassword(userId, body.current_password)
         await this.twoFactorService.verifyStepUp(userId, body.two_factor_token)
         const replacement = await this.credentialService.rotateCredential(credentialId, expiresAt)
@@ -121,6 +141,15 @@ export class IntegrationManagementService {
         if (credential.status !== 'revoked')
             throw new BadRequestException('Credential must be revoked before deletion')
         await this.prisma.integrationCredential.delete({ where: { id: credentialId } })
+        const remainingCredentials = await this.prisma.integrationCredential.count({
+            where: { integrationId },
+        })
+        if (remainingCredentials === 0) {
+            await this.prisma.integration.update({
+                where: { id: integrationId },
+                data: { status: 'deleted' },
+            })
+        }
         return { deleted: true }
     }
 
@@ -173,15 +202,46 @@ export class IntegrationManagementService {
             throw new BadRequestException('A resource restriction is invalid or archived')
     }
 
-    private safeCredential(credential: IntegrationCredential) {
+    private parseExpiry(value: string): Date {
+        const expiresAt = new Date(value)
+        if (Number.isNaN(expiresAt.getTime()))
+            throw new BadRequestException('Credential expiry is invalid')
+        const lifetime = expiresAt.getTime() - Date.now()
+        if (lifetime < 60_000 || lifetime > 365 * 24 * 60 * 60 * 1000)
+            throw new BadRequestException('Credential expiry is outside the permitted lifetime')
+        return expiresAt
+    }
+
+    private requireExplicitResourcePolicies(body: CreateIntegrationCredentialDto) {
+        if (!body.scopes.includes('transactions:create')) return
+        if (body.category_allowlist_enabled === undefined)
+            throw new BadRequestException('Category access policy must be selected')
+        if (body.payment_source_allowlist_enabled === undefined)
+            throw new BadRequestException('Payment source access policy must be selected')
+    }
+
+    private safeCredential(
+        credential: IntegrationCredential & {
+            categoryRestrictions: { categoryId: string }[]
+            paymentSourceRestrictions: { paymentSourceId: string }[]
+        },
+    ) {
         return {
             id: credential.id,
             token_prefix: credential.tokenPrefix,
             status: credential.status,
+            created_at: credential.createdAt,
             expires_at: credential.expiresAt,
             revoked_at: credential.revokedAt,
             last_used_at: credential.lastUsedAt,
             scopes: credential.scopes,
+            category_allowlist_enabled: credential.categoryAllowlistEnabled,
+            category_ids: credential.categoryRestrictions.map(({ categoryId }) => categoryId),
+            payment_source_allowlist_enabled: credential.paymentSourceAllowlistEnabled,
+            payment_source_ids: credential.paymentSourceRestrictions.map(
+                ({ paymentSourceId }) => paymentSourceId,
+            ),
+            cidr_allowlist_enabled: credential.cidrAllowlistEnabled,
             allowed_cidrs: credential.allowedCidrs,
         }
     }
