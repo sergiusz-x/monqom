@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -34,12 +34,16 @@ describe("PublicLayout preferences", () => {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     }));
-    await i18n.changeLanguage("en");
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
     localStorage.removeItem("monqom-language");
   });
 
   afterEach(async () => {
-    await i18n.changeLanguage("en");
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
     localStorage.clear();
     document.documentElement.classList.remove("dark");
     vi.unstubAllGlobals();
@@ -70,7 +74,9 @@ describe("PublicLayout preferences", () => {
     const user = userEvent.setup();
     renderPublicLayout();
 
-    await user.click(screen.getByRole("button", { name: "Change language" }));
+    await act(async () => {
+      await user.click(screen.getByRole("button", { name: "Change language" }));
+    });
 
     expect(localStorage.getItem("monqom-language")).toBe("pl");
     expect(

@@ -29,6 +29,13 @@ describe("date-only and workspace timezone helpers", () => {
         day: "numeric",
       }),
     ).toBe("Jul 1, 2026");
+    expect(
+      formatDateOnly(
+        "2026-07-01",
+        { year: "numeric", month: "long", day: "numeric" },
+        "pl-PL",
+      ),
+    ).toBe("1 lipca 2026");
   });
 
   it("derives current dates and report months from the workspace timezone", () => {

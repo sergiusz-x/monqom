@@ -8,6 +8,8 @@ import { Goal, GoalOperation, Prisma } from '@prisma/client'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { parseDateOnly } from '../../shared/utils/validation'
+import { centsToDisplayAmount } from '../../shared/currency/display-values'
 import { WorkspaceService } from '../workspace/workspace.service'
 import { CreateGoalDto, GoalOperationDto, UpdateGoalDto } from './goals.dto'
 import {
@@ -354,20 +356,20 @@ function mapGoal(goal: GoalWithOperations, today: Date, includeOperations: boole
         id: goal.id,
         workspace_id: goal.workspaceId,
         name: goal.name,
-        target_amount: fromCents(goal.targetAmount),
-        initial_amount: fromCents(goal.initialAmount),
+        target_amount: centsToDisplayAmount(goal.targetAmount),
+        initial_amount: centsToDisplayAmount(goal.initialAmount),
         currency: goal.currency,
         target_date: dateString(goal.targetDate),
         plan_start_month: dateString(goal.planStartMonth).slice(0, 7),
         archived_at: goal.archivedAt,
-        current_amount: fromCents(plan.currentAmountCents),
-        remaining_amount: fromCents(plan.remainingAmountCents),
+        current_amount: centsToDisplayAmount(plan.currentAmountCents),
+        remaining_amount: centsToDisplayAmount(plan.remainingAmountCents),
         progress_percentage: plan.progressPercentage,
         remaining_months: plan.remainingMonths,
         recommended_monthly_amount:
             plan.recommendedMonthlyAmountCents === null
                 ? null
-                : fromCents(plan.recommendedMonthlyAmountCents),
+                : centsToDisplayAmount(plan.recommendedMonthlyAmountCents),
         status: plan.status,
         ...(includeOperations ? { operations: goal.operations.map(mapOperation) } : {}),
         created_at: goal.createdAt,
@@ -380,7 +382,7 @@ function mapOperation(operation: GoalOperation) {
         id: operation.id,
         goal_id: operation.goalId,
         type: operation.type,
-        amount: fromCents(operation.amount),
+        amount: centsToDisplayAmount(operation.amount),
         date: dateString(operation.date),
         note: operation.note,
         created_at: operation.createdAt,
@@ -403,10 +405,11 @@ function parseOperationDate(value: string, today: Date): Date {
 }
 
 function parseDate(value: string, field: string): Date {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-    if (!match) throw new BadRequestException(`${field} must use YYYY-MM-DD format`)
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
-    if (dateString(date) !== value) throw new BadRequestException(`${field} must be a valid date`)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new BadRequestException(`${field} must use YYYY-MM-DD format`)
+    }
+    const date = parseDateOnly(value)
+    if (!date) throw new BadRequestException(`${field} must be a valid date`)
     return date
 }
 
@@ -442,10 +445,6 @@ function sumOperations(operations: GoalOperation[], type: string): number {
 
 function toCents(value: number): number {
     return Math.round(value * 100)
-}
-
-function fromCents(value: number): number {
-    return Number((value / 100).toFixed(2))
 }
 
 function dateString(date: Date): string {

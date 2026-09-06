@@ -1,5 +1,9 @@
+import { BadRequestException } from '@nestjs/common'
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MONEY_AMOUNT_REGEX = /^\d+(?:\.\d{1,2})?$/
+const ISO_DATE_ONLY_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/
+const YEAR_MONTH_REGEX = /^(\d{4})-(0[1-9]|1[0-2])$/
 
 const COMMON_PASSWORD_PATTERNS = [
     'password',
@@ -266,7 +270,7 @@ export function validateMoneyAmountValue(
         return undefined
     }
 
-    const [wholePart, fractionalPart = ''] = normalizedValue.split('.')
+    const [wholePart = '', fractionalPart = ''] = normalizedValue.split('.')
     const amountCents =
         Number.parseInt(wholePart, 10) * 100 +
         Number.parseInt(fractionalPart.padEnd(2, '0') || '0', 10)
@@ -287,6 +291,45 @@ export function validateMoneyAmountValue(
     }
 
     return amountCents
+}
+
+/** Trim a required identifier or text field consistently across domain services. */
+export function normalizeRequiredValue(value: string, fieldName: string): string {
+    const normalizedValue = value.trim()
+    if (normalizedValue.length === 0) throw new BadRequestException(`${fieldName} is required`)
+    return normalizedValue
+}
+
+/** Parse a calendar date without allowing JavaScript's permissive date rollover. */
+export function parseDateOnly(value: string): Date | undefined {
+    const match = ISO_DATE_ONLY_REGEX.exec(value)
+    if (!match) return undefined
+
+    const [, yearText = '', monthText = '', dayText = ''] = match
+    const year = Number.parseInt(yearText, 10)
+    const month = Number.parseInt(monthText, 10)
+    const day = Number.parseInt(dayText, 10)
+    const date = new Date(Date.UTC(year, month - 1, day))
+
+    if (
+        Number.isNaN(date.getTime()) ||
+        date.getUTCFullYear() !== year ||
+        date.getUTCMonth() !== month - 1 ||
+        date.getUTCDate() !== day
+    ) {
+        return undefined
+    }
+
+    return date
+}
+
+/** Parse an ISO year-month value after validating its calendar month. */
+export function parseYearMonth(value: string): [year: number, month: number] | undefined {
+    const match = YEAR_MONTH_REGEX.exec(value)
+    if (!match) return undefined
+
+    const [, yearText = '', monthText = ''] = match
+    return [Number.parseInt(yearText, 10), Number.parseInt(monthText, 10)]
 }
 
 function validateEmailValue(input: string, errors: string[]): string | undefined {

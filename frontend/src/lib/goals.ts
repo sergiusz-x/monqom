@@ -1,5 +1,6 @@
 import type { ApiGoal, ApiGoalOperation } from "@/types/api-contracts";
 import type { Goal, GoalOperation } from "@/types/goal";
+import { getDateOnlyInTimeZone, parseDateOnlyParts } from "@/lib/date-only";
 
 export function mapGoal(value: ApiGoal): Goal {
   return {
@@ -38,20 +39,11 @@ function mapGoalOperation(value: ApiGoalOperation): GoalOperation {
 }
 
 export function todayInTimeZone(timeZone: string, now = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const values = Object.fromEntries(
-    parts.map((part) => [part.type, part.value]),
-  );
-  return `${values.year}-${values.month}-${values.day}`;
+  return getDateOnlyInTimeZone(now, timeZone);
 }
 
 export function addMonthsClamped(date: string, months: number): string {
-  const [year, month, day] = date.split("-").map(Number);
+  const [year, month, day] = requireDateOnlyParts(date);
   const targetFirst = new Date(Date.UTC(year, month - 1 + months, 1));
   const lastDay = new Date(
     Date.UTC(targetFirst.getUTCFullYear(), targetFirst.getUTCMonth() + 1, 0),
@@ -64,8 +56,8 @@ export function addMonthsClamped(date: string, months: number): string {
 }
 
 export function monthsUntilDate(today: string, target: string): number {
-  const [ty, tm] = today.split("-").map(Number);
-  const [yy, ym] = target.split("-").map(Number);
+  const [ty, tm] = requireDateOnlyParts(today);
+  const [yy, ym] = requireDateOnlyParts(target);
   let months = (yy - ty) * 12 + ym - tm;
   if (addMonthsClamped(today, months) < target) months += 1;
   return Math.min(120, Math.max(1, months));
@@ -78,8 +70,8 @@ export function previewMonthlyAmount(input: {
   targetDate: string;
   includeCurrentMonth: boolean;
 }): { months: number; monthlyAmountCents: number } {
-  const [todayYear, todayMonth] = input.today.split("-").map(Number);
-  const [targetYear, targetMonth] = input.targetDate.split("-").map(Number);
+  const [todayYear, todayMonth] = requireDateOnlyParts(input.today);
+  const [targetYear, targetMonth] = requireDateOnlyParts(input.targetDate);
   const startOffset = input.includeCurrentMonth ? 0 : 1;
   const months = Math.max(
     0,
@@ -95,18 +87,14 @@ export function previewMonthlyAmount(input: {
   };
 }
 
-export function formatDateOnly(value: string, locale: string): string {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
 function dateParts(year: number, month: number, day: number): string {
   return `${year.toString().padStart(4, "0")}-${month
     .toString()
     .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
+function requireDateOnlyParts(value: string): [number, number, number] {
+  const parts = parseDateOnlyParts(value);
+  if (!parts) throw new RangeError("Expected a valid YYYY-MM-DD date");
+  return parts;
 }

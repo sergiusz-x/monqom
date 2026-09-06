@@ -170,7 +170,7 @@ describe('Workspace membership endpoints (e2e)', () => {
         ])
     })
 
-    it('returns workspace details for members and forbids access for non-members', async () => {
+    it('returns workspace details for members without disclosing non-member workspaces', async () => {
         const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
 
         const workspaceResponse = await agent.get('/api/v1/workspaces/workspace-1').expect(200)
@@ -185,13 +185,13 @@ describe('Workspace membership endpoints (e2e)', () => {
             updatedAt: '2026-03-23T10:00:00.000Z',
         })
 
-        const forbiddenResponse = await agent.get('/api/v1/workspaces/workspace-2').expect(403)
+        const forbiddenResponse = await agent.get('/api/v1/workspaces/workspace-2').expect(404)
 
         expect(forbiddenResponse.body).toEqual(
             expect.objectContaining({
-                statusCode: 403,
-                message: 'Forbidden',
-                error: 'Forbidden',
+                statusCode: 404,
+                message: 'Workspace not found',
+                error: 'Not Found',
             }),
         )
 

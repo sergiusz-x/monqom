@@ -156,7 +156,7 @@ describe("TransactionFormModal", () => {
       );
 
       await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
-      expect(mockApi.post.mock.calls[0][1]).toMatchObject({ amount });
+      expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({ amount });
     },
   );
 
@@ -181,7 +181,7 @@ describe("TransactionFormModal", () => {
     await user.click(screen.getByRole("button", { name: /save transaction/i }));
 
     await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
-    expect(mockApi.post.mock.calls[0][1]).toMatchObject({
+    expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
       type: "income",
       amount: 2500,
     });
@@ -222,7 +222,7 @@ describe("TransactionFormModal", () => {
     await user.click(screen.getByRole("button", { name: /save transaction/i }));
 
     await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
-    expect(mockApi.post.mock.calls[0][1]).toMatchObject({
+    expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
       amount: 12.34,
       currency: "PLN",
       date: today,
@@ -274,9 +274,9 @@ describe("TransactionFormModal", () => {
     await user.click(screen.getByRole("button", { name: /save transaction/i }));
 
     await waitFor(() => expect(mockApi.put).toHaveBeenCalledTimes(1));
-    expect(mockApi.put.mock.calls[0][0]).toBe(
+    expect(mockApi.put.mock.calls[0]?.[0]).toBe(
       "/workspaces/ws-1/transactions/tx-1",
     );
-    expect(mockApi.put.mock.calls[0][1]).toMatchObject({ amount: 19.99 });
+    expect(mockApi.put.mock.calls[0]?.[1]).toMatchObject({ amount: 19.99 });
   });
 });

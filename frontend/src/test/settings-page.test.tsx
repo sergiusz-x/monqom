@@ -313,6 +313,31 @@ describe("SettingsPage", () => {
     vi.unstubAllGlobals();
   });
 
+  it("does not expose integration management to a workspace member", () => {
+    mockUseWorkspace.mockReturnValue({
+      workspaceId: "ws-1",
+      workspace: {
+        id: "ws-1",
+        name: "Shared finances",
+        timezone: "UTC",
+        baseCurrency: "USD",
+        lastPaymentSourceId: null,
+        baseCurrencyLocked: false,
+        role: "member",
+      },
+      isLoading: false,
+      error: null,
+      patchWorkspace,
+      refetch: vi.fn(),
+    });
+
+    renderSettings();
+
+    expect(
+      screen.queryByRole("button", { name: "Integrations" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("requires DELETE confirmation before deleting an account", async () => {
     const user = userEvent.setup();
     mockApi.delete.mockResolvedValueOnce({ data: { message: "deleted" } });

@@ -46,14 +46,14 @@ describe("API mappers", () => {
       createdAt: "2026-07-20T10:00:00.000Z",
       updatedAt: "2026-07-20T11:00:00.000Z",
     });
-    expect(
-      mapTransactionsPage({
-        data: [apiTransaction],
-        total: 1,
-        limit: 20,
-        offset: 0,
-      }).data[0].categoryId,
-    ).toBe("cat-1");
+    const result = mapTransactionsPage({
+      data: [apiTransaction],
+      total: 1,
+      limit: 20,
+      offset: 0,
+    });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.categoryId).toBe("cat-1");
   });
 
   it("maps budgets and progress to shared application models", () => {
@@ -158,6 +158,6 @@ describe("API mappers", () => {
     const mapped = mapDashboardOverview(response);
     expect(mapped.summary.currentTotal).toBe(12.34);
     expect(mapped.categoryBreakdown.totalSpending).toBe(12.34);
-    expect(mapped.recentTransactions[0].workspaceId).toBe("ws-1");
+    expect(mapped.recentTransactions[0]?.workspaceId).toBe("ws-1");
   });
 });

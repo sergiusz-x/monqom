@@ -706,7 +706,7 @@ describe('Budgets endpoints (e2e)', () => {
         )
     })
 
-    it('forbids non-members from accessing workspace budgets', async () => {
+    it('does not disclose budgets for non-member workspaces', async () => {
         prismaMock.users.push(
             await createStoredUser({
                 id: 'user-2',
@@ -721,13 +721,13 @@ describe('Budgets endpoints (e2e)', () => {
 
         const response = await agent
             .get('/api/v1/workspaces/workspace-1/budgets?year=2026&month=3')
-            .expect(403)
+            .expect(404)
 
         expect(response.body).toEqual(
             expect.objectContaining({
-                statusCode: 403,
-                message: 'Forbidden',
-                error: 'Forbidden',
+                statusCode: 404,
+                message: 'Workspace not found',
+                error: 'Not Found',
             }),
         )
     })

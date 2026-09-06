@@ -9,6 +9,7 @@ import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filt
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { logger } from './../src/shared/utils/logger'
 import { createSessionOptions } from './../src/shared/session/session.config'
+import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
 
 jest.mock('./../src/shared/utils/logger', () => ({
     logger: {
@@ -33,6 +34,7 @@ interface StoredPasswordResetToken {
     id: string
     userId: string
     token: string
+    tokenHash: string | null
     expiresAt: Date
     usedAt: Date | null
     createdAt: Date
@@ -52,6 +54,9 @@ interface StoredAuditEvent {
 }
 
 interface FakeTransactionClient {
+    emailOutbox: {
+        create(args: { data: unknown }): Promise<unknown>
+    }
     user: {
         findUnique(args: { where: { email?: string; id?: string } }): Promise<StoredUser | null>
         update(args: {
@@ -65,12 +70,12 @@ interface FakeTransactionClient {
         }): Promise<StoredUser>
     }
     passwordResetToken: {
-        findUnique(args: {
-            where: { token: string }
+        findFirst(args: {
+            where: { OR: Array<{ tokenHash: string } | { tokenHash: null; token: string }> }
             include: { user: true }
         }): Promise<(StoredPasswordResetToken & { user: StoredUser }) | null>
         create(args: {
-            data: Pick<StoredPasswordResetToken, 'userId' | 'token' | 'expiresAt'>
+            data: Pick<StoredPasswordResetToken, 'userId' | 'token' | 'tokenHash' | 'expiresAt'>
         }): Promise<StoredPasswordResetToken>
         updateMany(args: {
             where: {
@@ -192,10 +197,11 @@ describe('Auth password reset (e2e)', () => {
                 'If an account with that email exists, a password reset link has been generated',
         })
         expect(prismaMock.passwordResetTokens).toHaveLength(1)
-        expect(prismaMock.passwordResetTokens[0].usedAt).toBeNull()
+        expect(getRequiredArrayItem(prismaMock.passwordResetTokens, 0).usedAt).toBeNull()
         expect(
             Math.abs(
-                prismaMock.passwordResetTokens[0].expiresAt.getTime() - (now + 60 * 60 * 1000),
+                getRequiredArrayItem(prismaMock.passwordResetTokens, 0).expiresAt.getTime() -
+                    (now + 60 * 60 * 1000),
             ),
         ).toBeLessThanOrEqual(5000)
 
@@ -213,11 +219,11 @@ describe('Auth password reset (e2e)', () => {
             message: 'Password reset successfully',
         })
 
-        const storedUser = prismaMock.users[0]
+        const storedUser = getRequiredArrayItem(prismaMock.users, 0)
 
         await expect(argon2.verify(storedUser.passwordHash, newPassword)).resolves.toBe(true)
         expect(storedUser.sessionVersion).toBe(1)
-        expect(prismaMock.passwordResetTokens[0].usedAt).toBeInstanceOf(Date)
+        expect(getRequiredArrayItem(prismaMock.passwordResetTokens, 0).usedAt).toBeInstanceOf(Date)
         expect(prismaMock.deletedSessionUserIds).toContain('user-1')
         expect(prismaMock.auditEvents).toEqual(
             expect.arrayContaining([
@@ -295,7 +301,9 @@ describe('Auth password reset (e2e)', () => {
             })
             .expect(200)
 
-        prismaMock.passwordResetTokens[0].expiresAt = new Date(Date.now() - 1000)
+        getRequiredArrayItem(prismaMock.passwordResetTokens, 0).expiresAt = new Date(
+            Date.now() - 1000,
+        )
 
         const response = await request(app.getHttpServer())
             .post('/api/v1/auth/reset-password')
@@ -312,8 +320,8 @@ describe('Auth password reset (e2e)', () => {
                 error: 'Bad Request',
             }),
         )
-        expect(prismaMock.passwordResetTokens[0].usedAt).toBeNull()
-        expect(prismaMock.users[0].sessionVersion).toBe(0)
+        expect(getRequiredArrayItem(prismaMock.passwordResetTokens, 0).usedAt).toBeNull()
+        expect(getRequiredArrayItem(prismaMock.users, 0).sessionVersion).toBe(0)
     })
 
     it('rejects unknown password reset tokens', async () => {
@@ -367,8 +375,8 @@ describe('Auth password reset (e2e)', () => {
         expect(response.body).toEqual({
             message: 'Password reset successfully',
         })
-        expect(prismaMock.passwordResetTokens[0].usedAt).toBeInstanceOf(Date)
-        expect(prismaMock.users[0].sessionVersion).toBe(1)
+        expect(getRequiredArrayItem(prismaMock.passwordResetTokens, 0).usedAt).toBeInstanceOf(Date)
+        expect(getRequiredArrayItem(prismaMock.users, 0).sessionVersion).toBe(1)
         expect(prismaMock.auditEvents).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
@@ -431,6 +439,9 @@ function createPrismaMock(): PrismaMock {
     let auditEventCounter = 0
 
     const transactionClient: FakeTransactionClient = {
+        emailOutbox: {
+            create: async () => ({}),
+        },
         user: {
             findUnique: async ({ where }) => {
                 if (where.email) {
@@ -464,8 +475,20 @@ function createPrismaMock(): PrismaMock {
             },
         },
         passwordResetToken: {
-            findUnique: async ({ where, include }) => {
-                const token = passwordResetTokens.find((item) => item.token === where.token) ?? null
+            findFirst: async ({ where, include }) => {
+                const tokenHash = where.OR.find(
+                    (condition): condition is { tokenHash: string } => condition.tokenHash !== null,
+                )?.tokenHash
+                const legacyToken = where.OR.find(
+                    (condition): condition is { tokenHash: null; token: string } =>
+                        condition.tokenHash === null,
+                )?.token
+                const token =
+                    passwordResetTokens.find(
+                        (item) =>
+                            item.tokenHash === tokenHash ||
+                            (item.tokenHash === null && item.token === legacyToken),
+                    ) ?? null
 
                 if (!token || !include.user) {
                     return null
@@ -489,6 +512,7 @@ function createPrismaMock(): PrismaMock {
                     id: `password-reset-token-${passwordResetTokenCounter}`,
                     userId: data.userId,
                     token: data.token,
+                    tokenHash: data.tokenHash,
                     expiresAt: data.expiresAt,
                     usedAt: null,
                     createdAt: new Date(),

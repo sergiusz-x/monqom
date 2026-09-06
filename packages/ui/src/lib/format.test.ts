@@ -11,7 +11,6 @@ import * as formatModule from "./format";
 describe("format.ts", () => {
   beforeEach(() => {
     // Reset workspace settings
-    // @ts-ignore
     delete window.__WORKSPACE_SETTINGS__;
     // Reset document language
     if (document.documentElement) {
@@ -31,7 +30,6 @@ describe("format.ts", () => {
 
   describe("getLocale", () => {
     test("returns navigator.language when no workspace settings", () => {
-      // @ts-ignore
       delete window.__WORKSPACE_SETTINGS__;
       document.documentElement.lang = "";
       Object.defineProperty(navigator, "language", {
@@ -42,7 +40,6 @@ describe("format.ts", () => {
     });
 
     test("returns document.documentElement.lang when available", () => {
-      // @ts-ignore
       delete window.__WORKSPACE_SETTINGS__;
       document.documentElement.lang = "de-DE";
       Object.defineProperty(navigator, "language", {
@@ -53,7 +50,6 @@ describe("format.ts", () => {
     });
 
     test("returns workspace settings locale when available", () => {
-      // @ts-ignore
       window.__WORKSPACE_SETTINGS__ = { locale: "es-ES" };
       document.documentElement.lang = "de-DE";
       Object.defineProperty(navigator, "language", {
@@ -64,7 +60,6 @@ describe("format.ts", () => {
     });
 
     test("falls back to en-US", () => {
-      // @ts-ignore
       delete window.__WORKSPACE_SETTINGS__;
       document.documentElement.lang = "";
       Object.defineProperty(navigator, "language", {
@@ -77,13 +72,11 @@ describe("format.ts", () => {
 
   describe("getTimezone", () => {
     test("returns workspace timezone when available", () => {
-      // @ts-ignore
       window.__WORKSPACE_SETTINGS__ = { timezone: "Asia/Tokyo" };
       expect(getTimezone()).toBe("Asia/Tokyo");
     });
 
     test("falls back to Intl.DateTimeFormat resolved timezone", () => {
-      // @ts-ignore
       delete window.__WORKSPACE_SETTINGS__;
       const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
       expect(getTimezone()).toBe(detected);
@@ -105,6 +98,15 @@ describe("format.ts", () => {
         .mockReturnValue("ja-JP");
       expect(formatCurrency(1234.5, "JPY")).toBe("¥1,235");
       getLocaleMock.mockRestore();
+    });
+
+    test("supports an explicit fixed-decimal monetary policy", () => {
+      expect(
+        formatCurrency(12, "HUF", "en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      ).toBe("HUF 12.00");
     });
   });
 
@@ -143,7 +145,6 @@ describe("format.ts", () => {
     });
 
     test("uses workspace timezone when not overridden", () => {
-      // @ts-ignore
       window.__WORKSPACE_SETTINGS__ = { timezone: "UTC" };
       const date = new Date("2024-01-15T10:30:00Z"); // 10:30 UTC
       expect(
@@ -156,7 +157,6 @@ describe("format.ts", () => {
     });
 
     test("allows overriding timezone in options", () => {
-      // @ts-ignore
       window.__WORKSPACE_SETTINGS__ = { timezone: "UTC" };
       const date = new Date("2024-01-15T10:30:00Z");
       const options: Intl.DateTimeFormatOptions = {

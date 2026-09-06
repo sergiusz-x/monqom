@@ -129,7 +129,7 @@ describe("SensitiveTransactionAmount", () => {
     );
 
     await user.click(
-      screen.getAllByRole("button", { name: "Reveal salary amount" })[0],
+      screen.getAllByRole("button", { name: "Reveal salary amount" })[0]!,
     );
 
     expect(

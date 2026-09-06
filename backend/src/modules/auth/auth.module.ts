@@ -13,6 +13,7 @@ import { TwoFactorService } from './twoFactor.service'
     imports: [ConfigModule, WorkspaceModule, AuthCoreModule],
     controllers: [AuthController, UsersController],
     providers: [AuthService, TwoFactorService],
+    exports: [AuthService, TwoFactorService],
 })
 export class AuthModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {

@@ -8,10 +8,8 @@ import {
     Post,
     Put,
     Query,
-    Req,
     UseGuards,
 } from '@nestjs/common'
-import type { Request } from 'express'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
@@ -20,6 +18,7 @@ import { PAYMENT_SOURCES_BASE_ROUTE } from './payment-sources.routes'
 import { PaymentSourceResponse, PaymentSourcesService } from './payment-sources.service'
 import { ListPaymentSourcesQueryDto, PaymentSourceBodyDto } from './payment-sources.dto'
 import { ApiPaymentSourceResponse } from '../../shared/openapi/response-schemas'
+import { CurrentUserId, CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 
 @Controller(PAYMENT_SOURCES_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -32,11 +31,11 @@ export class PaymentSourcesController {
     @HttpCode(HttpStatus.OK)
     async listPaymentSources(
         @Query() query: ListPaymentSourcesQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
     ): Promise<PaymentSourceResponse[]> {
         return this.paymentSourcesService.listPaymentSources(
             { includeArchived: query.include_archived },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
     }
 
@@ -47,12 +46,13 @@ export class PaymentSourcesController {
     @HttpCode(HttpStatus.CREATED)
     async createPaymentSource(
         @Body() body: PaymentSourceBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<PaymentSourceResponse> {
         return this.paymentSourcesService.createPaymentSource(
             { name: body.name, type: body.type },
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
 
@@ -64,13 +64,14 @@ export class PaymentSourcesController {
     async updatePaymentSource(
         @Param('id') paymentSourceId: string,
         @Body() body: PaymentSourceBodyDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<PaymentSourceResponse> {
         return this.paymentSourcesService.updatePaymentSource(
             { name: body.name, type: body.type },
             paymentSourceId,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
+            workspaceId,
+            userId,
         )
     }
 
@@ -81,12 +82,9 @@ export class PaymentSourcesController {
     @HttpCode(HttpStatus.OK)
     async archivePaymentSource(
         @Param('id') paymentSourceId: string,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
     ): Promise<PaymentSourceResponse> {
-        return this.paymentSourcesService.archivePaymentSource(
-            paymentSourceId,
-            req.workspace!.workspaceId,
-            req.session.auth!.userId,
-        )
+        return this.paymentSourcesService.archivePaymentSource(paymentSourceId, workspaceId, userId)
     }
 }

@@ -19,6 +19,8 @@ import {
 import { AuthActionResponse, AuthenticatedUserResponse, AuthService } from './auth.service'
 import { UpdateUserProfileDto } from './auth.dto'
 import { ApiMessageResponse, ApiUserResponse } from '../../shared/openapi/response-schemas'
+import { CurrentUserId } from '../../shared/http/request-context.decorator'
+import { destroySession } from '../../shared/session/session-lifecycle'
 
 @Controller('users')
 @UseGuards(SessionGuard)
@@ -32,10 +34,10 @@ export class UsersController {
     @ApiUserResponse()
     @HttpCode(HttpStatus.OK)
     async updateMe(
-        @Req() req: Request,
         @Body() body: UpdateUserProfileDto,
+        @CurrentUserId() userId: string,
     ): Promise<AuthenticatedUserResponse> {
-        return this.authService.updateAuthenticatedUser(req.session.auth!.userId, {
+        return this.authService.updateAuthenticatedUser(userId, {
             name: body.name,
             locale: body.locale as 'en' | 'pl' | undefined,
             hideSalaryAmounts: body.hide_salary_amounts,
@@ -48,8 +50,8 @@ export class UsersController {
     async deleteMe(
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
+        @CurrentUserId() userId: string,
     ): Promise<AuthActionResponse> {
-        const userId = req.session.auth!.userId
         const result = await this.authService.deleteAuthenticatedUser(userId)
         await destroySession(req)
         res.clearCookie(
@@ -60,17 +62,4 @@ export class UsersController {
         )
         return result
     }
-}
-
-function destroySession(req: Request): Promise<void> {
-    return new Promise((resolve, reject) => {
-        req.session.destroy((error) => {
-            if (error) {
-                reject(error)
-                return
-            }
-
-            resolve()
-        })
-    })
 }

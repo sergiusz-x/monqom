@@ -1,11 +1,12 @@
-import { Controller, Get, HttpCode, HttpStatus, Query, Req, Res, UseGuards } from '@nestjs/common'
-import type { Request, Response } from 'express'
+import { Controller, Get, HttpCode, HttpStatus, Query, Res, UseGuards } from '@nestjs/common'
+import type { Response } from 'express'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
 import { EXPORT_BASE_ROUTE } from './export.routes'
 import { ExportService } from './export.service'
 import { ExportTransactionsQueryDto } from './export.dto'
 import { ApiOkResponse, ApiParam } from '@nestjs/swagger'
+import { CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 
 @Controller(EXPORT_BASE_ROUTE)
 @UseGuards(SessionGuard, WorkspaceGuard)
@@ -23,12 +24,12 @@ export class ExportController {
     @HttpCode(HttpStatus.OK)
     async exportTransactions(
         @Query() query: ExportTransactionsQueryDto,
-        @Req() req: Request,
+        @CurrentWorkspaceId() workspaceId: string,
         @Res() res: Response,
     ): Promise<void> {
         const exportFile = await this.exportService.exportTransactions(
             { format: query.format, dateFrom: query.date_from, dateTo: query.date_to },
-            req.workspace!.workspaceId,
+            workspaceId,
         )
 
         res.status(HttpStatus.OK)

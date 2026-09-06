@@ -7,6 +7,7 @@ import {
 import { PaymentSource } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { PaymentSourcesRepository } from './payment-sources.repository'
+import { normalizeRequiredValue } from '../../shared/utils/validation'
 
 const PAYMENT_SOURCE_NOT_FOUND_MESSAGE = 'Payment source not found'
 const PAYMENT_SOURCE_NAME_CONFLICT_MESSAGE =
@@ -268,16 +269,6 @@ function validateNameValue(value: string, errors: string[]): string | undefined 
         return undefined
     }
     return normalized
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function mapPaymentSourceResponse(paymentSource: PaymentSource): PaymentSourceResponse {

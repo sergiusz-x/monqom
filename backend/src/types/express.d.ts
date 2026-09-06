@@ -4,5 +4,6 @@ declare namespace Express {
             workspaceId: string
             role: string
         }
+        machine?: import('../modules/integrations/integration-credential.service').MachinePrincipal
     }
 }

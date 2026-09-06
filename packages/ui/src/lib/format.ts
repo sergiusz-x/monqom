@@ -1,13 +1,27 @@
 // Format utilities for locale-aware currency, date, and number formatting.
 // Uses Intl APIs and respects workspace locale/timezone settings if available.
 
+interface WorkspaceSettings {
+  locale?: string;
+  timezone?: string;
+}
+
+declare global {
+  interface Window {
+    __WORKSPACE_SETTINGS__?: WorkspaceSettings;
+  }
+}
+
+function getWorkspaceSettings(): WorkspaceSettings | undefined {
+  return typeof window === "undefined"
+    ? undefined
+    : window.__WORKSPACE_SETTINGS__;
+}
+
 export function getLocale(): string {
   // If a global workspace settings object is present (e.g., injected by server)
-  const win = typeof window !== "undefined" ? (window as any) : undefined;
-  if (win?.__WORKSPACE_SETTINGS__) {
-    const locale = win.__WORKSPACE_SETTINGS__.locale;
-    if (locale) return locale;
-  }
+  const locale = getWorkspaceSettings()?.locale;
+  if (locale) return locale;
   // Otherwise, try the HTML lang attribute (often set by server-side rendering)
   if (typeof document !== "undefined" && document.documentElement.lang) {
     return document.documentElement.lang;
@@ -24,11 +38,8 @@ export function getLocale(): string {
  * the environment's timezone.
  */
 export function getTimezone(): string {
-  const win = typeof window !== "undefined" ? (window as any) : undefined;
-  if (win?.__WORKSPACE_SETTINGS__) {
-    const tz = win.__WORKSPACE_SETTINGS__.timezone;
-    if (tz) return tz;
-  }
+  const timezone = getWorkspaceSettings()?.timezone;
+  if (timezone) return timezone;
   // Fallback to the environment's timezone
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
@@ -44,10 +55,15 @@ export function formatCurrency(
   value: number,
   currency: string = "USD",
   locale: string = getLocale(),
+  fractionDigits?: Pick<
+    Intl.NumberFormatOptions,
+    "minimumFractionDigits" | "maximumFractionDigits"
+  >,
 ): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
+    ...fractionDigits,
   }).format(value);
 }
 

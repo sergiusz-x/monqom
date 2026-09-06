@@ -16,6 +16,7 @@ import {
 import { normalizeCurrency } from '../../shared/currency/currency.service'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
+import { normalizeRequiredValue } from '../../shared/utils/validation'
 
 const PERSONAL_WORKSPACE_TYPE = 'personal'
 const PERSONAL_WORKSPACE_TIMEZONE = 'UTC'
@@ -41,13 +42,13 @@ export class WorkspaceService {
     ) {}
 
     async listUserWorkspaces(userId: string): Promise<UserWorkspaceRecord[]> {
-        const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
+        const normalizedUserId = normalizeRequiredValue(userId, 'User id')
 
         return this.workspaceRepository.findWorkspacesByUserId(normalizedUserId)
     }
 
     async getWorkspaceById(workspaceId: string): Promise<WorkspaceDetailsRecord> {
-        const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
 
         const workspace = await this.workspaceRepository.findWorkspaceById(normalizedWorkspaceId)
 
@@ -59,8 +60,8 @@ export class WorkspaceService {
     }
 
     async getWorkspaceForUser(userId: string, workspaceId: string): Promise<Workspace> {
-        const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
-        const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
 
         const isMember = await this.workspaceRepository.checkMembership(
             normalizedUserId,
@@ -79,7 +80,7 @@ export class WorkspaceService {
         input: UpdateWorkspaceSettingsCommand,
         userId?: string,
     ): Promise<Workspace> {
-        const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const { name, timezone, baseCurrency, errors } = validateWorkspaceSettingsInput(input)
 
         if (errors.length > 0 || !timezone) {
@@ -148,8 +149,8 @@ export class WorkspaceService {
     }
 
     async checkMembership(userId: string, workspaceId: string): Promise<boolean> {
-        const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
-        const normalizedWorkspaceId = this.normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
 
         return this.workspaceRepository.checkMembership(normalizedUserId, normalizedWorkspaceId)
     }
@@ -160,8 +161,8 @@ export class WorkspaceService {
         prisma: WorkspacePersistenceClient = this.prisma,
         baseCurrency?: string,
     ): Promise<Workspace> {
-        const normalizedUserId = this.normalizeRequiredValue(userId, 'User id')
-        const normalizedUserName = this.normalizeRequiredValue(userName, 'User name')
+        const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        const normalizedUserName = normalizeRequiredValue(userName, 'User name')
 
         const createWorkspace = async (tx: WorkspacePersistenceClient): Promise<Workspace> => {
             const workspace = await this.workspaceRepository.createWorkspace(
@@ -199,16 +200,6 @@ export class WorkspaceService {
         }
 
         return createWorkspace(prisma)
-    }
-
-    private normalizeRequiredValue(value: string, fieldName: string): string {
-        const normalizedValue = value.trim()
-
-        if (normalizedValue.length === 0) {
-            throw new BadRequestException(`${fieldName} is required`)
-        }
-
-        return normalizedValue
     }
 }
 

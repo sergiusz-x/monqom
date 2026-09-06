@@ -17,7 +17,8 @@ describe("HealthApi (generated client)", () => {
 
     // Expect axios.request to have been called
     expect(mockAxios.request).toHaveBeenCalledTimes(1);
-    const callArg = mockAxios.request.mock.calls[0][0];
+    const [callArg] = mockAxios.request.mock.calls[0] ?? [];
+    expect(callArg).toBeDefined();
     expect(callArg.method).toBe("GET");
     // Base URL is likely '/api/v1' + '/health' = '/api/v1/health'
     expect(callArg.url).toBe("/api/v1/health");

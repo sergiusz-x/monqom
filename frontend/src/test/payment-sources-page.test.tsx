@@ -70,7 +70,7 @@ describe("PaymentSourcesPage", () => {
     const user = userEvent.setup();
     paymentSources = [
       {
-        ...paymentSources[0],
+        ...paymentSources[0]!,
         id: "card-1",
         name: "Daily card",
         type: "debit_card",

@@ -15,7 +15,7 @@ import { GoalStatusBadge } from "@/components/goals/GoalStatusBadge";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 import { useGoals } from "@/hooks/useGoals";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { formatDateOnly } from "@/lib/goals";
+import { formatLongDate } from "@/lib/date-only";
 import { formatCurrency } from "@/lib/money";
 import type { Goal } from "@/types/goal";
 
@@ -136,7 +136,7 @@ function GoalCard({ goal, locale }: { goal: Goal; locale: string }) {
             <h2 className="truncate font-semibold">{goal.name}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {t("goals.due", {
-                date: formatDateOnly(goal.targetDate, locale),
+                date: formatLongDate(goal.targetDate, locale),
               })}
             </p>
           </div>

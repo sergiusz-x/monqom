@@ -10,26 +10,27 @@ datasource db {
 }
 
 model User {
-  id                  String   @id @default(uuid())
-  email               String   @unique
+  id                  String    @id @default(uuid())
+  email               String    @unique
   name                String
-  locale              String   @default("en")
-  hideSalaryAmounts   Boolean  @default(false) @map("hide_salary_amounts")
-  passwordHash        String   @map("password_hash")
-  emailVerified       Boolean  @default(false) @map("email_verified")
-  sessionVersion      Int      @default(0) @map("session_version")
-  failedLoginCount   Int      @default(0) @map("failed_login_count")
-  lockedUntil        DateTime? @map("locked_until")
-  totpEnabled         Boolean  @default(false) @map("totp_enabled")
-  totpSecretEncrypted String?  @map("totp_secret_encrypted")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  locale              String    @default("en")
+  hideSalaryAmounts   Boolean   @default(false) @map("hide_salary_amounts")
+  passwordHash        String    @map("password_hash")
+  emailVerified       Boolean   @default(false) @map("email_verified")
+  sessionVersion      Int       @default(0) @map("session_version")
+  failedLoginCount    Int       @default(0) @map("failed_login_count")
+  lockedUntil         DateTime? @map("locked_until")
+  totpEnabled         Boolean   @default(false) @map("totp_enabled")
+  totpSecretEncrypted String?   @map("totp_secret_encrypted")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   memberships             WorkspaceMembership[]
   auditEvents             AuditEvent[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   recoveryCodes           TwoFactorRecoveryCode[]
+  createdIntegrations     Integration[]            @relation("IntegrationCreator")
 
   @@map("users")
 }
@@ -98,6 +99,7 @@ model Workspace {
   goalOperations  GoalOperation[]
   auditEvents     AuditEvent[]
   transactionTags TransactionTag[]
+  integrations    Integration[]
 
   @@map("workspaces")
 }
@@ -125,7 +127,7 @@ model Category {
   workspaceId String    @map("workspace_id")
   parentId    String?   @map("parent_id")
   name        String
-  type        String   @default("expense")
+  type        String    @default("expense")
   systemKey   String?   @map("system_key")
   color       String?
   icon        String?
@@ -134,11 +136,12 @@ model Category {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent       Category?     @relation("ParentChild", fields: [workspaceId, parentId], references: [workspaceId, id])
-  children     Category[]    @relation("ParentChild")
-  transactions Transaction[]
-  budgets      Budget[]
+  workspace              Workspace                       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent                 Category?                       @relation("ParentChild", fields: [workspaceId, parentId], references: [workspaceId, id])
+  children               Category[]                      @relation("ParentChild")
+  transactions           Transaction[]
+  budgets                Budget[]
+  credentialRestrictions IntegrationCredentialCategory[]
 
   @@unique([workspaceId, id])
   @@index([workspaceId])
@@ -157,9 +160,10 @@ model PaymentSource {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  workspace              Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace              Workspace                            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   transactions           Transaction[]
   preferredByMemberships WorkspaceMembership[]
+  credentialRestrictions IntegrationCredentialPaymentSource[]
 
   @@unique([workspaceId, id])
   @@unique([workspaceId, systemKey])
@@ -168,18 +172,21 @@ model PaymentSource {
 }
 
 model Transaction {
-  id              String @id @default(uuid())
-  workspaceId     String @map("workspace_id")
-  categoryId      String @map("category_id")
-  paymentSourceId String @map("payment_source_id")
+  id              String  @id @default(uuid())
+  workspaceId     String  @map("workspace_id")
+  categoryId      String  @map("category_id")
+  paymentSourceId String  @map("payment_source_id")
+  integrationId   String? @map("integration_id")
+  externalId      String? @map("external_id")
 
-  type       String   @default("expense")
-  amount     Int // stored as integer minor units (cents)
-  currency   String
-  baseAmount Int      @default(0) @map("base_amount")
-  fxRate     Decimal  @default(1) @map("fx_rate") @db.Decimal(20, 10)
-  fxRateDate DateTime @default(now()) @map("fx_rate_date")
-  fxSource   String   @default("legacy") @map("fx_source")
+  type        String   @default("expense")
+  version     Int      @default(1)
+  amount      Int // stored as integer minor units (cents)
+  currency    String
+  baseAmount  Int      @default(0) @map("base_amount")
+  fxRate      Decimal  @default(1) @map("fx_rate") @db.Decimal(20, 10)
+  fxRateDate  DateTime @default(now()) @map("fx_rate_date")
+  fxSource    String   @default("legacy") @map("fx_source")
   date        DateTime @db.Date
   description String
   notes       String?
@@ -192,14 +199,38 @@ model Transaction {
   category      Category         @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
   paymentSource PaymentSource    @relation(fields: [workspaceId, paymentSourceId], references: [workspaceId, id], onDelete: Restrict)
   tags          TransactionTag[]
+  integration   Integration?     @relation(fields: [integrationId], references: [id], onDelete: Restrict)
 
   @@unique([workspaceId, id])
+  @@unique([workspaceId, integrationId, externalId])
   @@index([workspaceId])
   @@index([workspaceId, categoryId])
   @@index([workspaceId, paymentSourceId])
+  @@index([workspaceId, integrationId, externalId])
   @@index([categoryId])
   @@index([date])
   @@map("transactions")
+}
+
+model IntegrationIdempotencyRecord {
+  id                 String   @id @default(uuid())
+  integrationId      String   @map("integration_id")
+  keyDigest          String   @map("key_digest")
+  operation          String
+  targetExternalId   String?  @map("target_external_id")
+  requestFingerprint String   @map("request_fingerprint")
+  status             String   @default("in_progress")
+  responseStatus     Int?     @map("response_status")
+  responseBody       Json?    @map("response_body")
+  expiresAt          DateTime @map("expires_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, keyDigest])
+  @@index([expiresAt])
+  @@map("integration_idempotency_records")
 }
 
 model TransactionTag {
@@ -317,6 +348,77 @@ model AuthRateLimit {
 
   @@index([expiresAt])
   @@map("auth_rate_limits")
+}
+
+model Integration {
+  id              String   @id @default(uuid())
+  workspaceId     String   @map("workspace_id")
+  createdByUserId String   @map("created_by_user_id")
+  name            String
+  status          String   @default("active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  workspace          Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy          User                           @relation("IntegrationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  credentials        IntegrationCredential[]
+  transactions       Transaction[]
+  idempotencyRecords IntegrationIdempotencyRecord[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, status])
+  @@index([createdByUserId])
+  @@map("integrations")
+}
+
+model IntegrationCredential {
+  id                            String    @id @default(uuid())
+  integrationId                 String    @map("integration_id")
+  tokenPrefix                   String    @unique @map("token_prefix")
+  tokenDigest                   String    @unique @map("token_digest")
+  expiresAt                     DateTime  @map("expires_at")
+  scopes                        String[]  @default([])
+  categoryAllowlistEnabled      Boolean   @default(false) @map("category_allowlist_enabled")
+  paymentSourceAllowlistEnabled Boolean   @default(false) @map("payment_source_allowlist_enabled")
+  cidrAllowlistEnabled          Boolean   @default(false) @map("cidr_allowlist_enabled")
+  allowedCidrs                  String[]  @default([]) @map("allowed_cidrs")
+  status                        String    @default("active")
+  revokedAt                     DateTime? @map("revoked_at")
+  lastUsedAt                    DateTime? @map("last_used_at")
+  createdAt                     DateTime  @default(now()) @map("created_at")
+  updatedAt                     DateTime  @updatedAt @map("updated_at")
+
+  integration               Integration                          @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  categoryRestrictions      IntegrationCredentialCategory[]
+  paymentSourceRestrictions IntegrationCredentialPaymentSource[]
+
+  @@index([integrationId, status])
+  @@index([expiresAt])
+  @@map("integration_credentials")
+}
+
+model IntegrationCredentialCategory {
+  credentialId String @map("credential_id")
+  categoryId   String @map("category_id")
+
+  credential IntegrationCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  category   Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([credentialId, categoryId])
+  @@index([categoryId])
+  @@map("integration_credential_categories")
+}
+
+model IntegrationCredentialPaymentSource {
+  credentialId    String @map("credential_id")
+  paymentSourceId String @map("payment_source_id")
+
+  credential    IntegrationCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  paymentSource PaymentSource         @relation(fields: [paymentSourceId], references: [id], onDelete: Restrict)
+
+  @@id([credentialId, paymentSourceId])
+  @@index([paymentSourceId])
+  @@map("integration_credential_payment_sources")
 }
 
 model EmailOutbox {

@@ -98,7 +98,7 @@ describe("BudgetsPage", () => {
 
     await waitFor(() => {
       const params = new URL(
-        mockApi.get.mock.calls[2][0],
+        mockApi.get.mock.calls[2]?.[0] ?? "",
         "https://app.example.test",
       ).searchParams;
       expect(params.get("month")).toMatch(/^\d{4}-\d{2}$/);
@@ -125,8 +125,10 @@ describe("BudgetsPage", () => {
     await user.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
-    expect(mockApi.post.mock.calls[0][0]).toContain("/workspaces/ws-1/budgets");
-    expect(mockApi.post.mock.calls[0][1]).toMatchObject({
+    expect(mockApi.post.mock.calls[0]?.[0]).toContain(
+      "/workspaces/ws-1/budgets",
+    );
+    expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
       category_id: "cat-1",
       amount: 250,
     });
@@ -159,7 +161,7 @@ describe("BudgetsPage", () => {
     );
 
     await waitFor(() => expect(mockApi.delete).toHaveBeenCalledTimes(1));
-    expect(mockApi.delete.mock.calls[0][0]).toContain(
+    expect(mockApi.delete.mock.calls[0]?.[0]).toContain(
       "/workspaces/ws-1/budgets/budget-1",
     );
     expect(await screen.findByText("Budget deleted")).toBeInTheDocument();

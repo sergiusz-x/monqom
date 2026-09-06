@@ -366,8 +366,9 @@ function CategoryDialog({
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const kind: CategoryKind = parentId ? "subcategory" : "group";
-  const nameError = submitted ? validateName(name, t) : null;
-  const iconError = submitted ? validateIcon(icon, t) : null;
+  const translateValidation = t as unknown as CategoryValidationTranslator;
+  const nameError = submitted ? validateName(name, translateValidation) : null;
+  const iconError = submitted ? validateIcon(icon, translateValidation) : null;
   const parentOptions = useMemo(
     () => parents.filter((parent) => parent.id !== category?.id),
     [category?.id, parents],
@@ -380,8 +381,8 @@ function CategoryDialog({
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSubmitted(true);
-    const nextNameError = validateName(name, t);
-    const nextIconError = validateIcon(icon, t);
+    const nextNameError = validateName(name, translateValidation);
+    const nextIconError = validateIcon(icon, translateValidation);
     if (nextNameError || nextIconError) return;
     setSaving(true);
     setSaveError(null);
@@ -611,14 +612,26 @@ function EmojiPicker({
   );
 }
 
-function validateName(name: string, t: ReturnType<typeof useTranslation>["t"]) {
+type CategoryValidationKey =
+  | "categoryManagement.nameRequired"
+  | "categoryManagement.nameTooLong"
+  | "categoryManagement.iconInvalid";
+type CategoryValidationTranslator = (key: CategoryValidationKey) => string;
+
+function validateName(
+  name: string,
+  t: CategoryValidationTranslator,
+): string | null {
   const normalized = name.trim();
   if (!normalized) return t("categoryManagement.nameRequired");
   if (normalized.length > 100) return t("categoryManagement.nameTooLong");
   return null;
 }
 
-function validateIcon(icon: string, t: ReturnType<typeof useTranslation>["t"]) {
+function validateIcon(
+  icon: string,
+  t: CategoryValidationTranslator,
+): string | null {
   const normalized = icon.trim();
   if (!normalized) return null;
   return /^\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic})*$/u.test(

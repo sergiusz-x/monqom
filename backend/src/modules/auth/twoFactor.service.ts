@@ -7,11 +7,11 @@ import {
     randomBytes,
     type CipherGCMTypes,
 } from 'crypto'
-import type { User } from '@prisma/client'
 import * as QRCode from 'qrcode'
 import * as speakeasy from 'speakeasy'
 import { type RecoveryCodeRecord, AuthRepository } from './auth.repository'
 import type { AuthActionResponse, AuthenticatedSessionUserResponse } from './auth.service'
+import { mapAuthenticatedSessionUser } from './auth-user.mapper'
 import {
     validateCurrentPasswordInput,
     validateVerificationTokenInput,
@@ -218,6 +218,20 @@ export class TwoFactorService {
         }
     }
 
+    async verifyStepUp(userId: string, token?: string): Promise<void> {
+        const user = await this.authRepository.findUserById(userId)
+        if (!user) throw new UnauthorizedException('Authentication required')
+        if (!user.totpEnabled) return
+        const normalized = token?.trim()
+        if (!normalized || !user.totpSecretEncrypted) {
+            throw new UnauthorizedException(INVALID_TWO_FACTOR_TOKEN_MESSAGE)
+        }
+        const secret = decryptLoginSecret(user.totpSecretEncrypted)
+        if (isValidTotpToken(secret, normalized)) return
+        if (await this.consumeRecoveryCode(userId, normalized)) return
+        throw new UnauthorizedException(INVALID_TWO_FACTOR_TOKEN_MESSAGE)
+    }
+
     private async consumeRecoveryCode(userId: string, token: string): Promise<boolean> {
         const normalizedToken = normalizeRecoveryCode(token)
         const recoveryCodes = await this.authRepository.listUnusedRecoveryCodes(userId)
@@ -237,21 +251,6 @@ export class TwoFactorService {
         }
 
         return false
-    }
-}
-
-function mapAuthenticatedSessionUser(user: User): AuthenticatedSessionUserResponse {
-    return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        locale: user.locale,
-        hideSalaryAmounts: user.hideSalaryAmounts,
-        emailVerified: user.emailVerified,
-        totpEnabled: user.totpEnabled,
-        sessionVersion: user.sessionVersion,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
     }
 }
 

@@ -5,7 +5,8 @@ import { EmailOutboxService } from '../../shared/email/email-outbox.service'
 import { AuthRepository } from './auth.repository'
 import { AuthService } from './auth.service'
 import { logger } from '../../shared/utils/logger'
-import { createUserFixture } from '../../test-utils/prisma-fixtures'
+import { createUserFixture, getMockCallArgument } from '../../test-utils/prisma-fixtures'
+import { ConfigService } from '@nestjs/config'
 
 jest.mock('../../shared/utils/logger', () => ({
     logger: {
@@ -39,7 +40,8 @@ describe('AuthService', () => {
         $transaction: jest.Mock
     }
     let emailOutbox: { enqueue: jest.Mock }
-    const originalNodeEnv = process.env.NODE_ENV
+    let runtimeConfig: { nodeEnv: string; frontendUrl?: string }
+    let configService: Pick<ConfigService, 'get'>
 
     beforeEach(() => {
         transactionClient = {}
@@ -67,26 +69,30 @@ describe('AuthService', () => {
             ),
         }
         emailOutbox = { enqueue: jest.fn() }
+        runtimeConfig = { nodeEnv: 'test' }
+        configService = {
+            get: jest.fn((key: string, fallback?: unknown) => {
+                if (key === 'env.nodeEnv') return runtimeConfig.nodeEnv
+                if (key === 'env.frontendUrl') return runtimeConfig.frontendUrl ?? fallback
+                return fallback
+            }),
+        }
 
         service = new AuthService(
             authRepository as unknown as AuthRepository,
             workspaceService as unknown as WorkspaceService,
             prisma as never,
             emailOutbox as unknown as EmailOutboxService,
+            configService as ConfigService,
         )
         jest.clearAllMocks()
-        process.env.NODE_ENV = 'test'
-    })
-
-    afterAll(() => {
-        process.env.NODE_ENV = originalNodeEnv
     })
 
     it('registers a user with a hashed password and verification token', async () => {
         const now = Date.now()
         const password = 'GraniteHarbor!1234'
 
-        process.env.NODE_ENV = 'development'
+        runtimeConfig.nodeEnv = 'development'
 
         authRepository.findUserByEmail.mockResolvedValue(null)
         authRepository.createUserWithVerificationToken.mockImplementation(async (input) =>
@@ -113,7 +119,9 @@ describe('AuthService', () => {
             password,
         })
 
-        const createCall = authRepository.createUserWithVerificationToken.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createUserWithVerificationToken']>[0]
+        >(authRepository.createUserWithVerificationToken)
 
         expect(createCall.email).toBe('test@example.com')
         expect(createCall.name).toBe('Ada Lovelace')
@@ -357,7 +365,7 @@ describe('AuthService', () => {
             updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         } as never)
 
-        process.env.NODE_ENV = 'production'
+        runtimeConfig.nodeEnv = 'production'
 
         await service.register({
             email: 'test@example.com',
@@ -365,7 +373,9 @@ describe('AuthService', () => {
             password: 'GraniteHarbor!1234',
         })
 
-        const createCall = authRepository.createUserWithVerificationToken.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createUserWithVerificationToken']>[0]
+        >(authRepository.createUserWithVerificationToken)
         expect(logger.info).toHaveBeenCalledWith(
             'Email verification token generated for registration',
             expect.objectContaining({
@@ -596,8 +606,9 @@ describe('AuthService', () => {
             'verification-token',
         )
 
-        const consumeCall =
-            authRepository.consumeVerificationTokensAndMarkEmailVerified.mock.calls[0][0]
+        const consumeCall = getMockCallArgument<
+            Parameters<AuthRepository['consumeVerificationTokensAndMarkEmailVerified']>[0]
+        >(authRepository.consumeVerificationTokensAndMarkEmailVerified)
 
         expect(consumeCall.userId).toBe('user-1')
         expect(Math.abs(consumeCall.verifiedAt.getTime() - now)).toBeLessThanOrEqual(5000)
@@ -663,7 +674,7 @@ describe('AuthService', () => {
     it('resends a verification token for an existing unverified user', async () => {
         const now = Date.now()
 
-        process.env.NODE_ENV = 'development'
+        runtimeConfig.nodeEnv = 'development'
         authRepository.findUserByEmail.mockResolvedValue(createMockUser())
         authRepository.createVerificationTokenForUser.mockResolvedValue(undefined)
 
@@ -671,7 +682,9 @@ describe('AuthService', () => {
             message: 'Verification email sent',
         })
 
-        const createCall = authRepository.createVerificationTokenForUser.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createVerificationTokenForUser']>[0]
+        >(authRepository.createVerificationTokenForUser)
 
         expect(authRepository.findUserByEmail).toHaveBeenCalledWith('test@example.com')
         expect(createCall.userId).toBe('user-1')
@@ -721,7 +734,7 @@ describe('AuthService', () => {
     it('creates a password reset token for an existing user and logs it', async () => {
         const now = Date.now()
 
-        process.env.NODE_ENV = 'development'
+        runtimeConfig.nodeEnv = 'development'
         authRepository.findUserByEmail.mockResolvedValue(createMockUser({ emailVerified: true }))
         authRepository.createPasswordResetTokenForUser.mockResolvedValue(undefined)
 
@@ -730,7 +743,9 @@ describe('AuthService', () => {
                 'If an account with that email exists, a password reset link has been generated',
         })
 
-        const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createPasswordResetTokenForUser']>[0]
+        >(authRepository.createPasswordResetTokenForUser)
 
         expect(createCall.userId).toBe('user-1')
         expect(createCall.passwordResetToken).toMatch(/^[a-f0-9]{64}$/)
@@ -752,7 +767,9 @@ describe('AuthService', () => {
 
         await service.forgotPassword({ email: 'test@example.com' })
 
-        const createCall = authRepository.createPasswordResetTokenForUser.mock.calls[0][0]
+        const createCall = getMockCallArgument<
+            Parameters<AuthRepository['createPasswordResetTokenForUser']>[0]
+        >(authRepository.createPasswordResetTokenForUser)
         expect(logger.info).toHaveBeenCalledWith(
             'Password reset token generated for forgot-password',
             expect.objectContaining({
@@ -803,7 +820,9 @@ describe('AuthService', () => {
             'password-reset-token',
         )
 
-        const resetCall = authRepository.resetPasswordWithToken.mock.calls[0][0]
+        const resetCall = getMockCallArgument<
+            Parameters<AuthRepository['resetPasswordWithToken']>[0]
+        >(authRepository.resetPasswordWithToken)
 
         expect(resetCall.tokenId).toBe('password-reset-token-1')
         expect(resetCall.userId).toBe('user-1')
@@ -895,7 +914,9 @@ describe('AuthService', () => {
             }),
         ).resolves.toEqual({ message: 'Password changed successfully' })
 
-        const changeCall = authRepository.changePassword.mock.calls[0][0]
+        const changeCall = getMockCallArgument<Parameters<AuthRepository['changePassword']>[0]>(
+            authRepository.changePassword,
+        )
         expect(changeCall.userId).toBe('user-1')
         await expect(argon2.verify(changeCall.passwordHash, 'OceanStoneBridge!1234')).resolves.toBe(
             true,

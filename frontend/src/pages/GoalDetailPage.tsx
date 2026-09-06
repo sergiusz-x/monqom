@@ -32,7 +32,8 @@ import {
 } from "@monqom/ui";
 import { goalsApi } from "@/api/contract";
 import { getApiErrorMessage } from "@/lib/api-errors";
-import { formatDateOnly, todayInTimeZone } from "@/lib/goals";
+import { todayInTimeZone } from "@/lib/goals";
+import { formatLongDate } from "@/lib/date-only";
 import { formatCurrency } from "@/lib/money";
 import { queryKeys } from "@/lib/query-client";
 import { useGoal } from "@/hooks/useGoals";
@@ -186,7 +187,7 @@ export default function GoalDetailPage() {
         }
         title={goal.name}
         description={t("goals.due", {
-          date: formatDateOnly(goal.targetDate, i18n.language),
+          date: formatLongDate(goal.targetDate, i18n.language),
         })}
         actions={
           <ActionMenu
@@ -319,7 +320,7 @@ export default function GoalDetailPage() {
                     </p>
                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       <CalendarDays size={13} aria-hidden="true" />
-                      {formatDateOnly(operation.date, i18n.language)}
+                      {formatLongDate(operation.date, i18n.language)}
                       {operation.note ? ` · ${operation.note}` : ""}
                     </p>
                   </div>

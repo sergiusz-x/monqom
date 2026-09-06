@@ -5,6 +5,8 @@ export const CSRF_HEADER_NAME = 'x-csrf-token'
 export const CSRF_INVALID_CODE = 'CSRF_TOKEN_INVALID'
 const CSRF_TOKEN_BYTES = 32
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+const EXTERNAL_INTEGRATION_API_PATH =
+    /^\/api\/v1\/workspaces\/[^/]+\/external-(?:transactions(?:\/[^/]+)?|categories|payment-sources)$/
 
 export function getOrCreateCsrfToken(req: Request): string {
     req.session.csrfToken ??= randomBytes(CSRF_TOKEN_BYTES).toString('base64url')
@@ -12,7 +14,7 @@ export function getOrCreateCsrfToken(req: Request): string {
 }
 
 export function csrfProtectionMiddleware(req: Request, res: Response, next: NextFunction): void {
-    if (SAFE_METHODS.has(req.method.toUpperCase())) {
+    if (SAFE_METHODS.has(req.method.toUpperCase()) || isExternalIntegrationApiRequest(req)) {
         next()
         return
     }
@@ -31,6 +33,10 @@ export function csrfProtectionMiddleware(req: Request, res: Response, next: Next
     }
 
     next()
+}
+
+function isExternalIntegrationApiRequest(req: Request): boolean {
+    return EXTERNAL_INTEGRATION_API_PATH.test(req.path)
 }
 
 function tokensMatch(expected: string, actual: string): boolean {

@@ -80,15 +80,24 @@ export class WorkspaceRepository {
             ],
         })
 
-        return workspaces.map(({ memberships, _count, ...workspace }) => ({
-            ...workspace,
-            lastPaymentSourceId: memberships[0].lastPaymentSourceId,
-            role: memberships[0].role,
-            baseCurrencyLocked:
-                (_count?.transactions ?? 0) > 0 ||
-                (_count?.budgets ?? 0) > 0 ||
-                (_count?.goals ?? 0) > 0,
-        }))
+        return workspaces.map(({ memberships, _count, ...workspace }) => {
+            const membership = memberships[0]
+            if (!membership) {
+                throw new Error(
+                    'Workspace query returned a workspace without the requested membership',
+                )
+            }
+
+            return {
+                ...workspace,
+                lastPaymentSourceId: membership.lastPaymentSourceId,
+                role: membership.role,
+                baseCurrencyLocked:
+                    (_count?.transactions ?? 0) > 0 ||
+                    (_count?.budgets ?? 0) > 0 ||
+                    (_count?.goals ?? 0) > 0,
+            }
+        })
     }
 
     async findWorkspaceById(

@@ -76,6 +76,8 @@ function errorCodeForStatus(status: number): string {
         [HttpStatus.FORBIDDEN]: 'ACCESS_DENIED',
         [HttpStatus.NOT_FOUND]: 'RESOURCE_NOT_FOUND',
         [HttpStatus.CONFLICT]: 'CONFLICT',
+        [HttpStatus.PRECONDITION_FAILED]: 'PRECONDITION_FAILED',
+        [HttpStatus.PRECONDITION_REQUIRED]: 'PRECONDITION_REQUIRED',
         [HttpStatus.TOO_MANY_REQUESTS]: 'RATE_LIMITED',
     }
 
@@ -89,6 +91,8 @@ function errorLabelForStatus(status: number): string | undefined {
         [HttpStatus.FORBIDDEN]: 'Forbidden',
         [HttpStatus.NOT_FOUND]: 'Not Found',
         [HttpStatus.CONFLICT]: 'Conflict',
+        [HttpStatus.PRECONDITION_FAILED]: 'Precondition Failed',
+        [HttpStatus.PRECONDITION_REQUIRED]: 'Precondition Required',
         [HttpStatus.TOO_MANY_REQUESTS]: 'Too Many Requests',
     }
 

@@ -52,8 +52,16 @@ export function dateInTimeZone(now: Date, timeZone: string): Date {
         month: '2-digit',
         day: '2-digit',
     }).formatToParts(now)
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-    return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)))
+    const values = new Map(parts.map((part) => [part.type, part.value]))
+    const year = values.get('year')
+    const month = values.get('month')
+    const day = values.get('day')
+
+    if (!year || !month || !day) {
+        throw new Error('Intl.DateTimeFormat did not provide a complete calendar date')
+    }
+
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
 }
 
 export function addUtcMonthsClamped(date: Date, months: number): Date {

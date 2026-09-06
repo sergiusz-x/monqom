@@ -25,6 +25,7 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
     ) {}
 
     onModuleInit(): void {
+        if (this.isTestEnvironment()) return
         this.timer = setInterval(() => void this.processBatch(), 5_000)
         this.timer.unref()
         void this.processBatch()
@@ -163,6 +164,10 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
         ).replace(/\/+$/, '')
     }
 
+    private isTestEnvironment(): boolean {
+        return this.configService.get<RuntimeConfig>('env', { infer: true })?.nodeEnv === 'test'
+    }
+
     private encrypt(value: string): string {
         const iv = randomBytes(12)
         const cipher = createCipheriv('aes-256-gcm', this.encryptionKey(), iv)
@@ -176,6 +181,7 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
         const parts = value.split('.')
         if (parts.length !== 3) throw new Error('Invalid outbox payload')
         const [iv, tag, encrypted] = parts.map((part) => Buffer.from(part, 'base64url'))
+        if (!iv || !tag || !encrypted) throw new Error('Invalid outbox payload')
         const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey(), iv)
         decipher.setAuthTag(tag)
         return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')

@@ -12,11 +12,18 @@ import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DataSection } from "@/components/settings/DataSection";
 import { CategoryManagementSection } from "@/components/settings/CategoryManagementSection";
 import { PrivacySection } from "@/components/settings/PrivacySection";
+import { IntegrationManagementSection } from "@/components/settings/IntegrationManagementSection";
 import { ReleaseVersion } from "@/components/ReleaseVersion";
 import { Button } from "@monqom/ui";
 
 type ActiveSection =
-  "profile" | "workspace" | "categories" | "privacy" | "security" | "data";
+  | "profile"
+  | "workspace"
+  | "categories"
+  | "integrations"
+  | "privacy"
+  | "security"
+  | "data";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -26,11 +33,16 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("profile");
   const { showToast } = useToast(3000);
   const canConfigure = !workspace?.role || workspace.role !== "member";
+  const canManageIntegrations =
+    workspace?.role === "admin" || workspace?.role === "owner";
   const tabs: Array<{ id: ActiveSection; label: string }> = [
     { id: "profile", label: t("settings.profile") },
     { id: "workspace", label: t("settings.workspace") },
     ...(canConfigure
       ? [{ id: "categories" as const, label: t("categoryManagement.tab") }]
+      : []),
+    ...(canManageIntegrations
+      ? [{ id: "integrations" as const, label: t("integrations.tab") }]
       : []),
     { id: "privacy", label: t("privacy.tab") },
     { id: "security", label: t("settings.security") },
@@ -92,6 +104,12 @@ export default function SettingsPage() {
         ) : activeSection === "categories" ? (
           <CategoryManagementSection
             workspaceId={workspaceId}
+            onSaved={showToast}
+          />
+        ) : activeSection === "integrations" && canManageIntegrations ? (
+          <IntegrationManagementSection
+            workspaceId={workspaceId}
+            user={user}
             onSaved={showToast}
           />
         ) : activeSection === "privacy" ? (

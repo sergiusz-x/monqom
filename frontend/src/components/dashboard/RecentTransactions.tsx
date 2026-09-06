@@ -13,6 +13,7 @@ import { formatShortDate } from "@/lib/date-only";
 import { categorySystemKeys } from "@/lib/category-system-keys";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { paymentSourceName } from "@/lib/payment-sources";
+import { flattenCategories } from "@/lib/category-tree";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import type { Category } from "@/types/category";
 import type { Transaction } from "@/types/transaction";
@@ -23,13 +24,6 @@ interface RecentTransactionsProps {
   workspaceId: string;
   transactions: Transaction[];
   categories: Category[];
-}
-
-function flattenCategories(categories: Category[]): Category[] {
-  return categories.flatMap((category) => [
-    category,
-    ...flattenCategories(category.children),
-  ]);
 }
 
 export function RecentTransactions({

@@ -491,7 +491,7 @@ describe("AppLayout", () => {
     );
 
     await userEvent.click(
-      screen.getAllByRole("button", { name: /add transaction/i })[0],
+      screen.getAllByRole("button", { name: /add transaction/i })[0]!,
     );
 
     expect(

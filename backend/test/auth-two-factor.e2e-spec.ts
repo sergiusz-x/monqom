@@ -10,6 +10,7 @@ import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filt
 import { PrismaService } from './../src/shared/database/prisma.service'
 import { createSessionOptions } from './../src/shared/session/session.config'
 import { EmailOutboxService } from './../src/shared/email/email-outbox.service'
+import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
 
 interface StoredUser {
     id: string
@@ -184,9 +185,13 @@ describe('Auth two-factor authentication (e2e)', () => {
             otpauthUri: expect.stringContaining('otpauth://totp/'),
             qrCodeDataUrl: expect.stringMatching(/^data:image\/png;base64,/),
         })
-        expect(prismaMock.users[0].totpEnabled).toBe(false)
-        expect(prismaMock.users[0].totpSecretEncrypted).toEqual(expect.any(String))
-        expect(prismaMock.users[0].totpSecretEncrypted).not.toBe(setupResponse.body.secret)
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpEnabled).toBe(false)
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpSecretEncrypted).toEqual(
+            expect.any(String),
+        )
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpSecretEncrypted).not.toBe(
+            setupResponse.body.secret,
+        )
 
         const verifySetupToken = speakeasy.totp({
             secret: setupResponse.body.secret,
@@ -205,7 +210,7 @@ describe('Auth two-factor authentication (e2e)', () => {
             recoveryCodes: expect.arrayContaining(Array(8).fill(expect.any(String))),
         })
         expect(verifySetupResponse.body.recoveryCodes).toHaveLength(8)
-        expect(prismaMock.users[0].totpEnabled).toBe(true)
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpEnabled).toBe(true)
         expect(prismaMock.recoveryCodes).toHaveLength(8)
         expect(prismaMock.auditEvents).toEqual(
             expect.arrayContaining([
@@ -332,8 +337,8 @@ describe('Auth two-factor authentication (e2e)', () => {
         expect(disableResponse.body).toEqual({
             message: 'Two-factor authentication disabled',
         })
-        expect(prismaMock.users[0].totpEnabled).toBe(false)
-        expect(prismaMock.users[0].totpSecretEncrypted).toBeNull()
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpEnabled).toBe(false)
+        expect(getRequiredArrayItem(prismaMock.users, 0).totpSecretEncrypted).toBeNull()
         expect(prismaMock.recoveryCodes).toHaveLength(0)
         expect(prismaMock.auditEvents).toEqual(
             expect.arrayContaining([
@@ -401,7 +406,7 @@ describe('Auth two-factor authentication (e2e)', () => {
             })
             .expect(200)
 
-        prismaMock.users[0].sessionVersion = 1
+        getRequiredArrayItem(prismaMock.users, 0).sessionVersion = 1
 
         const token = speakeasy.totp({
             secret: setupResult.secret,

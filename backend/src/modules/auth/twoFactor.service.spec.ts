@@ -3,7 +3,11 @@ import * as argon2 from 'argon2'
 import * as speakeasy from 'speakeasy'
 import { AuthRepository } from './auth.repository'
 import { TwoFactorService } from './twoFactor.service'
-import { createUserFixture } from '../../test-utils/prisma-fixtures'
+import {
+    createUserFixture,
+    getMockCallArgument,
+    getRequiredArrayItem,
+} from '../../test-utils/prisma-fixtures'
 
 describe('TwoFactorService', () => {
     let service: TwoFactorService
@@ -62,9 +66,10 @@ describe('TwoFactorService', () => {
             userId: 'user-1',
             encryptedSecret: expect.any(String),
         })
-        expect(
-            authRepository.replaceTwoFactorSetupSecret.mock.calls[0][0].encryptedSecret,
-        ).not.toBe(result.secret)
+        const setupCall = getMockCallArgument<
+            Parameters<AuthRepository['replaceTwoFactorSetupSecret']>[0]
+        >(authRepository.replaceTwoFactorSetupSecret)
+        expect(setupCall.encryptedSecret).not.toBe(result.secret)
     })
 
     it('rejects setup when two-factor authentication is already enabled', async () => {
@@ -83,8 +88,9 @@ describe('TwoFactorService', () => {
         authRepository.findUserById.mockResolvedValue(createMockUser())
 
         const setupResult = await service.setup('user-1')
-        const encryptedSecret =
-            authRepository.replaceTwoFactorSetupSecret.mock.calls[0][0].encryptedSecret
+        const encryptedSecret = getMockCallArgument<
+            Parameters<AuthRepository['replaceTwoFactorSetupSecret']>[0]
+        >(authRepository.replaceTwoFactorSetupSecret).encryptedSecret
         const token = speakeasy.totp({
             secret: setupResult.secret,
             encoding: 'base32',
@@ -105,15 +111,16 @@ describe('TwoFactorService', () => {
             recoveryCodeHashes: expect.any(Array),
         })
 
-        const storedHashes =
-            authRepository.enableTwoFactorForUser.mock.calls[0][0].recoveryCodeHashes
+        const storedHashes = getMockCallArgument<
+            Parameters<AuthRepository['enableTwoFactorForUser']>[0]
+        >(authRepository.enableTwoFactorForUser).recoveryCodeHashes
         expect(storedHashes).toHaveLength(8)
 
         await Promise.all(
             result.recoveryCodes.map((recoveryCode, index) =>
                 expect(
                     argon2.verify(
-                        storedHashes[index],
+                        getRequiredArrayItem(storedHashes, index),
                         recoveryCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
                     ),
                 ).resolves.toBe(true),
@@ -125,8 +132,9 @@ describe('TwoFactorService', () => {
         authRepository.findUserById.mockResolvedValue(createMockUser())
 
         await service.setup('user-1')
-        const encryptedSecret =
-            authRepository.replaceTwoFactorSetupSecret.mock.calls[0][0].encryptedSecret
+        const encryptedSecret = getMockCallArgument<
+            Parameters<AuthRepository['replaceTwoFactorSetupSecret']>[0]
+        >(authRepository.replaceTwoFactorSetupSecret).encryptedSecret
 
         authRepository.findUserById.mockResolvedValue(
             createMockUser({
@@ -144,8 +152,9 @@ describe('TwoFactorService', () => {
         authRepository.findUserById.mockResolvedValue(createMockUser())
 
         const setupResult = await service.setup('user-1')
-        const encryptedSecret =
-            authRepository.replaceTwoFactorSetupSecret.mock.calls[0][0].encryptedSecret
+        const encryptedSecret = getMockCallArgument<
+            Parameters<AuthRepository['replaceTwoFactorSetupSecret']>[0]
+        >(authRepository.replaceTwoFactorSetupSecret).encryptedSecret
         const token = speakeasy.totp({
             secret: setupResult.secret,
             encoding: 'base32',
@@ -187,8 +196,9 @@ describe('TwoFactorService', () => {
         authRepository.findUserById.mockResolvedValue(createMockUser())
 
         await service.setup('user-1')
-        const encryptedSecret =
-            authRepository.replaceTwoFactorSetupSecret.mock.calls[0][0].encryptedSecret
+        const encryptedSecret = getMockCallArgument<
+            Parameters<AuthRepository['replaceTwoFactorSetupSecret']>[0]
+        >(authRepository.replaceTwoFactorSetupSecret).encryptedSecret
         const recoveryCode = 'ABCD-EFGH-JKLM'
 
         authRepository.findUserById.mockResolvedValue(
@@ -234,8 +244,9 @@ describe('TwoFactorService', () => {
         authRepository.findUserById.mockResolvedValue(createMockUser())
 
         const setupResult = await service.setup('user-1')
-        const encryptedSecret =
-            authRepository.replaceTwoFactorSetupSecret.mock.calls[0][0].encryptedSecret
+        const encryptedSecret = getMockCallArgument<
+            Parameters<AuthRepository['replaceTwoFactorSetupSecret']>[0]
+        >(authRepository.replaceTwoFactorSetupSecret).encryptedSecret
         const token = speakeasy.totp({
             secret: setupResult.secret,
             encoding: 'base32',

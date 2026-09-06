@@ -6,6 +6,11 @@ import {
     TransactionsRepository,
 } from '../transactions/transactions.repository'
 import type { CreateTransactionResponse } from '../transactions/transactions.service'
+import { normalizeRequiredValue, parseYearMonth } from '../../shared/utils/validation'
+import {
+    basisPointsToDisplayPercentage,
+    centsToDisplayAmount,
+} from '../../shared/currency/display-values'
 
 export interface DashboardMonthCommand {
     month: string
@@ -131,7 +136,7 @@ export class DashboardService {
             category_breakdown: categoryBreakdown,
             spending_trend: trendMonths.map((month) => ({
                 month,
-                total: convertAmountToDisplayValue(totalsByMonth.get(month) ?? 0),
+                total: centsToDisplayAmount(totalsByMonth.get(month) ?? 0),
             })),
             recent_transactions: recentTransactions.map(mapRecentTransaction),
         }
@@ -220,7 +225,7 @@ export class DashboardService {
         return {
             month,
             currency,
-            total_spending: convertAmountToDisplayValue(totalSpendingCents),
+            total_spending: centsToDisplayAmount(totalSpendingCents),
             categories: categorySpend
                 .map((entry) => {
                     const category = categoriesById.get(entry.categoryId)
@@ -230,8 +235,8 @@ export class DashboardService {
                         category_name: category?.name ?? 'Unknown category',
                         category_system_key: category?.systemKey ?? null,
                         category_color: category?.color ?? null,
-                        amount: convertAmountToDisplayValue(entry.amount),
-                        percentage: convertBasisPointsToDisplayValue(
+                        amount: centsToDisplayAmount(entry.amount),
+                        percentage: basisPointsToDisplayPercentage(
                             calculatePercentageBasisPoints(entry.amount, totalSpendingCents),
                         ),
                     }
@@ -265,30 +270,43 @@ function buildSpendingSummary(
     return {
         month,
         currency,
-        current_total: convertAmountToDisplayValue(currentTotalCents),
-        previous_total: convertAmountToDisplayValue(previousTotalCents),
-        change_amount: convertAmountToDisplayValue(changeAmountCents),
+        current_total: centsToDisplayAmount(currentTotalCents),
+        previous_total: centsToDisplayAmount(previousTotalCents),
+        change_amount: centsToDisplayAmount(changeAmountCents),
         change_percentage: calculateChangePercentage(currentTotalCents, previousTotalCents),
         direction: determineDirection(changeAmountCents),
-        income_total: convertAmountToDisplayValue(incomeTotalCents),
-        net_total: convertAmountToDisplayValue(incomeTotalCents - currentTotalCents),
+        income_total: centsToDisplayAmount(incomeTotalCents),
+        net_total: centsToDisplayAmount(incomeTotalCents - currentTotalCents),
     }
 }
 
 function parseMonthStart(month: string): Date {
-    const [year, monthPart] = month.split('-').map(Number)
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month)
+    if (!match) throw new Error('Expected a valid YYYY-MM month')
+    const year = Number(match[1])
+    const monthPart = Number(match[2])
     return new Date(Date.UTC(year, monthPart - 1, 1))
 }
 
-function getMonthSequence(endMonth: string, count: number): string[] {
-    const end = parseMonthStart(endMonth)
+function getMonthSequence(endMonth: string, count: number): [string, ...string[]] {
+    if (!Number.isSafeInteger(count) || count < 1) {
+        throw new Error('Month sequence count must be a positive integer')
+    }
 
-    return Array.from({ length: count }, (_, index) => {
+    const end = parseMonthStart(endMonth)
+    const months = Array.from({ length: count }, (_, index) => {
         const value = new Date(
             Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - count + 1 + index, 1),
         )
         return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, '0')}`
     })
+    const firstMonth = months[0]
+
+    if (!firstMonth) {
+        throw new Error('Month sequence must not be empty')
+    }
+
+    return [firstMonth, ...months.slice(1)]
 }
 
 function mapRecentTransaction(transaction: ListedTransactionRecord): CreateTransactionResponse {
@@ -298,7 +316,7 @@ function mapRecentTransaction(transaction: ListedTransactionRecord): CreateTrans
         category_id: transaction.category_id,
         payment_source_id: transaction.payment_source_id!,
         type: transaction.type,
-        amount: convertAmountToDisplayValue(transaction.amount),
+        amount: centsToDisplayAmount(transaction.amount),
         currency: transaction.currency,
         date: transaction.date.toISOString().slice(0, 10),
         description: transaction.description,
@@ -315,14 +333,13 @@ function validateDashboardMonthInput(input: DashboardMonthCommand): ValidatedDas
     }
 
     const normalizedMonth = input.month.trim()
-    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(normalizedMonth)
-
-    if (!match) {
+    const parsedMonth = parseYearMonth(normalizedMonth)
+    if (!parsedMonth) {
         throw new BadRequestException(['Month must use YYYY-MM format'])
     }
 
-    const year = Number.parseInt(match[1], 10)
-    const monthIndex = Number.parseInt(match[2], 10) - 1
+    const [year, month] = parsedMonth
+    const monthIndex = month - 1
 
     return {
         month: normalizedMonth,
@@ -331,16 +348,6 @@ function validateDashboardMonthInput(input: DashboardMonthCommand): ValidatedDas
         previousStartDate: new Date(Date.UTC(year, monthIndex - 1, 1)),
         previousEndDateExclusive: new Date(Date.UTC(year, monthIndex, 1)),
     }
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function determineDirection(changeAmountCents: number): 'up' | 'down' | 'flat' {
@@ -367,28 +374,9 @@ function calculateChangePercentage(
         ((currentTotalCents - previousTotalCents) * 10000) / previousTotalCents,
     )
 
-    return convertBasisPointsToDisplayValue(basisPoints)
+    return basisPointsToDisplayPercentage(basisPoints)
 }
 
 function calculatePercentageBasisPoints(amountCents: number, totalAmountCents: number): number {
     return Math.round((amountCents * 10000) / totalAmountCents)
-}
-
-function convertAmountToDisplayValue(amountInCents: number): number {
-    return Number((amountInCents / 100).toFixed(2))
-}
-
-function convertBasisPointsToDisplayValue(basisPoints: number): number {
-    const sign = basisPoints < 0 ? '-' : ''
-    const absoluteBasisPoints = Math.abs(basisPoints)
-    const wholePart = Math.trunc(absoluteBasisPoints / 100)
-    const fractionalPart = absoluteBasisPoints % 100
-
-    if (fractionalPart === 0) {
-        return Number(`${sign}${wholePart}`)
-    }
-
-    return Number(
-        `${sign}${wholePart}.${fractionalPart.toString().padStart(2, '0').replace(/0+$/, '')}`,
-    )
 }

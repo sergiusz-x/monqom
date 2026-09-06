@@ -13,7 +13,7 @@ import { useNavigate } from "react-router";
 import type { CategoryBreakdown } from "@/types/dashboard";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { formatCurrency } from "@/lib/money";
-import { formatMonth } from "@/lib/date-only";
+import { formatMonth, getMonthDateRange } from "@/lib/date-only";
 import { useMemo } from "react";
 import { EmptyState, SectionCard } from "@monqom/ui";
 
@@ -26,16 +26,7 @@ const FALLBACK_COLORS = [
   "var(--chart-6)",
   "var(--chart-7)",
   "var(--chart-8)",
-];
-
-function monthDateRange(month: string): { dateFrom: string; dateTo: string } {
-  const [yearPart, monthPart] = month.split("-");
-  const lastDay = new Date(Number(yearPart), Number(monthPart), 0).getDate();
-  return {
-    dateFrom: `${month}-01`,
-    dateTo: `${month}-${String(lastDay).padStart(2, "0")}`,
-  };
-}
+] as const;
 
 function colorForCategory(categoryId: string, color: string | null): string {
   if (color) return color;
@@ -44,7 +35,7 @@ function colorForCategory(categoryId: string, color: string | null): string {
       (total + character.charCodeAt(0) * (index + 1)) % 997,
     0,
   );
-  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length] ?? FALLBACK_COLORS[0];
 }
 
 export function SpendingByCategoryChart({
@@ -56,20 +47,24 @@ export function SpendingByCategoryChart({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { dateFrom, dateTo } = monthDateRange(month);
-  const categories = [...breakdown.categories]
-    .sort(
-      (a, b) =>
-        b.amount - a.amount || a.categoryName.localeCompare(b.categoryName),
-    )
-    .map((category) => ({
-      ...category,
-      name: translateSystemLabel(
-        t,
-        category.categorySystemKey,
-        category.categoryName,
-      ),
-    }));
+  const { dateFrom, dateTo } = getMonthDateRange(month);
+  const categories = useMemo(
+    () =>
+      [...breakdown.categories]
+        .sort(
+          (a, b) =>
+            b.amount - a.amount || a.categoryName.localeCompare(b.categoryName),
+        )
+        .map((category) => ({
+          ...category,
+          name: translateSystemLabel(
+            t,
+            category.categorySystemKey,
+            category.categoryName,
+          ),
+        })),
+    [breakdown.categories, t],
+  );
   const hasSpending = categories.length > 0 && breakdown.totalSpending > 0;
   const monthLabel = useMemo(() => formatMonth(month), [month]);
 
@@ -133,7 +128,9 @@ export function SpendingByCategoryChart({
                     number | string | readonly (number | string)[] | undefined,
                 ) =>
                   formatCurrency(
-                    Number(Array.isArray(value) ? value[0] : (value ?? 0)),
+                    Number(
+                      Array.isArray(value) ? (value[0] ?? 0) : (value ?? 0),
+                    ),
                     breakdown.currency,
                   )
                 }

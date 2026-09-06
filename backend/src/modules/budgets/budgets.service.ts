@@ -5,12 +5,21 @@ import {
     NotFoundException,
 } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { validateMoneyAmountValue } from '../../shared/utils/validation'
+import {
+    normalizeRequiredValue,
+    parseYearMonth,
+    validateMoneyAmountValue,
+} from '../../shared/utils/validation'
 import { Budget } from '@prisma/client'
 import { BudgetsPersistenceClient, BudgetsRepository } from './budgets.repository'
 import { calculateBudgetProgress } from './budget-progress.calculator'
 import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
 import { WorkspaceService } from '../workspace/workspace.service'
+import {
+    basisPointsToDisplayPercentage,
+    centsToDisplayAmount,
+} from '../../shared/currency/display-values'
+import { isPrismaUniqueConstraintError } from '../../shared/database/prisma-errors'
 
 const BUDGET_ALREADY_EXISTS_MESSAGE = 'Budget already exists for category and month'
 const BUDGET_CATEGORY_CHILD_REQUIRED_MESSAGE = 'Budget category must be a child category'
@@ -211,7 +220,7 @@ export class BudgetsService {
 
                 return mapBudgetResponse(budget)
             } catch (error) {
-                if (isUniqueConstraintError(error)) {
+                if (isPrismaUniqueConstraintError(error)) {
                     throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
                 }
 
@@ -314,7 +323,7 @@ export class BudgetsService {
 
                 return mapBudgetResponse(budget)
             } catch (error) {
-                if (isUniqueConstraintError(error)) {
+                if (isPrismaUniqueConstraintError(error)) {
                     throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
                 }
 
@@ -399,14 +408,12 @@ function validateBudgetProgressMonthInput(
     }
 
     const normalizedMonth = input.month.trim()
-    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(normalizedMonth)
-
-    if (!match) {
+    const parsedMonth = parseYearMonth(normalizedMonth)
+    if (!parsedMonth) {
         throw new BadRequestException(['Month must use YYYY-MM format'])
     }
 
-    const year = Number.parseInt(match[1], 10)
-    const month = Number.parseInt(match[2], 10)
+    const [year, month] = parsedMonth
 
     return {
         year,
@@ -436,22 +443,12 @@ function validateRequiredIdValue(
     return value.trim()
 }
 
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
-}
-
 function mapBudgetResponse(budget: Budget): BudgetResponse {
     return {
         id: budget.id,
         workspace_id: budget.workspaceId,
         category_id: budget.categoryId,
-        amount: convertAmountToDisplayValue(budget.amount),
+        amount: centsToDisplayAmount(budget.amount),
         currency: budget.currency,
         year: budget.year,
         month: budget.month,
@@ -472,7 +469,7 @@ function mapBudgetProgressResponse(progress: {
     const budgetAmount =
         progress.budgetAmountCents === null
             ? null
-            : convertAmountToDisplayValue(progress.budgetAmountCents)
+            : centsToDisplayAmount(progress.budgetAmountCents)
 
     return {
         category_id: progress.categoryId,
@@ -480,42 +477,12 @@ function mapBudgetProgressResponse(progress: {
         category_system_key: progress.categorySystemKey,
         budget_amount: budgetAmount,
         limit: budgetAmount,
-        spent: convertAmountToDisplayValue(progress.spentCents),
+        spent: centsToDisplayAmount(progress.spentCents),
         remaining:
-            progress.remainingCents === null
-                ? null
-                : convertAmountToDisplayValue(progress.remainingCents),
+            progress.remainingCents === null ? null : centsToDisplayAmount(progress.remainingCents),
         percentage:
             progress.percentageBasisPoints === null
                 ? null
-                : convertBasisPointsToDisplayValue(progress.percentageBasisPoints),
+                : basisPointsToDisplayPercentage(progress.percentageBasisPoints),
     }
-}
-
-function convertAmountToDisplayValue(amountInCents: number): number {
-    return Number((amountInCents / 100).toFixed(2))
-}
-
-function convertBasisPointsToDisplayValue(basisPoints: number): number {
-    const sign = basisPoints < 0 ? '-' : ''
-    const absoluteBasisPoints = Math.abs(basisPoints)
-    const wholePart = Math.trunc(absoluteBasisPoints / 100)
-    const fractionalPart = absoluteBasisPoints % 100
-
-    if (fractionalPart === 0) {
-        return Number(`${sign}${wholePart}`)
-    }
-
-    return Number(
-        `${sign}${wholePart}.${fractionalPart.toString().padStart(2, '0').replace(/0+$/, '')}`,
-    )
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === 'P2002'
-    )
 }

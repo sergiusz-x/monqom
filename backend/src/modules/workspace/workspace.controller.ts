@@ -1,5 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Put, Req, UseGuards } from '@nestjs/common'
-import type { Request } from 'express'
+import { Body, Controller, Get, HttpCode, HttpStatus, Put, UseGuards } from '@nestjs/common'
 import { ApiParam } from '@nestjs/swagger'
 import { SessionGuard } from '../../shared/guards/session.guard'
 import { WorkspaceGuard } from '../../shared/guards/workspace.guard'
@@ -8,6 +7,7 @@ import { WorkspaceService } from './workspace.service'
 import { WORKSPACE_BASE_ROUTE, WORKSPACE_SCOPED_BASE_ROUTE } from './workspace.routes'
 import { UpdateWorkspaceDto } from './workspace.dto'
 import { ApiWorkspaceResponse } from '../../shared/openapi/response-schemas'
+import { CurrentUserId, CurrentWorkspaceId } from '../../shared/http/request-context.decorator'
 
 @Controller(WORKSPACE_BASE_ROUTE)
 @UseGuards(SessionGuard)
@@ -17,8 +17,8 @@ export class WorkspaceController {
     @Get()
     @ApiWorkspaceResponse(true)
     @HttpCode(HttpStatus.OK)
-    async listWorkspaces(@Req() req: Request) {
-        return this.workspaceService.listUserWorkspaces(req.session.auth!.userId)
+    async listWorkspaces(@CurrentUserId() userId: string) {
+        return this.workspaceService.listUserWorkspaces(userId)
     }
 }
 
@@ -31,8 +31,8 @@ export class WorkspaceScopedController {
     @Get()
     @ApiWorkspaceResponse()
     @HttpCode(HttpStatus.OK)
-    async getWorkspace(@Req() req: Request) {
-        return this.workspaceService.getWorkspaceById(req.workspace!.workspaceId)
+    async getWorkspace(@CurrentWorkspaceId() workspaceId: string) {
+        return this.workspaceService.getWorkspaceById(workspaceId)
     }
 
     @Put()
@@ -40,15 +40,19 @@ export class WorkspaceScopedController {
     @UseGuards(WorkspaceRoleGuard)
     @RequireWorkspaceRole('owner')
     @HttpCode(HttpStatus.OK)
-    async updateWorkspace(@Req() req: Request, @Body() body: UpdateWorkspaceDto) {
+    async updateWorkspace(
+        @CurrentWorkspaceId() workspaceId: string,
+        @Body() body: UpdateWorkspaceDto,
+        @CurrentUserId() userId: string,
+    ) {
         return this.workspaceService.updateWorkspaceSettings(
-            req.workspace!.workspaceId,
+            workspaceId,
             {
                 name: body.name,
                 timezone: body.timezone,
                 baseCurrency: body.base_currency,
             },
-            req.session.auth!.userId,
+            userId,
         )
     }
 }

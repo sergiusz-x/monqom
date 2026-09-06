@@ -34,13 +34,13 @@ describe('AuthRateLimitMiddleware', () => {
         })
     })
 
-    it('fails closed when the shared limiter is unavailable', async () => {
+    it('fails closed from the bootstrapped runtime configuration', async () => {
         const nodeEnv = process.env.NODE_ENV
-        process.env.NODE_ENV = 'production'
+        process.env.NODE_ENV = 'test'
         const prisma = {
             $transaction: jest.fn().mockRejectedValue(new Error('database unavailable')),
         } as unknown as PrismaService
-        const middleware = new AuthRateLimitMiddleware(prisma, createConfigService())
+        const middleware = new AuthRateLimitMiddleware(prisma, createConfigService('production'))
         const { response, status, json } = createResponse()
 
         try {
@@ -58,8 +58,14 @@ describe('AuthRateLimitMiddleware', () => {
     })
 })
 
-function createConfigService(): ConfigService {
-    return { get: jest.fn().mockReturnValue('test-session-secret') } as unknown as ConfigService
+function createConfigService(nodeEnv: 'test' | 'production' = 'production'): ConfigService {
+    return {
+        get: jest.fn((key: string) => {
+            if (key === 'env.sessionSecret') return 'test-session-secret'
+            if (key === 'env') return { nodeEnv }
+            return undefined
+        }),
+    } as unknown as ConfigService
 }
 
 function createPrisma(

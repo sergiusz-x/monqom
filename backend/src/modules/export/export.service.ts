@@ -4,9 +4,9 @@ import {
     ListTransactionsForExportQuery,
     TransactionsRepository,
 } from '../transactions/transactions.repository'
+import { normalizeRequiredValue, parseDateOnly } from '../../shared/utils/validation'
 
 const DEFAULT_EXPORT_BATCH_SIZE = 500
-const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 export const SUPPORTED_EXPORT_FORMATS = ['csv', 'json'] as const
 
@@ -181,42 +181,16 @@ function validateDateFilterValue(
 
     const normalizedValue = value.trim()
 
-    if (ISO_DATE_ONLY_REGEX.test(normalizedValue)) {
-        const [year, month, day] = normalizedValue
-            .split('-')
-            .map((part) => Number.parseInt(part, 10))
-
-        const date = new Date(Date.UTC(year, month - 1, day))
-
-        if (
-            Number.isNaN(date.getTime()) ||
-            date.getUTCFullYear() !== year ||
-            date.getUTCMonth() !== month - 1 ||
-            date.getUTCDate() !== day
-        ) {
-            errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
-            return undefined
-        }
-
+    const date = parseDateOnly(normalizedValue)
+    if (date) {
         if (options.boundary === 'end') {
             date.setUTCHours(23, 59, 59, 999)
         }
-
         return date
     }
 
     errors.push(`${options.fieldName} must be a valid date in YYYY-MM-DD format`)
     return undefined
-}
-
-function normalizeRequiredValue(value: string, fieldName: string): string {
-    const normalizedValue = value.trim()
-
-    if (normalizedValue.length === 0) {
-        throw new BadRequestException(`${fieldName} is required`)
-    }
-
-    return normalizedValue
 }
 
 function getContentType(format: ExportFormat): string {
