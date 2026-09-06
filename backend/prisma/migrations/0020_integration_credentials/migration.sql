@@ -7,7 +7,7 @@ CREATE TABLE "integrations" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "integrations_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "integrations_status_check" CHECK ("status" IN ('active', 'disabled'))
+    CONSTRAINT "integrations_status_check" CHECK ("status" IN ('active', 'disabled', 'deleted'))
 );
 
 CREATE TABLE "integration_credentials" (

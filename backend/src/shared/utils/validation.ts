@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common'
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MONEY_AMOUNT_REGEX = /^\d+(?:\.\d{1,2})?$/
 const ISO_DATE_ONLY_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -344,4 +346,3 @@ function validateEmailValue(input: string, errors: string[]): string | undefined
 
     return email
 }
-import { BadRequestException } from '@nestjs/common'
