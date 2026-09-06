@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MONEY_AMOUNT_REGEX = /^\d+(?:\.\d{1,2})?$/
 const ISO_DATE_ONLY_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/
 const YEAR_MONTH_REGEX = /^(\d{4})-(0[1-9]|1[0-2])$/
@@ -340,9 +339,25 @@ function validateEmailValue(input: string, errors: string[]): string | undefined
 
     const email = normalizeEmail(input)
 
-    if (!EMAIL_REGEX.test(email)) {
+    if (!isValidEmailShape(email)) {
         errors.push('Email must be a valid email address')
     }
 
     return email
+}
+
+function isValidEmailShape(email: string): boolean {
+    const separator = email.indexOf('@')
+    if (separator <= 0 || separator !== email.lastIndexOf('@')) return false
+
+    const localPart = email.slice(0, separator)
+    const domain = email.slice(separator + 1)
+    if (domain.length < 3 || !domain.includes('.')) return false
+
+    for (const character of localPart + domain) {
+        if (character === '@' || character.trim() === '') return false
+    }
+
+    const labels = domain.split('.')
+    return labels.every((label) => label.length > 0)
 }
