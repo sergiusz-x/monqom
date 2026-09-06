@@ -1,4 +1,4 @@
-import { validateMoneyAmountValue } from './validation'
+import { validateEmailInput, validateMoneyAmountValue } from './validation'
 
 describe('validateMoneyAmountValue', () => {
     it('converts decimal input to integer minor units without floating-point multiplication', () => {
@@ -15,5 +15,25 @@ describe('validateMoneyAmountValue', () => {
 
         expect(validateMoneyAmountValue(1.005, errors)).toBeUndefined()
         expect(errors).toEqual(['Amount must be a positive number with up to 2 decimal places'])
+    })
+})
+
+describe('validateEmailInput', () => {
+    it('rejects adversarial repeated input in linear time without regex backtracking', () => {
+        const errors: string[] = []
+        const result = validateEmailInput({
+            email: '!@!.' + '!.'.repeat(100_000),
+        })
+
+        errors.push(...result.errors)
+        expect(result.email).toBeDefined()
+        expect(errors).toEqual(['Email must be a valid email address'])
+    })
+
+    it('accepts a normal email address', () => {
+        expect(validateEmailInput({ email: ' Ada@example.com ' })).toEqual({
+            email: 'ada@example.com',
+            errors: [],
+        })
     })
 })
