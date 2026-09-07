@@ -279,4 +279,40 @@ describe("TransactionFormModal", () => {
     );
     expect(mockApi.put.mock.calls[0]?.[1]).toMatchObject({ amount: 19.99 });
   });
+
+  it("submits the form with Ctrl+Enter keyboard shortcut", async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    render(
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          onClose={vi.fn()}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Amount"), "4550");
+    await user.type(screen.getByLabelText("Description"), "Lunch");
+    await user.click(screen.getByRole("button", { name: /pick category/i }));
+
+    // Press Ctrl+Enter while focused on description
+    await user.type(
+      screen.getByLabelText("Description"),
+      "{Control>}{Enter}{/Control}",
+    );
+
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
+    expect(mockApi.post.mock.calls[0]?.[0]).toBe(
+      "/workspaces/ws-1/transactions",
+    );
+    expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
+      amount: 45.5,
+      description: "Lunch",
+      category_id: "cat-1",
+    });
+  });
 });

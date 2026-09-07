@@ -4,7 +4,8 @@ import type { CookieOptions as ResponseCookieOptions } from 'express'
 import connectPgSimple from 'connect-pg-simple'
 import { logger } from '../utils/logger'
 
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const SESSION_TTL_DAYS = 30
+export const SESSION_TTL_MS = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
 const SESSION_STORE_TTL_SECONDS = Math.floor(SESSION_TTL_MS / 1000)
 
 export const SESSION_COOKIE_NAME = 'monqom.sid'
@@ -34,6 +35,7 @@ export function createSessionOptions(input: SessionConfigurationInput): session.
         secret: resolveSessionSecret(input),
         resave: false,
         saveUninitialized: false,
+        rolling: true,
         proxy: shouldUsePostgresStore,
         cookie: createSessionCookieOptions(input.nodeEnv),
         store: shouldUsePostgresStore

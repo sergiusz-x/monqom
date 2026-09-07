@@ -23,6 +23,10 @@ import {
   Textarea,
 } from "@monqom/ui";
 
+const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+
 interface TransactionFormModalProps {
   open: boolean;
   mode: TransactionFormMode;
@@ -82,7 +86,19 @@ export function TransactionFormModal({
       <h2 className="text-lg font-semibold">
         {isEdit ? t("transactions.edit") : t("transactions.add")}
       </h2>
-      <form ref={formRef} className="mt-4 space-y-4" onSubmit={handleSubmit}>
+      <form
+        ref={formRef}
+        className="mt-4 space-y-4"
+        onSubmit={handleSubmit}
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            event.preventDefault();
+            if (!isSaving) {
+              formRef.current?.requestSubmit();
+            }
+          }
+        }}
+      >
         {!isEdit ? (
           <SegmentedControl
             value={transactionType}
@@ -255,7 +271,13 @@ export function TransactionFormModal({
             isPending={isSaving}
             pendingLabel={t("settings.saving")}
           >
-            {t("transactions.save")}
+            <span>{t("transactions.save")}</span>
+            <kbd
+              aria-hidden="true"
+              className="ml-1.5 hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-medium tracking-wide sm:inline-block"
+            >
+              {isMac ? "⌘↵" : "Ctrl+↵"}
+            </kbd>
           </PendingButton>
         </div>
       </form>
