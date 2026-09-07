@@ -40,7 +40,7 @@ export function createUserFixture(overrides: Partial<User> = {}): User {
         createdAt: new Date('2026-03-22T10:00:00.000Z'),
         updatedAt: new Date('2026-03-22T10:00:00.000Z'),
         ...overrides,
-    }
+    } as User
 }
 
 export function createTransactionFixture(overrides: Partial<Transaction> = {}): Transaction {
