@@ -138,6 +138,21 @@ export function CategorySelector({
   }, [focusedIndex]);
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      const focusedItem = visibleItems[focusedIndex];
+      if (focusedItem) {
+        selectItem(focusedItem.id);
+      } else {
+        closeDropdown();
+      }
+      setTimeout(() => {
+        const form = triggerRef.current?.closest("form");
+        form?.requestSubmit();
+      }, 0);
+      return;
+    }
+
     if (e.key === "Escape") {
       e.preventDefault();
       closeDropdown();

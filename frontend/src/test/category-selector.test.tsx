@@ -359,6 +359,28 @@ describe("CategorySelector keyboard navigation", () => {
     expect(onChange).toHaveBeenCalledWith("food");
   });
 
+  it("selects the focused item on Ctrl+Enter and requests form submit", async () => {
+    const onChange = vi.fn();
+    const onSubmit = vi.fn((e) => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <CategorySelector workspaceId="ws-1" value={null} onChange={onChange} />
+      </form>,
+    );
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: "Food" })).toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByLabelText("Search categories"));
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+
+    expect(onChange).toHaveBeenCalledWith("food");
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
   it("navigates to second item with two ArrowDown presses", async () => {
     const onChange = vi.fn();
     render(
