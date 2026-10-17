@@ -2,6 +2,30 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 describe('Prisma migrations', () => {
+    it('hardens integration credentials and atomically revokes on creator authority loss', () => {
+        const migrationPath = join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            'prisma',
+            'migrations',
+            '0023_integration_auth_hardening',
+            'migration.sql',
+        )
+
+        const migrationSql = readFileSync(migrationPath, 'utf8')
+
+        expect(migrationSql).toContain('"creator_reference"')
+        expect(migrationSql).toContain('"integration_credentials_max_lifetime_check"')
+        expect(migrationSql).toContain('"integration_credentials_scopes_check"')
+        expect(migrationSql).toContain('CREATE TABLE "integration_rate_limits"')
+        expect(migrationSql).toContain('CREATE TRIGGER "integration_membership_authority_changed"')
+        expect(migrationSql).toContain('CREATE TRIGGER "integration_creator_account_deleted"')
+        expect(migrationSql).toContain('RETURNING c.*')
+        expect(migrationSql).not.toContain('RETURNING c.*, i.')
+    })
+
     it('enforces positive monetary amounts and valid budget months', () => {
         const migrationPath = join(
             __dirname,

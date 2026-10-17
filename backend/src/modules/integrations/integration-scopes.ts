@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common'
+
 export const INTEGRATION_SCOPES = [
     'transactions:create',
     'transactions:read-own',
@@ -30,9 +32,9 @@ export function areSupportedIntegrationScopes(scopes: readonly string[]): boolea
 }
 
 export function normalizeIntegrationScopes(scopes: readonly string[]): IntegrationScope[] {
-    const normalized = [...new Set(scopes.map((scope) => scope.trim()))]
+    const normalized = [...new Set(scopes)]
     if (!areSupportedIntegrationScopes(normalized)) {
-        throw new Error('Integration scopes contain an unsupported capability')
+        throw new BadRequestException('Integration scopes contain an unsupported capability')
     }
     return normalized.sort() as IntegrationScope[]
 }

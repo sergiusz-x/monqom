@@ -58,11 +58,15 @@ describe('External integration HTTP boundary (e2e)', () => {
                 IntegrationCredentialGuard,
                 {
                     provide: IntegrationCredentialService,
-                    useValue: { authenticateAuthorizationHeader: authenticate },
+                    useValue: {
+                        authenticateAuthorizationHeader: authenticate,
+                        recordDeniedAccess: jest.fn(),
+                    },
                 },
                 {
                     provide: IntegrationRateLimitService,
                     useValue: {
+                        assertSourceAllowed: jest.fn(),
                         consumeCredential: jest.fn(),
                         consumeFailedAuthentication: jest.fn(),
                     },

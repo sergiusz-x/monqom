@@ -49,6 +49,7 @@ describe('IntegrationManagementService', () => {
         prisma.integration.findMany.mockResolvedValue([
             {
                 id: 'integration-1',
+                creatorReference: 'user-1',
                 name: 'Importer',
                 status: 'active',
                 createdAt: new Date('2026-09-01T00:00:00.000Z'),
@@ -81,7 +82,7 @@ describe('IntegrationManagementService', () => {
         await expect(
             service.create('workspace-1', 'user-1', {
                 name: 'Importer',
-                expires_at: '2026-10-01T00:00:00.000Z',
+                expires_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
                 scopes: ['transactions:create'],
                 current_password: 'password',
             }),
@@ -136,7 +137,7 @@ describe('IntegrationManagementService', () => {
             credentialId: 'credential-2',
             token: 'mqic_new.secret',
             tokenPrefix: 'mqic_new',
-            expiresAt: new Date('2026-10-01'),
+            expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         })
         const result = await service.rotate(
             'workspace-1',
@@ -144,13 +145,15 @@ describe('IntegrationManagementService', () => {
             'integration-1',
             'credential-1',
             {
-                expires_at: '2026-10-01T00:00:00.000Z',
+                expires_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
                 current_password: 'password',
             },
         )
         expect(credentialService.rotateCredential).toHaveBeenCalledWith(
             'credential-1',
             expect.any(Date),
+            expect.any(Date),
+            'user-1',
         )
         expect(credentialService.revokeCredential).not.toHaveBeenCalled()
         expect(result.token).toBe('mqic_new.secret')
@@ -168,6 +171,10 @@ describe('IntegrationManagementService', () => {
         })
         expect(authService.verifyCurrentPassword).toHaveBeenCalledWith('user-1', 'password')
         expect(twoFactorService.verifyStepUp).toHaveBeenCalledWith('user-1', '123456')
-        expect(credentialService.revokeCredential).toHaveBeenCalledWith('credential-1')
+        expect(credentialService.revokeCredential).toHaveBeenCalledWith(
+            'credential-1',
+            expect.any(Date),
+            'user-1',
+        )
     })
 })

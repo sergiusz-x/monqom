@@ -69,7 +69,10 @@ export class IntegrationManagementService {
             name: integration.name,
             status: integration.status,
             created_at: integration.createdAt,
-            created_by: { id: integration.createdBy.id, name: integration.createdBy.name },
+            created_by: {
+                id: integration.creatorReference,
+                name: integration.createdBy?.name ?? 'Deleted user',
+            },
             credentials: integration.credentials.map((credential) =>
                 this.safeCredential(credential),
             ),
@@ -95,7 +98,10 @@ export class IntegrationManagementService {
             name: integration.name,
             status: integration.status,
             created_at: integration.createdAt,
-            created_by: { id: integration.createdBy.id, name: integration.createdBy.name },
+            created_by: {
+                id: integration.creatorReference,
+                name: integration.createdBy?.name ?? 'Deleted user',
+            },
             credentials: integration.credentials.map((credential) =>
                 this.safeCredential(credential),
             ),
@@ -112,7 +118,13 @@ export class IntegrationManagementService {
         await this.authService.verifyCurrentPassword(userId, body.current_password)
         await this.twoFactorService.verifyStepUp(userId, body.two_factor_token)
         await this.assertCredential(workspaceId, integrationId, credentialId)
-        return { revoked: await this.credentialService.revokeCredential(credentialId) }
+        return {
+            revoked: await this.credentialService.revokeCredential(
+                credentialId,
+                new Date(),
+                userId,
+            ),
+        }
     }
 
     async rotate(
@@ -127,7 +139,12 @@ export class IntegrationManagementService {
         const expiresAt = this.parseExpiry(body.expires_at)
         await this.authService.verifyCurrentPassword(userId, body.current_password)
         await this.twoFactorService.verifyStepUp(userId, body.two_factor_token)
-        const replacement = await this.credentialService.rotateCredential(credentialId, expiresAt)
+        const replacement = await this.credentialService.rotateCredential(
+            credentialId,
+            expiresAt,
+            new Date(),
+            userId,
+        )
         return {
             credential_id: replacement.credentialId,
             token: replacement.token,

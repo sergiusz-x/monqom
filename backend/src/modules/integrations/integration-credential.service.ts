@@ -1,17 +1,40 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    HttpException,
+    Injectable,
+    ServiceUnavailableException,
+    UnauthorizedException,
+} from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { createHash, randomBytes, timingSafeEqual } from 'crypto'
-import { isIP } from 'net'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
-import { IntegrationScope, normalizeIntegrationScopes } from './integration-scopes'
+import {
+    IntegrationScope,
+    areSupportedIntegrationScopes,
+    normalizeIntegrationScopes,
+} from './integration-scopes'
+import {
+    isIntegrationIpAllowed,
+    normalizeIntegrationCidrs,
+    normalizeIntegrationClientIp,
+} from './integration-network-policy'
 
-const TOKEN_PREFIX_BYTES = 9
-const TOKEN_SECRET_BYTES = 32
 const TOKEN_DIGEST_CONTEXT = 'monqom-integration-credential:v1:'
 const AUTHENTICATION_FAILURE_MESSAGE = 'Integration authentication failed'
 const MAX_CREDENTIAL_LIFETIME_MS = 365 * 24 * 60 * 60 * 1000
-const MIN_CREDENTIAL_LIFETIME_MS = 60 * 1000
+const USAGE_UPDATE_INTERVAL_MS = 5 * 60_000
+const policyInclude = {
+    integration: true,
+    categoryRestrictions: { select: { categoryId: true } },
+    paymentSourceRestrictions: { select: { paymentSourceId: true } },
+} satisfies Prisma.IntegrationCredentialInclude
+type CredentialWithPolicy = Prisma.IntegrationCredentialGetPayload<{
+    include: typeof policyInclude
+}>
 
 export interface MachinePrincipal {
     integrationId: string
@@ -23,6 +46,7 @@ export interface MachinePrincipal {
     paymentSourceAllowlistEnabled: boolean
     allowedPaymentSourceIds: readonly string[]
     allowedCidrs: readonly string[]
+    cidrAllowlistEnabled?: boolean
 }
 
 export interface CreateIntegrationInput {
@@ -52,7 +76,7 @@ export interface CreatedIntegrationCredential {
 
 @Injectable()
 export class IntegrationCredentialService {
-    private readonly dummyDigest = digestIntegrationToken('mqic_dummy.dummy')
+    private readonly dummyDigest = digestIntegrationToken('synthetic-unknown-credential')
 
     constructor(
         private readonly prisma: PrismaService,
@@ -63,190 +87,185 @@ export class IntegrationCredentialService {
         const workspaceId = requireTrimmed(input.workspaceId, 'Workspace id')
         const createdByUserId = requireTrimmed(input.createdByUserId, 'Creator id')
         const name = requireTrimmed(input.name, 'Integration name')
-
-        return this.prisma.$transaction(async (tx) => {
-            const integration = await tx.integration.create({
-                data: { workspaceId, createdByUserId, name },
-            })
-            await this.auditService.record(
-                {
-                    action: AUDIT_ACTIONS.INTEGRATION_CREATED,
-                    workspaceId,
-                    userId: createdByUserId,
-                    entityType: AUDIT_ENTITY_TYPES.INTEGRATION,
-                    entityId: integration.id,
-                },
-                tx,
-            )
-            return integration
-        })
+        return this.persistence(async () =>
+            this.prisma.$transaction(async (tx) => {
+                await this.lockAuthority(tx, workspaceId, createdByUserId)
+                await this.requireAdministrator(tx, workspaceId, createdByUserId)
+                const integration = await tx.integration.create({
+                    data: { workspaceId, createdByUserId, creatorReference: createdByUserId, name },
+                })
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.INTEGRATION_CREATED,
+                        workspaceId,
+                        userId: createdByUserId,
+                        entityType: AUDIT_ENTITY_TYPES.INTEGRATION,
+                        entityId: integration.id,
+                        metadata: {
+                            integration_id: integration.id,
+                            new_status: 'active',
+                            reason: 'CREATED',
+                        },
+                    },
+                    tx,
+                )
+                return integration
+            }),
+        )
     }
 
     async createCredential(
         input: CreateIntegrationCredentialInput,
         now = new Date(),
+        actorUserId?: string,
     ): Promise<CreatedIntegrationCredential> {
-        const expiresAt = validateExpiry(input.expiresAt, now)
-        const scopes = normalizeIntegrationScopes(input.scopes)
-        const allowedCidrs = normalizeCidrs(input.allowedCidrs ?? [])
-        const tokenMaterial = createIntegrationCredentialToken()
-
-        const credential = await this.prisma.$transaction(async (tx) => {
-            const created = await tx.integrationCredential.create({
-                data: {
-                    integrationId: requireTrimmed(input.integrationId, 'Integration id'),
-                    tokenPrefix: tokenMaterial.tokenPrefix,
-                    tokenDigest: digestIntegrationToken(tokenMaterial.token),
-                    expiresAt,
-                    scopes,
-                    categoryAllowlistEnabled: input.categoryAllowlistEnabled ?? false,
-                    paymentSourceAllowlistEnabled: input.paymentSourceAllowlistEnabled ?? false,
-                    cidrAllowlistEnabled: input.cidrAllowlistEnabled ?? false,
-                    allowedCidrs,
-                    categoryRestrictions: {
-                        create: uniqueIds(input.allowedCategoryIds).map((categoryId) => ({
-                            categoryId,
-                        })),
-                    },
-                    paymentSourceRestrictions: {
-                        create: uniqueIds(input.allowedPaymentSourceIds).map((paymentSourceId) => ({
-                            paymentSourceId,
-                        })),
-                    },
-                },
-                include: { integration: { select: { workspaceId: true, createdByUserId: true } } },
-            })
-            await this.auditService.record(
-                {
-                    action: AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ISSUED,
-                    workspaceId: created.integration.workspaceId,
-                    userId: created.integration.createdByUserId,
-                    entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
-                    entityId: created.id,
-                    metadata: {
-                        integration_id: created.integrationId,
-                        token_prefix: created.tokenPrefix,
-                        expires_at: created.expiresAt.toISOString(),
-                        scopes,
-                        category_allowlist_enabled: created.categoryAllowlistEnabled,
-                        payment_source_allowlist_enabled: created.paymentSourceAllowlistEnabled,
-                        cidr_allowlist_enabled: created.cidrAllowlistEnabled,
-                    },
-                },
-                tx,
-            )
-            return created
-        })
-
-        return {
-            credentialId: credential.id,
-            token: tokenMaterial.token,
-            tokenPrefix: tokenMaterial.tokenPrefix,
-            expiresAt: credential.expiresAt,
-        }
+        const policy = normalizePolicy(input, now)
+        return this.withTokenMaterial(async (material) =>
+            this.prisma.$transaction(async (tx) => {
+                const integration = await tx.integration.findUnique({
+                    where: { id: input.integrationId },
+                })
+                if (!integration) throw new BadRequestException('Integration is unavailable')
+                await this.lockAuthority(tx, integration.workspaceId, integration.creatorReference)
+                await tx.$queryRaw`SELECT "id" FROM "integrations" WHERE "id" = ${integration.id} FOR UPDATE`
+                const current = await tx.integration.findUnique({ where: { id: integration.id } })
+                if (!current || current.status !== 'active' || !current.createdByUserId) {
+                    throw new BadRequestException('Integration is unavailable')
+                }
+                await this.requireAdministrator(tx, current.workspaceId, current.createdByUserId)
+                const actor = actorUserId ?? current.createdByUserId
+                await this.requireAdministrator(tx, current.workspaceId, actor)
+                await this.validateResources(tx, current.workspaceId, policy)
+                const credential = await tx.integrationCredential.create({
+                    data: { integrationId: current.id, ...credentialData(policy, material, now) },
+                    include: policyInclude,
+                })
+                await this.recordLifecycle(
+                    tx,
+                    credential,
+                    actor,
+                    AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ISSUED,
+                    null,
+                    'ISSUED',
+                )
+                return issuedCredential(credential, material.token)
+            }),
+        )
     }
 
-    async revokeCredential(credentialId: string, now = new Date()): Promise<boolean> {
-        return this.prisma.$transaction(async (tx) => {
-            const credential = await tx.integrationCredential.findUnique({
-                where: { id: requireTrimmed(credentialId, 'Credential id') },
-                include: { integration: { select: { workspaceId: true, createdByUserId: true } } },
-            })
-            if (!credential || credential.status === 'revoked') return false
-
-            const revoked = await tx.integrationCredential.updateMany({
-                where: { id: credential.id, status: 'active', revokedAt: null },
-                data: { status: 'revoked', revokedAt: now },
-            })
-            if (revoked.count === 0) return false
-
-            await this.auditService.record(
-                {
-                    action: AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED,
-                    workspaceId: credential.integration.workspaceId,
-                    userId: credential.integration.createdByUserId,
-                    entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
-                    entityId: credential.id,
-                    metadata: {
-                        integration_id: credential.integrationId,
-                        token_prefix: credential.tokenPrefix,
-                    },
-                },
-                tx,
-            )
-            return true
-        })
+    async revokeCredential(
+        credentialId: string,
+        now = new Date(),
+        actorUserId?: string,
+    ): Promise<boolean> {
+        return this.persistence(async () =>
+            this.prisma.$transaction(async (tx) => {
+                const credential = await this.lockCredential(tx, credentialId)
+                if (!credential) return false
+                const actor = actorUserId ?? credential.integration.createdByUserId
+                if (!actor) throw new ForbiddenException('Integration management is unavailable')
+                await this.requireAdministrator(tx, credential.integration.workspaceId, actor)
+                if (credential.status === 'revoked') return false
+                const changed = await tx.integrationCredential.updateMany({
+                    where: { id: credential.id, status: 'active', revokedAt: null },
+                    data: { status: 'revoked', revokedAt: now },
+                })
+                if (!changed.count) return false
+                await this.recordLifecycle(
+                    tx,
+                    { ...credential, status: 'revoked' },
+                    actor,
+                    AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED,
+                    'active',
+                    'REVOKED',
+                )
+                return true
+            }),
+        )
     }
 
     async rotateCredential(
         credentialId: string,
         expiresAt: Date,
         now = new Date(),
+        actorUserId?: string,
     ): Promise<CreatedIntegrationCredential> {
-        const expiry = validateExpiry(expiresAt, now)
-        const material = createIntegrationCredentialToken()
-        return this.prisma.$transaction(async (tx) => {
-            const previous = await tx.integrationCredential.findUnique({
-                where: { id: requireTrimmed(credentialId, 'Credential id') },
-                include: {
-                    integration: { select: { workspaceId: true, createdByUserId: true } },
-                    categoryRestrictions: true,
-                    paymentSourceRestrictions: true,
-                },
-            })
-            if (!previous || previous.status !== 'active' || previous.revokedAt) {
-                throw new UnauthorizedException('Integration credential cannot be rotated')
-            }
-            const replacement = await tx.integrationCredential.create({
-                data: {
-                    integrationId: previous.integrationId,
-                    tokenPrefix: material.tokenPrefix,
-                    tokenDigest: digestIntegrationToken(material.token),
-                    expiresAt: expiry,
-                    scopes: previous.scopes,
-                    categoryAllowlistEnabled: previous.categoryAllowlistEnabled,
-                    paymentSourceAllowlistEnabled: previous.paymentSourceAllowlistEnabled,
-                    cidrAllowlistEnabled: previous.cidrAllowlistEnabled,
-                    allowedCidrs: previous.allowedCidrs,
-                    categoryRestrictions: {
-                        create: previous.categoryRestrictions.map(({ categoryId }) => ({
-                            categoryId,
-                        })),
+        validateExpiry(expiresAt, now)
+        return this.withTokenMaterial(async (material) =>
+            this.prisma.$transaction(async (tx) => {
+                const previous = await this.lockCredential(tx, credentialId)
+                if (
+                    !previous ||
+                    previous.status !== 'active' ||
+                    previous.revokedAt ||
+                    previous.expiresAt <= now
+                ) {
+                    throw new ConflictException('Integration credential cannot be rotated')
+                }
+                const integration = previous.integration
+                if (integration.status !== 'active' || !integration.createdByUserId) {
+                    throw new ConflictException('Integration credential cannot be rotated')
+                }
+                await this.requireAdministrator(
+                    tx,
+                    integration.workspaceId,
+                    integration.createdByUserId,
+                )
+                const actor = actorUserId ?? integration.createdByUserId
+                await this.requireAdministrator(tx, integration.workspaceId, actor)
+                const policy = normalizePolicy(
+                    {
+                        integrationId: integration.id,
+                        expiresAt,
+                        scopes: previous.scopes,
+                        categoryAllowlistEnabled: previous.categoryAllowlistEnabled,
+                        allowedCategoryIds: previous.categoryRestrictions.map(
+                            ({ categoryId }) => categoryId,
+                        ),
+                        paymentSourceAllowlistEnabled: previous.paymentSourceAllowlistEnabled,
+                        allowedPaymentSourceIds: previous.paymentSourceRestrictions.map(
+                            ({ paymentSourceId }) => paymentSourceId,
+                        ),
+                        cidrAllowlistEnabled: previous.cidrAllowlistEnabled,
+                        allowedCidrs: previous.allowedCidrs,
                     },
-                    paymentSourceRestrictions: {
-                        create: previous.paymentSourceRestrictions.map(({ paymentSourceId }) => ({
-                            paymentSourceId,
-                        })),
+                    now,
+                )
+                await this.validateResources(tx, integration.workspaceId, policy)
+                const changed = await tx.integrationCredential.updateMany({
+                    where: {
+                        id: previous.id,
+                        status: 'active',
+                        revokedAt: null,
+                        expiresAt: { gt: now },
                     },
-                },
-            })
-            await tx.integrationCredential.update({
-                where: { id: previous.id },
-                data: { status: 'revoked', revokedAt: now },
-            })
-            await this.auditService.record(
-                {
-                    action: AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ROTATED,
-                    workspaceId: previous.integration.workspaceId,
-                    userId: previous.integration.createdByUserId,
-                    entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
-                    entityId: replacement.id,
-                    metadata: {
-                        integration_id: previous.integrationId,
+                    data: { status: 'revoked', revokedAt: now },
+                })
+                if (changed.count !== 1)
+                    throw new ConflictException('Credential lifecycle conflict')
+                const replacement = await tx.integrationCredential.create({
+                    data: {
+                        integrationId: integration.id,
+                        ...credentialData(policy, material, now),
+                    },
+                    include: policyInclude,
+                })
+                await this.recordLifecycle(
+                    tx,
+                    replacement,
+                    actor,
+                    AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ROTATED,
+                    'active',
+                    'ROTATED',
+                    {
                         previous_credential_id: previous.id,
                         previous_token_prefix: previous.tokenPrefix,
-                        token_prefix: replacement.tokenPrefix,
+                        previous_credential_status: 'revoked',
                     },
-                },
-                tx,
-            )
-            return {
-                credentialId: replacement.id,
-                token: material.token,
-                tokenPrefix: material.tokenPrefix,
-                expiresAt: replacement.expiresAt,
-            }
-        })
+                )
+                return issuedCredential(replacement, material.token)
+            }),
+        )
     }
 
     async authenticateAuthorizationHeader(
@@ -259,52 +278,97 @@ export class IntegrationCredentialService {
             compareDigest(this.dummyDigest, digestIntegrationToken(''))
             throw authenticationFailure()
         }
-
-        const tokenPrefix = token.slice(0, token.indexOf('.'))
-        const credential = await this.prisma.integrationCredential.findUnique({
-            where: { tokenPrefix },
-            include: {
-                integration: true,
-                categoryRestrictions: { select: { categoryId: true } },
-                paymentSourceRestrictions: { select: { paymentSourceId: true } },
-            },
-        })
-        const expectedDigest = credential?.tokenDigest ?? this.dummyDigest
-        const tokenMatches = compareDigest(expectedDigest, digestIntegrationToken(token))
-
+        const credential = await this.persistence(() =>
+            this.prisma.integrationCredential.findUnique({
+                where: { tokenPrefix: token.slice(0, token.indexOf('.')) },
+                include: {
+                    ...policyInclude,
+                    integration: {
+                        include: {
+                            createdBy: {
+                                select: {
+                                    memberships: { select: { workspaceId: true, role: true } },
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+        )
+        const tokenMatches = compareDigest(
+            credential?.tokenDigest ?? this.dummyDigest,
+            digestIntegrationToken(token),
+        )
+        const creatorHasAuthority =
+            credential?.integration.createdBy?.memberships.some(
+                (membership) =>
+                    membership.workspaceId === credential.integration.workspaceId &&
+                    isAdministrator(membership.role),
+            ) ?? false
         if (
             !credential ||
             !tokenMatches ||
             credential.status !== 'active' ||
             credential.revokedAt !== null ||
             credential.expiresAt <= now ||
+            credential.createdAt > now ||
+            credential.expiresAt.getTime() - credential.createdAt.getTime() >
+                MAX_CREDENTIAL_LIFETIME_MS ||
             credential.integration.status !== 'active' ||
-            !isIpAllowed(clientIp, credential.allowedCidrs, credential.cidrAllowlistEnabled)
+            !creatorHasAuthority ||
+            !areSupportedIntegrationScopes(credential.scopes) ||
+            !isIntegrationIpAllowed(
+                clientIp,
+                credential.allowedCidrs,
+                credential.cidrAllowlistEnabled,
+            )
         ) {
+            if (credential && tokenMatches) {
+                await this.persistence(() =>
+                    this.auditService.record({
+                        action: AUDIT_ACTIONS.INTEGRATION_AUTHENTICATION_DENIED,
+                        workspaceId: credential.integration.workspaceId,
+                        entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
+                        entityId: credential.id,
+                        metadata: {
+                            integration_id: credential.integrationId,
+                            credential_id: credential.id,
+                            reason: 'AUTHENTICATION_DENIED',
+                        },
+                    }),
+                )
+            }
             throw authenticationFailure()
         }
-
-        // Usage metadata is intentionally best-effort: authentication never succeeds because this
-        // bookkeeping write did, and it is throttled to one write per credential per five minutes.
         if (
             !credential.lastUsedAt ||
-            now.getTime() - credential.lastUsedAt.getTime() >= 5 * 60_000
+            now.getTime() - credential.lastUsedAt.getTime() >= USAGE_UPDATE_INTERVAL_MS
         ) {
-            await this.prisma.integrationCredential.updateMany({
-                where: {
-                    id: credential.id,
-                    status: 'active',
-                    revokedAt: null,
-                    expiresAt: { gt: now },
-                    OR: [
-                        { lastUsedAt: null },
-                        { lastUsedAt: { lte: new Date(now.getTime() - 5 * 60_000) } },
-                    ],
-                },
-                data: { lastUsedAt: now },
-            })
+            try {
+                await this.prisma.integrationCredential.updateMany({
+                    where: {
+                        id: credential.id,
+                        status: 'active',
+                        revokedAt: null,
+                        expiresAt: { gt: now },
+                        OR: [
+                            { lastUsedAt: null },
+                            {
+                                lastUsedAt: {
+                                    lte: new Date(now.getTime() - USAGE_UPDATE_INTERVAL_MS),
+                                },
+                            },
+                        ],
+                    },
+                    data: {
+                        lastUsedAt: now,
+                        lastUsedIp: normalizeIntegrationClientIp(clientIp) ?? null,
+                    },
+                })
+            } catch {
+                // Operational metadata is best effort; never log the caught persistence error.
+            }
         }
-
         return {
             integrationId: credential.integrationId,
             credentialId: credential.id,
@@ -316,15 +380,244 @@ export class IntegrationCredentialService {
             allowedPaymentSourceIds: credential.paymentSourceRestrictions.map(
                 ({ paymentSourceId }) => paymentSourceId,
             ),
+            cidrAllowlistEnabled: credential.cidrAllowlistEnabled,
             allowedCidrs: credential.allowedCidrs,
+        }
+    }
+
+    async recordDeniedAccess(
+        principal: MachinePrincipal,
+        reason: 'WORKSPACE_DENIED' | 'SCOPE_DENIED',
+    ): Promise<void> {
+        await this.persistence(() =>
+            this.auditService.record({
+                action: AUDIT_ACTIONS.INTEGRATION_ACCESS_DENIED,
+                workspaceId: principal.workspaceId,
+                entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
+                entityId: principal.credentialId,
+                metadata: {
+                    integration_id: principal.integrationId,
+                    credential_id: principal.credentialId,
+                    reason,
+                },
+            }),
+        )
+    }
+
+    private async lockAuthority(
+        tx: Prisma.TransactionClient,
+        workspaceId: string,
+        creator: string,
+    ): Promise<void> {
+        const key = `integration-authority:${workspaceId}:${creator}`
+        await tx.$queryRaw`SELECT 1::int AS locked FROM (SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))) AS lock`
+    }
+
+    private async lockCredential(tx: Prisma.TransactionClient, credentialId: string) {
+        const id = requireTrimmed(credentialId, 'Credential id')
+        const initial = await tx.integrationCredential.findUnique({
+            where: { id },
+            include: { integration: true },
+        })
+        if (!initial) return null
+        await this.lockAuthority(
+            tx,
+            initial.integration.workspaceId,
+            initial.integration.creatorReference,
+        )
+        await tx.$queryRaw`SELECT "id" FROM "integrations" WHERE "id" = ${initial.integrationId} FOR UPDATE`
+        await tx.$queryRaw`SELECT "id" FROM "integration_credentials" WHERE "id" = ${id} FOR UPDATE`
+        return tx.integrationCredential.findUnique({ where: { id }, include: policyInclude })
+    }
+
+    private async requireAdministrator(
+        tx: Prisma.TransactionClient,
+        workspaceId: string,
+        userId: string,
+    ): Promise<void> {
+        const membership = await tx.workspaceMembership.findUnique({
+            where: { userId_workspaceId: { userId, workspaceId } },
+        })
+        if (!membership || !isAdministrator(membership.role))
+            throw new ForbiddenException('Integration management is unavailable')
+    }
+
+    private async validateResources(
+        tx: Prisma.TransactionClient,
+        workspaceId: string,
+        policy: CredentialPolicy,
+    ): Promise<void> {
+        const categories = await tx.category.count({
+            where: { workspaceId, id: { in: policy.categoryIds }, deletedAt: null },
+        })
+        const sources = await tx.paymentSource.count({
+            where: { workspaceId, id: { in: policy.paymentSourceIds }, deletedAt: null },
+        })
+        if (
+            categories !== policy.categoryIds.length ||
+            sources !== policy.paymentSourceIds.length
+        ) {
+            throw new BadRequestException('A resource restriction is invalid or archived')
+        }
+    }
+
+    private async recordLifecycle(
+        tx: Prisma.TransactionClient,
+        credential: CredentialWithPolicy,
+        actor: string,
+        action:
+            | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ISSUED
+            | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ROTATED
+            | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED,
+        previousStatus: string | null,
+        reason: string,
+        extra: Prisma.InputJsonObject = {},
+    ): Promise<void> {
+        await this.auditService.record(
+            {
+                action,
+                workspaceId: credential.integration.workspaceId,
+                userId: actor,
+                entityType: AUDIT_ENTITY_TYPES.INTEGRATION_CREDENTIAL,
+                entityId: credential.id,
+                metadata: {
+                    integration_id: credential.integrationId,
+                    credential_id: credential.id,
+                    token_prefix: credential.tokenPrefix,
+                    previous_status: previousStatus,
+                    new_status: credential.status,
+                    expires_at: credential.expiresAt.toISOString(),
+                    scopes: credential.scopes,
+                    category_allowlist_enabled: credential.categoryAllowlistEnabled,
+                    category_ids: credential.categoryRestrictions.map(
+                        ({ categoryId }) => categoryId,
+                    ),
+                    payment_source_allowlist_enabled: credential.paymentSourceAllowlistEnabled,
+                    payment_source_ids: credential.paymentSourceRestrictions.map(
+                        ({ paymentSourceId }) => paymentSourceId,
+                    ),
+                    cidr_allowlist_enabled: credential.cidrAllowlistEnabled,
+                    reason,
+                    ...extra,
+                },
+            },
+            tx,
+        )
+    }
+
+    private async withTokenMaterial<T>(
+        operation: (material: ReturnType<typeof createIntegrationCredentialToken>) => Promise<T>,
+    ): Promise<T> {
+        return this.persistence(async () => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    return await operation(createIntegrationCredentialToken())
+                } catch (error) {
+                    if (
+                        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+                        error.code !== 'P2002' ||
+                        !String(JSON.stringify(error.meta?.target)).match(
+                            /token_prefix|token_digest/,
+                        )
+                    )
+                        throw error
+                }
+            }
+            throw new ServiceUnavailableException('Integration credential issuance is unavailable')
+        })
+    }
+
+    private async persistence<T>(operation: () => Promise<T>): Promise<T> {
+        try {
+            return await operation()
+        } catch (error) {
+            if (error instanceof HttpException) throw error
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+                throw new ConflictException('Credential lifecycle conflict')
+            }
+            throw new ServiceUnavailableException('Integration authentication is unavailable')
         }
     }
 }
 
+interface CredentialPolicy {
+    expiresAt: Date
+    scopes: IntegrationScope[]
+    categoryAllowlistEnabled: boolean
+    categoryIds: string[]
+    paymentSourceAllowlistEnabled: boolean
+    paymentSourceIds: string[]
+    cidrAllowlistEnabled: boolean
+    allowedCidrs: string[]
+}
+
+function normalizePolicy(input: CreateIntegrationCredentialInput, now: Date): CredentialPolicy {
+    if (
+        typeof input.categoryAllowlistEnabled !== 'boolean' ||
+        typeof input.paymentSourceAllowlistEnabled !== 'boolean'
+    ) {
+        throw new BadRequestException('Resource access policies must be selected')
+    }
+    const categoryIds = uniqueIds(input.allowedCategoryIds)
+    const paymentSourceIds = uniqueIds(input.allowedPaymentSourceIds)
+    const allowedCidrs = normalizeIntegrationCidrs(input.allowedCidrs ?? [])
+    const cidrAllowlistEnabled = input.cidrAllowlistEnabled ?? false
+    if (
+        (!input.categoryAllowlistEnabled && categoryIds.length) ||
+        (!input.paymentSourceAllowlistEnabled && paymentSourceIds.length) ||
+        (!cidrAllowlistEnabled && allowedCidrs.length)
+    ) {
+        throw new BadRequestException('Resource restriction is not enabled')
+    }
+    return {
+        expiresAt: validateExpiry(input.expiresAt, now),
+        scopes: normalizeIntegrationScopes(input.scopes),
+        categoryAllowlistEnabled: input.categoryAllowlistEnabled,
+        categoryIds,
+        paymentSourceAllowlistEnabled: input.paymentSourceAllowlistEnabled,
+        paymentSourceIds,
+        cidrAllowlistEnabled,
+        allowedCidrs,
+    }
+}
+
+function credentialData(
+    policy: CredentialPolicy,
+    material: ReturnType<typeof createIntegrationCredentialToken>,
+    now: Date,
+) {
+    return {
+        tokenPrefix: material.tokenPrefix,
+        tokenDigest: digestIntegrationToken(material.token),
+        createdAt: now,
+        expiresAt: policy.expiresAt,
+        scopes: policy.scopes,
+        categoryAllowlistEnabled: policy.categoryAllowlistEnabled,
+        paymentSourceAllowlistEnabled: policy.paymentSourceAllowlistEnabled,
+        cidrAllowlistEnabled: policy.cidrAllowlistEnabled,
+        allowedCidrs: policy.allowedCidrs,
+        categoryRestrictions: { create: policy.categoryIds.map((categoryId) => ({ categoryId })) },
+        paymentSourceRestrictions: {
+            create: policy.paymentSourceIds.map((paymentSourceId) => ({ paymentSourceId })),
+        },
+    }
+}
+
+function issuedCredential(
+    credential: { id: string; tokenPrefix: string; expiresAt: Date },
+    token: string,
+): CreatedIntegrationCredential {
+    return {
+        credentialId: credential.id,
+        token,
+        tokenPrefix: credential.tokenPrefix,
+        expiresAt: credential.expiresAt,
+    }
+}
+
 export function createIntegrationCredentialToken(): { token: string; tokenPrefix: string } {
-    const tokenPrefix = randomBytes(TOKEN_PREFIX_BYTES).toString('base64url')
-    const secret = randomBytes(TOKEN_SECRET_BYTES).toString('base64url')
-    return { token: `mqic_${tokenPrefix}.${secret}`, tokenPrefix: `mqic_${tokenPrefix}` }
+    const prefix = `mqic_${randomBytes(9).toString('base64url')}`
+    return { token: `${prefix}.${randomBytes(32).toString('base64url')}`, tokenPrefix: prefix }
 }
 
 export function digestIntegrationToken(token: string): string {
@@ -333,86 +626,37 @@ export function digestIntegrationToken(token: string): string {
 
 function parseBearerToken(authorization: string | undefined): string | null {
     if (typeof authorization !== 'string') return null
-    const match = /^Bearer (mqic_[A-Za-z0-9_-]{12}\.[A-Za-z0-9_-]{43})$/.exec(authorization)
-    return match?.[1] ?? null
+    return /^Bearer (mqic_[A-Za-z0-9_-]{12}\.[A-Za-z0-9_-]{43})$/i.exec(authorization)?.[1] ?? null
 }
 
 function compareDigest(expectedDigest: string, actualDigest: string): boolean {
-    const expected = Buffer.from(expectedDigest, 'hex')
-    const actual = Buffer.from(actualDigest, 'hex')
-    return expected.length === actual.length && timingSafeEqual(expected, actual)
+    const valid = /^[0-9a-f]{64}$/.test(expectedDigest)
+    const expected = valid ? Buffer.from(expectedDigest, 'hex') : Buffer.alloc(32)
+    const matches = timingSafeEqual(expected, Buffer.from(actualDigest, 'hex'))
+    return valid && matches
 }
 
 function authenticationFailure(): UnauthorizedException {
     return new UnauthorizedException(AUTHENTICATION_FAILURE_MESSAGE)
 }
+function isAdministrator(role: string): boolean {
+    return role === 'owner' || role === 'admin'
+}
 
 function validateExpiry(expiresAt: Date, now: Date): Date {
-    if (!(expiresAt instanceof Date) || Number.isNaN(expiresAt.getTime())) {
-        throw new Error('Credential expiry must be a valid date')
-    }
-    const lifetime = expiresAt.getTime() - now.getTime()
-    if (lifetime < MIN_CREDENTIAL_LIFETIME_MS || lifetime > MAX_CREDENTIAL_LIFETIME_MS) {
-        throw new Error('Credential expiry is outside the permitted lifetime')
+    const lifetime = expiresAt instanceof Date ? expiresAt.getTime() - now.getTime() : NaN
+    if (!Number.isFinite(lifetime) || lifetime <= 0 || lifetime > MAX_CREDENTIAL_LIFETIME_MS) {
+        throw new BadRequestException('Credential expiry is outside the permitted lifetime')
     }
     return expiresAt
 }
 
 function requireTrimmed(value: string, label: string): string {
     const normalized = value.trim()
-    if (!normalized) throw new Error(`${label} is required`)
+    if (!normalized) throw new BadRequestException(`${label} is required`)
     return normalized
 }
 
 function uniqueIds(ids: readonly string[] | undefined): string[] {
     return [...new Set((ids ?? []).map((id) => requireTrimmed(id, 'Restriction id')))]
-}
-
-function normalizeCidrs(cidrs: readonly string[]): string[] {
-    return [...new Set(cidrs.map((cidr) => cidr.trim()))].map((cidr) => {
-        if (!isValidCidr(cidr)) throw new Error('Credential CIDR restriction is invalid')
-        return cidr
-    })
-}
-
-function isIpAllowed(
-    clientIp: string | undefined,
-    allowedCidrs: readonly string[],
-    allowlistEnabled: boolean,
-): boolean {
-    if (!allowlistEnabled) return true
-    if (!clientIp) return false
-    return allowedCidrs.some((cidr) => cidrContains(cidr, clientIp))
-}
-
-function isValidCidr(cidr: string): boolean {
-    const [address, prefix, ...extra] = cidr.split('/')
-    if (!address || !prefix || extra.length > 0 || !isIP(address)) return false
-    const parsedPrefix = Number(prefix)
-    const maxPrefix = isIP(address) === 4 ? 32 : 128
-    return Number.isInteger(parsedPrefix) && parsedPrefix >= 0 && parsedPrefix <= maxPrefix
-}
-
-function cidrContains(cidr: string, ip: string): boolean {
-    const [network, prefixText] = cidr.split('/') as [string, string]
-    const family = isIP(network)
-    if (!family || family !== isIP(ip)) return false
-    const prefix = Number(prefixText)
-    const networkValue = ipToBigInt(network, family)
-    const clientValue = ipToBigInt(ip, family)
-    const bits = family === 4 ? 32n : 128n
-    const mask = prefix === 0 ? 0n : ((1n << BigInt(prefix)) - 1n) << (bits - BigInt(prefix))
-    return (networkValue & mask) === (clientValue & mask)
-}
-
-function ipToBigInt(ip: string, family: number): bigint {
-    if (family === 4) {
-        return ip.split('.').reduce((value, part) => (value << 8n) + BigInt(Number(part)), 0n)
-    }
-    const [head, tail = ''] = ip.toLowerCase().split('::')
-    const headParts = head ? head.split(':').filter(Boolean) : []
-    const tailParts = tail ? tail.split(':').filter(Boolean) : []
-    const missing = 8 - headParts.length - tailParts.length
-    const parts = [...headParts, ...Array(Math.max(0, missing)).fill('0'), ...tailParts]
-    return parts.reduce((value, part) => (value << 16n) + BigInt(`0x${part}`), 0n)
 }

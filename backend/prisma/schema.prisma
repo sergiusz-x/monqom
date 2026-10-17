@@ -351,16 +351,17 @@ model AuthRateLimit {
 }
 
 model Integration {
-  id              String   @id @default(uuid())
-  workspaceId     String   @map("workspace_id")
-  createdByUserId String   @map("created_by_user_id")
-  name            String
-  status          String   @default("active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  workspaceId      String   @map("workspace_id")
+  createdByUserId  String?  @map("created_by_user_id")
+  creatorReference String   @map("creator_reference")
+  name             String
+  status           String   @default("active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   workspace          Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy          User                           @relation("IntegrationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdBy          User?                          @relation("IntegrationCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   credentials        IntegrationCredential[]
   transactions       Transaction[]
   idempotencyRecords IntegrationIdempotencyRecord[]
@@ -385,6 +386,7 @@ model IntegrationCredential {
   status                        String    @default("active")
   revokedAt                     DateTime? @map("revoked_at")
   lastUsedAt                    DateTime? @map("last_used_at")
+  lastUsedIp                    String?   @map("last_used_ip")
   createdAt                     DateTime  @default(now()) @map("created_at")
   updatedAt                     DateTime  @updatedAt @map("updated_at")
 
@@ -395,6 +397,18 @@ model IntegrationCredential {
   @@index([integrationId, status])
   @@index([expiresAt])
   @@map("integration_credentials")
+}
+
+model IntegrationRateLimit {
+  keyHash       String     @id @map("key_hash")
+  requestTimes  DateTime[] @default([]) @map("request_times")
+  mutationTimes DateTime[] @default([]) @map("mutation_times")
+  blockedUntil  DateTime?  @map("blocked_until")
+  expiresAt     DateTime   @map("expires_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("integration_rate_limits")
 }
 
 model IntegrationCredentialCategory {
