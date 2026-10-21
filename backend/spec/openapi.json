@@ -2955,7 +2955,8 @@
                                                         "type": "object",
                                                         "properties": {
                                                             "category_id": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "nullable": true
                                                             },
                                                             "category_name": {
                                                                 "type": "string"
@@ -3020,7 +3021,8 @@
                                                         "type": "string"
                                                     },
                                                     "category_id": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "nullable": true
                                                     },
                                                     "payment_source_id": {
                                                         "type": "string"
@@ -3217,7 +3219,8 @@
                                                 "type": "object",
                                                 "properties": {
                                                     "category_id": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "nullable": true
                                                     },
                                                     "category_name": {
                                                         "type": "string"
@@ -3403,7 +3406,8 @@
                                                         "type": "string"
                                                     },
                                                     "category_id": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "nullable": true
                                                     },
                                                     "payment_source_id": {
                                                         "type": "string"
@@ -3516,7 +3520,8 @@
                                             "type": "string"
                                         },
                                         "category_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "nullable": true
                                         },
                                         "payment_source_id": {
                                             "type": "string"
@@ -3616,7 +3621,8 @@
                                             "type": "string"
                                         },
                                         "category_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "nullable": true
                                         },
                                         "payment_source_id": {
                                             "type": "string"
@@ -3724,7 +3730,8 @@
                                             "type": "string"
                                         },
                                         "category_id": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "nullable": true
                                         },
                                         "payment_source_id": {
                                             "type": "string"
@@ -5507,6 +5514,15 @@
                 "operationId": "IntegrationManagementController_create",
                 "parameters": [
                     {
+                        "name": "x-csrf-token",
+                        "in": "header",
+                        "description": "Token bound to the current browser session.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "workspaceId",
                         "required": true,
                         "in": "path",
@@ -5533,8 +5549,35 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Invalid/unknown DTO fields, scopes, expiry, CIDRs, or resource policy."
+                    },
+                    "401": {
+                        "description": "Missing/invalid human session, or incorrect password / required second factor."
+                    },
+                    "403": {
+                        "description": "Workspace member lacks owner/admin role, or mutation has an invalid CSRF token."
+                    },
+                    "404": {
+                        "description": "Workspace is missing or inaccessible, or target integration/credential is missing, foreign or safely deleted."
+                    },
+                    "409": {
+                        "description": "Concurrent lifecycle transaction conflict; no mutation commits."
+                    },
+                    "429": {
+                        "description": "Shared human/source step-up attempt limit exceeded; Retry-After is set."
+                    },
+                    "503": {
+                        "description": "Authoritative persistence or mandatory audit is unavailable. No unaudited mutation commits."
                     }
                 },
+                "security": [
+                    {
+                        "monqom.sid": []
+                    }
+                ],
+                "summary": "Create an integration and its first credential atomically (owner/admin only).",
                 "tags": ["integrations"]
             },
             "get": {
@@ -5560,8 +5603,32 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Invalid/unknown DTO fields, scopes, expiry, CIDRs, or resource policy."
+                    },
+                    "401": {
+                        "description": "Missing/invalid human session, or incorrect password / required second factor."
+                    },
+                    "403": {
+                        "description": "Workspace member lacks owner/admin role, or mutation has an invalid CSRF token."
+                    },
+                    "404": {
+                        "description": "Workspace is missing or inaccessible, or target integration/credential is missing, foreign or safely deleted."
+                    },
+                    "409": {
+                        "description": "Concurrent lifecycle transaction conflict; no mutation commits."
+                    },
+                    "503": {
+                        "description": "Authoritative persistence or mandatory audit is unavailable. No unaudited mutation commits."
                     }
                 },
+                "security": [
+                    {
+                        "monqom.sid": []
+                    }
+                ],
+                "summary": "List safe integration metadata (owner/admin only); never reveals secrets or digests.",
                 "tags": ["integrations"]
             }
         },
@@ -5594,8 +5661,32 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Invalid/unknown DTO fields, scopes, expiry, CIDRs, or resource policy."
+                    },
+                    "401": {
+                        "description": "Missing/invalid human session, or incorrect password / required second factor."
+                    },
+                    "403": {
+                        "description": "Workspace member lacks owner/admin role, or mutation has an invalid CSRF token."
+                    },
+                    "404": {
+                        "description": "Workspace is missing or inaccessible, or target integration/credential is missing, foreign or safely deleted."
+                    },
+                    "409": {
+                        "description": "Concurrent lifecycle transaction conflict; no mutation commits."
+                    },
+                    "503": {
+                        "description": "Authoritative persistence or mandatory audit is unavailable. No unaudited mutation commits."
                     }
                 },
+                "security": [
+                    {
+                        "monqom.sid": []
+                    }
+                ],
+                "summary": "Inspect safe integration metadata (owner/admin only).",
                 "tags": ["integrations"]
             }
         },
@@ -5615,6 +5706,14 @@
                         "name": "credentialId",
                         "required": true,
                         "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "x-csrf-token",
+                        "in": "header",
+                        "required": true,
                         "schema": {
                             "type": "string"
                         }
@@ -5646,8 +5745,35 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Invalid/unknown DTO fields, scopes, expiry, CIDRs, or resource policy."
+                    },
+                    "401": {
+                        "description": "Missing/invalid human session, or incorrect password / required second factor."
+                    },
+                    "403": {
+                        "description": "Workspace member lacks owner/admin role, or mutation has an invalid CSRF token."
+                    },
+                    "404": {
+                        "description": "Workspace is missing or inaccessible, or target integration/credential is missing, foreign or safely deleted."
+                    },
+                    "409": {
+                        "description": "Concurrent lifecycle transaction conflict; no mutation commits."
+                    },
+                    "429": {
+                        "description": "Shared human/source step-up attempt limit exceeded; Retry-After is set."
+                    },
+                    "503": {
+                        "description": "Authoritative persistence or mandatory audit is unavailable. No unaudited mutation commits."
                     }
                 },
+                "security": [
+                    {
+                        "monqom.sid": []
+                    }
+                ],
+                "summary": "Immediately and irreversibly revoke a credential (owner/admin with step-up).",
                 "tags": ["integrations"]
             }
         },
@@ -5667,6 +5793,14 @@
                         "name": "credentialId",
                         "required": true,
                         "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "x-csrf-token",
+                        "in": "header",
+                        "required": true,
                         "schema": {
                             "type": "string"
                         }
@@ -5698,8 +5832,35 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Invalid/unknown DTO fields, scopes, expiry, CIDRs, or resource policy."
+                    },
+                    "401": {
+                        "description": "Missing/invalid human session, or incorrect password / required second factor."
+                    },
+                    "403": {
+                        "description": "Workspace member lacks owner/admin role, or mutation has an invalid CSRF token."
+                    },
+                    "404": {
+                        "description": "Workspace is missing or inaccessible, or target integration/credential is missing, foreign or safely deleted."
+                    },
+                    "409": {
+                        "description": "Credential is expired, revoked, or lost a concurrent lifecycle operation. No replacement commits."
+                    },
+                    "429": {
+                        "description": "Shared human/source step-up attempt limit exceeded; Retry-After is set."
+                    },
+                    "503": {
+                        "description": "Authoritative persistence or mandatory audit is unavailable. No unaudited mutation commits."
                     }
                 },
+                "security": [
+                    {
+                        "monqom.sid": []
+                    }
+                ],
+                "summary": "Atomically replace an active, unexpired credential with no overlap (owner/admin with step-up).",
                 "tags": ["integrations"]
             }
         },
@@ -5724,6 +5885,14 @@
                         }
                     },
                     {
+                        "name": "x-csrf-token",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "workspaceId",
                         "required": true,
                         "in": "path",
@@ -5740,27 +5909,44 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Invalid/unknown DTO fields, scopes, expiry, CIDRs, or resource policy."
+                    },
+                    "401": {
+                        "description": "Missing/invalid human session, or incorrect password / required second factor."
+                    },
+                    "403": {
+                        "description": "Workspace member lacks owner/admin role, or mutation has an invalid CSRF token."
+                    },
+                    "404": {
+                        "description": "Workspace is missing or inaccessible, or target integration/credential is missing, foreign or safely deleted."
+                    },
+                    "409": {
+                        "description": "Credential must be revoked before safe deletion."
+                    },
+                    "503": {
+                        "description": "Authoritative persistence or mandatory audit is unavailable. No unaudited mutation commits."
                     }
                 },
+                "security": [
+                    {
+                        "monqom.sid": []
+                    }
+                ],
+                "summary": "Hide an already revoked credential while retaining lifecycle and audit evidence (owner/admin only).",
                 "tags": ["integrations"]
             }
         },
         "/workspaces/{workspaceId}/external-transactions": {
             "post": {
-                "operationId": "ExternalTransactionsController_create",
+                "description": "Requires exactly transactions:create. No other scope is implied.",
+                "operationId": "external_create",
                 "parameters": [
-                    {
-                        "name": "idempotency-key",
-                        "required": true,
-                        "in": "header",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
                     {
                         "name": "Idempotency-Key",
                         "in": "header",
-                        "required": true,
+                        "required": false,
                         "schema": {
                             "type": "string",
                             "minLength": 16,
@@ -5787,26 +5973,641 @@
                     }
                 },
                 "responses": {
+                    "200": {
+                        "description": "Known external ID; no financial fields, version or deletion status disclosed.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["status", "external_id"],
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": ["already_exists"]
+                                        },
+                                        "external_id": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "201": {
-                        "description": ""
+                        "description": "Created, or replay of the original create result.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "ETag": {
+                                "description": "Original strong transaction version, including on replay.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "\"tx-v1\""
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "id",
+                                        "external_id",
+                                        "version",
+                                        "category_id",
+                                        "payment_source_id",
+                                        "type",
+                                        "amount",
+                                        "currency",
+                                        "date",
+                                        "description",
+                                        "notes",
+                                        "tags",
+                                        "created_at",
+                                        "updated_at",
+                                        "replayed"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "external_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "category_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "payment_source_id": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": ["expense", "income"]
+                                        },
+                                        "amount": {
+                                            "type": "string",
+                                            "pattern": "^\\d+\\.\\d{2}$",
+                                            "example": "12.34"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "date": {
+                                            "type": "string",
+                                            "format": "date"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "notes": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "tags": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "created_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updated_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "replayed": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid headers, query, DTO, references or restrictions.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing, invalid, expired, revoked or network-disallowed credential.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "WWW-Authenticate": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["Bearer"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Authenticated credential lacks the exact scope.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace or transaction is missing or inaccessible; no ownership disclosure.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflicting request-key reuse, or a live claim (Retry-After: 1).",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "JSON request exceeds 64 KiB.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Content-Type must be application/json.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Shared credential or source rate limit exceeded.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Authoritative authentication or rate-limit persistence is unavailable; no mutation occurs.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "bearer": []
+                        "integrationCredential": []
                     }
                 ],
-                "tags": ["ExternalTransactions"]
+                "summary": "Create a transaction owned by this integration",
+                "tags": ["ExternalTransactions"],
+                "x-required-scope": "transactions:create"
             }
         },
         "/workspaces/{workspaceId}/external-transactions/{externalId}": {
             "get": {
-                "operationId": "ExternalTransactionsController_get",
+                "description": "Requires exactly transactions:read-own. No other scope is implied.",
+                "operationId": "external_get",
                 "parameters": [
                     {
                         "name": "externalId",
                         "required": true,
                         "in": "path",
+                        "description": "URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.",
                         "schema": {
                             "type": "string"
                         }
@@ -5822,31 +6623,446 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "ETag": {
+                                "description": "Original strong transaction version, including on replay.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "\"tx-v1\""
+                                }
+                            }
+                        },
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "id",
+                                        "external_id",
+                                        "version",
+                                        "category_id",
+                                        "payment_source_id",
+                                        "type",
+                                        "amount",
+                                        "currency",
+                                        "date",
+                                        "description",
+                                        "notes",
+                                        "tags",
+                                        "created_at",
+                                        "updated_at",
+                                        "replayed"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "external_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "category_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "payment_source_id": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": ["expense", "income"]
+                                        },
+                                        "amount": {
+                                            "type": "string",
+                                            "pattern": "^\\d+\\.\\d{2}$",
+                                            "example": "12.34"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "date": {
+                                            "type": "string",
+                                            "format": "date"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "notes": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "tags": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "created_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updated_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "replayed": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid headers, query, DTO, references or restrictions.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing, invalid, expired, revoked or network-disallowed credential.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "WWW-Authenticate": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["Bearer"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Authenticated credential lacks the exact scope.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace or transaction is missing or inaccessible; no ownership disclosure.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Shared credential or source rate limit exceeded.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Authoritative authentication or rate-limit persistence is unavailable; no mutation occurs.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "bearer": []
+                        "integrationCredential": []
                     }
                 ],
-                "tags": ["ExternalTransactions"]
+                "summary": "Get one integration-owned transaction by exact external ID",
+                "tags": ["ExternalTransactions"],
+                "x-required-scope": "transactions:read-own"
             },
             "put": {
-                "operationId": "ExternalTransactionsController_update",
+                "description": "Requires exactly transactions:update-own. No other scope is implied.",
+                "operationId": "external_update",
                 "parameters": [
                     {
                         "name": "externalId",
                         "required": true,
                         "in": "path",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "idempotency-key",
-                        "required": true,
-                        "in": "header",
+                        "description": "URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.",
                         "schema": {
                             "type": "string"
                         }
@@ -5891,31 +7107,703 @@
                 },
                 "responses": {
                     "200": {
-                        "description": ""
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "ETag": {
+                                "description": "Original strong transaction version, including on replay.",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "\"tx-v1\""
+                                }
+                            }
+                        },
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "id",
+                                        "external_id",
+                                        "version",
+                                        "category_id",
+                                        "payment_source_id",
+                                        "type",
+                                        "amount",
+                                        "currency",
+                                        "date",
+                                        "description",
+                                        "notes",
+                                        "tags",
+                                        "created_at",
+                                        "updated_at",
+                                        "replayed"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "external_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "category_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "payment_source_id": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": ["expense", "income"]
+                                        },
+                                        "amount": {
+                                            "type": "string",
+                                            "pattern": "^\\d+\\.\\d{2}$",
+                                            "example": "12.34"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "date": {
+                                            "type": "string",
+                                            "format": "date"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "notes": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "tags": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "created_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updated_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "replayed": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid headers, query, DTO, references or restrictions.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing, invalid, expired, revoked or network-disallowed credential.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "WWW-Authenticate": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["Bearer"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Authenticated credential lacks the exact scope.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace or transaction is missing or inaccessible; no ownership disclosure.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflicting request-key reuse, or a live claim (Retry-After: 1).",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "Stale version on an accessible owned transaction.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "JSON request exceeds 64 KiB.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Content-Type must be application/json.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is absent; malformed values return 400.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Shared credential or source rate limit exceeded.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Authoritative authentication or rate-limit persistence is unavailable; no mutation occurs.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "bearer": []
+                        "integrationCredential": []
                     }
                 ],
-                "tags": ["ExternalTransactions"]
+                "summary": "Replace one integration-owned transaction",
+                "tags": ["ExternalTransactions"],
+                "x-required-scope": "transactions:update-own"
             },
             "delete": {
-                "operationId": "ExternalTransactionsController_remove",
+                "description": "Requires exactly transactions:delete-own. No other scope is implied.",
+                "operationId": "external_delete",
                 "parameters": [
                     {
                         "name": "externalId",
                         "required": true,
                         "in": "path",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "idempotency-key",
-                        "required": true,
-                        "in": "header",
+                        "description": "URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.",
                         "schema": {
                             "type": "string"
                         }
@@ -5950,20 +7838,507 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": ""
+                        "description": "Soft-deleted, or identical completed retry. No body.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid headers, query, DTO, references or restrictions.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing, invalid, expired, revoked or network-disallowed credential.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "WWW-Authenticate": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["Bearer"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Authenticated credential lacks the exact scope.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace or transaction is missing or inaccessible; no ownership disclosure.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflicting request-key reuse, or a live claim (Retry-After: 1).",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "Stale version on an accessible owned transaction.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "If-Match is absent; malformed values return 400.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Shared credential or source rate limit exceeded.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Authoritative authentication or rate-limit persistence is unavailable; no mutation occurs.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "bearer": []
+                        "integrationCredential": []
                     }
                 ],
-                "tags": ["ExternalTransactions"]
+                "summary": "Soft-delete one integration-owned transaction",
+                "tags": ["ExternalTransactions"],
+                "x-required-scope": "transactions:delete-own"
             }
         },
         "/workspaces/{workspaceId}/external-categories": {
             "get": {
-                "operationId": "ExternalTransactionsController_categories",
+                "description": "Requires exactly categories:read. No other scope is implied.",
+                "operationId": "external_categories",
                 "parameters": [
                     {
                         "name": "workspaceId",
@@ -5976,20 +8351,401 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "id",
+                                            "name",
+                                            "type",
+                                            "system_key",
+                                            "parent_id",
+                                            "icon",
+                                            "color",
+                                            "sort_order"
+                                        ],
+                                        "properties": {
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "system_key": {
+                                                "type": "string",
+                                                "nullable": true
+                                            },
+                                            "parent_id": {
+                                                "type": "string",
+                                                "nullable": true
+                                            },
+                                            "icon": {
+                                                "type": "string",
+                                                "nullable": true
+                                            },
+                                            "color": {
+                                                "type": "string",
+                                                "nullable": true
+                                            },
+                                            "sort_order": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid headers, query, DTO, references or restrictions.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing, invalid, expired, revoked or network-disallowed credential.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "WWW-Authenticate": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["Bearer"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Authenticated credential lacks the exact scope.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace or transaction is missing or inaccessible; no ownership disclosure.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Shared credential or source rate limit exceeded.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Authoritative authentication or rate-limit persistence is unavailable; no mutation occurs.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "bearer": []
+                        "integrationCredential": []
                     }
                 ],
-                "tags": ["ExternalTransactions"]
+                "summary": "List minimal active categories allowed by this credential",
+                "tags": ["ExternalTransactions"],
+                "x-required-scope": "categories:read"
             }
         },
         "/workspaces/{workspaceId}/external-payment-sources": {
             "get": {
-                "operationId": "ExternalTransactionsController_paymentSources",
+                "description": "Requires exactly payment-sources:read. No other scope is implied.",
+                "operationId": "external_payment_sources",
                 "parameters": [
                     {
                         "name": "workspaceId",
@@ -6002,15 +8758,371 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": ["id", "name", "type", "system_key"],
+                                        "properties": {
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "system_key": {
+                                                "type": "string",
+                                                "nullable": true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid headers, query, DTO, references or restrictions.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing, invalid, expired, revoked or network-disallowed credential.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "WWW-Authenticate": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["Bearer"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Authenticated credential lacks the exact scope.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace or transaction is missing or inaccessible; no ownership disclosure.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Shared credential or source rate limit exceeded.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Seconds to wait. Present on active claims and all rate-limit responses.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Authoritative authentication or rate-limit persistence is unavailable; no mutation occurs.",
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-store"]
+                                }
+                            },
+                            "Pragma": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["no-cache"]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["statusCode", "message", "error", "code"],
+                                    "properties": {
+                                        "statusCode": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "bearer": []
+                        "integrationCredential": []
                     }
                 ],
-                "tags": ["ExternalTransactions"]
+                "summary": "List minimal active payment sources allowed by this credential",
+                "tags": ["ExternalTransactions"],
+                "x-required-scope": "payment-sources:read"
             }
         }
     },
@@ -6026,8 +9138,25 @@
             "description": ""
         }
     ],
-    "servers": [],
+    "servers": [
+        {
+            "url": "/api/v1"
+        }
+    ],
     "components": {
+        "securitySchemes": {
+            "monqom.sid": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "monqom.sid"
+            },
+            "integrationCredential": {
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "type": "http",
+                "description": "Workspace-bound opaque integration credential. Each machine endpoint requires its exact independent scope."
+            }
+        },
         "schemas": {
             "RegisterDto": {
                 "type": "object",
@@ -6389,10 +9518,13 @@
                 "properties": {
                     "current_password": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "writeOnly": true
                     },
                     "two_factor_token": {
-                        "type": "string"
+                        "type": "string",
+                        "writeOnly": true,
+                        "description": "Current TOTP or unused recovery code when 2FA is enabled."
                     },
                     "name": {
                         "type": "string"
@@ -6403,8 +9535,17 @@
                     },
                     "scopes": {
                         "type": "array",
+                        "description": "Exact independent scopes. An empty array grants no operation.",
                         "items": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                                "transactions:create",
+                                "transactions:read-own",
+                                "transactions:update-own",
+                                "transactions:delete-own",
+                                "categories:read",
+                                "payment-sources:read"
+                            ]
                         }
                     },
                     "category_ids": {
@@ -6414,7 +9555,8 @@
                         }
                     },
                     "category_allowlist_enabled": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Required explicit policy: false means unrestricted within this workspace; true uses category_ids, including an empty list."
                     },
                     "payment_source_ids": {
                         "type": "array",
@@ -6423,7 +9565,8 @@
                         }
                     },
                     "payment_source_allowlist_enabled": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Required explicit policy: false means unrestricted within this workspace; true uses payment_source_ids, including an empty list."
                     },
                     "allowed_cidrs": {
                         "type": "array",
@@ -6435,7 +9578,14 @@
                         "type": "boolean"
                     }
                 },
-                "required": ["current_password", "name", "expires_at", "scopes"]
+                "required": [
+                    "current_password",
+                    "name",
+                    "expires_at",
+                    "scopes",
+                    "category_allowlist_enabled",
+                    "payment_source_allowlist_enabled"
+                ]
             },
             "IssuedIntegrationCredentialResponseDto": {
                 "type": "object",
@@ -6447,7 +9597,9 @@
                         "type": "string"
                     },
                     "token": {
-                        "type": "string"
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "One-time bearer secret. Never returned by list or get."
                     },
                     "token_prefix": {
                         "type": "string"
@@ -6589,10 +9741,13 @@
                 "properties": {
                     "current_password": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "writeOnly": true
                     },
                     "two_factor_token": {
-                        "type": "string"
+                        "type": "string",
+                        "writeOnly": true,
+                        "description": "Current TOTP or unused recovery code when 2FA is enabled."
                     }
                 },
                 "required": ["current_password"]
@@ -6611,14 +9766,62 @@
                 "properties": {
                     "current_password": {
                         "type": "string",
-                        "format": "password"
+                        "format": "password",
+                        "writeOnly": true
                     },
                     "two_factor_token": {
-                        "type": "string"
+                        "type": "string",
+                        "writeOnly": true,
+                        "description": "Current TOTP or unused recovery code when 2FA is enabled."
                     },
                     "expires_at": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "scopes": {
+                        "type": "array",
+                        "description": "Omit to preserve scopes; [] grants no operation.",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "transactions:create",
+                                "transactions:read-own",
+                                "transactions:update-own",
+                                "transactions:delete-own",
+                                "categories:read",
+                                "payment-sources:read"
+                            ]
+                        }
+                    },
+                    "category_allowlist_enabled": {
+                        "type": "boolean",
+                        "description": "Omit together with category_ids to preserve the category policy."
+                    },
+                    "category_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "payment_source_allowlist_enabled": {
+                        "type": "boolean",
+                        "description": "Omit together with payment_source_ids to preserve the payment source policy."
+                    },
+                    "payment_source_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "cidr_allowlist_enabled": {
+                        "type": "boolean",
+                        "description": "Omit together with allowed_cidrs to preserve the network policy."
+                    },
+                    "allowed_cidrs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": ["current_password", "expires_at"]
@@ -6630,7 +9833,8 @@
                         "type": "string"
                     },
                     "token": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "One-time replacement bearer secret. Never returned again."
                     },
                     "token_prefix": {
                         "type": "string"
@@ -6656,8 +9860,10 @@
                 "properties": {
                     "external_id": {
                         "type": "string",
+                        "nullable": true,
                         "minLength": 1,
-                        "maxLength": 200
+                        "maxLength": 200,
+                        "description": "Case-sensitive source identity, trimmed, at most 200 UTF-8 bytes; null or omitted means no external identity."
                     },
                     "type": {
                         "type": "string",
@@ -6682,13 +9888,14 @@
                         "maxLength": 200
                     },
                     "category_id": {
-                        "type": "string"
+                        "type": "string",
+                        "nullable": true
                     },
                     "payment_source_id": {
                         "type": "string"
                     },
                     "notes": {
-                        "type": "object",
+                        "type": "string",
                         "nullable": true,
                         "maxLength": 2000
                     },
@@ -6700,14 +9907,7 @@
                         }
                     }
                 },
-                "required": [
-                    "amount",
-                    "currency",
-                    "date",
-                    "description",
-                    "category_id",
-                    "payment_source_id"
-                ]
+                "required": ["amount", "currency", "date", "description", "payment_source_id"]
             }
         }
     }

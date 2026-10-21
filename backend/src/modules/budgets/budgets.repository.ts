@@ -164,10 +164,16 @@ export class BudgetsRepository {
             },
         })
 
-        return rows.map((row) => ({
-            categoryId: row.categoryId,
-            amount: row._sum.baseAmount ?? 0,
-        }))
+        return rows.flatMap((row) =>
+            row.categoryId === null
+                ? []
+                : [
+                      {
+                          categoryId: row.categoryId,
+                          amount: row._sum.baseAmount ?? 0,
+                      },
+                  ],
+        )
     }
 
     async createBudget(

@@ -7,6 +7,7 @@ import session from 'express-session'
 import { AppModule } from './../src/app.module'
 import { AllExceptionsFilter } from './../src/shared/filters/http-exception.filter'
 import { PrismaService } from './../src/shared/database/prisma.service'
+import { EmailOutboxService } from './../src/shared/email/email-outbox.service'
 import { logger } from './../src/shared/utils/logger'
 import { createSessionOptions } from './../src/shared/session/session.config'
 import { getRequiredArrayItem } from './../src/test-utils/prisma-fixtures'
@@ -126,6 +127,7 @@ describe('Auth password reset (e2e)', () => {
         jest.clearAllMocks()
         process.env.NODE_ENV = 'test'
         process.env.SESSION_SECRET = 'test-session-secret'
+        jest.spyOn(EmailOutboxService.prototype, 'enqueue')
 
         const moduleFixture: TestingModule = await Test.createTestingModule({
             imports: [AppModule],
@@ -625,9 +627,16 @@ function getLoggedPasswordResetToken(): string {
     const resetTokenLogCall = (logger.info as jest.Mock).mock.calls.find(
         ([message]) => message === 'Password reset token generated for forgot-password',
     )
-    const passwordResetToken = resetTokenLogCall?.[1]?.password_reset_token
+    const passwordResetEmailCall = (
+        EmailOutboxService.prototype.enqueue as jest.Mock
+    ).mock.calls.find(([kind]) => kind === 'password_reset')
+    const passwordResetToken = passwordResetEmailCall?.[2]
 
     expect(passwordResetToken).toEqual(expect.any(String))
+    expect(resetTokenLogCall?.[1]).not.toHaveProperty('password_reset_token')
+    expect(resetTokenLogCall?.[1]?.password_reset_token_last6).toBe(
+        (passwordResetToken as string).slice(-6),
+    )
 
     return passwordResetToken as string
 }

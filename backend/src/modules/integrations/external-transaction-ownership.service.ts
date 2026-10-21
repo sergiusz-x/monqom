@@ -1,31 +1,39 @@
 import {
     BadRequestException,
     ConflictException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
     PreconditionFailedException,
+    OnModuleInit,
+    OnModuleDestroy,
 } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { IntegrationIdempotencyRecord, Prisma } from '@prisma/client'
 import { createHash } from 'crypto'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
+import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
+import { logger } from '../../shared/utils/logger'
 import {
     TransactionWithTags,
-    TransactionsPersistenceClient,
     TransactionsRepository,
 } from '../transactions/transactions.repository'
 import { MachinePrincipal } from './integration-credential.service'
-import { normalizeExternalTransactionId } from './external-transaction-contract'
+import {
+    normalizeExternalTransactionId,
+    normalizeIdempotencyKey,
+} from './external-transaction-contract'
 
-const IDEMPOTENCY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
-const IDEMPOTENCY_KEY_PATTERN = /^[\x21-\x7e]{16,128}$/
+export const IDEMPOTENCY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+export const IDEMPOTENCY_LEASE_MS = 5 * 60 * 1000
 
 export interface ExternalTransactionCreateCommand {
-    externalId: string
+    externalId?: string | null
     type: 'expense' | 'income'
     amount: number
     currency: string
+    // Derived values never participate in request identity or override the authoritative quote.
     baseAmount?: number
     fxRate?: number
     fxRateDate?: Date
@@ -34,90 +42,127 @@ export interface ExternalTransactionCreateCommand {
     description: string
     notes: string | null
     tags: string[]
-    categoryId: string
+    categoryId?: string | null
     paymentSourceId: string
 }
 
 export interface ExternalTransactionCreateResult {
-    transaction: TransactionWithTags
+    transaction?: TransactionWithTags
+    alreadyExists?: { status: 'already_exists'; external_id: string }
     replayed: boolean
+    responseStatus: number
+    etag?: string
 }
 
-interface IdempotencyClaim {
-    integrationId: string
+interface Claim {
     key: string
     operation: 'create' | 'update' | 'delete'
-    targetExternalId: string
+    targetExternalId: string | null
     fingerprint: string
 }
 
-class ExistingIdempotencyClaimError extends Error {}
+interface References {
+    categoryId: string | null
+    paymentSourceId: string
+    type?: string
+}
 
-/** HTTP-free persistence boundary for durable integration-owned transactions. */
+export class IdempotencyInProgressException extends ConflictException {
+    readonly retryAfterSeconds = 1
+    constructor() {
+        super('Idempotency request is in progress')
+    }
+}
+
+/** HTTP-free boundary. Locks, finance, tags, audit and replay results share one transaction. */
 @Injectable()
-export class ExternalTransactionOwnershipService {
+export class ExternalTransactionOwnershipService implements OnModuleInit, OnModuleDestroy {
+    private cleanupTimer?: ReturnType<typeof setInterval>
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly transactionsRepository: TransactionsRepository,
         private readonly auditService: AuditService,
+        private readonly currencyService: CurrencyService,
     ) {}
+
+    onModuleInit(): void {
+        const cleanup = () => {
+            void this.cleanupExpiredIdempotency().catch(() => {
+                logger.error('Integration replay cleanup failed', {
+                    context_name: ExternalTransactionOwnershipService.name,
+                })
+            })
+        }
+        cleanup()
+        this.cleanupTimer = setInterval(cleanup, 60 * 60 * 1000)
+        this.cleanupTimer.unref()
+    }
+
+    onModuleDestroy(): void {
+        if (this.cleanupTimer) clearInterval(this.cleanupTimer)
+    }
 
     async createIdempotently(
         principal: MachinePrincipal,
-        idempotencyKey: string,
+        idempotencyKey: string | undefined,
         input: ExternalTransactionCreateCommand,
-        now = new Date(),
     ): Promise<ExternalTransactionCreateResult> {
+        this.assertScope(principal, 'create')
         const command = normalizeCreateCommand(input)
-        const claim: IdempotencyClaim = {
-            integrationId: principal.integrationId,
-            key: normalizeIdempotencyKey(idempotencyKey),
-            operation: 'create',
-            targetExternalId: command.externalId,
-            fingerprint: fingerprintExternalTransactionCreate(command),
-        }
-
-        try {
-            return await this.prisma.$transaction(async (tx) => {
-                const record = await this.createIdempotencyClaim(tx, claim, now)
-                await this.assertAllowedReferences(principal, command, tx)
+        const claim =
+            idempotencyKey === undefined
+                ? undefined
+                : {
+                      key: normalizeIdempotencyKey(idempotencyKey),
+                      operation: 'create' as const,
+                      targetExternalId: command.externalId ?? null,
+                      fingerprint: fingerprintExternalTransactionCreate(command),
+                  }
+        const create = () =>
+            this.execute(principal, claim, async (tx) => {
+                await this.assertReferences(principal, command as References, tx, false)
+                if (command.externalId) {
+                    // Different keys and keyless creates also serialize by durable source identity.
+                    await this.lock(
+                        tx,
+                        `external:${principal.workspaceId}:${principal.integrationId}:${command.externalId}`,
+                    )
+                    const existing = await this.findOwned(principal, command.externalId, tx, true)
+                    if (existing) {
+                        await this.assertReferences(principal, existing, tx, true)
+                        return {
+                            result: {
+                                alreadyExists: {
+                                    status: 'already_exists' as const,
+                                    external_id: command.externalId,
+                                },
+                                replayed: false,
+                                responseStatus: 200,
+                            },
+                            target: existing,
+                        }
+                    }
+                }
+                const financials = await this.resolveFinancials(principal.workspaceId, command, tx)
                 const transaction = await this.transactionsRepository.createTransactionWithTags(
                     {
+                        ...command,
+                        ...financials,
+                        categoryId: command.categoryId ?? null,
                         workspaceId: principal.workspaceId,
                         integrationId: principal.integrationId,
-                        externalId: command.externalId,
-                        categoryId: command.categoryId,
-                        paymentSourceId: command.paymentSourceId,
-                        type: command.type,
-                        amount: command.amount,
-                        currency: command.currency,
-                        baseAmount: command.baseAmount,
-                        fxRate: command.fxRate,
-                        fxRateDate: command.fxRateDate,
-                        fxSource: command.fxSource,
-                        date: command.date,
-                        description: command.description,
-                        notes: command.notes,
-                        tags: command.tags,
                         auditMetadata: machineAuditMetadata(principal),
                     },
                     tx,
                 )
-                await tx.integrationIdempotencyRecord.update({
-                    where: { id: record.id },
-                    data: {
-                        status: 'completed',
-                        responseStatus: 201,
-                        responseBody: serializeTransaction(transaction),
-                    },
-                })
-                return { transaction, replayed: false }
+                return { result: transactionResult(transaction, 201), target: transaction }
             })
+        try {
+            return await create()
         } catch (error) {
-            if (error instanceof ExistingIdempotencyClaimError)
-                return this.replayCompletedClaim(claim)
-            if (isUniqueConstraint(error))
-                throw new ConflictException('External transaction already exists')
+            // The constraint is authoritative even for inserts made outside this service.
+            if (command.externalId && isUniqueConstraint(error)) return create()
             throw error
         }
     }
@@ -127,81 +172,55 @@ export class ExternalTransactionOwnershipService {
         idempotencyKey: string,
         expectedVersion: number,
         input: ExternalTransactionCreateCommand,
-        now = new Date(),
     ): Promise<ExternalTransactionCreateResult> {
+        this.assertScope(principal, 'update')
+        assertVersion(expectedVersion)
         const command = normalizeCreateCommand(input)
-        const claim: IdempotencyClaim = {
-            integrationId: principal.integrationId,
+        const externalId = normalizeExternalTransactionId(command.externalId ?? '')
+        const claim: Claim = {
             key: normalizeIdempotencyKey(idempotencyKey),
             operation: 'update',
-            targetExternalId: command.externalId,
+            targetExternalId: externalId,
             fingerprint: fingerprintExternalTransactionUpdate(command, expectedVersion),
         }
-        try {
-            return await this.prisma.$transaction(async (tx) => {
-                const record = await this.createIdempotencyClaim(tx, claim, now)
-                const existing = await this.findOwnedTransaction(
-                    principal.workspaceId,
-                    principal.integrationId,
-                    command.externalId,
-                    tx,
-                )
-                if (existing.version !== expectedVersion)
-                    throw new PreconditionFailedException('Transaction version does not match')
-                await this.assertAllowedReferences(principal, command, tx)
-                const transaction = await this.transactionsRepository.updateTransactionWithTags(
-                    {
-                        workspaceId: principal.workspaceId,
-                        transactionId: existing.id,
-                        expectedVersion,
-                        categoryId: command.categoryId,
-                        paymentSourceId: command.paymentSourceId,
-                        type: command.type,
-                        amount: command.amount,
-                        currency: command.currency,
-                        baseAmount: command.baseAmount,
-                        fxRate: command.fxRate,
-                        fxRateDate: command.fxRateDate,
-                        fxSource: command.fxSource,
-                        date: command.date,
-                        description: command.description,
-                        notes: command.notes,
-                        tags: command.tags,
+        return this.execute(principal, claim, async (tx) => {
+            const existing = await this.requireOwned(principal, externalId, tx)
+            await this.assertReferences(principal, existing, tx, true)
+            await this.assertReferences(principal, command as References, tx, false)
+            if (existing.version !== expectedVersion)
+                throw new PreconditionFailedException('Transaction version does not match')
+            const financials = await this.resolveFinancials(principal.workspaceId, command, tx)
+            const transaction = await this.transactionsRepository.updateTransactionWithTags(
+                {
+                    ...command,
+                    ...financials,
+                    externalId,
+                    categoryId: command.categoryId ?? null,
+                    workspaceId: principal.workspaceId,
+                    integrationId: principal.integrationId,
+                    transactionId: existing.id,
+                    expectedVersion,
+                },
+                tx,
+            )
+            if (!transaction)
+                throw new PreconditionFailedException('Transaction version does not match')
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.TRANSACTION_UPDATED,
+                    workspaceId: principal.workspaceId,
+                    entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                    entityId: transaction.id,
+                    metadata: {
+                        ...machineAuditMetadata(principal),
+                        previous_version: existing.version,
+                        version: transaction.version,
                     },
-                    tx,
-                )
-                if (!transaction)
-                    throw new PreconditionFailedException('Transaction version does not match')
-                await this.auditService.record(
-                    {
-                        action: AUDIT_ACTIONS.TRANSACTION_UPDATED,
-                        workspaceId: principal.workspaceId,
-                        entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
-                        entityId: transaction.id,
-                        metadata: {
-                            ...machineAuditMetadata(principal),
-                            external_id: command.externalId,
-                            previous_version: existing.version,
-                            version: transaction.version,
-                        },
-                    },
-                    tx,
-                )
-                await tx.integrationIdempotencyRecord.update({
-                    where: { id: record.id },
-                    data: {
-                        status: 'completed',
-                        responseStatus: 200,
-                        responseBody: serializeTransaction(transaction),
-                    },
-                })
-                return { transaction, replayed: false }
-            })
-        } catch (error) {
-            if (error instanceof ExistingIdempotencyClaimError)
-                return this.replayCompletedClaim(claim)
-            throw error
-        }
+                },
+                tx,
+            )
+            return { result: transactionResult(transaction, 200), target: transaction }
+        })
     }
 
     async deleteIdempotently(
@@ -209,174 +228,316 @@ export class ExternalTransactionOwnershipService {
         idempotencyKey: string,
         externalId: string,
         expectedVersion: number,
-        now = new Date(),
-    ): Promise<{ replayed: boolean }> {
-        const normalizedExternalId = normalizeExternalTransactionId(externalId)
-        const claim: IdempotencyClaim = {
-            integrationId: principal.integrationId,
+    ): Promise<ExternalTransactionCreateResult> {
+        this.assertScope(principal, 'delete')
+        assertVersion(expectedVersion)
+        const normalizedId = normalizeExternalTransactionId(externalId)
+        const claim: Claim = {
             key: normalizeIdempotencyKey(idempotencyKey),
             operation: 'delete',
-            targetExternalId: normalizedExternalId,
-            fingerprint: fingerprintExternalTransactionDelete(
-                normalizedExternalId,
-                expectedVersion,
-            ),
+            targetExternalId: normalizedId,
+            fingerprint: fingerprintExternalTransactionDelete(normalizedId, expectedVersion),
         }
-        try {
-            return await this.prisma.$transaction(async (tx) => {
-                const record = await this.createIdempotencyClaim(tx, claim, now)
-                const existing = await this.findOwnedTransaction(
-                    principal.workspaceId,
-                    principal.integrationId,
-                    normalizedExternalId,
-                    tx,
-                )
-                if (existing.version !== expectedVersion)
-                    throw new PreconditionFailedException('Transaction version does not match')
-                const deleted = await tx.transaction.updateMany({
-                    where: {
-                        id: existing.id,
-                        workspaceId: principal.workspaceId,
-                        integrationId: principal.integrationId,
-                        externalId: normalizedExternalId,
-                        version: expectedVersion,
-                        deletedAt: null,
-                    },
-                    data: { deletedAt: now, version: { increment: 1 } },
-                })
-                if (deleted.count !== 1)
-                    throw new PreconditionFailedException('Transaction version does not match')
-                await this.auditService.record(
-                    {
-                        action: AUDIT_ACTIONS.TRANSACTION_DELETED,
-                        workspaceId: principal.workspaceId,
-                        entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
-                        entityId: existing.id,
-                        metadata: {
-                            ...machineAuditMetadata(principal),
-                            external_id: normalizedExternalId,
-                            version: expectedVersion,
-                        },
-                    },
-                    tx,
-                )
-                await tx.integrationIdempotencyRecord.update({
-                    where: { id: record.id },
-                    data: {
-                        status: 'completed',
-                        responseStatus: 204,
-                        responseBody: { deleted: true },
-                    },
-                })
-                return { replayed: false }
+        return this.execute(principal, claim, async (tx) => {
+            const existing = await this.requireOwned(principal, normalizedId, tx)
+            await this.assertReferences(principal, existing, tx, true)
+            const deleted = await tx.transaction.updateMany({
+                where: {
+                    id: existing.id,
+                    workspaceId: principal.workspaceId,
+                    integrationId: principal.integrationId,
+                    externalId: normalizedId,
+                    version: expectedVersion,
+                    deletedAt: null,
+                },
+                data: { deletedAt: new Date(), version: { increment: 1 } },
             })
-        } catch (error) {
-            if (error instanceof ExistingIdempotencyClaimError) {
-                await this.assertCompletedReplay(claim)
-                return { replayed: true }
-            }
-            throw error
-        }
+            if (deleted.count !== 1)
+                throw new PreconditionFailedException('Transaction version does not match')
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.TRANSACTION_DELETED,
+                    workspaceId: principal.workspaceId,
+                    entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                    entityId: existing.id,
+                    metadata: { ...machineAuditMetadata(principal), version: expectedVersion + 1 },
+                },
+                tx,
+            )
+            return { result: { replayed: false, responseStatus: 204 }, target: existing }
+        })
     }
 
     async findOwnedTransaction(
-        workspaceId: string,
-        integrationId: string,
+        principal: MachinePrincipal,
         externalId: string,
-        prisma: TransactionsPersistenceClient = this.prisma,
     ): Promise<TransactionWithTags> {
-        const transaction = await prisma.transaction.findFirst({
-            where: { workspaceId, integrationId, externalId, deletedAt: null },
-            include: { tags: { orderBy: { name: 'asc' } } },
+        this.assertScope(principal, 'read')
+        return this.prisma.$transaction(async (tx) => {
+            await this.assertIdentity(principal, tx)
+            const transaction = await this.requireOwned(
+                principal,
+                normalizeExternalTransactionId(externalId),
+                tx,
+            )
+            await this.assertReferences(principal, transaction, tx, true)
+            return transaction
         })
-        if (!transaction) throw new NotFoundException('Transaction not found')
-        return transaction
     }
 
     async cleanupExpiredIdempotency(now = new Date()): Promise<number> {
         const result = await this.prisma.integrationIdempotencyRecord.deleteMany({
-            where: { status: 'completed', expiresAt: { lte: now } },
+            where: {
+                status: 'completed',
+                completedAt: { lte: new Date(now.getTime() - IDEMPOTENCY_RETENTION_MS) },
+                expiresAt: { lte: now },
+            },
         })
         return result.count
     }
 
-    private async createIdempotencyClaim(
-        tx: Prisma.TransactionClient,
-        claim: IdempotencyClaim,
-        now: Date,
-    ) {
-        try {
-            return await tx.integrationIdempotencyRecord.create({
-                data: {
-                    integrationId: claim.integrationId,
-                    keyDigest: digestIdempotencyKey(claim.key),
-                    operation: claim.operation,
-                    targetExternalId: claim.targetExternalId,
-                    requestFingerprint: claim.fingerprint,
-                    status: 'in_progress',
-                    expiresAt: new Date(now.getTime() + IDEMPOTENCY_RETENTION_MS),
-                },
-            })
-        } catch (error) {
-            if (isUniqueConstraint(error)) throw new ExistingIdempotencyClaimError()
-            throw error
-        }
-    }
-
-    private async replayCompletedClaim(
-        claim: IdempotencyClaim,
-    ): Promise<ExternalTransactionCreateResult> {
-        const record = await this.assertCompletedReplay(claim)
-        return { transaction: deserializeTransaction(record.responseBody), replayed: true }
-    }
-
-    private async assertCompletedReplay(claim: IdempotencyClaim) {
-        const record = await this.prisma.integrationIdempotencyRecord.findUnique({
-            where: {
-                integrationId_keyDigest: {
-                    integrationId: claim.integrationId,
-                    keyDigest: digestIdempotencyKey(claim.key),
-                },
-            },
-        })
-        if (
-            !record ||
-            record.operation !== claim.operation ||
-            record.targetExternalId !== claim.targetExternalId ||
-            record.requestFingerprint !== claim.fingerprint
-        ) {
-            throw new ConflictException('Idempotency key conflicts with a different request')
-        }
-        if (record.status !== 'completed')
-            throw new ConflictException('Idempotency request is in progress')
-        return record
-    }
-
-    private async assertAllowedReferences(
+    private async execute(
         principal: MachinePrincipal,
-        command: ExternalTransactionCreateCommand,
+        claim: Claim | undefined,
+        mutate: (
+            tx: Prisma.TransactionClient,
+        ) => Promise<{ result: ExternalTransactionCreateResult; target: TransactionWithTags }>,
+    ): Promise<ExternalTransactionCreateResult> {
+        return this.prisma.$transaction(
+            async (tx) => {
+                await this.assertIdentity(principal, tx)
+                let record: IntegrationIdempotencyRecord | undefined
+                if (claim) {
+                    // Held until commit/rollback, including lease recovery. An old worker cannot
+                    // outlive this exclusive ownership and later commit a second financial effect.
+                    await this.lock(
+                        tx,
+                        `idempotency:${principal.integrationId}:${digestIdempotencyKey(claim.key)}`,
+                    )
+                    const existing = await tx.integrationIdempotencyRecord.findUnique({
+                        where: {
+                            integrationId_keyDigest: {
+                                integrationId: principal.integrationId,
+                                keyDigest: digestIdempotencyKey(claim.key),
+                            },
+                        },
+                    })
+                    const now = new Date()
+                    if (existing && (existing.status !== 'completed' || existing.expiresAt > now)) {
+                        if (
+                            existing.workspaceId !== principal.workspaceId ||
+                            existing.operation !== claim.operation ||
+                            existing.targetExternalId !== claim.targetExternalId ||
+                            existing.requestFingerprint !== claim.fingerprint
+                        )
+                            throw new ConflictException(
+                                'Idempotency key conflicts with a different request',
+                            )
+                        if (existing.status === 'completed')
+                            return this.replay(principal, existing, tx)
+                        if (!existing.leaseExpiresAt || existing.leaseExpiresAt > now)
+                            throw new IdempotencyInProgressException()
+                    }
+                    if (existing)
+                        await tx.integrationIdempotencyRecord.delete({ where: { id: existing.id } })
+                    record = await tx.integrationIdempotencyRecord.create({
+                        data: {
+                            workspaceId: principal.workspaceId,
+                            integrationId: principal.integrationId,
+                            keyDigest: digestIdempotencyKey(claim.key),
+                            operation: claim.operation,
+                            targetExternalId: claim.targetExternalId,
+                            requestFingerprint: claim.fingerprint,
+                            status: 'in_progress',
+                            leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
+                            expiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
+                        },
+                    })
+                }
+                const { result, target } = await mutate(tx)
+                if (record) {
+                    const completedAt = new Date()
+                    await tx.integrationIdempotencyRecord.update({
+                        where: { id: record.id },
+                        data: {
+                            status: 'completed',
+                            responseStatus: result.responseStatus,
+                            responseBody: result.transaction
+                                ? serializeTransaction(result.transaction)
+                                : (result.alreadyExists ?? Prisma.JsonNull),
+                            responseEtag: result.etag ?? null,
+                            targetTransactionId: target.id,
+                            retainedCategoryId: target.categoryId,
+                            retainedPaymentSourceId: target.paymentSourceId,
+                            leaseExpiresAt: null,
+                            completedAt,
+                            expiresAt: new Date(completedAt.getTime() + IDEMPOTENCY_RETENTION_MS),
+                        },
+                    })
+                }
+                return result
+            },
+            { maxWait: 10_000, timeout: 30_000 },
+        )
+    }
+
+    private async replay(
+        principal: MachinePrincipal,
+        record: IntegrationIdempotencyRecord,
+        tx: Prisma.TransactionClient,
+    ): Promise<ExternalTransactionCreateResult> {
+        if (record.targetTransactionId)
+            await tx.$queryRaw(Prisma.sql`SELECT id FROM transactions
+            WHERE id = ${record.targetTransactionId} AND workspace_id = ${principal.workspaceId}
+            AND integration_id = ${principal.integrationId} FOR SHARE`)
+        const target = record.targetTransactionId
+            ? await tx.transaction.findFirst({
+                  where: {
+                      id: record.targetTransactionId,
+                      workspaceId: principal.workspaceId,
+                      integrationId: principal.integrationId,
+                  },
+              })
+            : null
+        if (!target) throw new NotFoundException('Transaction not found')
+        await this.assertReferences(principal, target, tx, true)
+        if (!record.retainedPaymentSourceId) throw new NotFoundException('Transaction not found')
+        await this.assertReferences(
+            principal,
+            {
+                categoryId: record.retainedCategoryId,
+                paymentSourceId: record.retainedPaymentSourceId,
+            },
+            tx,
+            true,
+        )
+        if (record.responseStatus === 204) return { replayed: true, responseStatus: 204 }
+        if (record.operation === 'create' && record.responseStatus === 200) {
+            return {
+                alreadyExists: { status: 'already_exists', external_id: record.targetExternalId! },
+                replayed: true,
+                responseStatus: 200,
+            }
+        }
+        return {
+            transaction: deserializeTransaction(record.responseBody),
+            replayed: true,
+            responseStatus: record.responseStatus!,
+            etag: record.responseEtag ?? undefined,
+        }
+    }
+
+    private async lock(tx: Prisma.TransactionClient, key: string): Promise<void> {
+        await tx.$queryRaw(
+            Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`,
+        )
+    }
+
+    private async assertIdentity(
+        principal: MachinePrincipal,
         tx: Prisma.TransactionClient,
     ): Promise<void> {
-        const category = await this.transactionsRepository.findCategoryById(
-            principal.workspaceId,
-            command.categoryId,
-            tx,
-        )
-        if (!category || category.type !== command.type)
-            throw new NotFoundException('Category not found')
-        const paymentSource = await this.transactionsRepository.findActivePaymentSourceById(
-            principal.workspaceId,
-            command.paymentSourceId,
-            tx,
-        )
-        if (!paymentSource) throw new NotFoundException('Payment source not found')
+        const identity = await tx.integration.findFirst({
+            where: { id: principal.integrationId, workspaceId: principal.workspaceId },
+        })
+        if (!identity) throw new NotFoundException('Transaction not found')
+    }
+
+    private assertScope(
+        principal: MachinePrincipal,
+        operation: 'create' | 'read' | 'update' | 'delete',
+    ): void {
+        const scope =
+            operation === 'create'
+                ? 'transactions:create'
+                : (`transactions:${operation}-own` as const)
+        if (!principal.scopes.includes(scope))
+            throw new ForbiddenException('Integration scope is required')
+    }
+
+    private async findOwned(
+        principal: MachinePrincipal,
+        externalId: string,
+        tx: Prisma.TransactionClient,
+        includeDeleted = false,
+    ) {
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM transactions WHERE workspace_id = ${principal.workspaceId}
+            AND integration_id = ${principal.integrationId} AND external_id = ${externalId}
+            ${includeDeleted ? Prisma.empty : Prisma.sql`AND deleted_at IS NULL`} FOR UPDATE`)
+        return tx.transaction.findFirst({
+            where: {
+                workspaceId: principal.workspaceId,
+                integrationId: principal.integrationId,
+                externalId,
+                ...(includeDeleted ? {} : { deletedAt: null }),
+            },
+            include: { tags: { orderBy: { name: 'asc' } } },
+        })
+    }
+
+    private async requireOwned(
+        principal: MachinePrincipal,
+        externalId: string,
+        tx: Prisma.TransactionClient,
+    ) {
+        const target = await this.findOwned(principal, externalId, tx)
+        if (!target) throw new NotFoundException('Transaction not found')
+        return target
+    }
+
+    private async assertReferences(
+        principal: MachinePrincipal,
+        refs: References,
+        tx: Prisma.TransactionClient,
+        stored: boolean,
+    ): Promise<void> {
+        const deny = () => {
+            throw stored
+                ? new NotFoundException('Transaction not found')
+                : new BadRequestException('Transaction references are invalid')
+        }
         if (
             (principal.categoryAllowlistEnabled &&
-                !principal.allowedCategoryIds.includes(command.categoryId)) ||
+                (!refs.categoryId || !principal.allowedCategoryIds.includes(refs.categoryId))) ||
             (principal.paymentSourceAllowlistEnabled &&
-                !principal.allowedPaymentSourceIds.includes(command.paymentSourceId))
-        ) {
-            throw new NotFoundException('Transaction reference not found')
+                !principal.allowedPaymentSourceIds.includes(refs.paymentSourceId))
+        )
+            deny()
+        // Share locks prevent an archive/delete from invalidating a checked reference before commit.
+        if (refs.categoryId) {
+            const categories = await tx.$queryRaw<Array<{ type: string }>>(Prisma.sql`
+                SELECT type FROM categories WHERE workspace_id = ${principal.workspaceId}
+                AND id = ${refs.categoryId} AND deleted_at IS NULL FOR SHARE`)
+            if (!categories[0] || (refs.type && categories[0].type !== refs.type)) deny()
+        }
+        const sources = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+            SELECT id FROM payment_sources WHERE workspace_id = ${principal.workspaceId}
+            AND id = ${refs.paymentSourceId} AND deleted_at IS NULL FOR SHARE`)
+        if (!sources[0]) deny()
+    }
+
+    private async resolveFinancials(
+        workspaceId: string,
+        command: ExternalTransactionCreateCommand,
+        tx: Prisma.TransactionClient,
+    ) {
+        const workspace = await tx.workspace.findUniqueOrThrow({
+            where: { id: workspaceId },
+            select: { baseCurrency: true },
+        })
+        const quote = await this.currencyService.getHistoricalQuote(
+            command.currency,
+            workspace.baseCurrency,
+            command.date,
+        )
+        const baseAmount = Math.round(command.amount * quote.rate)
+        if (!Number.isSafeInteger(baseAmount) || baseAmount <= 0 || baseAmount > 2_147_483_647)
+            throw new BadRequestException('Converted amount is out of range')
+        return {
+            baseAmount,
+            fxRate: quote.rate,
+            fxRateDate: quote.rateDate,
+            fxSource: quote.source,
         }
     }
 }
@@ -390,92 +551,131 @@ export function digestIdempotencyKey(key: string): string {
 export function fingerprintExternalTransactionCreate(
     input: ExternalTransactionCreateCommand,
 ): string {
-    return createHash('sha256')
-        .update(stableJson(normalizeCreateCommand(input)), 'utf8')
-        .digest('hex')
+    return fingerprint({ operation: 'create', ...stableIntent(input) })
 }
 
 export function fingerprintExternalTransactionUpdate(
     input: ExternalTransactionCreateCommand,
     expectedVersion: number,
 ): string {
-    return createHash('sha256')
-        .update(stableJson({ ...normalizeCreateCommand(input), expectedVersion }), 'utf8')
-        .digest('hex')
+    return fingerprint({ operation: 'update', ...stableIntent(input), expectedVersion })
 }
 
 export function fingerprintExternalTransactionDelete(
     externalId: string,
     expectedVersion: number,
 ): string {
-    return createHash('sha256')
-        .update(stableJson({ externalId, expectedVersion }), 'utf8')
-        .digest('hex')
+    return fingerprint({
+        operation: 'delete',
+        externalId: normalizeExternalTransactionId(externalId),
+        expectedVersion,
+    })
 }
 
-function normalizeIdempotencyKey(value: string): string {
-    if (typeof value !== 'string' || !IDEMPOTENCY_KEY_PATTERN.test(value)) {
-        throw new BadRequestException(
-            'Idempotency-Key must contain 16 to 128 visible ASCII characters',
-        )
+function stableIntent(input: ExternalTransactionCreateCommand) {
+    const command = normalizeCreateCommand(input)
+    return {
+        externalId: command.externalId,
+        type: command.type,
+        amount: command.amount,
+        currency: command.currency,
+        date: command.date.toISOString(),
+        description: command.description,
+        notes: command.notes,
+        tags: command.tags.map((tag) => tag.toLowerCase()),
+        categoryId: command.categoryId,
+        paymentSourceId: command.paymentSourceId,
     }
-    return value
+}
+
+function fingerprint(value: Record<string, unknown>): string {
+    return createHash('sha256')
+        .update(JSON.stringify(value, Object.keys(value).sort()), 'utf8')
+        .digest('hex')
 }
 
 function normalizeCreateCommand(
     input: ExternalTransactionCreateCommand,
 ): ExternalTransactionCreateCommand {
-    const externalId = normalizeExternalTransactionId(input.externalId)
-    if (!Number.isSafeInteger(input.amount) || input.amount <= 0)
+    const externalId =
+        input.externalId == null ? null : normalizeExternalTransactionId(input.externalId)
+    if (!Number.isSafeInteger(input.amount) || input.amount <= 0 || input.amount > 2_147_483_647)
         throw new BadRequestException('Amount must be a positive integer in minor units')
     if (input.type !== 'expense' && input.type !== 'income')
         throw new BadRequestException('Transaction type is invalid')
-    if (!(input.date instanceof Date) || Number.isNaN(input.date.getTime()))
+    if (
+        !(input.date instanceof Date) ||
+        Number.isNaN(input.date.getTime()) ||
+        input.date.toISOString().slice(11) !== '00:00:00.000Z'
+    )
         throw new BadRequestException('Transaction date is invalid')
-    const categoryId = input.categoryId?.trim()
+    const categoryId = input.categoryId == null ? null : input.categoryId.trim()
     const paymentSourceId = input.paymentSourceId?.trim()
     const description = input.description?.trim()
-    const currency = input.currency?.trim().toUpperCase()
-    if (!categoryId || !paymentSourceId || !description || !/^[A-Z]{3}$/.test(currency))
+    if (
+        (categoryId !== null && !categoryId) ||
+        !paymentSourceId ||
+        !description ||
+        description.length > 200
+    )
         throw new BadRequestException('Transaction fields are invalid')
+    if (input.notes != null && (typeof input.notes !== 'string' || input.notes.length > 2000))
+        throw new BadRequestException('Transaction notes are invalid')
+    if (
+        !Array.isArray(input.tags) ||
+        input.tags.length > 10 ||
+        input.tags.some((tag) => typeof tag !== 'string' || tag.length > 100)
+    )
+        throw new BadRequestException('Transaction tags are invalid')
+    const tags = new Map<string, string>()
+    for (const tag of input.tags) {
+        const trimmed = tag.trim()
+        if (trimmed && !tags.has(trimmed.toLowerCase())) tags.set(trimmed.toLowerCase(), trimmed)
+    }
     return {
         ...input,
         externalId,
         categoryId,
         paymentSourceId,
         description,
-        currency,
+        currency: normalizeCurrency(input.currency),
         notes: input.notes?.trim() || null,
-        tags: [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))].sort(),
+        tags: [...tags.entries()]
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+            .map(([, value]) => value),
     }
+}
+
+function assertVersion(version: number): void {
+    if (!Number.isSafeInteger(version) || version < 1 || version >= 2_147_483_647)
+        throw new BadRequestException('Transaction version is invalid')
 }
 
 function machineAuditMetadata(principal: MachinePrincipal): Prisma.InputJsonObject {
     return { integration_id: principal.integrationId, credential_id: principal.credentialId }
 }
 
+function transactionResult(
+    transaction: TransactionWithTags,
+    responseStatus: number,
+): ExternalTransactionCreateResult {
+    return { transaction, responseStatus, replayed: false, etag: `"tx-v${transaction.version}"` }
+}
+
 function serializeTransaction(transaction: TransactionWithTags): Prisma.InputJsonObject {
     return {
-        id: transaction.id,
-        workspaceId: transaction.workspaceId,
-        categoryId: transaction.categoryId,
-        paymentSourceId: transaction.paymentSourceId,
-        integrationId: transaction.integrationId,
-        externalId: transaction.externalId,
-        type: transaction.type,
-        version: transaction.version,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        baseAmount: transaction.baseAmount,
+        ...transaction,
         fxRate: transaction.fxRate.toString(),
         fxRateDate: transaction.fxRateDate.toISOString(),
-        fxSource: transaction.fxSource,
         date: transaction.date.toISOString(),
-        description: transaction.description,
-        notes: transaction.notes,
-        tags: transaction.tags.map((tag) => tag.name),
         createdAt: transaction.createdAt.toISOString(),
         updatedAt: transaction.updatedAt.toISOString(),
+        deletedAt: transaction.deletedAt?.toISOString() ?? null,
+        tags: transaction.tags.map((tag) => ({
+            ...tag,
+            createdAt: tag.createdAt.toISOString(),
+            updatedAt: tag.updatedAt.toISOString(),
+        })),
     }
 }
 
@@ -486,56 +686,34 @@ function deserializeTransaction(value: Prisma.JsonValue | null): TransactionWith
     if (typeof body.id !== 'string' || !Array.isArray(body.tags))
         throw new ConflictException('Idempotency response is unavailable')
     const createdAt = new Date(String(body.createdAt))
+    const updatedAt = new Date(String(body.updatedAt))
     return {
-        id: body.id,
-        workspaceId: String(body.workspaceId),
-        categoryId: String(body.categoryId),
-        paymentSourceId: String(body.paymentSourceId),
-        integrationId: typeof body.integrationId === 'string' ? body.integrationId : null,
-        externalId: typeof body.externalId === 'string' ? body.externalId : null,
-        type: String(body.type),
-        version: Number(body.version),
-        amount: Number(body.amount),
-        currency: String(body.currency),
-        baseAmount: Number(body.baseAmount),
+        ...body,
         fxRate: new Prisma.Decimal(String(body.fxRate)),
         fxRateDate: new Date(String(body.fxRateDate)),
-        fxSource: String(body.fxSource),
         date: new Date(String(body.date)),
-        description: String(body.description),
-        notes: typeof body.notes === 'string' ? body.notes : null,
         createdAt,
-        updatedAt: new Date(String(body.updatedAt)),
-        deletedAt: null,
-        tags: body.tags
-            .filter((tag): tag is string => typeof tag === 'string')
-            .map((name, index) => ({
-                id: `replay-${index}`,
-                workspaceId: String(body.workspaceId),
-                transactionId: body.id,
-                name,
-                createdAt,
-                updatedAt: new Date(String(body.updatedAt)),
-            })),
+        updatedAt,
+        deletedAt: body.deletedAt ? new Date(String(body.deletedAt)) : null,
+        tags: body.tags.map((tag, index) =>
+            typeof tag === 'string'
+                ? {
+                      id: `replay-${index}`,
+                      workspaceId: body.workspaceId,
+                      transactionId: body.id,
+                      name: tag,
+                      createdAt,
+                      updatedAt,
+                  }
+                : {
+                      ...tag,
+                      createdAt: new Date(String(tag.createdAt)),
+                      updatedAt: new Date(String(tag.updatedAt)),
+                  },
+        ),
     } as TransactionWithTags
 }
 
-function stableJson(value: unknown): string {
-    if (value === null || typeof value !== 'object') return JSON.stringify(value)
-    if (value instanceof Date) return JSON.stringify(value.toISOString())
-    if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
-    const record = value as Record<string, unknown>
-    return `{${Object.keys(record)
-        .sort()
-        .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
-        .join(',')}}`
-}
-
 function isUniqueConstraint(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === 'P2002'
-    )
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
 }

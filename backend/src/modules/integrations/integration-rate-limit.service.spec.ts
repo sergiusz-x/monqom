@@ -9,23 +9,36 @@ import {
 describe('IntegrationRateLimitService', () => {
     const now = new Date('2026-09-04T10:00:00.000Z')
     function fixture() {
-        let state = {
-            request_times: [] as Date[],
-            mutation_times: [] as Date[],
-            blocked_until: null as Date | null,
+        type State = {
+            request_times: Date[]
+            mutation_times: Date[]
+            blocked_until: Date | null
         }
+        const states = new Map<string, State>()
         const tx: any = {
-            $executeRaw: jest.fn().mockResolvedValue(1),
-            $queryRaw: jest.fn(async (query: TemplateStringsArray) =>
-                query.join('').includes('request_times') ? [{ ...state }] : [{ checked_at: now }],
+            $executeRaw: jest.fn(async (_query: TemplateStringsArray, keyHash: string) => {
+                states.set(
+                    keyHash,
+                    states.get(keyHash) ?? {
+                        request_times: [],
+                        mutation_times: [],
+                        blocked_until: null,
+                    },
+                )
+                return 1
+            }),
+            $queryRaw: jest.fn(async (query: TemplateStringsArray, keyHash: string) =>
+                query.join('').includes('request_times')
+                    ? [{ ...states.get(keyHash)! }]
+                    : [{ checked_at: now }],
             ),
             integrationRateLimit: {
-                update: jest.fn(async ({ data }: any) => {
-                    state = {
+                update: jest.fn(async ({ where, data }: any) => {
+                    states.set(where.keyHash, {
                         request_times: data.requestTimes,
                         mutation_times: data.mutationTimes,
                         blocked_until: data.blockedUntil,
-                    }
+                    })
                 }),
             },
         }
@@ -84,11 +97,50 @@ describe('IntegrationRateLimitService', () => {
         })
     })
 
+    it('shares the five-attempt step-up budget across workspaces, sessions, and operations', async () => {
+        const { service } = fixture()
+        for (let attempt = 0; attempt < 5; attempt++) {
+            await service.consumeManagementStepUp('user-1', `192.0.2.${attempt + 1}`, now)
+        }
+
+        await expect(
+            service.consumeManagementStepUp('user-1', '198.51.100.2', now),
+        ).rejects.toMatchObject({ retryAfterSeconds: 900 })
+    })
+
+    it('shares the twenty-attempt step-up budget across users on one normalized source', async () => {
+        const { service } = fixture()
+        for (let attempt = 0; attempt < 20; attempt++) {
+            await service.consumeManagementStepUp(`user-${attempt}`, '::ffff:192.0.2.1', now)
+        }
+
+        await expect(
+            service.consumeManagementStepUp('another-user', '192.0.2.1', now),
+        ).rejects.toMatchObject({ retryAfterSeconds: 900 })
+    })
+
+    it('releases the user step-up budget after its rolling window expires', async () => {
+        const { service } = fixture()
+        for (let attempt = 0; attempt < 5; attempt++)
+            await service.consumeManagementStepUp('user-1', '192.0.2.1', now)
+
+        await expect(
+            service.consumeManagementStepUp(
+                'user-1',
+                '192.0.2.1',
+                new Date(now.getTime() + 900_001),
+            ),
+        ).resolves.toBeUndefined()
+    })
+
     it('fails closed when rate-limit storage is unavailable', async () => {
         const { service, prisma } = fixture()
         prisma.$transaction.mockRejectedValue(new Error('database unavailable'))
         await expect(service.consumeCredential('credential-1', now)).rejects.toBeInstanceOf(
             ServiceUnavailableException,
         )
+        await expect(
+            service.consumeManagementStepUp('user-1', '192.0.2.1', now),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException)
     })
 })

@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { randomUUID } from 'crypto'
 import { AuditService } from '../src/shared/audit/audit.service'
 import { IntegrationCredentialService } from '../src/modules/integrations/integration-credential.service'
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common'
 import {
     IntegrationRateLimitExceededError,
     IntegrationRateLimitService,
@@ -34,7 +35,12 @@ describe('integration credential PostgreSQL lifecycle', () => {
     afterEach(async () => {
         await prisma.integrationRateLimit.deleteMany()
         if (workspaceIds.length) {
-            await prisma.workspace.deleteMany({ where: { id: { in: workspaceIds.splice(0) } } })
+            const workspaces = workspaceIds.splice(0)
+            await prisma.transaction.deleteMany({ where: { workspaceId: { in: workspaces } } })
+            await prisma.integrationCredential.deleteMany({
+                where: { integration: { workspaceId: { in: workspaces } } },
+            })
+            await prisma.workspace.deleteMany({ where: { id: { in: workspaces } } })
         }
         if (userIds.length) {
             await prisma.user.deleteMany({ where: { id: { in: userIds.splice(0) } } })
@@ -124,6 +130,257 @@ describe('integration credential PostgreSQL lifecycle', () => {
         expect(
             revocationEvents.map(({ metadata }) => (metadata as { reason: string }).reason),
         ).toEqual(expect.arrayContaining(['CREATOR_AUTHORITY_LOST', 'CREATOR_ACCOUNT_DELETED']))
+    })
+
+    it('atomically issues policy, rotates as another admin, then revokes and safely hides the version', async () => {
+        const creator = await createUser('management-creator')
+        const actor = await createUser('management-admin')
+        const workspace = await createWorkspace(creator.id)
+        const source = await prisma.paymentSource.findFirstOrThrow({
+            where: { workspaceId: workspace.workspaceId },
+        })
+        await prisma.workspaceMembership.create({
+            data: {
+                userId: actor.id,
+                workspaceId: workspace.workspaceId,
+                role: 'admin',
+                lastPaymentSourceId: source.id,
+            },
+        })
+        const category = await prisma.category.create({
+            data: { workspaceId: workspace.workspaceId, name: 'integration test category' },
+        })
+        const original = await credentialService.createIntegrationWithCredential({
+            workspaceId: workspace.workspaceId,
+            createdByUserId: creator.id,
+            name: 'atomic management lifecycle',
+            expiresAt: expiryInDays(30),
+            scopes: ['transactions:create'],
+            categoryAllowlistEnabled: true,
+            allowedCategoryIds: [category.id],
+            paymentSourceAllowlistEnabled: true,
+            allowedPaymentSourceIds: [source.id],
+            cidrAllowlistEnabled: false,
+        })
+        const transaction = await prisma.transaction.create({
+            data: {
+                workspaceId: workspace.workspaceId,
+                integrationId: original.integrationId,
+                externalId: 'record-1',
+                categoryId: category.id,
+                paymentSourceId: source.id,
+                amount: 1234,
+                currency: 'PLN',
+                date: new Date('2026-10-17T00:00:00.000Z'),
+                description: 'Owned import',
+            },
+        })
+
+        expect(original.token).toMatch(/^mqic_[A-Za-z0-9_-]{12}\.[A-Za-z0-9_-]{43}$/)
+        expect(original.tokenPrefix).toBe(original.token.slice(0, original.token.indexOf('.')))
+        await expect(
+            prisma.integrationCredential.findUniqueOrThrow({
+                where: { id: original.credentialId },
+            }),
+        ).resolves.toMatchObject({ tokenDigest: expect.not.stringContaining(original.token) })
+        await expect(
+            credentialService.authenticateAuthorizationHeader(
+                `Bearer ${original.token}`,
+                '127.0.0.1',
+            ),
+        ).resolves.toMatchObject({ integrationId: original.integrationId })
+
+        const rotated = await credentialService.rotateCredential(
+            original.credentialId,
+            expiryInDays(60),
+            new Date(),
+            actor.id,
+            { workspaceId: workspace.workspaceId, integrationId: original.integrationId },
+            {
+                scopes: [],
+                categoryAllowlistEnabled: true,
+                allowedCategoryIds: [],
+                paymentSourceAllowlistEnabled: false,
+                allowedPaymentSourceIds: [],
+            },
+        )
+        await expect(
+            credentialService.authenticateAuthorizationHeader(
+                `Bearer ${original.token}`,
+                '127.0.0.1',
+            ),
+        ).rejects.toThrow('Integration authentication failed')
+        await expect(
+            credentialService.authenticateAuthorizationHeader(
+                `Bearer ${rotated.token}`,
+                '127.0.0.1',
+            ),
+        ).resolves.toMatchObject({ integrationId: original.integrationId, scopes: [] })
+
+        await expect(
+            credentialService.revokeCredential(rotated.credentialId, new Date(), actor.id, {
+                workspaceId: workspace.workspaceId,
+                integrationId: original.integrationId,
+            }),
+        ).resolves.toBe(true)
+        await expect(
+            credentialService.revokeCredential(rotated.credentialId, new Date(), actor.id, {
+                workspaceId: workspace.workspaceId,
+                integrationId: original.integrationId,
+            }),
+        ).resolves.toBe(false)
+        await expect(
+            credentialService.authenticateAuthorizationHeader(
+                `Bearer ${rotated.token}`,
+                '127.0.0.1',
+            ),
+        ).rejects.toThrow('Integration authentication failed')
+
+        await credentialService.deleteCredential(rotated.credentialId, actor.id, {
+            workspaceId: workspace.workspaceId,
+            integrationId: original.integrationId,
+        })
+        await expect(
+            prisma.integrationCredential.findUniqueOrThrow({
+                where: { id: rotated.credentialId },
+            }),
+        ).resolves.toMatchObject({ status: 'revoked', deletedAt: expect.any(Date) })
+        await expect(
+            prisma.integrationCredential.findUniqueOrThrow({
+                where: { id: original.credentialId },
+            }),
+        ).resolves.toMatchObject({ status: 'revoked', deletedAt: null })
+        await expect(
+            prisma.integration.findUniqueOrThrow({
+                where: { id: original.integrationId },
+            }),
+        ).resolves.toMatchObject({ status: 'active', creatorReference: creator.id })
+        await expect(
+            prisma.transaction.findUniqueOrThrow({
+                where: { id: transaction.id },
+            }),
+        ).resolves.toMatchObject({ integrationId: original.integrationId, externalId: 'record-1' })
+
+        const lifecycleEvents = await prisma.auditEvent.findMany({
+            where: {
+                workspaceId: workspace.workspaceId,
+                entityId: { in: [original.credentialId, rotated.credentialId] },
+            },
+            orderBy: { createdAt: 'asc' },
+        })
+        expect(lifecycleEvents).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    action: 'INTEGRATION_CREDENTIAL_ROTATED',
+                    userId: actor.id,
+                    entityId: rotated.credentialId,
+                    metadata: expect.objectContaining({ previous_credential_status: 'revoked' }),
+                }),
+                expect.objectContaining({
+                    action: 'INTEGRATION_CREDENTIAL_DELETED',
+                    userId: actor.id,
+                }),
+            ]),
+        )
+        expect(JSON.stringify(lifecycleEvents)).not.toContain(original.token)
+        expect(JSON.stringify(lifecycleEvents)).not.toContain(rotated.token)
+    }, 15_000)
+
+    it('rejects archived and foreign workspace restrictions without creating partial integrations', async () => {
+        const owner = await createUser('invalid-management-policy')
+        const first = await createWorkspace(owner.id)
+        const foreignOwner = await createUser('foreign-management-policy')
+        const foreign = await createWorkspace(foreignOwner.id)
+        const archivedCategory = await prisma.category.create({
+            data: { workspaceId: first.workspaceId, name: 'archived management category' },
+        })
+        const foreignCategory = await prisma.category.create({
+            data: { workspaceId: foreign.workspaceId, name: 'foreign management category' },
+        })
+        await prisma.category.update({
+            where: { id: archivedCategory.id },
+            data: { deletedAt: new Date() },
+        })
+        const existingIntegrations = await prisma.integration.count({
+            where: { workspaceId: first.workspaceId },
+        })
+        const policy = {
+            workspaceId: first.workspaceId,
+            createdByUserId: owner.id,
+            name: 'invalid policy must not persist',
+            expiresAt: expiryInDays(30),
+            scopes: ['transactions:create'],
+            categoryAllowlistEnabled: true,
+            paymentSourceAllowlistEnabled: false,
+        }
+        await expect(
+            credentialService.createIntegrationWithCredential({
+                ...policy,
+                allowedCategoryIds: [archivedCategory.id],
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException)
+        await expect(
+            credentialService.createIntegrationWithCredential({
+                ...policy,
+                allowedCategoryIds: [foreignCategory.id],
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException)
+        expect(await prisma.integration.count({ where: { workspaceId: first.workspaceId } })).toBe(
+            existingIntegrations,
+        )
+        expect(
+            await prisma.integrationCredential.count({
+                where: { integration: { workspaceId: first.workspaceId } },
+            }),
+        ).toBe(0)
+        expect(
+            await prisma.auditEvent.count({
+                where: { workspaceId: first.workspaceId, action: 'INTEGRATION_CREDENTIAL_ISSUED' },
+            }),
+        ).toBe(0)
+    })
+
+    it('rolls back integration and credential creation when a required audit write fails', async () => {
+        const owner = await createUser('audit-rollback')
+        const workspace = await createWorkspace(owner.id)
+        const existingIntegrations = await prisma.integration.count({
+            where: { workspaceId: workspace.workspaceId },
+        })
+        const existingAuditEvents = await prisma.auditEvent.count({
+            where: { workspaceId: workspace.workspaceId },
+        })
+        const failingAudit = {
+            record: jest.fn(async (event: { action: string }, tx: unknown) => {
+                if (event.action === 'INTEGRATION_CREDENTIAL_ISSUED')
+                    throw new Error('synthetic lifecycle audit failure')
+                return new AuditService(prisma as never).record(event as never, tx as never)
+            }),
+        }
+        const service = new IntegrationCredentialService(prisma as never, failingAudit as never)
+
+        await expect(
+            service.createIntegrationWithCredential({
+                workspaceId: workspace.workspaceId,
+                createdByUserId: owner.id,
+                name: 'must roll back',
+                expiresAt: expiryInDays(30),
+                scopes: [],
+                categoryAllowlistEnabled: false,
+                paymentSourceAllowlistEnabled: false,
+            }),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException)
+
+        expect(
+            await prisma.integration.count({ where: { workspaceId: workspace.workspaceId } }),
+        ).toBe(existingIntegrations)
+        expect(
+            await prisma.integrationCredential.count({
+                where: { integration: { workspaceId: workspace.workspaceId } },
+            }),
+        ).toBe(0)
+        expect(
+            await prisma.auditEvent.count({ where: { workspaceId: workspace.workspaceId } }),
+        ).toBe(existingAuditEvents)
     })
 
     it('serializes simultaneous rotations to one active replacement under the same identity', async () => {
@@ -397,6 +654,31 @@ describe('integration credential PostgreSQL lifecycle', () => {
                 },
             }),
         ).toBeGreaterThanOrEqual(1)
+    }, 15_000)
+
+    it('shares management step-up budgets across users and independent limiter instances', async () => {
+        const firstLimiter = new IntegrationRateLimitService(prisma as never)
+        const secondLimiter = new IntegrationRateLimitService(prisma as never)
+
+        for (let attempt = 0; attempt < 5; attempt++) {
+            await firstLimiter.consumeManagementStepUp(
+                'shared-management-user',
+                `198.51.100.${attempt + 1}`,
+            )
+        }
+        await expect(
+            secondLimiter.consumeManagementStepUp('shared-management-user', '203.0.113.10'),
+        ).rejects.toBeInstanceOf(IntegrationRateLimitExceededError)
+
+        for (let attempt = 0; attempt < 20; attempt++) {
+            await firstLimiter.consumeManagementStepUp(
+                `source-management-user-${attempt}`,
+                '::ffff:192.0.2.55',
+            )
+        }
+        await expect(
+            secondLimiter.consumeManagementStepUp('another-source-user', '192.0.2.55'),
+        ).rejects.toBeInstanceOf(IntegrationRateLimitExceededError)
     }, 15_000)
 
     it('serializes shared request and mutation budgets across concurrent PostgreSQL transactions', async () => {

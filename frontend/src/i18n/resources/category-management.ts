@@ -44,6 +44,8 @@ export const enCategoryManagement = {
     emptyHiddenDescription:
       "Categories hidden from new expenses will appear here.",
     childrenCount_one: "{{count}} subcategory",
+    childrenCount_few: "{{count}} subcategories",
+    childrenCount_many: "{{count}} subcategories",
     childrenCount_other: "{{count}} subcategories",
     hide: "Hide from new expenses",
     hideTitle: "Hide category from new expenses?",
@@ -107,6 +109,8 @@ export const plCategoryManagement = {
     emptyHiddenDescription:
       "Kategorie ukryte przed nowymi wydatkami pojawią się tutaj.",
     childrenCount_one: "{{count}} podkategoria",
+    childrenCount_few: "{{count}} podkategorie",
+    childrenCount_many: "{{count}} podkategorii",
     childrenCount_other: "{{count}} podkategorii",
     hide: "Ukryj przed nowymi wydatkami",
     hideTitle: "Ukryć kategorię przed nowymi wydatkami?",

@@ -158,6 +158,10 @@ error recovery, logout, or unmount.
 - Expired credentials never authenticate and cannot be reactivated.
 - Rotation atomically creates a new version and immediately revokes the old version. There is no
   overlap window.
+- Rotation preserves scopes and resource/network policies unless an administrator explicitly
+  supplies replacement policies. Replacement scope sets remain exact and independent, and each
+  replacement resource policy requires an explicit allowlist-enabled flag. Retained and replacement
+  references are validated as active resources of the same workspace before mutation.
 - Revocation is immediate, idempotent, irreversible, and checked from authoritative persistence on
   the next request. Positive authentication results are not cached across requests.
 - Safe deletion is allowed only after revocation. It removes the credential from normal listings
@@ -212,7 +216,13 @@ Creation, rotation, and revocation require recent human authentication no older 
 Listing safe metadata does not require step-up. Secret material is never returned by list or get
 operations.
 
-Validate the complete management request before persisting anything: scopes, expiry, CIDRs, and
+High-risk management requests share a rolling fifteen-minute step-up budget of five attempts per
+human account and twenty per source IP. Account limits span workspaces, sessions and operations.
+After session, workspace and role checks, each attempt consumes the budget before password/TOTP verification. The
+existing PostgreSQL-backed integration limiter enforces these limits across replicas, returns
+`429` with `Retry-After`, and fails closed on storage errors. These denials are audited as well.
+
+Validate the complete management request before persisting any integration or credential: scopes, expiry, CIDRs, and
 workspace resource policies. Invalid policy returns `400`. Integration creation, its first
 credential, and the lifecycle audit event commit atomically. Rotation and revocation likewise
 commit their state change and audit event together. The audit actor is the administrator actually

@@ -26,6 +26,7 @@ const generatedTransport = {
     const options: AxiosRequestConfig = {};
     if (config.params !== undefined) options.params = config.params;
     if (config.signal !== undefined) options.signal = config.signal;
+    if (config.timeout !== undefined) options.timeout = config.timeout;
     if (config.responseType !== undefined)
       options.responseType = config.responseType;
     const hasOptions = Object.keys(options).length > 0;

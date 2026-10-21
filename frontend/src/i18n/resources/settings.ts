@@ -113,8 +113,13 @@ export const enSettings = {
     step: "Step {{current}} of {{total}}",
     name: "Integration name",
     expiry: "Valid until",
-    invalidSetup: "Enter a name and an expiry within the next 365 days.",
-    invalidCidr: "Enter one valid IPv4 or IPv6 CIDR per line.",
+    invalidSetup:
+      "Enter a name of 1 to 100 characters and a future expiry within 365 days.",
+    nameRequired: "Enter an integration name.",
+    nameTooLong: "The name can have up to 100 characters.",
+    invalidExpiry: "Choose today or a later date, up to one year from now.",
+    invalidCidr:
+      "Enter at most 64 valid IPv4 or IPv6 CIDRs, one per line (IPv4 prefix 0 to 32, IPv6 0 to 128).",
     scopeWrite: "Create and change transactions",
     scopeRead: "Read integration-owned transactions",
     scopeMetadata: "Read category and payment-source metadata",
@@ -141,15 +146,17 @@ export const enSettings = {
     revoked: "Key revoked",
     deleted: "Key deleted",
     rotateWarning:
-      "The old key will stop working immediately. Update your importer with the new key.",
-    revokeWarning: "This key will stop working immediately.",
-    deleteWarning: "This permanently removes the revoked key from this list.",
+      "Replacing the key immediately revokes the old one and applies the selected permissions and restrictions. Update your importer with the new key. Transaction ownership stays with this integration.",
+    revokeWarning:
+      "This immediately and irreversibly stops new requests with this key. A request already authenticated may finish. Your transactions stay in Monqom.",
+    deleteWarning:
+      "Hide this revoked key from the list. Its audit history and financial transactions are retained.",
     confirmRotate: "Replace key",
     confirmRevoke: "Revoke key",
     confirmDelete: "Delete key",
     secretTitle: "Save your integration key",
     secretWarning:
-      "This is the only time the full key is shown. Copy it and save it somewhere safe. Do not put it in code or URLs.",
+      "Save this key in your importer's protected secret store. It cannot be shown again. Never put it in code, URLs, logs, chat, or browser storage. If you lose it, replace the key.",
     copyToken: "Copy key",
     revealToken: "Show key",
     hideToken: "Hide key",
@@ -178,7 +185,8 @@ export const enSettings = {
     stepConfirmTitle: "Review and create",
     stepConfirmDescription: "Check the details and confirm with your password.",
     scopeCreateTitle: "Create transactions",
-    scopeCreateDescription: "Add imported transactions.",
+    scopeCreateDescription:
+      "Add imported transactions. This does not permit reading, changing or deleting them, or reading metadata.",
     scopeUpdateTitle: "Update its transactions",
     scopeUpdateDescription:
       "Change only transactions this integration created.",
@@ -186,11 +194,79 @@ export const enSettings = {
     scopeDeleteDescription:
       "Delete only transactions this integration created.",
     scopeReadOwnTitle: "Read its transactions",
-    scopeReadOwnDescription: "Read only transactions this integration created.",
+    scopeReadOwnDescription:
+      "Look up one transaction created by this integration by its exact external ID. No collection browsing.",
     scopeCategoriesTitle: "Read categories",
     scopeCategoriesDescription: "Read category IDs for imports.",
     scopeSourcesTitle: "Read payment sources",
     scopeSourcesDescription: "Read payment source IDs for imports.",
+    guideTitle: "How to connect an automation",
+    guideDescription:
+      "For an importer, start with create permission. Lifecycle sync needs create, update-own and delete-own; own-record lookup and metadata reads are optional.",
+    scopeIndependence:
+      "Each permission is independent. Resource and IP restrictions only narrow the selected permissions; they never add access.",
+    refresh: "Refresh list",
+    inspect: "View details",
+    prefix: "Key prefix",
+    credentialState: "Key status",
+    statusUnavailable: "Unavailable",
+    creator: "Created by",
+    integrationCreated: "Integration created",
+    versionCreated: "Key version created",
+    lastUsed: "Last used",
+    neverUsed: "Not used yet",
+    revokedAt: "Revoked at",
+    notRecorded: "Not recorded",
+    workspaceId: "Workspace ID for API requests",
+    integrationId: "Integration ID",
+    credentialId: "Key version ID",
+    detailsHint:
+      "You can use these details to configure your automation. The full key cannot be viewed again.",
+    technicalDetails: "Technical details",
+    restrictionsTitle: "Access limits",
+    unavailableResourceName: "Unavailable item",
+    searchResources: "Search by name",
+    selectedCount: "Selected: {{count}}",
+    noMatchingResources: "No matching items.",
+    versionHistory: "Key version history",
+    versionHistoryHint:
+      "A replacement creates a new version in this integration and revokes the previous one. Hidden revoked versions are omitted.",
+    createdOn: "Created {{date}}",
+    revokedOn: "Revoked {{date}}",
+    closeDetails: "Close details",
+    expiryHint:
+      "Valid until the end of the selected day (23:59 in your time zone). Up to one year.",
+    formSteps: "Integration setup steps",
+    resourcesUnavailable:
+      "Wait for category and payment-source options to load, or retry loading them.",
+    invalidResources:
+      "Select at most 200 active resources. Remove archived or unavailable selections before continuing.",
+    unavailableResource: "Unavailable resource: {{id}}",
+    noActiveResources: "No active resources are available.",
+    restrictionsOnlyNarrow:
+      "These restrictions apply to every selected write, own-record read and metadata read permission.",
+    categoryUnrestrictedHint:
+      "Allow all active categories in this workspace, including uncategorized transactions.",
+    uncategorizedRestricted:
+      "A category allowlist also blocks uncategorized transactions.",
+    emptyResourcePolicy:
+      "No resources are allowed. An enabled empty list blocks access of this type.",
+    emptyScopePolicy:
+      "No permissions selected. This key will not be able to call any machine API operation.",
+    cidrHint:
+      "Up to 64 IPv4/IPv6 ranges. Use your client's outgoing IP addresses, not your browser's address.",
+    emptyIpPolicy:
+      "No IP address is allowed. This key will reject every client request.",
+    stepUpRequired:
+      "Enter your current password and a current two-factor or unused recovery code.",
+    stepUpFailed:
+      "Your password, second factor or session could not be verified. Check your access and try again.",
+    uncertainIssuance:
+      "If a response is lost, refresh the list before retrying. A committed key cannot be revealed again; replace it if needed.",
+    secretLifetime:
+      "This view closes when dismissed, after five minutes, or when you leave the page or put it in the background. Copy only to a trusted secret store and clear your clipboard afterwards.",
+    copyFailed:
+      "Clipboard access failed. You can show the key and copy it manually before closing this view.",
   },
   privacy: {
     tab: "Privacy",
@@ -323,11 +399,17 @@ export const plSettings = {
     step: "Krok {{current}} z {{total}}",
     name: "Nazwa integracji",
     expiry: "Ważna do",
-    invalidSetup: "Podaj nazwę i datę ważności w ciągu najbliższych 365 dni.",
-    invalidCidr: "Podaj po jednym poprawnym CIDR IPv4 lub IPv6 w wierszu.",
+    invalidSetup:
+      "Podaj nazwę od 1 do 100 znaków i przyszłą datę ważności w ciągu 365 dni.",
+    nameRequired: "Podaj nazwę integracji.",
+    nameTooLong: "Nazwa może mieć maksymalnie 100 znaków.",
+    invalidExpiry:
+      "Wybierz dzisiejszą lub późniejszą datę, maksymalnie za rok.",
+    invalidCidr:
+      "Podaj maksymalnie 64 poprawne zakresy CIDR IPv4 lub IPv6, po jednym w wierszu (prefiks IPv4 od 0 do 32, IPv6 od 0 do 128).",
     scopeWrite: "Tworzenie i zmiana transakcji",
     scopeRead: "Odczyt transakcji należących do integracji",
-    scopeMetadata: "Odczyt metadata kategorii i źródeł płatności",
+    scopeMetadata: "Odczyt metadanych kategorii i źródeł płatności",
     categoryPolicy: "Dostęp do kategorii",
     sourcePolicy: "Dostęp do źródeł płatności",
     restricted: "Tylko wybrane zasoby",
@@ -351,15 +433,17 @@ export const plSettings = {
     revoked: "Unieważniono klucz",
     deleted: "Usunięto klucz",
     rotateWarning:
-      "Stary klucz przestanie działać od razu. Zmień klucz w importerze.",
-    revokeWarning: "Ten klucz przestanie działać od razu.",
-    deleteWarning: "To trwale usunie unieważniony klucz z tej listy.",
+      "Wymiana od razu unieważni stary klucz i zastosuje wybrane uprawnienia oraz ograniczenia. Zapisz nowy klucz w importerze. Transakcje nadal będą należeć do tej integracji.",
+    revokeWarning:
+      "Nowe żądania z tym kluczem zostaną od razu zablokowane. Nie można tego cofnąć. Żądanie uwierzytelnione wcześniej może się zakończyć. Transakcje pozostaną w Monqom.",
+    deleteWarning:
+      "Ukryj unieważniony klucz na liście. Historia audytu i transakcje zostaną zachowane.",
     confirmRotate: "Wymień klucz",
     confirmRevoke: "Unieważnij klucz",
     confirmDelete: "Usuń klucz",
     secretTitle: "Zapisz klucz integracji",
     secretWarning:
-      "To jedyny moment, gdy pełny klucz jest widoczny. Skopiuj go i zapisz w bezpiecznym miejscu. Nie dodawaj go do kodu ani linków.",
+      "Zapisz klucz w chronionym magazynie sekretów importera. Nie będzie można go ponownie wyświetlić. Nie dodawaj go do kodu, linków, logów, czatu ani pamięci przeglądarki. Jeśli go zgubisz, wymień klucz.",
     copyToken: "Kopiuj klucz",
     revealToken: "Pokaż klucz",
     hideToken: "Ukryj klucz",
@@ -391,7 +475,8 @@ export const plSettings = {
     stepConfirmTitle: "Sprawdź i utwórz",
     stepConfirmDescription: "Sprawdź dane i potwierdź hasłem.",
     scopeCreateTitle: "Tworzenie transakcji",
-    scopeCreateDescription: "Dodawanie importowanych transakcji.",
+    scopeCreateDescription:
+      "Dodawanie importowanych transakcji. Nie pozwala na ich odczyt, edycję, usuwanie ani odczyt metadanych.",
     scopeUpdateTitle: "Edycja własnych transakcji",
     scopeUpdateDescription:
       "Zmiana tylko transakcji utworzonych przez tę integrację.",
@@ -400,11 +485,78 @@ export const plSettings = {
       "Usuwanie tylko transakcji utworzonych przez tę integrację.",
     scopeReadOwnTitle: "Odczyt własnych transakcji",
     scopeReadOwnDescription:
-      "Odczyt tylko transakcji utworzonych przez tę integrację.",
+      "Odczyt jednej transakcji tej integracji po dokładnym external_id. Bez przeglądania listy transakcji.",
     scopeCategoriesTitle: "Odczyt kategorii",
     scopeCategoriesDescription: "Odczyt ID kategorii do importu.",
     scopeSourcesTitle: "Odczyt źródeł płatności",
     scopeSourcesDescription: "Odczyt ID źródeł płatności do importu.",
+    guideTitle: "Jak podłączyć automatyzację",
+    guideDescription:
+      "Importerowi wystarczy uprawnienie do tworzenia. Synchronizacja zmian wymaga tworzenia, edycji i usuwania własnych transakcji. Odczyt pojedynczej transakcji i metadanych jest opcjonalny.",
+    scopeIndependence:
+      "Każde uprawnienie działa niezależnie. Ograniczenia zasobów i adresów IP zawężają wybrane uprawnienia; nie dodają dostępu.",
+    refresh: "Odśwież listę",
+    inspect: "Pokaż szczegóły",
+    prefix: "Prefiks klucza",
+    credentialState: "Status klucza",
+    statusUnavailable: "Niedostępny",
+    creator: "Utworzył(a)",
+    integrationCreated: "Utworzenie integracji",
+    versionCreated: "Utworzenie wersji klucza",
+    lastUsed: "Ostatnie użycie",
+    neverUsed: "Jeszcze nieużywany",
+    revokedAt: "Unieważnienie",
+    notRecorded: "Brak wpisu",
+    workspaceId: "ID workspace do żądań API",
+    integrationId: "ID integracji",
+    credentialId: "ID wersji klucza",
+    detailsHint:
+      "Te dane mogą się przydać przy konfiguracji automatyzacji. Pełnego klucza nie można odczytać ponownie.",
+    technicalDetails: "Dane techniczne",
+    restrictionsTitle: "Ograniczenia dostępu",
+    unavailableResourceName: "Niedostępna pozycja",
+    searchResources: "Szukaj po nazwie",
+    selectedCount: "Wybrano: {{count}}",
+    noMatchingResources: "Brak pasujących pozycji.",
+    versionHistory: "Historia wersji klucza",
+    versionHistoryHint:
+      "Wymiana tworzy nową wersję w tej integracji i unieważnia poprzednią. Ukryte wersje nie są wyświetlane.",
+    createdOn: "Utworzono {{date}}",
+    revokedOn: "Unieważniono {{date}}",
+    closeDetails: "Zamknij szczegóły",
+    expiryHint:
+      "Ważna do końca wybranego dnia (23:59 w Twojej strefie czasowej). Maksymalnie rok.",
+    formSteps: "Kroki konfiguracji integracji",
+    resourcesUnavailable:
+      "Poczekaj na wczytanie kategorii i źródeł płatności lub spróbuj wczytać je ponownie.",
+    invalidResources:
+      "Wybierz maksymalnie 200 aktywnych zasobów. Usuń z wyboru pozycje archiwalne lub niedostępne.",
+    unavailableResource: "Niedostępny zasób: {{id}}",
+    noActiveResources: "Brak aktywnych zasobów do wyboru.",
+    restrictionsOnlyNarrow:
+      "Ograniczenia obowiązują przy każdym wybranym zapisie, odczycie własnej transakcji i odczycie metadanych.",
+    categoryUnrestrictedHint:
+      "Dostęp do wszystkich aktywnych kategorii w tym workspace, również do transakcji bez kategorii.",
+    uncategorizedRestricted:
+      "Lista dozwolonych kategorii blokuje też transakcje bez kategorii.",
+    emptyResourcePolicy:
+      "Żaden zasób nie jest dozwolony. Włączona pusta lista blokuje dostęp tego typu.",
+    emptyScopePolicy:
+      "Nie wybrano uprawnień. Ten klucz nie będzie mógł wykonać żadnej operacji w API integracji.",
+    cidrHint:
+      "Maksymalnie 64 zakresy IPv4/IPv6. Podaj adresy wyjściowe swojego klienta, a nie adres przeglądarki.",
+    emptyIpPolicy:
+      "Żaden adres IP nie jest dozwolony. Każde żądanie z tym kluczem zostanie odrzucone.",
+    stepUpRequired:
+      "Podaj obecne hasło i aktualny kod 2FA lub nieużyty kod odzyskiwania.",
+    stepUpFailed:
+      "Nie udało się potwierdzić hasła, drugiego składnika lub sesji. Sprawdź dostęp i spróbuj ponownie.",
+    uncertainIssuance:
+      "Jeśli odpowiedź nie dotrze, odśwież listę przed kolejną próbą. Utworzonego klucza nie da się ponownie wyświetlić; w razie potrzeby go wymień.",
+    secretLifetime:
+      "Widok zamknie się po pięciu minutach, po zamknięciu okna albo gdy opuścisz stronę lub przełączysz ją w tło. Skopiuj klucz tylko do zaufanego magazynu sekretów, a potem wyczyść schowek.",
+    copyFailed:
+      "Nie udało się skopiować do schowka. Możesz pokazać klucz i skopiować go ręcznie przed zamknięciem okna.",
   },
   privacy: {
     tab: "Prywatność",

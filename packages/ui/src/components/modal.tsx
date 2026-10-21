@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import type { ReactNode, Ref } from "react";
+import type { ComponentProps, ReactNode, Ref } from "react";
 import { cn } from "../lib/utils";
 
 interface ModalProps {
@@ -13,6 +13,7 @@ interface ModalProps {
   layer?: "default" | "nested";
   preventClose?: boolean;
   contentRef?: Ref<HTMLDivElement>;
+  finalFocus?: ComponentProps<typeof Dialog.Popup>["finalFocus"];
 }
 
 /**
@@ -43,6 +44,7 @@ export function Modal({
   layer = "default",
   preventClose = false,
   contentRef,
+  finalFocus,
 }: ModalProps) {
   const layerClassName = layer === "nested" ? "z-[70]" : "z-50";
 
@@ -68,6 +70,7 @@ export function Modal({
         >
           <Dialog.Popup
             ref={contentRef}
+            finalFocus={finalFocus}
             data-slot="modal-content"
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}

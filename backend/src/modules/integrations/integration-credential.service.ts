@@ -4,6 +4,7 @@ import {
     ForbiddenException,
     HttpException,
     Injectable,
+    NotFoundException,
     ServiceUnavailableException,
     UnauthorizedException,
 } from '@nestjs/common'
@@ -67,6 +68,16 @@ export interface CreateIntegrationCredentialInput {
     allowedCidrs?: readonly string[]
 }
 
+export type IntegrationCredentialPolicyInput = Omit<
+    CreateIntegrationCredentialInput,
+    'integrationId'
+>
+
+export interface IntegrationCredentialTarget {
+    workspaceId: string
+    integrationId: string
+}
+
 export interface CreatedIntegrationCredential {
     credentialId: string
     token: string
@@ -82,6 +93,67 @@ export class IntegrationCredentialService {
         private readonly prisma: PrismaService,
         private readonly auditService: AuditService,
     ) {}
+
+    validateCredentialPolicy(input: IntegrationCredentialPolicyInput, now = new Date()): void {
+        normalizePolicy(input, now)
+    }
+
+    async createIntegrationWithCredential(
+        input: CreateIntegrationInput & IntegrationCredentialPolicyInput,
+        now = new Date(),
+    ): Promise<CreatedIntegrationCredential & { integrationId: string }> {
+        const workspaceId = requireTrimmed(input.workspaceId, 'Workspace id')
+        const actor = requireTrimmed(input.createdByUserId, 'Creator id')
+        const name = requireTrimmed(input.name, 'Integration name')
+        if ([...name].length > 100) throw new BadRequestException('Integration name is too long')
+        const policy = normalizePolicy(input, now)
+        return this.withTokenMaterial(async (material) =>
+            this.prisma.$transaction(async (tx) => {
+                await this.lockAuthority(tx, workspaceId, actor)
+                await this.requireAdministrator(tx, workspaceId, actor)
+                await this.validateResources(tx, workspaceId, policy)
+                const integration = await tx.integration.create({
+                    data: { workspaceId, createdByUserId: actor, creatorReference: actor, name },
+                })
+                const credential = await tx.integrationCredential.create({
+                    data: {
+                        integrationId: integration.id,
+                        ...credentialData(policy, material, now),
+                    },
+                    include: policyInclude,
+                })
+                await this.auditService.record(
+                    {
+                        action: AUDIT_ACTIONS.INTEGRATION_CREATED,
+                        workspaceId,
+                        userId: actor,
+                        entityType: AUDIT_ENTITY_TYPES.INTEGRATION,
+                        entityId: integration.id,
+                        metadata: {
+                            integration_id: integration.id,
+                            previous_status: null,
+                            new_status: 'active',
+                            reason: 'CREATED',
+                        },
+                    },
+                    tx,
+                )
+                await this.recordLifecycle(
+                    tx,
+                    credential,
+                    actor,
+                    AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ISSUED,
+                    null,
+                    'ISSUED',
+                    { previous_policy: null },
+                )
+                return {
+                    integrationId: integration.id,
+                    ...issuedCredential(credential, material.token),
+                }
+            }),
+        )
+    }
 
     async createIntegration(input: CreateIntegrationInput) {
         const workspaceId = requireTrimmed(input.workspaceId, 'Workspace id')
@@ -126,7 +198,12 @@ export class IntegrationCredentialService {
                     where: { id: input.integrationId },
                 })
                 if (!integration) throw new BadRequestException('Integration is unavailable')
-                await this.lockAuthority(tx, integration.workspaceId, integration.creatorReference)
+                await this.lockManagementAuthority(
+                    tx,
+                    integration.workspaceId,
+                    integration.creatorReference,
+                    actorUserId,
+                )
                 await tx.$queryRaw`SELECT "id" FROM "integrations" WHERE "id" = ${integration.id} FOR UPDATE`
                 const current = await tx.integration.findUnique({ where: { id: integration.id } })
                 if (!current || current.status !== 'active' || !current.createdByUserId) {
@@ -157,27 +234,43 @@ export class IntegrationCredentialService {
         credentialId: string,
         now = new Date(),
         actorUserId?: string,
+        target?: IntegrationCredentialTarget,
     ): Promise<boolean> {
         return this.persistence(async () =>
             this.prisma.$transaction(async (tx) => {
-                const credential = await this.lockCredential(tx, credentialId)
-                if (!credential) return false
+                const credential = await this.lockCredential(tx, credentialId, actorUserId, target)
+                if (target) this.assertTarget(credential, target)
+                if (!credential || credential.deletedAt) return false
                 const actor = actorUserId ?? credential.integration.createdByUserId
                 if (!actor) throw new ForbiddenException('Integration management is unavailable')
                 await this.requireAdministrator(tx, credential.integration.workspaceId, actor)
-                if (credential.status === 'revoked') return false
+                if (credential.status === 'revoked') {
+                    await this.recordLifecycle(
+                        tx,
+                        credential,
+                        actor,
+                        AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED,
+                        'revoked',
+                        'ALREADY_REVOKED',
+                        { previous_policy: policySnapshot(credential) },
+                    )
+                    return false
+                }
                 const changed = await tx.integrationCredential.updateMany({
                     where: { id: credential.id, status: 'active', revokedAt: null },
                     data: { status: 'revoked', revokedAt: now },
                 })
-                if (!changed.count) return false
+                if (changed.count !== 1) {
+                    throw new ConflictException('Credential lifecycle conflict')
+                }
                 await this.recordLifecycle(
                     tx,
-                    { ...credential, status: 'revoked' },
+                    { ...credential, status: 'revoked', revokedAt: now },
                     actor,
                     AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED,
                     'active',
                     'REVOKED',
+                    { previous_policy: policySnapshot(credential) },
                 )
                 return true
             }),
@@ -189,13 +282,17 @@ export class IntegrationCredentialService {
         expiresAt: Date,
         now = new Date(),
         actorUserId?: string,
+        target?: IntegrationCredentialTarget,
+        replacementPolicy: Partial<Omit<IntegrationCredentialPolicyInput, 'expiresAt'>> = {},
     ): Promise<CreatedIntegrationCredential> {
         validateExpiry(expiresAt, now)
         return this.withTokenMaterial(async (material) =>
             this.prisma.$transaction(async (tx) => {
-                const previous = await this.lockCredential(tx, credentialId)
+                const previous = await this.lockCredential(tx, credentialId, actorUserId, target)
+                if (target) this.assertTarget(previous, target)
                 if (
                     !previous ||
+                    previous.deletedAt ||
                     previous.status !== 'active' ||
                     previous.revokedAt ||
                     previous.expiresAt <= now
@@ -215,7 +312,6 @@ export class IntegrationCredentialService {
                 await this.requireAdministrator(tx, integration.workspaceId, actor)
                 const policy = normalizePolicy(
                     {
-                        integrationId: integration.id,
                         expiresAt,
                         scopes: previous.scopes,
                         categoryAllowlistEnabled: previous.categoryAllowlistEnabled,
@@ -228,6 +324,7 @@ export class IntegrationCredentialService {
                         ),
                         cidrAllowlistEnabled: previous.cidrAllowlistEnabled,
                         allowedCidrs: previous.allowedCidrs,
+                        ...replacementPolicy,
                     },
                     now,
                 )
@@ -261,9 +358,50 @@ export class IntegrationCredentialService {
                         previous_credential_id: previous.id,
                         previous_token_prefix: previous.tokenPrefix,
                         previous_credential_status: 'revoked',
+                        previous_policy: policySnapshot(previous),
                     },
                 )
                 return issuedCredential(replacement, material.token)
+            }),
+        )
+    }
+
+    async deleteCredential(
+        credentialId: string,
+        actorUserId: string,
+        target: IntegrationCredentialTarget,
+        now = new Date(),
+    ): Promise<void> {
+        await this.persistence(() =>
+            this.prisma.$transaction(async (tx) => {
+                const credential = await this.lockCredential(tx, credentialId, actorUserId, target)
+                this.assertTarget(credential, target)
+                await this.requireAdministrator(tx, target.workspaceId, actorUserId)
+                if (credential.status !== 'revoked' || !credential.revokedAt) {
+                    throw new ConflictException('Credential must be revoked before deletion')
+                }
+                await tx.integrationCredential.update({
+                    where: { id: credential.id },
+                    data: { deletedAt: now },
+                })
+                const remaining = await tx.integrationCredential.count({
+                    where: { integrationId: target.integrationId, deletedAt: null },
+                })
+                if (remaining === 0) {
+                    await tx.integration.update({
+                        where: { id: target.integrationId },
+                        data: { status: 'deleted' },
+                    })
+                }
+                await this.recordLifecycle(
+                    tx,
+                    { ...credential, deletedAt: now },
+                    actorUserId,
+                    AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_DELETED,
+                    'revoked',
+                    'SAFELY_DELETED',
+                    { previous_policy: policySnapshot(credential), deleted_at: now.toISOString() },
+                )
             }),
         )
     }
@@ -309,6 +447,7 @@ export class IntegrationCredentialService {
             !credential ||
             !tokenMatches ||
             credential.status !== 'active' ||
+            Boolean(credential.deletedAt) ||
             credential.revokedAt !== null ||
             credential.expiresAt <= now ||
             credential.createdAt > now ||
@@ -413,21 +552,62 @@ export class IntegrationCredentialService {
         await tx.$queryRaw`SELECT 1::int AS locked FROM (SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))) AS lock`
     }
 
-    private async lockCredential(tx: Prisma.TransactionClient, credentialId: string) {
+    private async lockManagementAuthority(
+        tx: Prisma.TransactionClient,
+        workspaceId: string,
+        creator: string,
+        actor?: string,
+    ): Promise<void> {
+        // Consistent order also protects operations performed by a different administrator.
+        for (const userId of [...new Set([creator, ...(actor ? [actor] : [])])].sort()) {
+            await this.lockAuthority(tx, workspaceId, userId)
+        }
+    }
+
+    private async lockCredential(
+        tx: Prisma.TransactionClient,
+        credentialId: string,
+        actorUserId?: string,
+        target?: IntegrationCredentialTarget,
+    ) {
         const id = requireTrimmed(credentialId, 'Credential id')
         const initial = await tx.integrationCredential.findUnique({
-            where: { id },
+            where: {
+                id,
+                ...(target
+                    ? {
+                          integrationId: target.integrationId,
+                          integration: { workspaceId: target.workspaceId },
+                      }
+                    : {}),
+            },
             include: { integration: true },
         })
         if (!initial) return null
-        await this.lockAuthority(
+        await this.lockManagementAuthority(
             tx,
             initial.integration.workspaceId,
             initial.integration.creatorReference,
+            actorUserId,
         )
         await tx.$queryRaw`SELECT "id" FROM "integrations" WHERE "id" = ${initial.integrationId} FOR UPDATE`
         await tx.$queryRaw`SELECT "id" FROM "integration_credentials" WHERE "id" = ${id} FOR UPDATE`
         return tx.integrationCredential.findUnique({ where: { id }, include: policyInclude })
+    }
+
+    private assertTarget(
+        credential: CredentialWithPolicy | null,
+        target: IntegrationCredentialTarget,
+    ): asserts credential is CredentialWithPolicy {
+        if (
+            !credential ||
+            credential.deletedAt ||
+            credential.integrationId !== target.integrationId ||
+            credential.integration.workspaceId !== target.workspaceId ||
+            credential.integration.status === 'deleted'
+        ) {
+            throw new NotFoundException('Integration credential not found')
+        }
     }
 
     private async requireAdministrator(
@@ -447,15 +627,22 @@ export class IntegrationCredentialService {
         workspaceId: string,
         policy: CredentialPolicy,
     ): Promise<void> {
-        const categories = await tx.category.count({
-            where: { workspaceId, id: { in: policy.categoryIds }, deletedAt: null },
-        })
-        const sources = await tx.paymentSource.count({
-            where: { workspaceId, id: { in: policy.paymentSourceIds }, deletedAt: null },
-        })
+        // Hold resource rows until commit so archival cannot race policy validation.
+        const categories = policy.categoryIds.length
+            ? await tx.$queryRaw<{ id: string }[]>`
+            SELECT "id" FROM "categories" WHERE "workspace_id" = ${workspaceId}
+            AND "id" IN (${Prisma.join(policy.categoryIds)}) AND "deleted_at" IS NULL
+            ORDER BY "id" FOR SHARE`
+            : []
+        const sources = policy.paymentSourceIds.length
+            ? await tx.$queryRaw<{ id: string }[]>`
+            SELECT "id" FROM "payment_sources" WHERE "workspace_id" = ${workspaceId}
+            AND "id" IN (${Prisma.join(policy.paymentSourceIds)}) AND "deleted_at" IS NULL
+            ORDER BY "id" FOR SHARE`
+            : []
         if (
-            categories !== policy.categoryIds.length ||
-            sources !== policy.paymentSourceIds.length
+            categories.length !== policy.categoryIds.length ||
+            sources.length !== policy.paymentSourceIds.length
         ) {
             throw new BadRequestException('A resource restriction is invalid or archived')
         }
@@ -468,7 +655,8 @@ export class IntegrationCredentialService {
         action:
             | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ISSUED
             | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_ROTATED
-            | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED,
+            | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_REVOKED
+            | typeof AUDIT_ACTIONS.INTEGRATION_CREDENTIAL_DELETED,
         previousStatus: string | null,
         reason: string,
         extra: Prisma.InputJsonObject = {},
@@ -487,6 +675,8 @@ export class IntegrationCredentialService {
                     previous_status: previousStatus,
                     new_status: credential.status,
                     expires_at: credential.expiresAt.toISOString(),
+                    revoked_at: credential.revokedAt?.toISOString() ?? null,
+                    deleted_at: credential.deletedAt?.toISOString() ?? null,
                     scopes: credential.scopes,
                     category_allowlist_enabled: credential.categoryAllowlistEnabled,
                     category_ids: credential.categoryRestrictions.map(
@@ -497,6 +687,8 @@ export class IntegrationCredentialService {
                         ({ paymentSourceId }) => paymentSourceId,
                     ),
                     cidr_allowlist_enabled: credential.cidrAllowlistEnabled,
+                    allowed_cidrs: credential.allowedCidrs,
+                    new_policy: policySnapshot(credential),
                     reason,
                     ...extra,
                 },
@@ -551,7 +743,7 @@ interface CredentialPolicy {
     allowedCidrs: string[]
 }
 
-function normalizePolicy(input: CreateIntegrationCredentialInput, now: Date): CredentialPolicy {
+function normalizePolicy(input: IntegrationCredentialPolicyInput, now: Date): CredentialPolicy {
     if (
         typeof input.categoryAllowlistEnabled !== 'boolean' ||
         typeof input.paymentSourceAllowlistEnabled !== 'boolean'
@@ -578,6 +770,21 @@ function normalizePolicy(input: CreateIntegrationCredentialInput, now: Date): Cr
         paymentSourceIds,
         cidrAllowlistEnabled,
         allowedCidrs,
+    }
+}
+
+function policySnapshot(credential: CredentialWithPolicy): Prisma.InputJsonObject {
+    return {
+        expires_at: credential.expiresAt.toISOString(),
+        scopes: credential.scopes,
+        category_allowlist_enabled: credential.categoryAllowlistEnabled,
+        category_ids: credential.categoryRestrictions.map(({ categoryId }) => categoryId),
+        payment_source_allowlist_enabled: credential.paymentSourceAllowlistEnabled,
+        payment_source_ids: credential.paymentSourceRestrictions.map(
+            ({ paymentSourceId }) => paymentSourceId,
+        ),
+        cidr_allowlist_enabled: credential.cidrAllowlistEnabled,
+        allowed_cidrs: credential.allowedCidrs,
     }
 }
 

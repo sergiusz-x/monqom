@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Check, EyeOff, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { useCategories } from "@/hooks/useCategories";
@@ -255,7 +256,7 @@ function CategoryRow({
   onAddChild?: (category: Category) => void;
   onHide: (category: Category) => void;
   onRestore: (category: Category) => void;
-  t: ReturnType<typeof useTranslation>["t"];
+  t: TFunction;
 }) {
   const label = translateSystemLabel(t, category.systemKey, category.name);
   return (
@@ -410,9 +411,9 @@ function CategoryDialog({
       onClose={onClose}
       preventClose={saving}
       ariaLabelledBy="category-dialog-title"
-      contentClassName="max-w-lg"
+      contentClassName="flex max-w-lg flex-col overflow-hidden"
     >
-      <div className="border-b pb-4">
+      <div className="shrink-0 border-b pb-4">
         <h2 id="category-dialog-title" className="text-xl font-semibold">
           {t(category ? "categoryManagement.edit" : "categoryManagement.add")}
         </h2>
@@ -420,79 +421,81 @@ function CategoryDialog({
           {t("categoryManagement.formDescription")}
         </p>
       </div>
-      <form className="space-y-6 pt-5" onSubmit={submit} noValidate>
-        <FormField
-          id="category-name"
-          label={t("categoryManagement.name")}
-          error={nameError ?? undefined}
-          required
-        >
-          <Input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t("categoryManagement.namePlaceholder")}
-            autoFocus
-            maxLength={100}
-            aria-invalid={Boolean(nameError)}
-          />
-        </FormField>
-        <fieldset>
-          <legend className="text-sm font-medium">
-            {t("categoryManagement.kind")}
-          </legend>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("categoryManagement.kindDescription")}
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <KindChoice
-              checked={kind === "group"}
-              title={t("categoryManagement.group")}
-              description={t("categoryManagement.groupHint")}
-              onClick={() => chooseKind("group")}
-            />
-            <KindChoice
-              checked={kind === "subcategory"}
-              title={t("categoryManagement.subcategory")}
-              description={t("categoryManagement.subcategoryHint")}
-              onClick={() => chooseKind("subcategory")}
-            />
-          </div>
-        </fieldset>
-        {kind === "subcategory" ? (
+      <form className="mt-5 flex min-h-0 flex-col" onSubmit={submit} noValidate>
+        <div className="min-h-0 space-y-6 overflow-y-auto overscroll-contain pr-2">
           <FormField
-            id="category-parent"
-            label={t("categoryManagement.parent")}
+            id="category-name"
+            label={t("categoryManagement.name")}
+            error={nameError ?? undefined}
             required
           >
-            <Select
-              value={parentId}
-              onChange={(event) => setParentId(event.target.value)}
-              disabled={!parentOptions.length}
-            >
-              {parentOptions.length ? (
-                parentOptions.map((parent) => (
-                  <option key={parent.id} value={parent.id}>
-                    {parent.icon ? `${parent.icon} ` : ""}
-                    {translateSystemLabel(t, parent.systemKey, parent.name)}
-                  </option>
-                ))
-              ) : (
-                <option value="">
-                  {t("categoryManagement.noParentAvailable")}
-                </option>
-              )}
-            </Select>
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={t("categoryManagement.namePlaceholder")}
+              autoFocus
+              maxLength={100}
+              aria-invalid={Boolean(nameError)}
+            />
           </FormField>
-        ) : null}
-        <EmojiPicker value={icon} onChange={setIcon} error={iconError} />
-        <div aria-live="polite">
-          {saveError ? (
-            <Alert variant="error" compact>
-              {saveError}
-            </Alert>
+          <fieldset>
+            <legend className="text-sm font-medium">
+              {t("categoryManagement.kind")}
+            </legend>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("categoryManagement.kindDescription")}
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <KindChoice
+                checked={kind === "group"}
+                title={t("categoryManagement.group")}
+                description={t("categoryManagement.groupHint")}
+                onClick={() => chooseKind("group")}
+              />
+              <KindChoice
+                checked={kind === "subcategory"}
+                title={t("categoryManagement.subcategory")}
+                description={t("categoryManagement.subcategoryHint")}
+                onClick={() => chooseKind("subcategory")}
+              />
+            </div>
+          </fieldset>
+          {kind === "subcategory" ? (
+            <FormField
+              id="category-parent"
+              label={t("categoryManagement.parent")}
+              required
+            >
+              <Select
+                value={parentId}
+                onChange={(event) => setParentId(event.target.value)}
+                disabled={!parentOptions.length}
+              >
+                {parentOptions.length ? (
+                  parentOptions.map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.icon ? `${parent.icon} ` : ""}
+                      {translateSystemLabel(t, parent.systemKey, parent.name)}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">
+                    {t("categoryManagement.noParentAvailable")}
+                  </option>
+                )}
+              </Select>
+            </FormField>
           ) : null}
+          <EmojiPicker value={icon} onChange={setIcon} error={iconError} />
+          <div aria-live="polite">
+            {saveError ? (
+              <Alert variant="error" compact>
+                {saveError}
+              </Alert>
+            ) : null}
+          </div>
         </div>
-        <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+        <div className="mt-4 flex shrink-0 justify-end gap-2 border-t pt-4">
           <Button type="button" variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>

@@ -43,7 +43,7 @@ export interface CreateTransactionCommand {
 export interface CreateTransactionResponse {
     id: string
     workspace_id: string
-    category_id: string
+    category_id: string | null
     payment_source_id: string
     type: string
     amount: number

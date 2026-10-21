@@ -18,7 +18,25 @@ describe('external transaction contract', () => {
             fail('Expected an HTTP exception')
         } catch (error) {
             expect(error).toBeInstanceOf(HttpException)
-            expect((error as HttpException).getStatus()).toBe(HttpStatus.PRECONDITION_REQUIRED)
+            expect((error as HttpException).getStatus()).toBe(HttpStatus.BAD_REQUEST)
         }
+    })
+
+    it('distinguishes missing preconditions from malformed or unsafe versions', () => {
+        expect(() => parseExternalTransactionEtag(undefined)).toThrow(HttpException)
+        try {
+            parseExternalTransactionEtag(undefined)
+        } catch (error) {
+            expect((error as HttpException).getStatus()).toBe(428)
+        }
+        for (const value of [
+            '',
+            '*',
+            '"tx-v0"',
+            '"tx-v1", "tx-v2"',
+            '"tx-v2147483647"',
+            '"tx-v9007199254740993"',
+        ])
+            expect(() => parseExternalTransactionEtag(value)).toThrow(BadRequestException)
     })
 })

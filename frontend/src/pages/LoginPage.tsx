@@ -162,31 +162,29 @@ export default function LoginPage() {
             {...register("email", { required: t("auth.requiredEmail") })}
           />
         </FormField>
-        <FormField
-          id="password"
-          error={errors.password?.message}
-          required
-          label={
-            <span className="flex items-center justify-between">
-              <span>{t("auth.password")}</span>
-              <Link
-                to="/forgot-password"
-                className="text-xs text-primary hover:underline"
-              >
-                {t("auth.forgotPassword")}
-              </Link>
-            </span>
-          }
-        >
-          <Input
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            {...register("password", {
-              required: t("auth.requiredPassword"),
-            })}
-          />
-        </FormField>
+        <div className="relative">
+          <FormField
+            id="password"
+            error={errors.password?.message}
+            required
+            label={t("auth.password")}
+          >
+            <Input
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              {...register("password", {
+                required: t("auth.requiredPassword"),
+              })}
+            />
+          </FormField>
+          <Link
+            to="/forgot-password"
+            className="absolute top-0 right-0 text-xs text-primary hover:underline"
+          >
+            {t("auth.forgotPassword")}
+          </Link>
+        </div>
         {serverError && (
           <Alert variant="error" compact>
             {serverError}

@@ -34,7 +34,8 @@ export default function SettingsPage() {
   const { showToast } = useToast(3000);
   const canConfigure = !workspace?.role || workspace.role !== "member";
   const canManageIntegrations =
-    workspace?.role === "admin" || workspace?.role === "owner";
+    Boolean(user && !isLoading && workspace?.id === workspaceId) &&
+    (workspace?.role === "admin" || workspace?.role === "owner");
   const tabs: Array<{ id: ActiveSection; label: string }> = [
     { id: "profile", label: t("settings.profile") },
     { id: "workspace", label: t("settings.workspace") },
@@ -58,7 +59,7 @@ export default function SettingsPage() {
         />
         <nav
           aria-label={t("settings.title")}
-          className="flex w-full flex-col rounded-lg border border-border bg-muted/40 p-1 sm:flex-row"
+          className="grid w-full grid-cols-2 gap-1 rounded-lg border border-border bg-muted/40 p-1 sm:grid-cols-3 xl:grid-cols-7"
         >
           {tabs.map(({ id, label }) => (
             <Button
@@ -66,7 +67,7 @@ export default function SettingsPage() {
               type="button"
               variant="ghost"
               aria-pressed={activeSection === id}
-              className={`w-full px-4 py-2 sm:flex-1 ${
+              className={`h-auto min-h-9 w-full whitespace-normal px-2 py-2 ${
                 activeSection === id
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -109,6 +110,7 @@ export default function SettingsPage() {
         ) : activeSection === "integrations" && canManageIntegrations ? (
           <IntegrationManagementSection
             workspaceId={workspaceId}
+            role={workspace?.role}
             user={user}
             onSaved={showToast}
           />

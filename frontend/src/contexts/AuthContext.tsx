@@ -11,6 +11,7 @@ import { authApi } from "@/api/contract";
 import i18n from "@/i18n";
 import { useToast } from "@/hooks/useToast";
 import { useQueryClient } from "@tanstack/react-query";
+import { getApiErrorStatus } from "@/lib/api-errors";
 
 export interface User {
   id: string;
@@ -66,17 +67,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const id = api.interceptors.response.use(
       (res) => res,
-      (error) => {
+      async (error) => {
         if (
           error.response?.status === 401 &&
           userRef.current &&
           !sessionExpiredRef.current &&
           !isPublicAuthRequest(error.config?.url)
         ) {
-          sessionExpiredRef.current = true;
-          updateUser(null);
-          queryClient.clear();
-          showToast(i18n.t("apiErrors.authenticationRequired"), "error");
+          const identity = userRef.current.id;
+          let sessionExpired = true;
+          if (
+            isIntegrationStepUpRequest(error.config?.url, error.config?.method)
+          ) {
+            // A rejected password/second factor is also 401. Confirm session expiry
+            // without repeating the sensitive mutation or dismissing its error dialog.
+            try {
+              await authApi.authControllerMe({ timeout: 15_000 });
+              sessionExpired = false;
+            } catch (sessionError) {
+              sessionExpired = getApiErrorStatus(sessionError) === 401;
+            }
+          }
+          if (
+            sessionExpired &&
+            userRef.current?.id === identity &&
+            !sessionExpiredRef.current
+          ) {
+            sessionExpiredRef.current = true;
+            updateUser(null);
+            queryClient.clear();
+            showToast(i18n.t("apiErrors.authenticationRequired"), "error");
+          }
         }
         return Promise.reject(error);
       },
@@ -125,6 +146,15 @@ function isPublicAuthRequest(url?: string): boolean {
     "/auth/forgot-password",
     "/auth/reset-password",
   ].some((path) => url?.includes(path));
+}
+
+function isIntegrationStepUpRequest(url?: string, method?: string): boolean {
+  return (
+    method?.toLowerCase() === "post" &&
+    /^\/(?:api\/v1\/)?workspaces\/[^/]+\/integrations(?:\/[^/]+\/credentials\/[^/]+\/(?:rotate|revoke))?\/?$/.test(
+      url ?? "",
+    )
+  );
 }
 
 export function useOptionalAuth(): AuthContextValue | null {

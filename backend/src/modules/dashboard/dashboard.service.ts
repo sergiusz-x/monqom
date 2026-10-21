@@ -29,7 +29,7 @@ export interface SpendingSummaryResponse {
 }
 
 export interface CategoryBreakdownItemResponse {
-    category_id: string
+    category_id: string | null
     category_name: string
     category_system_key: string | null
     category_color: string | null
@@ -203,7 +203,7 @@ export class DashboardService {
         workspaceId: string,
         month: string,
         currency: string,
-        categorySpend: Array<{ categoryId: string; amount: number }>,
+        categorySpend: Array<{ categoryId: string | null; amount: number }>,
     ): Promise<CategoryBreakdownResponse> {
         const totalSpendingCents = categorySpend.reduce((sum, category) => sum + category.amount, 0)
 
@@ -218,7 +218,7 @@ export class DashboardService {
 
         const categories = await this.dashboardRepository.listCategoriesByIds(
             workspaceId,
-            categorySpend.map((entry) => entry.categoryId),
+            categorySpend.flatMap((entry) => (entry.categoryId === null ? [] : [entry.categoryId])),
         )
         const categoriesById = new Map(categories.map((category) => [category.id, category]))
 
@@ -228,11 +228,14 @@ export class DashboardService {
             total_spending: centsToDisplayAmount(totalSpendingCents),
             categories: categorySpend
                 .map((entry) => {
-                    const category = categoriesById.get(entry.categoryId)
+                    const category =
+                        entry.categoryId === null ? undefined : categoriesById.get(entry.categoryId)
 
                     return {
                         category_id: entry.categoryId,
-                        category_name: category?.name ?? 'Unknown category',
+                        category_name:
+                            category?.name ??
+                            (entry.categoryId === null ? 'Uncategorized' : 'Unknown category'),
                         category_system_key: category?.systemKey ?? null,
                         category_color: category?.color ?? null,
                         amount: centsToDisplayAmount(entry.amount),
@@ -252,7 +255,7 @@ export class DashboardService {
                         return nameComparison
                     }
 
-                    return left.category_id.localeCompare(right.category_id)
+                    return (left.category_id ?? '').localeCompare(right.category_id ?? '')
                 }),
         }
     }

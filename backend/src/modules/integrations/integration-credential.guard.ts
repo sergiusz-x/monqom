@@ -54,6 +54,8 @@ export class IntegrationCredentialGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<Request>()
         const response = context.switchToHttp().getResponse<Response>()
+        response.setHeader('Cache-Control', 'no-store')
+        response.setHeader('Pragma', 'no-cache')
         delete request.machine
         const clientIp = normalizeIntegrationClientIp(request.ip)
         let principal

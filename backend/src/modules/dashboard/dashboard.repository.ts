@@ -3,7 +3,7 @@ import { Category, Prisma } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
 
 export interface CategorySpendRecord {
-    categoryId: string
+    categoryId: string | null
     amount: number
 }
 

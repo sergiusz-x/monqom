@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
 import { getRequiredArrayItem } from '../../test-utils/prisma-fixtures'
 import { IntegrationManagementService } from './integration-management.service'
+import { IntegrationCredentialService } from './integration-credential.service'
 
 describe('IntegrationManagementService', () => {
     const credential = {
@@ -29,17 +30,19 @@ describe('IntegrationManagementService', () => {
         prisma = {
             integration: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
             integrationCredential: { findFirst: jest.fn(), delete: jest.fn(), count: jest.fn() },
-            category: { count: jest.fn() },
-            paymentSource: { count: jest.fn() },
+            category: { count: jest.fn().mockResolvedValue(1) },
+            paymentSource: { count: jest.fn().mockResolvedValue(1) },
         }
         service = new IntegrationManagementService(
             { verifyCurrentPassword: jest.fn() } as any,
             { verifyStepUp: jest.fn() } as any,
             {
-                createIntegration: jest.fn(),
-                createCredential: jest.fn(),
+                validateCredentialPolicy:
+                    IntegrationCredentialService.prototype.validateCredentialPolicy,
+                createIntegrationWithCredential: jest.fn(),
                 revokeCredential: jest.fn(),
                 rotateCredential: jest.fn(),
+                deleteCredential: jest.fn(),
             } as any,
             prisma,
         )
@@ -100,34 +103,32 @@ describe('IntegrationManagementService', () => {
         ).rejects.toBeInstanceOf(BadRequestException)
     })
 
-    it('requires revocation before deletion', async () => {
-        prisma.integrationCredential.findFirst.mockResolvedValue(credential)
+    it('propagates a rejected safe deletion without returning success', async () => {
+        const credentialService = (service as any).credentialService
+        credentialService.deleteCredential.mockRejectedValue(
+            new ConflictException('Credential must be revoked before deletion'),
+        )
         await expect(
-            service.remove('workspace-1', 'integration-1', 'credential-1'),
-        ).rejects.toBeInstanceOf(BadRequestException)
+            service.remove('workspace-1', 'integration-1', 'credential-1', 'admin-2'),
+        ).rejects.toBeInstanceOf(ConflictException)
         expect(prisma.integrationCredential.delete).not.toHaveBeenCalled()
     })
 
-    it('hides an integration after its last revoked credential is deleted', async () => {
-        prisma.integrationCredential.findFirst.mockResolvedValue({
-            ...credential,
-            status: 'revoked',
-        })
-        prisma.integrationCredential.count.mockResolvedValue(0)
+    it('uses safe deletion with the actual administrator and workspace-bound target', async () => {
+        const credentialService = (service as any).credentialService
+        credentialService.deleteCredential.mockResolvedValue(undefined)
 
         await expect(
-            service.remove('workspace-1', 'integration-1', 'credential-1'),
+            service.remove('workspace-1', 'integration-1', 'credential-1', 'admin-2'),
         ).resolves.toEqual({
             deleted: true,
         })
 
-        expect(prisma.integrationCredential.delete).toHaveBeenCalledWith({
-            where: { id: 'credential-1' },
+        expect(credentialService.deleteCredential).toHaveBeenCalledWith('credential-1', 'admin-2', {
+            workspaceId: 'workspace-1',
+            integrationId: 'integration-1',
         })
-        expect(prisma.integration.update).toHaveBeenCalledWith({
-            where: { id: 'integration-1' },
-            data: { status: 'deleted' },
-        })
+        expect(prisma.integrationCredential.delete).not.toHaveBeenCalled()
     })
 
     it('uses the atomic credential rotation operation', async () => {
@@ -154,6 +155,12 @@ describe('IntegrationManagementService', () => {
             expect.any(Date),
             expect.any(Date),
             'user-1',
+            { workspaceId: 'workspace-1', integrationId: 'integration-1' },
+            expect.objectContaining({
+                scopes: credential.scopes,
+                allowedCategoryIds: ['category-1'],
+                allowedPaymentSourceIds: ['source-1'],
+            }),
         )
         expect(credentialService.revokeCredential).not.toHaveBeenCalled()
         expect(result.token).toBe('mqic_new.secret')
@@ -175,6 +182,7 @@ describe('IntegrationManagementService', () => {
             'credential-1',
             expect.any(Date),
             'user-1',
+            { workspaceId: 'workspace-1', integrationId: 'integration-1' },
         )
     })
 })

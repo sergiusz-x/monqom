@@ -15,6 +15,9 @@ const CREDENTIAL_REQUEST_LIMIT = 120
 const CREDENTIAL_MUTATION_LIMIT = 60
 const SOURCE_FAILURE_LIMIT = 20
 const SOURCE_BLOCK_MS = 15 * 60_000
+const MANAGEMENT_STEP_UP_WINDOW_MS = 15 * 60_000
+const MANAGEMENT_USER_ATTEMPT_LIMIT = 5
+const MANAGEMENT_SOURCE_ATTEMPT_LIMIT = 20
 
 export class IntegrationRateLimitExceededError extends Error {
     constructor(readonly retryAfterSeconds: number) {
@@ -133,6 +136,54 @@ export class IntegrationRateLimitService implements OnModuleInit, OnModuleDestro
             },
         )
         if (retryAfter !== null) throw new IntegrationRateLimitExceededError(retryAfter)
+    }
+
+    async consumeManagementStepUp(
+        userId: string,
+        clientIp: string | undefined,
+        now?: Date,
+    ): Promise<void> {
+        // Share one user budget across workspaces, sessions and high-risk management actions.
+        // The source budget also bounds attempts spread over different human accounts.
+        const budgets: [string, number][] = [
+            [rateLimitKey('management-step-up-user', userId), MANAGEMENT_USER_ATTEMPT_LIMIT],
+            [
+                rateLimitKey(
+                    'management-step-up-source',
+                    normalizeIntegrationClientIp(clientIp) ?? 'unknown',
+                ),
+                MANAGEMENT_SOURCE_ATTEMPT_LIMIT,
+            ],
+        ]
+        for (const [keyHash, limit] of budgets) {
+            const retryAfter = await this.withState(
+                keyHash,
+                now,
+                async (tx, keyHash, state, checkedAt) => {
+                    const requests = rollingTimes(
+                        state.request_times,
+                        checkedAt,
+                        MANAGEMENT_STEP_UP_WINDOW_MS,
+                    )
+                    const until =
+                        requests.length >= limit
+                            ? expiresFirst(requests, MANAGEMENT_STEP_UP_WINDOW_MS)
+                            : null
+                    if (!until) requests.push(checkedAt)
+                    await tx.integrationRateLimit.update({
+                        where: { keyHash },
+                        data: {
+                            requestTimes: requests,
+                            mutationTimes: [],
+                            blockedUntil: null,
+                            expiresAt: new Date(checkedAt.getTime() + MANAGEMENT_STEP_UP_WINDOW_MS),
+                        },
+                    })
+                    return until ? remainingSeconds(until, checkedAt) : null
+                },
+            )
+            if (retryAfter !== null) throw new IntegrationRateLimitExceededError(retryAfter)
+        }
     }
 
     async cleanupExpired(now?: Date): Promise<number> {
