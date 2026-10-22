@@ -247,13 +247,13 @@ describe("integration settings permissions and secret lifetime", () => {
     });
     // A success toast would cover the one-time controls on narrow viewports.
     expect(saved).not.toHaveBeenCalled();
-    expect(api.create.mock.calls[0]?.[1]).toMatchObject({
+    expect(api.create.mock.calls[0]?.[2]).toMatchObject({
       scopes: [],
       category_allowlist_enabled: false,
       payment_source_allowlist_enabled: false,
       allowed_cidrs: [],
     });
-    expect(api.create.mock.calls[0]?.[2]).toMatchObject({ timeout: 30_000 });
+    expect(api.create.mock.calls[0]?.[3]).toMatchObject({ timeout: 30_000 });
     expect(dialog).not.toHaveTextContent(issued.token);
     await input.click(within(dialog).getByRole("button", { name: "Show key" }));
     expect(dialog).toHaveTextContent(issued.token);
@@ -277,7 +277,7 @@ describe("integration settings permissions and secret lifetime", () => {
     const rendered = render(view());
     await create(input);
     expect(api.create).toHaveBeenCalledTimes(1);
-    const signal = api.create.mock.calls[0]?.[2].signal as AbortSignal;
+    const signal = api.create.mock.calls[0]?.[3].signal as AbortSignal;
     rendered.rerender(view("ws-2"));
     expect(signal.aborted).toBe(true);
     await act(async () => resolve({ data: issued }));
@@ -358,7 +358,7 @@ describe("credential lifecycle and safe inspection", () => {
     );
     await input.click(screen.getByRole("button", { name: "Create key" }));
     await screen.findByRole("dialog", { name: "Save your integration key" });
-    expect(api.create.mock.calls[0]?.[1]).toMatchObject({
+    expect(api.create.mock.calls[0]?.[2]).toMatchObject({
       category_allowlist_enabled: true,
       category_ids: [],
       payment_source_allowlist_enabled: true,
@@ -409,6 +409,7 @@ describe("credential lifecycle and safe inspection", () => {
     expect(api.rotate).toHaveBeenCalledWith(
       "integration-1",
       "credential-1",
+      "",
       "ws-1",
       expect.objectContaining({
         scopes: ["transactions:update-own"],
@@ -419,7 +420,7 @@ describe("credential lifecycle and safe inspection", () => {
       }),
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    expect(api.rotate.mock.calls[0]?.[3]).not.toHaveProperty("name");
+    expect(api.rotate.mock.calls[0]?.[4]).not.toHaveProperty("name");
   });
   it("requires confirmation and the second factor before revoking", async () => {
     const input = userEvent.setup();
@@ -441,7 +442,7 @@ describe("credential lifecycle and safe inspection", () => {
     );
     await input.click(screen.getByRole("button", { name: "Revoke key" }));
     await waitFor(() => expect(api.revoke).toHaveBeenCalledTimes(1));
-    expect(api.revoke.mock.calls[0]?.[3]).toEqual({
+    expect(api.revoke.mock.calls[0]?.[4]).toEqual({
       current_password: "synthetic-password",
       two_factor_token: "123456",
     });
@@ -470,6 +471,7 @@ describe("credential lifecycle and safe inspection", () => {
       expect(api.remove).toHaveBeenCalledWith(
         "integration-1",
         "credential-1",
+        "",
         "ws-2",
         expect.any(Object),
       ),
