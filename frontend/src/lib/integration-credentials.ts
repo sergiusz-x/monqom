@@ -1,5 +1,9 @@
 import { integrationsApi } from "@/api/contract";
 import type {
+  CreateIntegrationCredentialDto,
+  CredentialStepUpDto,
+} from "@/api/client/model";
+import type {
   CredentialDraft,
   CredentialStepUp,
   Integration,
@@ -67,7 +71,9 @@ function mapIntegration(item: ApiIntegration): Integration {
 
 function policyBody(policy: IntegrationPolicy) {
   return {
-    scopes: policy.scopes,
+    // The generated model narrows scopes to the OpenAPI enum; the UI's policy
+    // values are selected from the same supported scope list.
+    scopes: policy.scopes as CreateIntegrationCredentialDto["scopes"],
     category_allowlist_enabled: policy.categoryAllowlistEnabled,
     category_ids: policy.categoryAllowlistEnabled ? policy.categoryIds : [],
     payment_source_allowlist_enabled: policy.paymentSourceAllowlistEnabled,
@@ -80,10 +86,11 @@ function policyBody(policy: IntegrationPolicy) {
 }
 
 function stepUpBody(stepUp: CredentialStepUp) {
-  return {
+  const body: CredentialStepUpDto = {
     current_password: stepUp.currentPassword,
-    two_factor_token: stepUp.twoFactorToken || undefined,
   };
+  if (stepUp.twoFactorToken) body.two_factor_token = stepUp.twoFactorToken;
+  return body;
 }
 
 function mapSecret(data: {
