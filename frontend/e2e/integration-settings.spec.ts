@@ -224,9 +224,13 @@ test("creates, inspects, replaces and revokes with no secret in browser storage 
     page.getByRole("dialog", { name: "Save your integration key" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
+  // The UI intentionally doesn't expose internal credential IDs or token
+  // prefixes. After rotation, the active credential is the only row with an
+  // enabled revoke action.
   const active = page
     .locator("li")
-    .filter({ has: page.getByText("credential-2", { exact: true }) });
+    .filter({ has: page.getByText("Active", { exact: true }) });
+  await expect(active).toHaveCount(1);
   await active.getByRole("button", { name: "Revoke", exact: true }).click();
   await page.getByLabel("Current password").fill("synthetic-password");
   await page.getByRole("button", { name: "Revoke key" }).click();

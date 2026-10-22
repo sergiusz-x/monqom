@@ -71,6 +71,39 @@ export function Modal({
           <Dialog.Popup
             ref={contentRef}
             finalFocus={finalFocus}
+            onKeyDown={(event) => {
+              if (event.key !== "Tab") return;
+
+              const popup = event.currentTarget;
+              const focusable = Array.from(
+                popup.querySelectorAll<HTMLElement>(
+                  'a[href], button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+                ),
+              ).filter(
+                (element) =>
+                  !element.closest("[hidden], [inert], [aria-hidden='true']") &&
+                  element.getClientRects().length > 0,
+              );
+
+              if (!focusable.length) {
+                event.preventDefault();
+                return;
+              }
+
+              const activeIndex = focusable.indexOf(
+                document.activeElement as HTMLElement,
+              );
+              if (event.shiftKey && activeIndex <= 0) {
+                event.preventDefault();
+                focusable[focusable.length - 1]?.focus();
+              } else if (
+                !event.shiftKey &&
+                activeIndex === focusable.length - 1
+              ) {
+                event.preventDefault();
+                focusable[0]?.focus();
+              }
+            }}
             data-slot="modal-content"
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
