@@ -43,6 +43,16 @@ import {
 } from "../base";
 // @ts-ignore
 import type { ExternalTransactionBodyDto } from "../model";
+// @ts-ignore
+import type { InlineResponse20014 } from "../model";
+// @ts-ignore
+import type { InlineResponse20015 } from "../model";
+// @ts-ignore
+import type { InlineResponse20016 } from "../model";
+// @ts-ignore
+import type { InlineResponse2011 } from "../model";
+// @ts-ignore
+import type { InlineResponse400 } from "../model";
 /**
  * ExternalTransactionsApi - axios parameter creator
  * @export
@@ -52,21 +62,18 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
 ) {
   return {
     /**
-     *
+     * Requires exactly categories:read. No other scope is implied.
+     * @summary List minimal active categories allowed by this credential
      * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerCategories: async (
+    externalCategories: async (
       workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'workspaceId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerCategories",
-        "workspaceId",
-        workspaceId,
-      );
+      assertParamExists("externalCategories", "workspaceId", workspaceId);
       const localVarPath =
         `/workspaces/{workspaceId}/external-categories`.replace(
           `{${"workspaceId"}}`,
@@ -87,6 +94,10 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication integrationCredential required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
         baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -102,42 +113,25 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       };
     },
     /**
-     *
-     * @param {string} idempotencyKey
-     * @param {string} idempotencyKey2
+     * Requires exactly transactions:create. No other scope is implied.
+     * @summary Create a transaction owned by this integration
      * @param {string} workspaceId
      * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
+     * @param {string} [idempotencyKey]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerCreate: async (
-      idempotencyKey: string,
-      idempotencyKey2: string,
+    externalCreate: async (
       workspaceId: string,
       externalTransactionBodyDto: ExternalTransactionBodyDto,
+      idempotencyKey?: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'idempotencyKey' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerCreate",
-        "idempotencyKey",
-        idempotencyKey,
-      );
-      // verify required parameter 'idempotencyKey2' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerCreate",
-        "idempotencyKey2",
-        idempotencyKey2,
-      );
       // verify required parameter 'workspaceId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerCreate",
-        "workspaceId",
-        workspaceId,
-      );
+      assertParamExists("externalCreate", "workspaceId", workspaceId);
       // verify required parameter 'externalTransactionBodyDto' is not null or undefined
       assertParamExists(
-        "externalTransactionsControllerCreate",
+        "externalCreate",
         "externalTransactionBodyDto",
         externalTransactionBodyDto,
       );
@@ -161,12 +155,12 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
-      if (idempotencyKey !== undefined && idempotencyKey !== null) {
-        localVarHeaderParameter["idempotency-key"] = String(idempotencyKey);
-      }
+      // authentication integrationCredential required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
 
-      if (idempotencyKey2 !== undefined && idempotencyKey2 !== null) {
-        localVarHeaderParameter["Idempotency-Key"] = String(idempotencyKey2);
+      if (idempotencyKey !== undefined && idempotencyKey !== null) {
+        localVarHeaderParameter["Idempotency-Key"] = String(idempotencyKey);
       }
 
       localVarHeaderParameter["Content-Type"] = "application/json";
@@ -191,163 +185,30 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       };
     },
     /**
-     *
-     * @param {string} externalId
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    externalTransactionsControllerGet: async (
-      externalId: string,
-      workspaceId: string,
-      options: AxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      // verify required parameter 'externalId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerGet",
-        "externalId",
-        externalId,
-      );
-      // verify required parameter 'workspaceId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerGet",
-        "workspaceId",
-        workspaceId,
-      );
-      const localVarPath =
-        `/workspaces/{workspaceId}/external-transactions/{externalId}`
-          .replace(`{${"externalId"}}`, encodeURIComponent(String(externalId)))
-          .replace(
-            `{${"workspaceId"}}`,
-            encodeURIComponent(String(workspaceId)),
-          );
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
-      }
-
-      const localVarRequestOptions = {
-        method: "GET",
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
-
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    externalTransactionsControllerPaymentSources: async (
-      workspaceId: string,
-      options: AxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      // verify required parameter 'workspaceId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerPaymentSources",
-        "workspaceId",
-        workspaceId,
-      );
-      const localVarPath =
-        `/workspaces/{workspaceId}/external-payment-sources`.replace(
-          `{${"workspaceId"}}`,
-          encodeURIComponent(String(workspaceId)),
-        );
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
-      }
-
-      const localVarRequestOptions = {
-        method: "GET",
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
-
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
-     * @param {string} externalId
-     * @param {string} idempotencyKey
+     * Requires exactly transactions:delete-own. No other scope is implied.
+     * @summary Soft-delete one integration-owned transaction
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
      * @param {string} ifMatch
-     * @param {string} idempotencyKey2
+     * @param {string} idempotencyKey
      * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerRemove: async (
+    externalDelete: async (
       externalId: string,
-      idempotencyKey: string,
       ifMatch: string,
-      idempotencyKey2: string,
+      idempotencyKey: string,
       workspaceId: string,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'externalId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerRemove",
-        "externalId",
-        externalId,
-      );
-      // verify required parameter 'idempotencyKey' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerRemove",
-        "idempotencyKey",
-        idempotencyKey,
-      );
+      assertParamExists("externalDelete", "externalId", externalId);
       // verify required parameter 'ifMatch' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerRemove",
-        "ifMatch",
-        ifMatch,
-      );
-      // verify required parameter 'idempotencyKey2' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerRemove",
-        "idempotencyKey2",
-        idempotencyKey2,
-      );
+      assertParamExists("externalDelete", "ifMatch", ifMatch);
+      // verify required parameter 'idempotencyKey' is not null or undefined
+      assertParamExists("externalDelete", "idempotencyKey", idempotencyKey);
       // verify required parameter 'workspaceId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerRemove",
-        "workspaceId",
-        workspaceId,
-      );
+      assertParamExists("externalDelete", "workspaceId", workspaceId);
       const localVarPath =
         `/workspaces/{workspaceId}/external-transactions/{externalId}`
           .replace(`{${"externalId"}}`, encodeURIComponent(String(externalId)))
@@ -370,16 +231,16 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
-      if (idempotencyKey !== undefined && idempotencyKey !== null) {
-        localVarHeaderParameter["idempotency-key"] = String(idempotencyKey);
-      }
+      // authentication integrationCredential required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
 
       if (ifMatch !== undefined && ifMatch !== null) {
         localVarHeaderParameter["If-Match"] = String(ifMatch);
       }
 
-      if (idempotencyKey2 !== undefined && idempotencyKey2 !== null) {
-        localVarHeaderParameter["Idempotency-Key"] = String(idempotencyKey2);
+      if (idempotencyKey !== undefined && idempotencyKey !== null) {
+        localVarHeaderParameter["Idempotency-Key"] = String(idempotencyKey);
       }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -397,58 +258,143 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       };
     },
     /**
-     *
-     * @param {string} externalId
-     * @param {string} idempotencyKey
+     * Requires exactly transactions:read-own. No other scope is implied.
+     * @summary Get one integration-owned transaction by exact external ID
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    externalGet: async (
+      externalId: string,
+      workspaceId: string,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'externalId' is not null or undefined
+      assertParamExists("externalGet", "externalId", externalId);
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists("externalGet", "workspaceId", workspaceId);
+      const localVarPath =
+        `/workspaces/{workspaceId}/external-transactions/{externalId}`
+          .replace(`{${"externalId"}}`, encodeURIComponent(String(externalId)))
+          .replace(
+            `{${"workspaceId"}}`,
+            encodeURIComponent(String(workspaceId)),
+          );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "GET",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication integrationCredential required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     * Requires exactly payment-sources:read. No other scope is implied.
+     * @summary List minimal active payment sources allowed by this credential
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    externalPaymentSources: async (
+      workspaceId: string,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists("externalPaymentSources", "workspaceId", workspaceId);
+      const localVarPath =
+        `/workspaces/{workspaceId}/external-payment-sources`.replace(
+          `{${"workspaceId"}}`,
+          encodeURIComponent(String(workspaceId)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "GET",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication integrationCredential required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     * Requires exactly transactions:update-own. No other scope is implied.
+     * @summary Replace one integration-owned transaction
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
      * @param {string} ifMatch
-     * @param {string} idempotencyKey2
+     * @param {string} idempotencyKey
      * @param {string} workspaceId
      * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerUpdate: async (
+    externalUpdate: async (
       externalId: string,
-      idempotencyKey: string,
       ifMatch: string,
-      idempotencyKey2: string,
+      idempotencyKey: string,
       workspaceId: string,
       externalTransactionBodyDto: ExternalTransactionBodyDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'externalId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerUpdate",
-        "externalId",
-        externalId,
-      );
-      // verify required parameter 'idempotencyKey' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerUpdate",
-        "idempotencyKey",
-        idempotencyKey,
-      );
+      assertParamExists("externalUpdate", "externalId", externalId);
       // verify required parameter 'ifMatch' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerUpdate",
-        "ifMatch",
-        ifMatch,
-      );
-      // verify required parameter 'idempotencyKey2' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerUpdate",
-        "idempotencyKey2",
-        idempotencyKey2,
-      );
+      assertParamExists("externalUpdate", "ifMatch", ifMatch);
+      // verify required parameter 'idempotencyKey' is not null or undefined
+      assertParamExists("externalUpdate", "idempotencyKey", idempotencyKey);
       // verify required parameter 'workspaceId' is not null or undefined
-      assertParamExists(
-        "externalTransactionsControllerUpdate",
-        "workspaceId",
-        workspaceId,
-      );
+      assertParamExists("externalUpdate", "workspaceId", workspaceId);
       // verify required parameter 'externalTransactionBodyDto' is not null or undefined
       assertParamExists(
-        "externalTransactionsControllerUpdate",
+        "externalUpdate",
         "externalTransactionBodyDto",
         externalTransactionBodyDto,
       );
@@ -474,16 +420,16 @@ export const ExternalTransactionsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
-      if (idempotencyKey !== undefined && idempotencyKey !== null) {
-        localVarHeaderParameter["idempotency-key"] = String(idempotencyKey);
-      }
+      // authentication integrationCredential required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
 
       if (ifMatch !== undefined && ifMatch !== null) {
         localVarHeaderParameter["If-Match"] = String(ifMatch);
       }
 
-      if (idempotencyKey2 !== undefined && idempotencyKey2 !== null) {
-        localVarHeaderParameter["Idempotency-Key"] = String(idempotencyKey2);
+      if (idempotencyKey !== undefined && idempotencyKey !== null) {
+        localVarHeaderParameter["Idempotency-Key"] = String(idempotencyKey);
       }
 
       localVarHeaderParameter["Content-Type"] = "application/json";
@@ -521,19 +467,23 @@ export const ExternalTransactionsApiFp = function (
     ExternalTransactionsApiAxiosParamCreator(configuration);
   return {
     /**
-     *
+     * Requires exactly categories:read. No other scope is implied.
+     * @summary List minimal active categories allowed by this credential
      * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    async externalTransactionsControllerCategories(
+    async externalCategories(
       workspaceId: string,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse20015>>
     > {
       const localVarAxiosArgs =
-        await localVarAxiosParamCreator.externalTransactionsControllerCategories(
+        await localVarAxiosParamCreator.externalCategories(
           workspaceId,
           options,
         );
@@ -545,157 +495,161 @@ export const ExternalTransactionsApiFp = function (
       );
     },
     /**
-     *
+     * Requires exactly transactions:create. No other scope is implied.
+     * @summary Create a transaction owned by this integration
+     * @param {string} workspaceId
+     * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
+     * @param {string} [idempotencyKey]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async externalCreate(
+      workspaceId: string,
+      externalTransactionBodyDto: ExternalTransactionBodyDto,
+      idempotencyKey?: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20014>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.externalCreate(
+        workspaceId,
+        externalTransactionBodyDto,
+        idempotencyKey,
+        options,
+      );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     * Requires exactly transactions:delete-own. No other scope is implied.
+     * @summary Soft-delete one integration-owned transaction
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+     * @param {string} ifMatch
      * @param {string} idempotencyKey
-     * @param {string} idempotencyKey2
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async externalDelete(
+      externalId: string,
+      ifMatch: string,
+      idempotencyKey: string,
+      workspaceId: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.externalDelete(
+        externalId,
+        ifMatch,
+        idempotencyKey,
+        workspaceId,
+        options,
+      );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     * Requires exactly transactions:read-own. No other scope is implied.
+     * @summary Get one integration-owned transaction by exact external ID
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async externalGet(
+      externalId: string,
+      workspaceId: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2011>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.externalGet(
+        externalId,
+        workspaceId,
+        options,
+      );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     * Requires exactly payment-sources:read. No other scope is implied.
+     * @summary List minimal active payment sources allowed by this credential
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async externalPaymentSources(
+      workspaceId: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<InlineResponse20016>>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.externalPaymentSources(
+          workspaceId,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     * Requires exactly transactions:update-own. No other scope is implied.
+     * @summary Replace one integration-owned transaction
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+     * @param {string} ifMatch
+     * @param {string} idempotencyKey
      * @param {string} workspaceId
      * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    async externalTransactionsControllerCreate(
+    async externalUpdate(
+      externalId: string,
+      ifMatch: string,
       idempotencyKey: string,
-      idempotencyKey2: string,
       workspaceId: string,
       externalTransactionBodyDto: ExternalTransactionBodyDto,
       options?: AxiosRequestConfig,
     ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse2011>
     > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.externalTransactionsControllerCreate(
-          idempotencyKey,
-          idempotencyKey2,
-          workspaceId,
-          externalTransactionBodyDto,
-          options,
-        );
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
+      const localVarAxiosArgs = await localVarAxiosParamCreator.externalUpdate(
+        externalId,
+        ifMatch,
+        idempotencyKey,
+        workspaceId,
+        externalTransactionBodyDto,
+        options,
       );
-    },
-    /**
-     *
-     * @param {string} externalId
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async externalTransactionsControllerGet(
-      externalId: string,
-      workspaceId: string,
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.externalTransactionsControllerGet(
-          externalId,
-          workspaceId,
-          options,
-        );
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
-      );
-    },
-    /**
-     *
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async externalTransactionsControllerPaymentSources(
-      workspaceId: string,
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.externalTransactionsControllerPaymentSources(
-          workspaceId,
-          options,
-        );
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
-      );
-    },
-    /**
-     *
-     * @param {string} externalId
-     * @param {string} idempotencyKey
-     * @param {string} ifMatch
-     * @param {string} idempotencyKey2
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async externalTransactionsControllerRemove(
-      externalId: string,
-      idempotencyKey: string,
-      ifMatch: string,
-      idempotencyKey2: string,
-      workspaceId: string,
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.externalTransactionsControllerRemove(
-          externalId,
-          idempotencyKey,
-          ifMatch,
-          idempotencyKey2,
-          workspaceId,
-          options,
-        );
-      return createRequestFunction(
-        localVarAxiosArgs,
-        globalAxios,
-        BASE_PATH,
-        configuration,
-      );
-    },
-    /**
-     *
-     * @param {string} externalId
-     * @param {string} idempotencyKey
-     * @param {string} ifMatch
-     * @param {string} idempotencyKey2
-     * @param {string} workspaceId
-     * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async externalTransactionsControllerUpdate(
-      externalId: string,
-      idempotencyKey: string,
-      ifMatch: string,
-      idempotencyKey2: string,
-      workspaceId: string,
-      externalTransactionBodyDto: ExternalTransactionBodyDto,
-      options?: AxiosRequestConfig,
-    ): Promise<
-      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
-    > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.externalTransactionsControllerUpdate(
-          externalId,
-          idempotencyKey,
-          ifMatch,
-          idempotencyKey2,
-          workspaceId,
-          externalTransactionBodyDto,
-          options,
-        );
       return createRequestFunction(
         localVarAxiosArgs,
         globalAxios,
@@ -718,130 +672,127 @@ export const ExternalTransactionsApiFactory = function (
   const localVarFp = ExternalTransactionsApiFp(configuration);
   return {
     /**
-     *
+     * Requires exactly categories:read. No other scope is implied.
+     * @summary List minimal active categories allowed by this credential
      * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerCategories(
+    externalCategories(
       workspaceId: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<Array<InlineResponse20015>> {
       return localVarFp
-        .externalTransactionsControllerCategories(workspaceId, options)
+        .externalCategories(workspaceId, options)
         .then((request) => request(axios, basePath));
     },
     /**
-     *
-     * @param {string} idempotencyKey
-     * @param {string} idempotencyKey2
+     * Requires exactly transactions:create. No other scope is implied.
+     * @summary Create a transaction owned by this integration
      * @param {string} workspaceId
      * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
+     * @param {string} [idempotencyKey]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerCreate(
-      idempotencyKey: string,
-      idempotencyKey2: string,
+    externalCreate(
       workspaceId: string,
       externalTransactionBodyDto: ExternalTransactionBodyDto,
+      idempotencyKey?: string,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse20014> {
       return localVarFp
-        .externalTransactionsControllerCreate(
-          idempotencyKey,
-          idempotencyKey2,
+        .externalCreate(
           workspaceId,
           externalTransactionBodyDto,
+          idempotencyKey,
           options,
         )
         .then((request) => request(axios, basePath));
     },
     /**
-     *
-     * @param {string} externalId
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    externalTransactionsControllerGet(
-      externalId: string,
-      workspaceId: string,
-      options?: any,
-    ): AxiosPromise<void> {
-      return localVarFp
-        .externalTransactionsControllerGet(externalId, workspaceId, options)
-        .then((request) => request(axios, basePath));
-    },
-    /**
-     *
-     * @param {string} workspaceId
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    externalTransactionsControllerPaymentSources(
-      workspaceId: string,
-      options?: any,
-    ): AxiosPromise<void> {
-      return localVarFp
-        .externalTransactionsControllerPaymentSources(workspaceId, options)
-        .then((request) => request(axios, basePath));
-    },
-    /**
-     *
-     * @param {string} externalId
-     * @param {string} idempotencyKey
+     * Requires exactly transactions:delete-own. No other scope is implied.
+     * @summary Soft-delete one integration-owned transaction
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
      * @param {string} ifMatch
-     * @param {string} idempotencyKey2
+     * @param {string} idempotencyKey
      * @param {string} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerRemove(
+    externalDelete(
       externalId: string,
-      idempotencyKey: string,
       ifMatch: string,
-      idempotencyKey2: string,
+      idempotencyKey: string,
       workspaceId: string,
       options?: any,
     ): AxiosPromise<void> {
       return localVarFp
-        .externalTransactionsControllerRemove(
+        .externalDelete(
           externalId,
-          idempotencyKey,
           ifMatch,
-          idempotencyKey2,
+          idempotencyKey,
           workspaceId,
           options,
         )
         .then((request) => request(axios, basePath));
     },
     /**
-     *
-     * @param {string} externalId
-     * @param {string} idempotencyKey
+     * Requires exactly transactions:read-own. No other scope is implied.
+     * @summary Get one integration-owned transaction by exact external ID
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    externalGet(
+      externalId: string,
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<InlineResponse2011> {
+      return localVarFp
+        .externalGet(externalId, workspaceId, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     * Requires exactly payment-sources:read. No other scope is implied.
+     * @summary List minimal active payment sources allowed by this credential
+     * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    externalPaymentSources(
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<Array<InlineResponse20016>> {
+      return localVarFp
+        .externalPaymentSources(workspaceId, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     * Requires exactly transactions:update-own. No other scope is implied.
+     * @summary Replace one integration-owned transaction
+     * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
      * @param {string} ifMatch
-     * @param {string} idempotencyKey2
+     * @param {string} idempotencyKey
      * @param {string} workspaceId
      * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    externalTransactionsControllerUpdate(
+    externalUpdate(
       externalId: string,
-      idempotencyKey: string,
       ifMatch: string,
-      idempotencyKey2: string,
+      idempotencyKey: string,
       workspaceId: string,
       externalTransactionBodyDto: ExternalTransactionBodyDto,
       options?: any,
-    ): AxiosPromise<void> {
+    ): AxiosPromise<InlineResponse2011> {
       return localVarFp
-        .externalTransactionsControllerUpdate(
+        .externalUpdate(
           externalId,
-          idempotencyKey,
           ifMatch,
-          idempotencyKey2,
+          idempotencyKey,
           workspaceId,
           externalTransactionBodyDto,
           options,
@@ -859,141 +810,129 @@ export const ExternalTransactionsApiFactory = function (
  */
 export class ExternalTransactionsApi extends BaseAPI {
   /**
-   *
+   * Requires exactly categories:read. No other scope is implied.
+   * @summary List minimal active categories allowed by this credential
    * @param {string} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof ExternalTransactionsApi
    */
-  public externalTransactionsControllerCategories(
-    workspaceId: string,
-    options?: AxiosRequestConfig,
-  ) {
+  public externalCategories(workspaceId: string, options?: AxiosRequestConfig) {
     return ExternalTransactionsApiFp(this.configuration)
-      .externalTransactionsControllerCategories(workspaceId, options)
+      .externalCategories(workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
-   *
-   * @param {string} idempotencyKey
-   * @param {string} idempotencyKey2
+   * Requires exactly transactions:create. No other scope is implied.
+   * @summary Create a transaction owned by this integration
    * @param {string} workspaceId
    * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
+   * @param {string} [idempotencyKey]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof ExternalTransactionsApi
    */
-  public externalTransactionsControllerCreate(
-    idempotencyKey: string,
-    idempotencyKey2: string,
+  public externalCreate(
     workspaceId: string,
     externalTransactionBodyDto: ExternalTransactionBodyDto,
+    idempotencyKey?: string,
     options?: AxiosRequestConfig,
   ) {
     return ExternalTransactionsApiFp(this.configuration)
-      .externalTransactionsControllerCreate(
-        idempotencyKey,
-        idempotencyKey2,
+      .externalCreate(
         workspaceId,
         externalTransactionBodyDto,
-        options,
-      )
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {string} externalId
-   * @param {string} workspaceId
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof ExternalTransactionsApi
-   */
-  public externalTransactionsControllerGet(
-    externalId: string,
-    workspaceId: string,
-    options?: AxiosRequestConfig,
-  ) {
-    return ExternalTransactionsApiFp(this.configuration)
-      .externalTransactionsControllerGet(externalId, workspaceId, options)
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {string} workspaceId
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof ExternalTransactionsApi
-   */
-  public externalTransactionsControllerPaymentSources(
-    workspaceId: string,
-    options?: AxiosRequestConfig,
-  ) {
-    return ExternalTransactionsApiFp(this.configuration)
-      .externalTransactionsControllerPaymentSources(workspaceId, options)
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {string} externalId
-   * @param {string} idempotencyKey
-   * @param {string} ifMatch
-   * @param {string} idempotencyKey2
-   * @param {string} workspaceId
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof ExternalTransactionsApi
-   */
-  public externalTransactionsControllerRemove(
-    externalId: string,
-    idempotencyKey: string,
-    ifMatch: string,
-    idempotencyKey2: string,
-    workspaceId: string,
-    options?: AxiosRequestConfig,
-  ) {
-    return ExternalTransactionsApiFp(this.configuration)
-      .externalTransactionsControllerRemove(
-        externalId,
         idempotencyKey,
-        ifMatch,
-        idempotencyKey2,
-        workspaceId,
         options,
       )
       .then((request) => request(this.axios, this.basePath));
   }
 
   /**
-   *
-   * @param {string} externalId
-   * @param {string} idempotencyKey
+   * Requires exactly transactions:delete-own. No other scope is implied.
+   * @summary Soft-delete one integration-owned transaction
+   * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
    * @param {string} ifMatch
-   * @param {string} idempotencyKey2
+   * @param {string} idempotencyKey
+   * @param {string} workspaceId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ExternalTransactionsApi
+   */
+  public externalDelete(
+    externalId: string,
+    ifMatch: string,
+    idempotencyKey: string,
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
+    return ExternalTransactionsApiFp(this.configuration)
+      .externalDelete(externalId, ifMatch, idempotencyKey, workspaceId, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   * Requires exactly transactions:read-own. No other scope is implied.
+   * @summary Get one integration-owned transaction by exact external ID
+   * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+   * @param {string} workspaceId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ExternalTransactionsApi
+   */
+  public externalGet(
+    externalId: string,
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
+    return ExternalTransactionsApiFp(this.configuration)
+      .externalGet(externalId, workspaceId, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   * Requires exactly payment-sources:read. No other scope is implied.
+   * @summary List minimal active payment sources allowed by this credential
+   * @param {string} workspaceId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ExternalTransactionsApi
+   */
+  public externalPaymentSources(
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
+    return ExternalTransactionsApiFp(this.configuration)
+      .externalPaymentSources(workspaceId, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   * Requires exactly transactions:update-own. No other scope is implied.
+   * @summary Replace one integration-owned transaction
+   * @param {string} externalId URL-encoded, trimmed, case-sensitive source ID, 1 to 200 UTF-8 bytes.
+   * @param {string} ifMatch
+   * @param {string} idempotencyKey
    * @param {string} workspaceId
    * @param {ExternalTransactionBodyDto} externalTransactionBodyDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof ExternalTransactionsApi
    */
-  public externalTransactionsControllerUpdate(
+  public externalUpdate(
     externalId: string,
-    idempotencyKey: string,
     ifMatch: string,
-    idempotencyKey2: string,
+    idempotencyKey: string,
     workspaceId: string,
     externalTransactionBodyDto: ExternalTransactionBodyDto,
     options?: AxiosRequestConfig,
   ) {
     return ExternalTransactionsApiFp(this.configuration)
-      .externalTransactionsControllerUpdate(
+      .externalUpdate(
         externalId,
-        idempotencyKey,
         ifMatch,
-        idempotencyKey2,
+        idempotencyKey,
         workspaceId,
         externalTransactionBodyDto,
         options,

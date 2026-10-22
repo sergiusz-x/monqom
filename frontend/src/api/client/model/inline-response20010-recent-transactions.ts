@@ -36,7 +36,7 @@ export interface InlineResponse20010RecentTransactions {
    * @type {string}
    * @memberof InlineResponse20010RecentTransactions
    */
-  category_id: string;
+  category_id: string | null;
   /**
    *
    * @type {string}

@@ -26,7 +26,7 @@ export interface CreateIntegrationCredentialDto {
    */
   current_password: string;
   /**
-   *
+   * Current TOTP or unused recovery code when 2FA is enabled.
    * @type {string}
    * @memberof CreateIntegrationCredentialDto
    */
@@ -44,11 +44,11 @@ export interface CreateIntegrationCredentialDto {
    */
   expires_at: string;
   /**
-   *
+   * Exact independent scopes. An empty array grants no operation.
    * @type {Array<string>}
    * @memberof CreateIntegrationCredentialDto
    */
-  scopes: Array<string>;
+  scopes: Array<CreateIntegrationCredentialDtoScopesEnum>;
   /**
    *
    * @type {Array<string>}
@@ -56,11 +56,11 @@ export interface CreateIntegrationCredentialDto {
    */
   category_ids?: Array<string>;
   /**
-   *
+   * Required explicit policy: false means unrestricted within this workspace; true uses category_ids, including an empty list.
    * @type {boolean}
    * @memberof CreateIntegrationCredentialDto
    */
-  category_allowlist_enabled?: boolean;
+  category_allowlist_enabled: boolean;
   /**
    *
    * @type {Array<string>}
@@ -68,11 +68,11 @@ export interface CreateIntegrationCredentialDto {
    */
   payment_source_ids?: Array<string>;
   /**
-   *
+   * Required explicit policy: false means unrestricted within this workspace; true uses payment_source_ids, including an empty list.
    * @type {boolean}
    * @memberof CreateIntegrationCredentialDto
    */
-  payment_source_allowlist_enabled?: boolean;
+  payment_source_allowlist_enabled: boolean;
   /**
    *
    * @type {Array<string>}
@@ -86,3 +86,15 @@ export interface CreateIntegrationCredentialDto {
    */
   cidr_allowlist_enabled?: boolean;
 }
+
+export const CreateIntegrationCredentialDtoScopesEnum = {
+  Transactionscreate: "transactions:create",
+  TransactionsreadOwn: "transactions:read-own",
+  TransactionsupdateOwn: "transactions:update-own",
+  TransactionsdeleteOwn: "transactions:delete-own",
+  Categoriesread: "categories:read",
+  PaymentSourcesread: "payment-sources:read",
+} as const;
+
+export type CreateIntegrationCredentialDtoScopesEnum =
+  (typeof CreateIntegrationCredentialDtoScopesEnum)[keyof typeof CreateIntegrationCredentialDtoScopesEnum];

@@ -67,16 +67,25 @@ export const IntegrationsApiAxiosParamCreator = function (
   return {
     /**
      *
+     * @summary Create an integration and its first credential atomically (owner/admin only).
+     * @param {string} xCsrfToken Token bound to the current browser session.
      * @param {any} workspaceId
      * @param {CreateIntegrationCredentialDto} createIntegrationCredentialDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     integrationManagementControllerCreate: async (
+      xCsrfToken: string,
       workspaceId: any,
       createIntegrationCredentialDto: CreateIntegrationCredentialDto,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
+      // verify required parameter 'xCsrfToken' is not null or undefined
+      assertParamExists(
+        "integrationManagementControllerCreate",
+        "xCsrfToken",
+        xCsrfToken,
+      );
       // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
         "integrationManagementControllerCreate",
@@ -108,6 +117,12 @@ export const IntegrationsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication monqom.sid required
+
+      if (xCsrfToken !== undefined && xCsrfToken !== null) {
+        localVarHeaderParameter["x-csrf-token"] = String(xCsrfToken);
+      }
+
       localVarHeaderParameter["Content-Type"] = "application/json";
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -131,6 +146,7 @@ export const IntegrationsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @summary Inspect safe integration metadata (owner/admin only).
      * @param {string} integrationId
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
@@ -178,6 +194,8 @@ export const IntegrationsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication monqom.sid required
+
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
         baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -194,6 +212,7 @@ export const IntegrationsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @summary List safe integration metadata (owner/admin only); never reveals secrets or digests.
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -227,6 +246,8 @@ export const IntegrationsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication monqom.sid required
+
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
         baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -243,8 +264,10 @@ export const IntegrationsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @summary Hide an already revoked credential while retaining lifecycle and audit evidence (owner/admin only).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -252,6 +275,7 @@ export const IntegrationsApiAxiosParamCreator = function (
     integrationManagementControllerRemove: async (
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       options: AxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
@@ -266,6 +290,12 @@ export const IntegrationsApiAxiosParamCreator = function (
         "integrationManagementControllerRemove",
         "credentialId",
         credentialId,
+      );
+      // verify required parameter 'xCsrfToken' is not null or undefined
+      assertParamExists(
+        "integrationManagementControllerRemove",
+        "xCsrfToken",
+        xCsrfToken,
       );
       // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
@@ -302,6 +332,12 @@ export const IntegrationsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication monqom.sid required
+
+      if (xCsrfToken !== undefined && xCsrfToken !== null) {
+        localVarHeaderParameter["x-csrf-token"] = String(xCsrfToken);
+      }
+
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
         baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -318,8 +354,10 @@ export const IntegrationsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @summary Immediately and irreversibly revoke a credential (owner/admin with step-up).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {CredentialStepUpDto} credentialStepUpDto
      * @param {*} [options] Override http request option.
@@ -328,6 +366,7 @@ export const IntegrationsApiAxiosParamCreator = function (
     integrationManagementControllerRevoke: async (
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       credentialStepUpDto: CredentialStepUpDto,
       options: AxiosRequestConfig = {},
@@ -343,6 +382,12 @@ export const IntegrationsApiAxiosParamCreator = function (
         "integrationManagementControllerRevoke",
         "credentialId",
         credentialId,
+      );
+      // verify required parameter 'xCsrfToken' is not null or undefined
+      assertParamExists(
+        "integrationManagementControllerRevoke",
+        "xCsrfToken",
+        xCsrfToken,
       );
       // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
@@ -385,6 +430,12 @@ export const IntegrationsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication monqom.sid required
+
+      if (xCsrfToken !== undefined && xCsrfToken !== null) {
+        localVarHeaderParameter["x-csrf-token"] = String(xCsrfToken);
+      }
+
       localVarHeaderParameter["Content-Type"] = "application/json";
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -408,8 +459,10 @@ export const IntegrationsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @summary Atomically replace an active, unexpired credential with no overlap (owner/admin with step-up).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {RotateIntegrationCredentialDto} rotateIntegrationCredentialDto
      * @param {*} [options] Override http request option.
@@ -418,6 +471,7 @@ export const IntegrationsApiAxiosParamCreator = function (
     integrationManagementControllerRotate: async (
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       rotateIntegrationCredentialDto: RotateIntegrationCredentialDto,
       options: AxiosRequestConfig = {},
@@ -433,6 +487,12 @@ export const IntegrationsApiAxiosParamCreator = function (
         "integrationManagementControllerRotate",
         "credentialId",
         credentialId,
+      );
+      // verify required parameter 'xCsrfToken' is not null or undefined
+      assertParamExists(
+        "integrationManagementControllerRotate",
+        "xCsrfToken",
+        xCsrfToken,
       );
       // verify required parameter 'workspaceId' is not null or undefined
       assertParamExists(
@@ -475,6 +535,12 @@ export const IntegrationsApiAxiosParamCreator = function (
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
 
+      // authentication monqom.sid required
+
+      if (xCsrfToken !== undefined && xCsrfToken !== null) {
+        localVarHeaderParameter["x-csrf-token"] = String(xCsrfToken);
+      }
+
       localVarHeaderParameter["Content-Type"] = "application/json";
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -509,12 +575,15 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
+     * @summary Create an integration and its first credential atomically (owner/admin only).
+     * @param {string} xCsrfToken Token bound to the current browser session.
      * @param {any} workspaceId
      * @param {CreateIntegrationCredentialDto} createIntegrationCredentialDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async integrationManagementControllerCreate(
+      xCsrfToken: string,
       workspaceId: any,
       createIntegrationCredentialDto: CreateIntegrationCredentialDto,
       options?: AxiosRequestConfig,
@@ -526,6 +595,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.integrationManagementControllerCreate(
+          xCsrfToken,
           workspaceId,
           createIntegrationCredentialDto,
           options,
@@ -539,6 +609,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @summary Inspect safe integration metadata (owner/admin only).
      * @param {string} integrationId
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
@@ -569,6 +640,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @summary List safe integration metadata (owner/admin only); never reveals secrets or digests.
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -596,8 +668,10 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @summary Hide an already revoked credential while retaining lifecycle and audit evidence (owner/admin only).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -605,6 +679,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     async integrationManagementControllerRemove(
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       options?: AxiosRequestConfig,
     ): Promise<
@@ -617,6 +692,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
         await localVarAxiosParamCreator.integrationManagementControllerRemove(
           integrationId,
           credentialId,
+          xCsrfToken,
           workspaceId,
           options,
         );
@@ -629,8 +705,10 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @summary Immediately and irreversibly revoke a credential (owner/admin with step-up).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {CredentialStepUpDto} credentialStepUpDto
      * @param {*} [options] Override http request option.
@@ -639,6 +717,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     async integrationManagementControllerRevoke(
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       credentialStepUpDto: CredentialStepUpDto,
       options?: AxiosRequestConfig,
@@ -652,6 +731,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
         await localVarAxiosParamCreator.integrationManagementControllerRevoke(
           integrationId,
           credentialId,
+          xCsrfToken,
           workspaceId,
           credentialStepUpDto,
           options,
@@ -665,8 +745,10 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @summary Atomically replace an active, unexpired credential with no overlap (owner/admin with step-up).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {RotateIntegrationCredentialDto} rotateIntegrationCredentialDto
      * @param {*} [options] Override http request option.
@@ -675,6 +757,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
     async integrationManagementControllerRotate(
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       rotateIntegrationCredentialDto: RotateIntegrationCredentialDto,
       options?: AxiosRequestConfig,
@@ -688,6 +771,7 @@ export const IntegrationsApiFp = function (configuration?: Configuration) {
         await localVarAxiosParamCreator.integrationManagementControllerRotate(
           integrationId,
           credentialId,
+          xCsrfToken,
           workspaceId,
           rotateIntegrationCredentialDto,
           options,
@@ -715,18 +799,22 @@ export const IntegrationsApiFactory = function (
   return {
     /**
      *
+     * @summary Create an integration and its first credential atomically (owner/admin only).
+     * @param {string} xCsrfToken Token bound to the current browser session.
      * @param {any} workspaceId
      * @param {CreateIntegrationCredentialDto} createIntegrationCredentialDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     integrationManagementControllerCreate(
+      xCsrfToken: string,
       workspaceId: any,
       createIntegrationCredentialDto: CreateIntegrationCredentialDto,
       options?: any,
     ): AxiosPromise<IssuedIntegrationCredentialResponseDto> {
       return localVarFp
         .integrationManagementControllerCreate(
+          xCsrfToken,
           workspaceId,
           createIntegrationCredentialDto,
           options,
@@ -735,6 +823,7 @@ export const IntegrationsApiFactory = function (
     },
     /**
      *
+     * @summary Inspect safe integration metadata (owner/admin only).
      * @param {string} integrationId
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
@@ -751,6 +840,7 @@ export const IntegrationsApiFactory = function (
     },
     /**
      *
+     * @summary List safe integration metadata (owner/admin only); never reveals secrets or digests.
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -765,8 +855,10 @@ export const IntegrationsApiFactory = function (
     },
     /**
      *
+     * @summary Hide an already revoked credential while retaining lifecycle and audit evidence (owner/admin only).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -774,6 +866,7 @@ export const IntegrationsApiFactory = function (
     integrationManagementControllerRemove(
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       options?: any,
     ): AxiosPromise<DeletedIntegrationCredentialResponseDto> {
@@ -781,6 +874,7 @@ export const IntegrationsApiFactory = function (
         .integrationManagementControllerRemove(
           integrationId,
           credentialId,
+          xCsrfToken,
           workspaceId,
           options,
         )
@@ -788,8 +882,10 @@ export const IntegrationsApiFactory = function (
     },
     /**
      *
+     * @summary Immediately and irreversibly revoke a credential (owner/admin with step-up).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {CredentialStepUpDto} credentialStepUpDto
      * @param {*} [options] Override http request option.
@@ -798,6 +894,7 @@ export const IntegrationsApiFactory = function (
     integrationManagementControllerRevoke(
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       credentialStepUpDto: CredentialStepUpDto,
       options?: any,
@@ -806,6 +903,7 @@ export const IntegrationsApiFactory = function (
         .integrationManagementControllerRevoke(
           integrationId,
           credentialId,
+          xCsrfToken,
           workspaceId,
           credentialStepUpDto,
           options,
@@ -814,8 +912,10 @@ export const IntegrationsApiFactory = function (
     },
     /**
      *
+     * @summary Atomically replace an active, unexpired credential with no overlap (owner/admin with step-up).
      * @param {string} integrationId
      * @param {string} credentialId
+     * @param {string} xCsrfToken
      * @param {any} workspaceId
      * @param {RotateIntegrationCredentialDto} rotateIntegrationCredentialDto
      * @param {*} [options] Override http request option.
@@ -824,6 +924,7 @@ export const IntegrationsApiFactory = function (
     integrationManagementControllerRotate(
       integrationId: string,
       credentialId: string,
+      xCsrfToken: string,
       workspaceId: any,
       rotateIntegrationCredentialDto: RotateIntegrationCredentialDto,
       options?: any,
@@ -832,6 +933,7 @@ export const IntegrationsApiFactory = function (
         .integrationManagementControllerRotate(
           integrationId,
           credentialId,
+          xCsrfToken,
           workspaceId,
           rotateIntegrationCredentialDto,
           options,
@@ -850,6 +952,8 @@ export const IntegrationsApiFactory = function (
 export class IntegrationsApi extends BaseAPI {
   /**
    *
+   * @summary Create an integration and its first credential atomically (owner/admin only).
+   * @param {string} xCsrfToken Token bound to the current browser session.
    * @param {any} workspaceId
    * @param {CreateIntegrationCredentialDto} createIntegrationCredentialDto
    * @param {*} [options] Override http request option.
@@ -857,12 +961,14 @@ export class IntegrationsApi extends BaseAPI {
    * @memberof IntegrationsApi
    */
   public integrationManagementControllerCreate(
+    xCsrfToken: string,
     workspaceId: any,
     createIntegrationCredentialDto: CreateIntegrationCredentialDto,
     options?: AxiosRequestConfig,
   ) {
     return IntegrationsApiFp(this.configuration)
       .integrationManagementControllerCreate(
+        xCsrfToken,
         workspaceId,
         createIntegrationCredentialDto,
         options,
@@ -872,6 +978,7 @@ export class IntegrationsApi extends BaseAPI {
 
   /**
    *
+   * @summary Inspect safe integration metadata (owner/admin only).
    * @param {string} integrationId
    * @param {any} workspaceId
    * @param {*} [options] Override http request option.
@@ -890,6 +997,7 @@ export class IntegrationsApi extends BaseAPI {
 
   /**
    *
+   * @summary List safe integration metadata (owner/admin only); never reveals secrets or digests.
    * @param {any} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
@@ -906,8 +1014,10 @@ export class IntegrationsApi extends BaseAPI {
 
   /**
    *
+   * @summary Hide an already revoked credential while retaining lifecycle and audit evidence (owner/admin only).
    * @param {string} integrationId
    * @param {string} credentialId
+   * @param {string} xCsrfToken
    * @param {any} workspaceId
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
@@ -916,6 +1026,7 @@ export class IntegrationsApi extends BaseAPI {
   public integrationManagementControllerRemove(
     integrationId: string,
     credentialId: string,
+    xCsrfToken: string,
     workspaceId: any,
     options?: AxiosRequestConfig,
   ) {
@@ -923,6 +1034,7 @@ export class IntegrationsApi extends BaseAPI {
       .integrationManagementControllerRemove(
         integrationId,
         credentialId,
+        xCsrfToken,
         workspaceId,
         options,
       )
@@ -931,8 +1043,10 @@ export class IntegrationsApi extends BaseAPI {
 
   /**
    *
+   * @summary Immediately and irreversibly revoke a credential (owner/admin with step-up).
    * @param {string} integrationId
    * @param {string} credentialId
+   * @param {string} xCsrfToken
    * @param {any} workspaceId
    * @param {CredentialStepUpDto} credentialStepUpDto
    * @param {*} [options] Override http request option.
@@ -942,6 +1056,7 @@ export class IntegrationsApi extends BaseAPI {
   public integrationManagementControllerRevoke(
     integrationId: string,
     credentialId: string,
+    xCsrfToken: string,
     workspaceId: any,
     credentialStepUpDto: CredentialStepUpDto,
     options?: AxiosRequestConfig,
@@ -950,6 +1065,7 @@ export class IntegrationsApi extends BaseAPI {
       .integrationManagementControllerRevoke(
         integrationId,
         credentialId,
+        xCsrfToken,
         workspaceId,
         credentialStepUpDto,
         options,
@@ -959,8 +1075,10 @@ export class IntegrationsApi extends BaseAPI {
 
   /**
    *
+   * @summary Atomically replace an active, unexpired credential with no overlap (owner/admin with step-up).
    * @param {string} integrationId
    * @param {string} credentialId
+   * @param {string} xCsrfToken
    * @param {any} workspaceId
    * @param {RotateIntegrationCredentialDto} rotateIntegrationCredentialDto
    * @param {*} [options] Override http request option.
@@ -970,6 +1088,7 @@ export class IntegrationsApi extends BaseAPI {
   public integrationManagementControllerRotate(
     integrationId: string,
     credentialId: string,
+    xCsrfToken: string,
     workspaceId: any,
     rotateIntegrationCredentialDto: RotateIntegrationCredentialDto,
     options?: AxiosRequestConfig,
@@ -978,6 +1097,7 @@ export class IntegrationsApi extends BaseAPI {
       .integrationManagementControllerRotate(
         integrationId,
         credentialId,
+        xCsrfToken,
         workspaceId,
         rotateIntegrationCredentialDto,
         options,

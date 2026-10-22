@@ -26,7 +26,7 @@ export interface RotateIntegrationCredentialDto {
    */
   current_password: string;
   /**
-   *
+   * Current TOTP or unused recovery code when 2FA is enabled.
    * @type {string}
    * @memberof RotateIntegrationCredentialDto
    */
@@ -37,4 +37,58 @@ export interface RotateIntegrationCredentialDto {
    * @memberof RotateIntegrationCredentialDto
    */
   expires_at: string;
+  /**
+   * Omit to preserve scopes; [] grants no operation.
+   * @type {Array<string>}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  scopes?: Array<RotateIntegrationCredentialDtoScopesEnum>;
+  /**
+   * Omit together with category_ids to preserve the category policy.
+   * @type {boolean}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  category_allowlist_enabled?: boolean;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  category_ids?: Array<string>;
+  /**
+   * Omit together with payment_source_ids to preserve the payment source policy.
+   * @type {boolean}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  payment_source_allowlist_enabled?: boolean;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  payment_source_ids?: Array<string>;
+  /**
+   * Omit together with allowed_cidrs to preserve the network policy.
+   * @type {boolean}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  cidr_allowlist_enabled?: boolean;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof RotateIntegrationCredentialDto
+   */
+  allowed_cidrs?: Array<string>;
 }
+
+export const RotateIntegrationCredentialDtoScopesEnum = {
+  Transactionscreate: "transactions:create",
+  TransactionsreadOwn: "transactions:read-own",
+  TransactionsupdateOwn: "transactions:update-own",
+  TransactionsdeleteOwn: "transactions:delete-own",
+  Categoriesread: "categories:read",
+  PaymentSourcesread: "payment-sources:read",
+} as const;
+
+export type RotateIntegrationCredentialDtoScopesEnum =
+  (typeof RotateIntegrationCredentialDtoScopesEnum)[keyof typeof RotateIntegrationCredentialDtoScopesEnum];

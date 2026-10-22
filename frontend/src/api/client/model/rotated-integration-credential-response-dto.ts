@@ -26,7 +26,7 @@ export interface RotatedIntegrationCredentialResponseDto {
    */
   credential_id: string;
   /**
-   *
+   * One-time replacement bearer secret. Never returned again.
    * @type {string}
    * @memberof RotatedIntegrationCredentialResponseDto
    */

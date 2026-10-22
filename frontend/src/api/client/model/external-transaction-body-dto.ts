@@ -20,11 +20,11 @@
  */
 export interface ExternalTransactionBodyDto {
   /**
-   *
+   * Case-sensitive source identity, trimmed, at most 200 UTF-8 bytes; null or omitted means no external identity.
    * @type {string}
    * @memberof ExternalTransactionBodyDto
    */
-  external_id?: string;
+  external_id?: string | null;
   /**
    *
    * @type {string}
@@ -60,7 +60,7 @@ export interface ExternalTransactionBodyDto {
    * @type {string}
    * @memberof ExternalTransactionBodyDto
    */
-  category_id: string;
+  category_id?: string | null;
   /**
    *
    * @type {string}
@@ -69,10 +69,10 @@ export interface ExternalTransactionBodyDto {
   payment_source_id: string;
   /**
    *
-   * @type {object}
+   * @type {string}
    * @memberof ExternalTransactionBodyDto
    */
-  notes?: object | null;
+  notes?: string | null;
   /**
    *
    * @type {Array<string>}
