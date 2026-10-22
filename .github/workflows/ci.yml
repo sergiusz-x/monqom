@@ -94,8 +94,14 @@ jobs:
       - run: pnpm run lint
       - run: pnpm test
       - run: pnpm run build
-      - run: pnpm exec playwright install chromium webkit
-      - run: pnpm run test:e2e
+      - name: Run Playwright E2E in matching browser image
+        run: |
+          docker run --rm --ipc=host --user "$(id -u):$(id -g)" \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace/frontend \
+            --env CI=true \
+            mcr.microsoft.com/playwright:v1.62.0-noble \
+            ./node_modules/.bin/playwright test
       - run: pnpm run check:dependency-patches
         working-directory: .
       - run: pnpm audit --prod --audit-level=high
