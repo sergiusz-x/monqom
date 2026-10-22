@@ -8,6 +8,9 @@ import type {
 } from "@/types/integration";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+// The generated client requires this header argument, while the shared Axios
+// instance injects the real session-bound CSRF token in its request interceptor.
+const GENERATED_CSRF_HEADER_PLACEHOLDER = "";
 
 // The wire contract has nullable timestamp strings; older generated models use object.
 // Keep that compatibility boundary here rather than casting data inside components.
@@ -114,6 +117,7 @@ export async function createIntegrationCredential(
   signal: AbortSignal,
 ) {
   const response = await integrationsApi.integrationManagementControllerCreate(
+    GENERATED_CSRF_HEADER_PLACEHOLDER,
     workspaceId,
     {
       name: draft.name,
@@ -143,6 +147,7 @@ export async function rotateIntegrationCredential(
   const response = await integrationsApi.integrationManagementControllerRotate(
     integrationId,
     credentialId,
+    GENERATED_CSRF_HEADER_PLACEHOLDER,
     workspaceId,
     body,
     { signal, timeout: REQUEST_TIMEOUT_MS },
@@ -160,6 +165,7 @@ export async function revokeIntegrationCredential(
   await integrationsApi.integrationManagementControllerRevoke(
     integrationId,
     credentialId,
+    GENERATED_CSRF_HEADER_PLACEHOLDER,
     workspaceId,
     stepUpBody(stepUp),
     { signal, timeout: REQUEST_TIMEOUT_MS },
@@ -175,6 +181,7 @@ export async function deleteIntegrationCredential(
   await integrationsApi.integrationManagementControllerRemove(
     integrationId,
     credentialId,
+    GENERATED_CSRF_HEADER_PLACEHOLDER,
     workspaceId,
     { signal, timeout: REQUEST_TIMEOUT_MS },
   );
