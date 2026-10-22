@@ -264,9 +264,9 @@ function IntegrationManagementPanel({
                     className="rounded-lg border border-border p-3 text-sm"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <code className="break-all">
-                        {credential.tokenPrefix}
-                      </code>
+                      <span className="break-words font-medium">
+                        {integration.name}
+                      </span>
                       <span className="rounded-full bg-muted px-2 py-1 text-xs">
                         {t(CREDENTIAL_STATUS_COPY[status])}
                       </span>

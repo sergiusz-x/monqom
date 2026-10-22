@@ -1,5 +1,7 @@
 services:
   migrate:
+    labels:
+      traefik.enable: "false"
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -15,6 +17,8 @@ services:
     restart: "no"
 
   backend:
+    labels:
+      traefik.enable: "false"
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -34,7 +38,8 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:?EMAIL_FROM is required}
       TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-true}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required}
-      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-2}
+      # Fixed topology: Traefik -> frontend nginx -> backend.
+      TRUST_PROXY_HOPS: "2"
       EMAIL_OUTBOX_ENCRYPTION_KEY: ${EMAIL_OUTBOX_ENCRYPTION_KEY:?EMAIL_OUTBOX_ENCRYPTION_KEY is required}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:

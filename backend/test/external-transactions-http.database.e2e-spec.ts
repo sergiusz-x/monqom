@@ -1013,9 +1013,12 @@ describe('external lifecycle HTTP with authoritative PostgreSQL authentication',
         const actor = await issue(INTEGRATION_SCOPES)
         function example(index: number, token = actor.token) {
             const [header, payload] = examples[index]!.replace(/\r/g, '')
-                .replaceAll('ws_example', workspaceId)
-                .replaceAll('source_example', sourceId)
-                .replaceAll('<credential>', token)
+                .split('ws_example')
+                .join(workspaceId)
+                .split('source_example')
+                .join(sourceId)
+                .split('<credential>')
+                .join(token)
                 .split('\n\n')
             const [line, ...headers] = header!.split('\n')
             const match = /^(POST|GET|PUT|DELETE) (\S+) HTTP\/1.1$/.exec(line!)!

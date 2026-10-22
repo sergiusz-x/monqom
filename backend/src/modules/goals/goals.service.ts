@@ -52,10 +52,10 @@ export class GoalsService {
     }
 
     async create(workspaceId: string, userId: string, body: CreateGoalDto) {
-        const context = await this.context(workspaceId)
-        const targetDate = parseTargetDate(body.target_date, context.today)
         const initialAmount = toCents(body.initial_amount ?? 0)
-        const goal = await this.runSerializable(async (tx) => {
+        const { goal, context } = await this.runSerializable(async (tx) => {
+            const context = await this.context(workspaceId, tx)
+            const targetDate = parseTargetDate(body.target_date, context.today)
             const created = await tx.goal.create({
                 data: {
                     workspaceId,
@@ -83,7 +83,7 @@ export class GoalsService {
                 },
                 tx,
             )
-            return created
+            return { goal: created, context }
         })
         return mapGoal(goal, context.today, true)
     }
@@ -279,8 +279,8 @@ export class GoalsService {
         })
     }
 
-    private async context(workspaceId: string) {
-        const workspace = await this.workspaceService.getWorkspaceById(workspaceId)
+    private async context(workspaceId: string, tx?: Prisma.TransactionClient) {
+        const workspace = await this.workspaceService.getWorkspaceById(workspaceId, tx)
         return {
             currency: workspace.baseCurrency,
             today: dateInTimeZone(new Date(), workspace.timezone),
@@ -452,12 +452,15 @@ function dateString(date: Date): string {
 }
 
 function isSerializationConflict(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: string }).code === 'P2034'
-    )
+    if (typeof error !== 'object' || error === null || !('code' in error)) return false
+    if (error.code === 'P2034') return true
+    if (error.code !== 'P2010' || !('meta' in error)) return false
+    const meta = error.meta as {
+        code?: string
+        driverAdapterError?: { cause?: { originalCode?: string } }
+    } | null
+    // Raw row-lock queries expose PostgreSQL's serialization conflict through P2010.
+    return meta?.code === '40001' || meta?.driverAdapterError?.cause?.originalCode === '40001'
 }
 
 function goalAudit(goal: Goal) {

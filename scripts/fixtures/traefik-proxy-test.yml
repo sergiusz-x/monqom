@@ -1,0 +1,16 @@
+http:
+  routers:
+    plain:
+      rule: PathPrefix(`/`)
+      entryPoints: [web]
+      service: frontend
+    secure:
+      rule: PathPrefix(`/`)
+      entryPoints: [websecure]
+      service: frontend
+      tls: {}
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: http://frontend:8080

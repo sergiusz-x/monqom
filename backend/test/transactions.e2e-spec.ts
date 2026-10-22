@@ -1093,6 +1093,10 @@ function createPrismaMock(): PrismaMock {
         $queryRaw: async <T>(query: Prisma.Sql) => {
             const renderedQuery = query.strings.join(' ')
 
+            if (renderedQuery.includes('base_currency AS "baseCurrency"')) {
+                return [{ baseCurrency: 'USD', timezone: 'UTC' }] as T
+            }
+
             if (renderedQuery.includes('WITH input_tags')) {
                 return normalizeInputTags(query) as T
             }

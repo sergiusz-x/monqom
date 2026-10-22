@@ -134,6 +134,7 @@ interface PrismaMock {
             }
         }): Promise<StoredAuditEvent>
     }
+    $queryRaw<T = unknown>(): Promise<T>
     $transaction<T>(callback: (tx: PrismaMock) => Promise<T>): Promise<T>
     $connect(): Promise<void>
     $disconnect(): Promise<void>
@@ -518,6 +519,7 @@ function createPrismaMock(): PrismaMock {
                 return auditEvent
             },
         },
+        $queryRaw: async <T>() => [{ baseCurrency: 'USD', timezone: 'UTC' }] as T,
         $transaction: async <T>(callback: (tx: PrismaMock) => Promise<T>) => callback(prismaMock),
         $connect: async () => undefined,
         $disconnect: async () => undefined,

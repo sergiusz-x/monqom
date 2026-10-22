@@ -11,6 +11,7 @@ import {
 import { IntegrationIdempotencyRecord, Prisma } from '@prisma/client'
 import { createHash } from 'crypto'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { lockWorkspaceCurrency } from '../../shared/database/workspace-financial-lock'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
@@ -521,10 +522,7 @@ export class ExternalTransactionOwnershipService implements OnModuleInit, OnModu
         command: ExternalTransactionCreateCommand,
         tx: Prisma.TransactionClient,
     ) {
-        const workspace = await tx.workspace.findUniqueOrThrow({
-            where: { id: workspaceId },
-            select: { baseCurrency: true },
-        })
+        const workspace = await lockWorkspaceCurrency(tx, workspaceId)
         const quote = await this.currencyService.getHistoricalQuote(
             command.currency,
             workspace.baseCurrency,
