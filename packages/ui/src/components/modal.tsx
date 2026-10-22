@@ -75,6 +75,10 @@ export function Modal({
               if (event.key !== "Tab") return;
 
               const popup = event.currentTarget;
+              // JSDOM doesn't calculate layout, so let Base UI's focus trap
+              // handle keyboard events in layout-free test environments.
+              if (!popup.getClientRects().length) return;
+
               const focusable = Array.from(
                 popup.querySelectorAll<HTMLElement>(
                   'a[href], button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
