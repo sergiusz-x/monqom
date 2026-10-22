@@ -1,5 +1,6 @@
 import { LoggerService } from '@nestjs/common'
 import { createLogger, format, transports, Logger, Logform } from 'winston'
+import { redactSensitiveValue } from '../security/log-redaction'
 
 const { combine, errors, json, printf, timestamp } = format
 const colorizer = format.colorize()
@@ -37,6 +38,7 @@ export const logger: Logger = createLogger({
     defaultMeta: { service: 'api' },
     format: combine(
         errors({ stack: true }),
+        format((info) => redactSensitiveValue(info) as Logform.TransformableInfo)(),
         timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         process.env.NODE_ENV === 'production' ? json() : devFormat,
     ),

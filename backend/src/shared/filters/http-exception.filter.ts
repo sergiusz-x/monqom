@@ -1,6 +1,11 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { logger } from '../utils/logger'
+import {
+    isMachineApiRequest,
+    redactSensitiveValue,
+    safeRequestLogPath,
+} from '../security/log-redaction'
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -50,22 +55,28 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         responseBody.code = code
 
-        if (process.env.NODE_ENV !== 'production' && exception instanceof Error) {
+        const machineRequest = isMachineApiRequest(request)
+        if (
+            process.env.NODE_ENV !== 'production' &&
+            !machineRequest &&
+            exception instanceof Error
+        ) {
             responseBody.stack = exception.stack
         }
 
         if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
             logger.error(
-                `${request.method} ${request.originalUrl} ${statusCode} ${formatLogMessage(message)}`,
+                `${request.method} ${safeRequestLogPath(request)} ${statusCode} ${machineRequest ? 'Machine request failed' : formatLogMessage(message)}`,
                 {
                     context_name: 'ExceptionsHandler',
                     request_id: request.id,
-                    stack: exception instanceof Error ? exception.stack : undefined,
+                    stack:
+                        !machineRequest && exception instanceof Error ? exception.stack : undefined,
                 },
             )
         }
 
-        response.status(statusCode).json(responseBody)
+        response.status(statusCode).json(redactSensitiveValue(responseBody))
     }
 }
 
@@ -79,6 +90,7 @@ function errorCodeForStatus(status: number): string {
         [HttpStatus.PRECONDITION_FAILED]: 'PRECONDITION_FAILED',
         [HttpStatus.PRECONDITION_REQUIRED]: 'PRECONDITION_REQUIRED',
         [HttpStatus.TOO_MANY_REQUESTS]: 'RATE_LIMITED',
+        [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
     }
 
     return codes[status] ?? 'INTERNAL_ERROR'
@@ -94,6 +106,7 @@ function errorLabelForStatus(status: number): string | undefined {
         [HttpStatus.PRECONDITION_FAILED]: 'Precondition Failed',
         [HttpStatus.PRECONDITION_REQUIRED]: 'Precondition Required',
         [HttpStatus.TOO_MANY_REQUESTS]: 'Too Many Requests',
+        [HttpStatus.SERVICE_UNAVAILABLE]: 'Service Unavailable',
     }
 
     return labels[status]

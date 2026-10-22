@@ -22,7 +22,7 @@ describe('WorkspaceService', () => {
     >
 
     beforeEach(() => {
-        transactionClient = {}
+        transactionClient = { $queryRaw: jest.fn().mockResolvedValue([]) }
         prisma = {
             $transaction: jest.fn(async (callback: (tx: object) => Promise<unknown>) =>
                 callback(transactionClient),
@@ -174,7 +174,7 @@ describe('WorkspaceService', () => {
         workspaceRepository.findWorkspaceById.mockResolvedValue(workspace as never)
 
         await expect(service.getWorkspaceById(' workspace-1 ')).resolves.toEqual(workspace)
-        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1', undefined)
     })
 
     it('updates and normalizes workspace settings including its name', async () => {
@@ -311,7 +311,7 @@ describe('WorkspaceService', () => {
             workspace,
         )
         expect(workspaceRepository.checkMembership).toHaveBeenCalledWith('user-1', 'workspace-1')
-        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1')
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-1', undefined)
     })
 
     it('rejects workspace details when the user is not a member', async () => {
@@ -329,7 +329,7 @@ describe('WorkspaceService', () => {
         workspaceRepository.findWorkspaceById.mockResolvedValue(null)
 
         await expect(service.getWorkspaceById('workspace-2')).rejects.toThrow('Workspace not found')
-        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-2')
+        expect(workspaceRepository.findWorkspaceById).toHaveBeenCalledWith('workspace-2', undefined)
     })
 
     it('exports membership checks for other modules', async () => {

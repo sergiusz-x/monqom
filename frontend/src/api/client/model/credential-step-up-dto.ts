@@ -26,7 +26,7 @@ export interface CredentialStepUpDto {
    */
   current_password: string;
   /**
-   *
+   * Current TOTP or unused recovery code when 2FA is enabled.
    * @type {string}
    * @memberof CredentialStepUpDto
    */

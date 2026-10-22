@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { logger } from '../utils/logger'
+import { safeRequestLogPath } from '../security/log-redaction'
 
 /**
  * Middleware that logs the incoming request and the outgoing response.
@@ -10,7 +11,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
 
     res.on('finish', () => {
         const duration = Date.now() - start
-        const message = `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`
+        const message = `${req.method} ${safeRequestLogPath(req)} ${res.statusCode} ${duration}ms`
         const metadata = {
             context_name: 'HTTP',
             request_id: req.id,

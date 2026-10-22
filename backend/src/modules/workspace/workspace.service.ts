@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common'
 import { Prisma, Workspace } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { lockWorkspaceCurrency } from '../../shared/database/workspace-financial-lock'
 import {
     UserWorkspaceRecord,
     WorkspaceDetailsRecord,
@@ -47,10 +48,16 @@ export class WorkspaceService {
         return this.workspaceRepository.findWorkspacesByUserId(normalizedUserId)
     }
 
-    async getWorkspaceById(workspaceId: string): Promise<WorkspaceDetailsRecord> {
+    async getWorkspaceById(
+        workspaceId: string,
+        tx?: Prisma.TransactionClient,
+    ): Promise<WorkspaceDetailsRecord> {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
-
-        const workspace = await this.workspaceRepository.findWorkspaceById(normalizedWorkspaceId)
+        if (tx) await lockWorkspaceCurrency(tx, normalizedWorkspaceId)
+        const workspace = await this.workspaceRepository.findWorkspaceById(
+            normalizedWorkspaceId,
+            tx,
+        )
 
         if (!workspace) {
             throw new NotFoundException(WORKSPACE_NOT_FOUND_MESSAGE)
@@ -89,6 +96,9 @@ export class WorkspaceService {
 
         return this.prisma.$transaction(
             async (tx) => {
+                // Take the exclusive counterpart of the financial writers' currency lock.
+                // READ COMMITTED makes the subsequent counts see writers that finished while waiting.
+                await tx.$queryRaw`SELECT id FROM workspaces WHERE id = ${normalizedWorkspaceId} FOR UPDATE`
                 const workspace = await this.workspaceRepository.findWorkspaceById(
                     normalizedWorkspaceId,
                     tx,
@@ -144,7 +154,7 @@ export class WorkspaceService {
                     baseCurrencyLocked: workspace.baseCurrencyLocked,
                 }
             },
-            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+            { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
         )
     }
 

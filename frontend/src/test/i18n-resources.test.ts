@@ -29,6 +29,15 @@ describe("modular i18n resources", () => {
       translateSystemLabel(i18n.t, "categories.groceries", "Backend groceries"),
     ).toBe("Zakupy spożywcze");
   });
+  it.each([
+    [1, "1 podkategoria"],
+    [2, "2 podkategorie"],
+    [5, "5 podkategorii"],
+    [22, "22 podkategorie"],
+  ])("uses Polish plural forms for %s subcategories", async (count, label) => {
+    await i18n.changeLanguage("pl");
+    expect(i18n.t("categoryManagement.childrenCount", { count })).toBe(label);
+  });
 
   it("preserves the API label for unknown or user-defined keys", async () => {
     await i18n.changeLanguage("pl");

@@ -9,8 +9,8 @@ export interface CreateTransactionRecordInput {
     /** Omitted for a machine-owned transaction; machine activity has no user session. */
     userId?: string
     integrationId?: string
-    externalId?: string
-    categoryId: string
+    externalId?: string | null
+    categoryId: string | null
     paymentSourceId: string
     type: string
     amount: number
@@ -30,9 +30,11 @@ export interface UpdateTransactionRecordInput {
     workspaceId: string
     transactionId: string
     expectedVersion?: number
+    integrationId?: string
+    externalId?: string
     userId?: string
     previousTransaction?: TransactionWithTags
-    categoryId: string
+    categoryId: string | null
     paymentSourceId: string
     type: string
     amount: number
@@ -91,7 +93,7 @@ export type TransactionWithTags = Transaction & {
 export interface ListedTransactionRecord {
     id: string
     workspace_id: string
-    category_id: string
+    category_id: string | null
     payment_source_id: string
     type: string
     amount: number
@@ -308,6 +310,8 @@ export class TransactionsRepository {
                     workspaceId: input.workspaceId,
                     id: input.transactionId,
                     deletedAt: null,
+                    ...(input.integrationId ? { integrationId: input.integrationId } : {}),
+                    ...(input.externalId ? { externalId: input.externalId } : {}),
                     ...(input.expectedVersion !== undefined
                         ? { version: input.expectedVersion }
                         : {}),

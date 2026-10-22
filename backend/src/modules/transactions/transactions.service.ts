@@ -43,7 +43,7 @@ export interface CreateTransactionCommand {
 export interface CreateTransactionResponse {
     id: string
     workspace_id: string
-    category_id: string
+    category_id: string | null
     payment_source_id: string
     type: string
     amount: number
@@ -141,55 +141,58 @@ export class TransactionsService {
         const transactionDate = validatedInput.date
         const description = validatedInput.description
         const currency = normalizeCurrency(input.currency ?? 'USD')
-        const workspace = this.workspaceService
-            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
-            : ({ baseCurrency: 'USD' } as const)
-        const fx = this.currencyService
-            ? await this.currencyService.getHistoricalQuote(
-                  currency,
-                  workspace.baseCurrency,
-                  transactionDate,
-              )
-            : { rate: 1, rateDate: transactionDate, source: 'legacy' as const }
-        const baseAmount = Math.round(amountCents * fx.rate)
+        return this.prisma.$transaction(
+            async (tx) => {
+                const workspace = this.workspaceService
+                    ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId, tx)
+                    : ({ baseCurrency: 'USD' } as const)
+                const fx = this.currencyService
+                    ? await this.currencyService.getHistoricalQuote(
+                          currency,
+                          workspace.baseCurrency,
+                          transactionDate,
+                      )
+                    : { rate: 1, rateDate: transactionDate, source: 'legacy' as const }
+                const baseAmount = Math.round(amountCents * fx.rate)
 
-        return this.prisma.$transaction(async (tx) => {
-            await this.assertValidTransactionReferences(
-                normalizedWorkspaceId,
-                categoryId,
-                validatedInput.paymentSourceId!,
-                tx,
-                undefined,
-                transactionType,
-            )
-
-            const transaction = await this.transactionsRepository.createTransactionWithTags(
-                {
-                    workspaceId: normalizedWorkspaceId,
-                    userId: normalizedUserId,
+                await this.assertValidTransactionReferences(
+                    normalizedWorkspaceId,
                     categoryId,
-                    paymentSourceId: validatedInput.paymentSourceId!,
-                    type: transactionType,
-                    amount: amountCents,
-                    currency,
-                    ...(this.currencyService
-                        ? {
-                              baseAmount,
-                              fxRate: fx.rate,
-                              fxRateDate: fx.rateDate,
-                              fxSource: fx.source,
-                          }
-                        : {}),
-                    date: transactionDate,
-                    description,
-                    notes: validatedInput.notes,
-                    tags: validatedInput.tags,
-                },
-                tx,
-            )
+                    validatedInput.paymentSourceId!,
+                    tx,
+                    undefined,
+                    transactionType,
+                )
 
-            return mapCreateTransactionResponse(transaction)
-        })
+                const transaction = await this.transactionsRepository.createTransactionWithTags(
+                    {
+                        workspaceId: normalizedWorkspaceId,
+                        userId: normalizedUserId,
+                        categoryId,
+                        paymentSourceId: validatedInput.paymentSourceId!,
+                        type: transactionType,
+                        amount: amountCents,
+                        currency,
+                        ...(this.currencyService
+                            ? {
+                                  baseAmount,
+                                  fxRate: fx.rate,
+                                  fxRateDate: fx.rateDate,
+                                  fxSource: fx.source,
+                              }
+                            : {}),
+                        date: transactionDate,
+                        description,
+                        notes: validatedInput.notes,
+                        tags: validatedInput.tags,
+                    },
+                    tx,
+                )
+
+                return mapCreateTransactionResponse(transaction)
+            },
+            { maxWait: 10_000, timeout: 30_000 },
+        )
     }
 
     async getTransactionById(
@@ -237,80 +240,83 @@ export class TransactionsService {
         const transactionDate = validatedInput.date
         const description = validatedInput.description
         const currency = normalizeCurrency(input.currency ?? 'USD')
-        const workspace = this.workspaceService
-            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
-            : ({ baseCurrency: 'USD' } as const)
-        const fx = this.currencyService
-            ? await this.currencyService.getHistoricalQuote(
-                  currency,
-                  workspace.baseCurrency,
-                  transactionDate,
-              )
-            : { rate: 1, rateDate: transactionDate, source: 'legacy' as const }
-        const baseAmount = Math.round(amountCents * fx.rate)
+        return this.prisma.$transaction(
+            async (tx) => {
+                const workspace = this.workspaceService
+                    ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId, tx)
+                    : ({ baseCurrency: 'USD' } as const)
+                const fx = this.currencyService
+                    ? await this.currencyService.getHistoricalQuote(
+                          currency,
+                          workspace.baseCurrency,
+                          transactionDate,
+                      )
+                    : { rate: 1, rateDate: transactionDate, source: 'legacy' as const }
+                const baseAmount = Math.round(amountCents * fx.rate)
 
-        return this.prisma.$transaction(async (tx) => {
-            const existingTransaction = await this.transactionsRepository.findTransactionById(
-                normalizedWorkspaceId,
-                normalizedTransactionId,
-                tx,
-            )
+                const existingTransaction = await this.transactionsRepository.findTransactionById(
+                    normalizedWorkspaceId,
+                    normalizedTransactionId,
+                    tx,
+                )
 
-            if (!existingTransaction) {
-                throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
-            }
+                if (!existingTransaction) {
+                    throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+                }
 
-            const transactionType =
-                existingTransaction.type === INCOME_TRANSACTION_TYPE
-                    ? INCOME_TRANSACTION_TYPE
-                    : EXPENSE_TRANSACTION_TYPE
+                const transactionType =
+                    existingTransaction.type === INCOME_TRANSACTION_TYPE
+                        ? INCOME_TRANSACTION_TYPE
+                        : EXPENSE_TRANSACTION_TYPE
 
-            await this.assertValidTransactionReferences(
-                normalizedWorkspaceId,
-                categoryId,
-                validatedInput.paymentSourceId!,
-                tx,
-                existingTransaction.paymentSourceId,
-                transactionType,
-            )
-
-            const transaction = await this.transactionsRepository.updateTransactionWithTags(
-                {
-                    workspaceId: normalizedWorkspaceId,
-                    transactionId: normalizedTransactionId,
-                    ...(userId
-                        ? {
-                              userId: normalizeRequiredValue(userId, 'User id'),
-                              previousTransaction: existingTransaction,
-                          }
-                        : {}),
+                await this.assertValidTransactionReferences(
+                    normalizedWorkspaceId,
                     categoryId,
-                    paymentSourceId: validatedInput.paymentSourceId!,
-                    type: transactionType,
-                    amount: amountCents,
-                    currency,
-                    ...(this.currencyService
-                        ? {
-                              baseAmount,
-                              fxRate: fx.rate,
-                              fxRateDate: fx.rateDate,
-                              fxSource: fx.source,
-                          }
-                        : {}),
-                    date: transactionDate,
-                    description,
-                    notes: validatedInput.notes,
-                    tags: validatedInput.tags,
-                },
-                tx,
-            )
+                    validatedInput.paymentSourceId!,
+                    tx,
+                    existingTransaction.paymentSourceId,
+                    transactionType,
+                )
 
-            if (!transaction) {
-                throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
-            }
+                const transaction = await this.transactionsRepository.updateTransactionWithTags(
+                    {
+                        workspaceId: normalizedWorkspaceId,
+                        transactionId: normalizedTransactionId,
+                        ...(userId
+                            ? {
+                                  userId: normalizeRequiredValue(userId, 'User id'),
+                                  previousTransaction: existingTransaction,
+                              }
+                            : {}),
+                        categoryId,
+                        paymentSourceId: validatedInput.paymentSourceId!,
+                        type: transactionType,
+                        amount: amountCents,
+                        currency,
+                        ...(this.currencyService
+                            ? {
+                                  baseAmount,
+                                  fxRate: fx.rate,
+                                  fxRateDate: fx.rateDate,
+                                  fxSource: fx.source,
+                              }
+                            : {}),
+                        date: transactionDate,
+                        description,
+                        notes: validatedInput.notes,
+                        tags: validatedInput.tags,
+                    },
+                    tx,
+                )
 
-            return mapCreateTransactionResponse(transaction)
-        })
+                if (!transaction) {
+                    throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+                }
+
+                return mapCreateTransactionResponse(transaction)
+            },
+            { maxWait: 10_000, timeout: 30_000 },
+        )
     }
 
     async deleteTransaction(

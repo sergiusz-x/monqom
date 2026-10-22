@@ -11,7 +11,9 @@ import { AllExceptionsFilter } from './shared/filters/http-exception.filter'
 import { appLogger } from './shared/utils/logger'
 import { createSessionOptions } from './shared/session/session.config'
 import { createCorsOptions } from './shared/http/cors.config'
-import { csrfProtectionMiddleware } from './shared/security/csrf'
+import { createAuditedCsrfProtectionMiddleware } from './shared/security/csrf'
+import { IntegrationManagementAuditService } from './modules/integrations/integration-management-audit.service'
+import { externalApiBodyMiddleware } from './modules/integrations/external-api-body.middleware'
 import { createRequestValidationPipe } from './shared/validation/request-validation.pipe'
 import type { RuntimeConfig } from './config/env'
 
@@ -22,6 +24,7 @@ async function bootstrap() {
 
     app.use(helmet({ crossOriginEmbedderPolicy: false }))
     app.use(compression())
+    app.use(externalApiBodyMiddleware)
 
     const configService = app.get(ConfigService)
     const runtimeConfig = configService.get<RuntimeConfig>('env')
@@ -49,7 +52,12 @@ async function bootstrap() {
             }),
         ),
     )
-    app.use(csrfProtectionMiddleware)
+    const integrationManagementAudit = app.get(IntegrationManagementAuditService)
+    app.use(
+        createAuditedCsrfProtectionMiddleware((request) =>
+            integrationManagementAudit.csrfDenied(request),
+        ),
+    )
 
     // Apply observability middlewares globally
     app.use(requestIdMiddleware)

@@ -164,69 +164,74 @@ export class BudgetsService {
         }
 
         const currency = normalizeCurrency(input.currency ?? 'USD')
-        const workspace = this.workspaceService
-            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
-            : ({ baseCurrency: 'USD' } as const)
-        const rateDate = new Date(Date.UTC(validatedInput.year!, validatedInput.month! - 1, 1))
-        const fx = this.currencyService
-            ? await this.currencyService.getHistoricalQuote(
-                  currency,
-                  workspace.baseCurrency,
-                  rateDate,
-              )
-            : { rate: 1, rateDate, source: 'legacy' as const }
-        const baseAmount = Math.round(validatedInput.amountCents! * fx.rate)
+        return this.prisma.$transaction(
+            async (tx) => {
+                const workspace = this.workspaceService
+                    ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId, tx)
+                    : ({ baseCurrency: 'USD' } as const)
+                const rateDate = new Date(
+                    Date.UTC(validatedInput.year!, validatedInput.month! - 1, 1),
+                )
+                const fx = this.currencyService
+                    ? await this.currencyService.getHistoricalQuote(
+                          currency,
+                          workspace.baseCurrency,
+                          rateDate,
+                      )
+                    : { rate: 1, rateDate, source: 'legacy' as const }
+                const baseAmount = Math.round(validatedInput.amountCents! * fx.rate)
 
-        return this.prisma.$transaction(async (tx) => {
-            await this.assertValidBudgetCategory(
-                normalizedWorkspaceId,
-                validatedInput.categoryId!,
-                tx,
-            )
-
-            const existingBudget = await this.budgetsRepository.findBudgetByCategoryAndMonth(
-                normalizedWorkspaceId,
-                validatedInput.categoryId!,
-                validatedInput.year!,
-                validatedInput.month!,
-                tx,
-            )
-
-            if (existingBudget) {
-                throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
-            }
-
-            try {
-                const budget = await this.budgetsRepository.createBudget(
-                    {
-                        workspaceId: normalizedWorkspaceId,
-                        userId: normalizedUserId,
-                        categoryId: validatedInput.categoryId!,
-                        amount: validatedInput.amountCents!,
-                        currency,
-                        ...(this.currencyService
-                            ? {
-                                  baseAmount,
-                                  fxRate: fx.rate,
-                                  fxRateDate: fx.rateDate,
-                                  fxSource: fx.source,
-                              }
-                            : {}),
-                        year: validatedInput.year!,
-                        month: validatedInput.month!,
-                    },
+                await this.assertValidBudgetCategory(
+                    normalizedWorkspaceId,
+                    validatedInput.categoryId!,
                     tx,
                 )
 
-                return mapBudgetResponse(budget)
-            } catch (error) {
-                if (isPrismaUniqueConstraintError(error)) {
+                const existingBudget = await this.budgetsRepository.findBudgetByCategoryAndMonth(
+                    normalizedWorkspaceId,
+                    validatedInput.categoryId!,
+                    validatedInput.year!,
+                    validatedInput.month!,
+                    tx,
+                )
+
+                if (existingBudget) {
                     throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
                 }
 
-                throw error
-            }
-        })
+                try {
+                    const budget = await this.budgetsRepository.createBudget(
+                        {
+                            workspaceId: normalizedWorkspaceId,
+                            userId: normalizedUserId,
+                            categoryId: validatedInput.categoryId!,
+                            amount: validatedInput.amountCents!,
+                            currency,
+                            ...(this.currencyService
+                                ? {
+                                      baseAmount,
+                                      fxRate: fx.rate,
+                                      fxRateDate: fx.rateDate,
+                                      fxSource: fx.source,
+                                  }
+                                : {}),
+                            year: validatedInput.year!,
+                            month: validatedInput.month!,
+                        },
+                        tx,
+                    )
+
+                    return mapBudgetResponse(budget)
+                } catch (error) {
+                    if (isPrismaUniqueConstraintError(error)) {
+                        throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
+                    }
+
+                    throw error
+                }
+            },
+            { maxWait: 10_000, timeout: 30_000 },
+        )
     }
 
     async updateBudget(
@@ -251,85 +256,90 @@ export class BudgetsService {
         }
 
         const currency = normalizeCurrency(input.currency ?? 'USD')
-        const workspace = this.workspaceService
-            ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
-            : ({ baseCurrency: 'USD' } as const)
-        const rateDate = new Date(Date.UTC(validatedInput.year!, validatedInput.month! - 1, 1))
-        const fx = this.currencyService
-            ? await this.currencyService.getHistoricalQuote(
-                  currency,
-                  workspace.baseCurrency,
-                  rateDate,
-              )
-            : { rate: 1, rateDate, source: 'legacy' as const }
-        const baseAmount = Math.round(validatedInput.amountCents! * fx.rate)
+        return this.prisma.$transaction(
+            async (tx) => {
+                const workspace = this.workspaceService
+                    ? await this.workspaceService.getWorkspaceById(normalizedWorkspaceId, tx)
+                    : ({ baseCurrency: 'USD' } as const)
+                const rateDate = new Date(
+                    Date.UTC(validatedInput.year!, validatedInput.month! - 1, 1),
+                )
+                const fx = this.currencyService
+                    ? await this.currencyService.getHistoricalQuote(
+                          currency,
+                          workspace.baseCurrency,
+                          rateDate,
+                      )
+                    : { rate: 1, rateDate, source: 'legacy' as const }
+                const baseAmount = Math.round(validatedInput.amountCents! * fx.rate)
 
-        return this.prisma.$transaction(async (tx) => {
-            const existingBudget = await this.budgetsRepository.findBudgetById(
-                normalizedWorkspaceId,
-                normalizedBudgetId,
-                tx,
-            )
-
-            if (!existingBudget) {
-                throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
-            }
-
-            await this.assertValidBudgetCategory(
-                normalizedWorkspaceId,
-                validatedInput.categoryId!,
-                tx,
-            )
-
-            const duplicateBudget = await this.budgetsRepository.findBudgetByCategoryAndMonth(
-                normalizedWorkspaceId,
-                validatedInput.categoryId!,
-                validatedInput.year!,
-                validatedInput.month!,
-                tx,
-            )
-
-            if (duplicateBudget && duplicateBudget.id !== normalizedBudgetId) {
-                throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
-            }
-
-            try {
-                const budget = await this.budgetsRepository.updateBudget(
-                    {
-                        workspaceId: normalizedWorkspaceId,
-                        budgetId: normalizedBudgetId,
-                        userId: normalizedUserId,
-                        categoryId: validatedInput.categoryId!,
-                        amount: validatedInput.amountCents!,
-                        currency,
-                        ...(this.currencyService
-                            ? {
-                                  baseAmount,
-                                  fxRate: fx.rate,
-                                  fxRateDate: fx.rateDate,
-                                  fxSource: fx.source,
-                              }
-                            : {}),
-                        year: validatedInput.year!,
-                        month: validatedInput.month!,
-                        previousBudget: existingBudget,
-                    },
+                const existingBudget = await this.budgetsRepository.findBudgetById(
+                    normalizedWorkspaceId,
+                    normalizedBudgetId,
                     tx,
                 )
 
-                if (!budget) {
+                if (!existingBudget) {
                     throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
                 }
 
-                return mapBudgetResponse(budget)
-            } catch (error) {
-                if (isPrismaUniqueConstraintError(error)) {
+                await this.assertValidBudgetCategory(
+                    normalizedWorkspaceId,
+                    validatedInput.categoryId!,
+                    tx,
+                )
+
+                const duplicateBudget = await this.budgetsRepository.findBudgetByCategoryAndMonth(
+                    normalizedWorkspaceId,
+                    validatedInput.categoryId!,
+                    validatedInput.year!,
+                    validatedInput.month!,
+                    tx,
+                )
+
+                if (duplicateBudget && duplicateBudget.id !== normalizedBudgetId) {
                     throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
                 }
 
-                throw error
-            }
-        })
+                try {
+                    const budget = await this.budgetsRepository.updateBudget(
+                        {
+                            workspaceId: normalizedWorkspaceId,
+                            budgetId: normalizedBudgetId,
+                            userId: normalizedUserId,
+                            categoryId: validatedInput.categoryId!,
+                            amount: validatedInput.amountCents!,
+                            currency,
+                            ...(this.currencyService
+                                ? {
+                                      baseAmount,
+                                      fxRate: fx.rate,
+                                      fxRateDate: fx.rateDate,
+                                      fxSource: fx.source,
+                                  }
+                                : {}),
+                            year: validatedInput.year!,
+                            month: validatedInput.month!,
+                            previousBudget: existingBudget,
+                        },
+                        tx,
+                    )
+
+                    if (!budget) {
+                        throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
+                    }
+
+                    return mapBudgetResponse(budget)
+                } catch (error) {
+                    if (isPrismaUniqueConstraintError(error)) {
+                        throw new ConflictException(BUDGET_ALREADY_EXISTS_MESSAGE)
+                    }
+
+                    throw error
+                }
+            },
+            { maxWait: 10_000, timeout: 30_000 },
+        )
     }
 
     async deleteBudget(budgetId: string, workspaceId: string, userId: string): Promise<void> {

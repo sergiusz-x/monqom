@@ -174,7 +174,7 @@ model PaymentSource {
 model Transaction {
   id              String  @id @default(uuid())
   workspaceId     String  @map("workspace_id")
-  categoryId      String  @map("category_id")
+  categoryId      String? @map("category_id")
   paymentSourceId String  @map("payment_source_id")
   integrationId   String? @map("integration_id")
   externalId      String? @map("external_id")
@@ -196,10 +196,10 @@ model Transaction {
   deletedAt DateTime? @map("deleted_at")
 
   workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  category      Category         @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+  category      Category?        @relation(fields: [workspaceId, categoryId], references: [workspaceId, id], onDelete: Restrict)
   paymentSource PaymentSource    @relation(fields: [workspaceId, paymentSourceId], references: [workspaceId, id], onDelete: Restrict)
   tags          TransactionTag[]
-  integration   Integration?     @relation(fields: [integrationId], references: [id], onDelete: Restrict)
+  integration   Integration?     @relation(fields: [workspaceId, integrationId], references: [workspaceId, id], onDelete: Restrict)
 
   @@unique([workspaceId, id])
   @@unique([workspaceId, integrationId, externalId])
@@ -213,20 +213,27 @@ model Transaction {
 }
 
 model IntegrationIdempotencyRecord {
-  id                 String   @id @default(uuid())
-  integrationId      String   @map("integration_id")
-  keyDigest          String   @map("key_digest")
-  operation          String
-  targetExternalId   String?  @map("target_external_id")
-  requestFingerprint String   @map("request_fingerprint")
-  status             String   @default("in_progress")
-  responseStatus     Int?     @map("response_status")
-  responseBody       Json?    @map("response_body")
-  expiresAt          DateTime @map("expires_at")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                      String    @id @default(uuid())
+  workspaceId             String    @map("workspace_id")
+  integrationId           String    @map("integration_id")
+  keyDigest               String    @map("key_digest")
+  operation               String
+  targetExternalId        String?   @map("target_external_id")
+  requestFingerprint      String    @map("request_fingerprint")
+  status                  String    @default("in_progress")
+  responseStatus          Int?      @map("response_status")
+  responseBody            Json?     @map("response_body")
+  responseEtag            String?   @map("response_etag")
+  targetTransactionId     String?   @map("target_transaction_id")
+  retainedCategoryId      String?   @map("retained_category_id")
+  retainedPaymentSourceId String?   @map("retained_payment_source_id")
+  leaseExpiresAt          DateTime? @map("lease_expires_at")
+  completedAt             DateTime? @map("completed_at")
+  expiresAt               DateTime  @map("expires_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
 
-  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integration Integration @relation(fields: [workspaceId, integrationId], references: [workspaceId, id], onDelete: Cascade)
 
   @@unique([integrationId, keyDigest])
   @@index([expiresAt])
@@ -351,16 +358,17 @@ model AuthRateLimit {
 }
 
 model Integration {
-  id              String   @id @default(uuid())
-  workspaceId     String   @map("workspace_id")
-  createdByUserId String   @map("created_by_user_id")
-  name            String
-  status          String   @default("active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  workspaceId      String   @map("workspace_id")
+  createdByUserId  String?  @map("created_by_user_id")
+  creatorReference String   @map("creator_reference")
+  name             String
+  status           String   @default("active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   workspace          Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy          User                           @relation("IntegrationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdBy          User?                          @relation("IntegrationCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   credentials        IntegrationCredential[]
   transactions       Transaction[]
   idempotencyRecords IntegrationIdempotencyRecord[]
@@ -384,7 +392,9 @@ model IntegrationCredential {
   allowedCidrs                  String[]  @default([]) @map("allowed_cidrs")
   status                        String    @default("active")
   revokedAt                     DateTime? @map("revoked_at")
+  deletedAt                     DateTime? @map("deleted_at")
   lastUsedAt                    DateTime? @map("last_used_at")
+  lastUsedIp                    String?   @map("last_used_ip")
   createdAt                     DateTime  @default(now()) @map("created_at")
   updatedAt                     DateTime  @updatedAt @map("updated_at")
 
@@ -395,6 +405,18 @@ model IntegrationCredential {
   @@index([integrationId, status])
   @@index([expiresAt])
   @@map("integration_credentials")
+}
+
+model IntegrationRateLimit {
+  keyHash       String     @id @map("key_hash")
+  requestTimes  DateTime[] @default([]) @map("request_times")
+  mutationTimes DateTime[] @default([]) @map("mutation_times")
+  blockedUntil  DateTime?  @map("blocked_until")
+  expiresAt     DateTime   @map("expires_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("integration_rate_limits")
 }
 
 model IntegrationCredentialCategory {

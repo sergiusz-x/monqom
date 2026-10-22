@@ -24,7 +24,7 @@ export interface InlineResponse20010CategoryBreakdownCategories {
    * @type {string}
    * @memberof InlineResponse20010CategoryBreakdownCategories
    */
-  category_id: string;
+  category_id: string | null;
   /**
    *
    * @type {string}

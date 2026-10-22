@@ -15,8 +15,6 @@ describe('ExternalTransactionsService', () => {
         allowedCidrs: [],
     }
     let ownership: any
-    let workspace: any
-    let currency: any
     let prisma: any
     let service: ExternalTransactionsService
 
@@ -27,16 +25,8 @@ describe('ExternalTransactionsService', () => {
             updateIdempotently: jest.fn(),
             deleteIdempotently: jest.fn(),
         }
-        workspace = { getWorkspaceById: jest.fn().mockResolvedValue({ baseCurrency: 'PLN' }) }
-        currency = {
-            getHistoricalQuote: jest.fn().mockResolvedValue({
-                rate: 1,
-                rateDate: new Date('2026-09-04T00:00:00.000Z'),
-                source: 'ecb-frankfurter',
-            }),
-        }
         prisma = { category: { findMany: jest.fn() }, paymentSource: { findMany: jest.fn() } }
-        service = new ExternalTransactionsService(ownership, workspace, currency, prisma)
+        service = new ExternalTransactionsService(ownership, prisma)
     })
 
     it('converts an exact decimal string into integer minor units before creating', async () => {
@@ -71,7 +61,7 @@ describe('ExternalTransactionsService', () => {
         expect(ownership.createIdempotently).toHaveBeenCalledWith(
             principal,
             '0123456789abcdef',
-            expect.objectContaining({ amount: 1234, baseAmount: 1234, currency: 'PLN' }),
+            expect.objectContaining({ amount: 1234, currency: 'PLN' }),
         )
     })
 

@@ -7,19 +7,27 @@ import {
     IsString,
     Matches,
     MaxLength,
+    ValidateIf,
 } from 'class-validator'
 
 const DECIMAL_AMOUNT = /^\d+\.\d{2}$/
 
 export class ExternalTransactionBodyDto {
-    @ApiPropertyOptional({ minLength: 1, maxLength: 200 })
+    @ApiPropertyOptional({
+        type: String,
+        nullable: true,
+        minLength: 1,
+        maxLength: 200,
+        description:
+            'Case-sensitive source identity, trimmed, at most 200 UTF-8 bytes; null or omitted means no external identity.',
+    })
     @IsOptional()
     @IsString()
     @MaxLength(200)
-    external_id?: string
+    external_id?: string | null
 
     @ApiPropertyOptional({ enum: ['expense', 'income'], default: 'expense' })
-    @IsOptional()
+    @ValidateIf((_object, value) => value !== undefined)
     @IsIn(['expense', 'income'])
     type?: 'expense' | 'income'
 
@@ -43,22 +51,23 @@ export class ExternalTransactionBodyDto {
     @MaxLength(200)
     description!: string
 
-    @ApiProperty()
+    @ApiPropertyOptional({ type: String, nullable: true })
+    @IsOptional()
     @IsString()
-    category_id!: string
+    category_id?: string | null
 
     @ApiProperty()
     @IsString()
     payment_source_id!: string
 
-    @ApiPropertyOptional({ nullable: true, maxLength: 2000 })
+    @ApiPropertyOptional({ type: String, nullable: true, maxLength: 2000 })
     @IsOptional()
     @IsString()
     @MaxLength(2000)
     notes?: string | null
 
     @ApiPropertyOptional({ type: [String], maxItems: 10 })
-    @IsOptional()
+    @ValidateIf((_object, value) => value !== undefined)
     @IsArray()
     @ArrayMaxSize(10)
     @IsString({ each: true })

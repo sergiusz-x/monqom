@@ -106,7 +106,7 @@ const budgetProgress = object({
 const transaction = object({
     id: string(),
     workspace_id: string(),
-    category_id: string(),
+    category_id: string(undefined, true),
     payment_source_id: string(),
     type: { type: 'string', enum: ['expense', 'income'] },
     amount: number(),
@@ -135,7 +135,7 @@ const categoryBreakdown = object({
     total_spending: number(),
     categories: array(
         object({
-            category_id: string(),
+            category_id: string(undefined, true),
             category_name: string(),
             category_system_key: string(undefined, true),
             category_color: string(undefined, true),

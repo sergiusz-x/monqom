@@ -3,7 +3,6 @@ import {
     Controller,
     Delete,
     Get,
-    Headers,
     HttpCode,
     HttpStatus,
     Param,
@@ -12,6 +11,7 @@ import {
     Req,
     Res,
     UseGuards,
+    UseInterceptors,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiHeader, ApiParam } from '@nestjs/swagger'
 import type { Request, Response } from 'express'
@@ -22,34 +22,39 @@ import {
 import { ExternalTransactionBodyDto } from './external-transactions.dto'
 import { ExternalTransactionsService } from './external-transactions.service'
 import { parseExternalTransactionEtag } from './external-transaction-contract'
+import { ExternalTransactionsInterceptor } from './external-transactions.interceptor'
+import { ApiExternalOperation } from './external-transactions.openapi'
 
 @Controller('workspaces/:workspaceId')
 @UseGuards(IntegrationCredentialGuard)
-@ApiBearerAuth()
+@UseInterceptors(ExternalTransactionsInterceptor)
+@ApiBearerAuth('integrationCredential')
 @ApiParam({ name: 'workspaceId', type: String })
 export class ExternalTransactionsController {
     constructor(private readonly service: ExternalTransactionsService) {}
 
     @Post('external-transactions')
+    @ApiExternalOperation('create')
     @RequireIntegrationScopes('transactions:create')
     @ApiHeader({
         name: 'Idempotency-Key',
-        required: true,
+        required: false,
         schema: { type: 'string', minLength: 16, maxLength: 128 },
     })
     @HttpCode(HttpStatus.CREATED)
     async create(
         @Req() req: Request,
-        @Headers('idempotency-key') key: string,
         @Body() body: ExternalTransactionBodyDto,
         @Res({ passthrough: true }) response: Response,
     ) {
-        const result = await this.service.create(req.machine!, key, body)
-        response.setHeader('ETag', `"tx-v${result.version}"`)
+        const result = await this.service.create(req.machine!, req.get('idempotency-key'), body)
+        if ('version' in result) response.setHeader('ETag', `"tx-v${result.version}"`)
+        else response.status(HttpStatus.OK)
         return result
     }
 
     @Get('external-transactions/:externalId')
+    @ApiExternalOperation('get')
     @RequireIntegrationScopes('transactions:read-own')
     async get(
         @Req() req: Request,
@@ -62,6 +67,7 @@ export class ExternalTransactionsController {
     }
 
     @Put('external-transactions/:externalId')
+    @ApiExternalOperation('update')
     @RequireIntegrationScopes('transactions:update-own')
     @ApiHeader({
         name: 'Idempotency-Key',
@@ -72,16 +78,14 @@ export class ExternalTransactionsController {
     async update(
         @Req() req: Request,
         @Param('externalId') externalId: string,
-        @Headers('idempotency-key') key: string,
-        @Headers('if-match') ifMatch: string | undefined,
         @Body() body: ExternalTransactionBodyDto,
         @Res({ passthrough: true }) response: Response,
     ) {
         const result = await this.service.update(
             req.machine!,
-            key,
+            req.get('idempotency-key')!,
             externalId,
-            parseExternalTransactionEtag(ifMatch),
+            parseExternalTransactionEtag(req.get('if-match')),
             body,
         )
         response.setHeader('ETag', `"tx-v${result.version}"`)
@@ -89,6 +93,7 @@ export class ExternalTransactionsController {
     }
 
     @Delete('external-transactions/:externalId')
+    @ApiExternalOperation('delete')
     @RequireIntegrationScopes('transactions:delete-own')
     @ApiHeader({
         name: 'Idempotency-Key',
@@ -97,27 +102,24 @@ export class ExternalTransactionsController {
     })
     @ApiHeader({ name: 'If-Match', required: true, schema: { type: 'string', example: '"tx-v1"' } })
     @HttpCode(HttpStatus.NO_CONTENT)
-    async remove(
-        @Req() req: Request,
-        @Param('externalId') externalId: string,
-        @Headers('idempotency-key') key: string,
-        @Headers('if-match') ifMatch: string | undefined,
-    ) {
+    async remove(@Req() req: Request, @Param('externalId') externalId: string) {
         await this.service.remove(
             req.machine!,
-            key,
+            req.get('idempotency-key')!,
             externalId,
-            parseExternalTransactionEtag(ifMatch),
+            parseExternalTransactionEtag(req.get('if-match')),
         )
     }
 
     @Get('external-categories')
+    @ApiExternalOperation('categories')
     @RequireIntegrationScopes('categories:read')
     async categories(@Req() req: Request) {
         return this.service.listCategories(req.machine!)
     }
 
     @Get('external-payment-sources')
+    @ApiExternalOperation('payment-sources')
     @RequireIntegrationScopes('payment-sources:read')
     async paymentSources(@Req() req: Request) {
         return this.service.listPaymentSources(req.machine!)

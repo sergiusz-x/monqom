@@ -3,6 +3,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 RUN corepack enable pnpm
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY patches ./patches
 COPY frontend/package.json ./frontend/
 COPY packages/ui/package.json ./packages/ui/
 RUN pnpm install --frozen-lockfile

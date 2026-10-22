@@ -22,7 +22,7 @@ import globalAxios, {
   type AxiosRequestConfig,
 } from "axios";
 
-export const BASE_PATH = "http://localhost".replace(/\/+$/, "");
+export const BASE_PATH = "/api/v1".replace(/\/+$/, "");
 
 /**
  *

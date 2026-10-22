@@ -32,7 +32,7 @@ export interface IssuedIntegrationCredentialResponseDto {
    */
   credential_id: string;
   /**
-   *
+   * One-time bearer secret. Never returned by list or get.
    * @type {string}
    * @memberof IssuedIntegrationCredentialResponseDto
    */

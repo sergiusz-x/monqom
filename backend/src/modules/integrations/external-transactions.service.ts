@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
-import { CurrencyService, normalizeCurrency } from '../../shared/currency/currency.service'
+import { normalizeCurrency } from '../../shared/currency/currency.service'
 import { parseDateOnly, validateMoneyAmountValue } from '../../shared/utils/validation'
-import { WorkspaceService } from '../workspace/workspace.service'
 import { MachinePrincipal } from './integration-credential.service'
 import { ExternalTransactionBodyDto } from './external-transactions.dto'
 import { ExternalTransactionOwnershipService } from './external-transaction-ownership.service'
@@ -12,25 +11,22 @@ import { normalizeExternalTransactionId } from './external-transaction-contract'
 export class ExternalTransactionsService {
     constructor(
         private readonly ownership: ExternalTransactionOwnershipService,
-        private readonly workspaceService: WorkspaceService,
-        private readonly currencyService: CurrencyService,
         private readonly prisma: PrismaService,
     ) {}
 
     async create(
         principal: MachinePrincipal,
-        idempotencyKey: string,
+        idempotencyKey: string | undefined,
         body: ExternalTransactionBodyDto,
     ) {
-        const command = await this.toCommand(principal.workspaceId, body)
+        const command = this.toCommand(body)
         const result = await this.ownership.createIdempotently(principal, idempotencyKey, command)
-        return mapTransaction(result.transaction, result.replayed)
+        return result.alreadyExists ?? mapTransaction(result.transaction!, result.replayed)
     }
 
     async get(principal: MachinePrincipal, externalId: string) {
         const transaction = await this.ownership.findOwnedTransaction(
-            principal.workspaceId,
-            principal.integrationId,
+            principal,
             normalizeExternalTransactionId(externalId),
         )
         return mapTransaction(transaction)
@@ -45,12 +41,12 @@ export class ExternalTransactionsService {
     ) {
         if (
             body.external_id !== undefined &&
-            normalizeExternalTransactionId(body.external_id) !==
+            normalizeExternalTransactionId(body.external_id ?? '') !==
                 normalizeExternalTransactionId(externalId)
         ) {
             throw new BadRequestException('External id cannot be changed')
         }
-        const command = await this.toCommand(principal.workspaceId, {
+        const command = this.toCommand({
             ...body,
             external_id: normalizeExternalTransactionId(externalId),
         })
@@ -60,7 +56,7 @@ export class ExternalTransactionsService {
             expectedVersion,
             command,
         )
-        return mapTransaction(result.transaction, result.replayed)
+        return mapTransaction(result.transaction!, result.replayed)
     }
 
     async remove(
@@ -92,6 +88,7 @@ export class ExternalTransactionsService {
                 type: true,
                 systemKey: true,
                 parentId: true,
+                parent: { select: { id: true, deletedAt: true } },
                 icon: true,
                 color: true,
                 sortOrder: true,
@@ -103,7 +100,13 @@ export class ExternalTransactionsService {
             name: row.name,
             type: row.type,
             system_key: row.systemKey,
-            parent_id: row.parentId,
+            parent_id:
+                row.parent &&
+                !row.parent.deletedAt &&
+                (!principal.categoryAllowlistEnabled ||
+                    principal.allowedCategoryIds.includes(row.parent.id))
+                    ? row.parentId
+                    : null,
             icon: row.icon,
             color: row.color,
             sort_order: row.sortOrder,
@@ -130,27 +133,20 @@ export class ExternalTransactionsService {
         }))
     }
 
-    private async toCommand(workspaceId: string, body: ExternalTransactionBodyDto) {
+    private toCommand(body: ExternalTransactionBodyDto) {
+        if (typeof body.amount !== 'string' || !/^\d+\.\d{2}$/.test(body.amount))
+            throw new BadRequestException('Amount must be a positive fixed two-decimal string')
         const errors: string[] = []
         const amount = validateMoneyAmountValue(body.amount, errors)
         if (!amount || errors.length) throw new BadRequestException(errors)
         const date = parseDate(body.date)
         const currency = normalizeCurrency(body.currency)
-        const workspace = await this.workspaceService.getWorkspaceById(workspaceId)
-        const fx = await this.currencyService.getHistoricalQuote(
-            currency,
-            workspace.baseCurrency,
-            date,
-        )
         return {
-            externalId: normalizeExternalTransactionId(body.external_id ?? ''),
+            externalId:
+                body.external_id == null ? null : normalizeExternalTransactionId(body.external_id),
             type: body.type ?? 'expense',
             amount,
             currency,
-            baseAmount: Math.round(amount * fx.rate),
-            fxRate: fx.rate,
-            fxRateDate: fx.rateDate,
-            fxSource: fx.source,
             date,
             description: body.description,
             notes: body.notes ?? null,
@@ -173,7 +169,7 @@ function mapTransaction(
         id: string
         externalId: string | null
         version: number
-        categoryId: string
+        categoryId: string | null
         paymentSourceId: string
         type: string
         amount: number

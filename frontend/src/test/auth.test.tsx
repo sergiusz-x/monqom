@@ -171,6 +171,78 @@ describe("AuthProvider", () => {
       screen.getByText("Your session has expired. Sign in again."),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    "/workspaces/ws/integrations",
+    "/workspaces/ws/integrations/i/credentials/c/rotate",
+    "/workspaces/ws/integrations/i/credentials/c/revoke",
+  ])("keeps a valid session after failed step-up at %s", async (url) => {
+    mockApi.get.mockResolvedValue({ data: testUser });
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="name">{ctx?.user?.name ?? "none"}</span>}
+      </AuthContext.Consumer>,
+    );
+    await screen.findByText("Test User");
+    const rejectHandler =
+      mockApi.interceptors.response.use.mock.calls.at(-1)?.[1];
+    const error = {
+      response: { status: 401 },
+      config: { method: "post", url },
+    };
+    await act(async () => {
+      await expect(rejectHandler(error)).rejects.toBe(error);
+    });
+    expect(screen.getByTestId("name")).toHaveTextContent("Test User");
+    expect(mockApi.get).toHaveBeenLastCalledWith("/auth/me", {
+      timeout: 15_000,
+    });
+    expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
+  it("expires a failed step-up session only when the session probe also returns 401", async () => {
+    mockApi.get.mockResolvedValueOnce({ data: testUser });
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="name">{ctx?.user?.name ?? "none"}</span>}
+      </AuthContext.Consumer>,
+    );
+    await screen.findByText("Test User");
+    mockApi.get.mockRejectedValueOnce({ response: { status: 401 } });
+    const rejectHandler =
+      mockApi.interceptors.response.use.mock.calls.at(-1)?.[1];
+    await act(async () => {
+      await expect(
+        rejectHandler({
+          response: { status: 401 },
+          config: { method: "post", url: "/workspaces/ws/integrations" },
+        }),
+      ).rejects.toBeDefined();
+    });
+    expect(screen.getByTestId("name")).toHaveTextContent("none");
+  });
+
+  it("keeps the session when the step-up session probe is temporarily unavailable", async () => {
+    mockApi.get.mockResolvedValueOnce({ data: testUser });
+    renderAuthProvider(
+      <AuthContext.Consumer>
+        {(ctx) => <span data-testid="name">{ctx?.user?.name ?? "none"}</span>}
+      </AuthContext.Consumer>,
+    );
+    await screen.findByText("Test User");
+    mockApi.get.mockRejectedValueOnce({ response: { status: 503 } });
+    const rejectHandler =
+      mockApi.interceptors.response.use.mock.calls.at(-1)?.[1];
+    await act(async () => {
+      await expect(
+        rejectHandler({
+          response: { status: 401 },
+          config: { method: "post", url: "/workspaces/ws/integrations" },
+        }),
+      ).rejects.toBeDefined();
+    });
+    expect(screen.getByTestId("name")).toHaveTextContent("Test User");
+  });
 });
 
 // ─── ProtectedRoute ────────────────────────────────────────────────────────
