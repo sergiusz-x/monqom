@@ -45,6 +45,8 @@ export class TransactionsController {
         return this.transactionsService.listTransactions(
             {
                 type: query.type,
+                ...(query.category_status ? { uncategorized: true } : {}),
+                ...(query.origin ? { origin: query.origin } : {}),
                 categoryId: query.category_id,
                 categoryIds: query.category_ids,
                 sortBy: query.sort_by,

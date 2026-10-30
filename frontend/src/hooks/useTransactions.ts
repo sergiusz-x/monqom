@@ -19,6 +19,8 @@ export function useTransactions(
       {
         type: filters.type,
         categoryIds: filters.categoryIds,
+        uncategorized: filters.uncategorized,
+        origin: filters.origin,
         tag: filters.tag,
         paymentSourceId: filters.paymentSourceId,
         dateFrom: filters.dateFrom,
@@ -34,6 +36,8 @@ export function useTransactions(
       const response =
         await transactionsApi.transactionsControllerListTransactions(
           workspaceId,
+          filters.uncategorized ? "uncategorized" : undefined,
+          filters.origin || undefined,
           filters.type || undefined,
           undefined,
           filters.categoryIds.length ? filters.categoryIds : undefined,

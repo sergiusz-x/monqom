@@ -37,7 +37,7 @@ import {
   parseTransactionPage,
   saveTransactionPreferences,
 } from "@/lib/transaction-list-state";
-import { Alert, RetryAlert } from "@monqom/ui";
+import { Alert, Button, EmptyState, RetryAlert } from "@monqom/ui";
 
 const PAGE_SIZE = 20;
 
@@ -138,6 +138,12 @@ export default function TransactionsPage() {
   );
   const { paymentSources } = usePaymentSources(workspaceId ?? "", true);
   const { tags } = useTags(workspaceId ?? "");
+  const { data: attentionData } = useTransactions(
+    workspaceId ?? "",
+    { ...DEFAULT_TRANSACTION_FILTERS, uncategorized: true },
+    1,
+    0,
+  );
   const { data, isLoading, error, retry } = useTransactions(
     requestWorkspaceId,
     filters,
@@ -237,6 +243,15 @@ export default function TransactionsPage() {
 
     const transactions = data?.data ?? [];
 
+    if (transactions.length === 0 && filters.uncategorized) {
+      return (
+        <EmptyState
+          title={t("transactions.noAttention")}
+          actionLabel={t("transactions.showAll")}
+          onAction={() => handleFilterChange(DEFAULT_TRANSACTION_FILTERS)}
+        />
+      );
+    }
     if (transactions.length === 0)
       return (
         <TransactionEmptyState onAdd={() => setIsCreatingTransaction(true)} />
@@ -288,6 +303,30 @@ export default function TransactionsPage() {
     <PageContainer>
       <PageHeader title={t("transactions.title")} className="mb-4" />
       <div className="space-y-4">
+        {Boolean(attentionData?.total) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5">
+            <div>
+              <h2 className="text-sm font-medium">
+                {t("transactions.attentionCount", {
+                  count: attentionData!.total,
+                })}
+              </h2>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                handleFilterChange({
+                  ...DEFAULT_TRANSACTION_FILTERS,
+                  uncategorized: true,
+                })
+              }
+            >
+              {t("transactions.reviewTransactions")}
+            </Button>
+          </div>
+        )}
         <TransactionFilterBar
           filters={filters}
           categories={categories}
@@ -304,10 +343,10 @@ export default function TransactionsPage() {
         transaction={selectedTransaction}
         categorySystemKeys={categorySystemKeyMap}
         categoryLabel={
-          selectedTransaction
+          selectedTransaction?.categoryId
             ? (categoryMap[selectedTransaction.categoryId] ??
               selectedTransaction.categoryId)
-            : ""
+            : t("dashboard.uncategorized")
         }
         paymentSourceLabel={
           selectedTransaction?.paymentSourceId

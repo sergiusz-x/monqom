@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
+import { TransactionMetadata } from "@/components/transactions/TransactionMetadata";
 import type { ApiTransaction } from "@/types/api-contracts";
 import { mapTransaction } from "@/lib/api-mappers";
 import { queryKeys } from "@/lib/query-client";
@@ -187,7 +188,8 @@ export default function TransactionDetailPage() {
     );
   }
   const categoryLabel =
-    categoryLabels[transaction.categoryId] ?? t("dashboard.uncategorized");
+    (transaction.categoryId ? categoryLabels[transaction.categoryId] : null) ??
+    t("dashboard.uncategorized");
   const paymentSourceLabel = transaction.paymentSourceId
     ? (paymentSourceLabelMap[transaction.paymentSourceId] ?? t("common.none"))
     : t("common.none");
@@ -229,6 +231,15 @@ export default function TransactionDetailPage() {
       />
 
       <SectionCard className="space-y-6">
+        <TransactionMetadata transaction={transaction} />
+        {transaction.categoryId === null && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4">
+            <p className="text-sm">{t("transactions.categoryHelp")}</p>
+            <Button type="button" onClick={() => setIsEditing(true)}>
+              {t("transactions.assignCategory")}
+            </Button>
+          </div>
+        )}
         <SensitiveTransactionAmount
           transaction={transaction}
           categorySystemKeys={categorySystemKeyMap}

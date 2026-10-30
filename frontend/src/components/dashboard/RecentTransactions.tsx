@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal";
+import { TransactionMetadata } from "@/components/transactions/TransactionMetadata";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useToast } from "@/hooks/useToast";
@@ -141,8 +142,11 @@ export function RecentTransactions({
 
                       <span className="block text-xs text-muted-foreground">
                         {formatShortDate(transaction.date)} &middot;{" "}
-                        {categoryNames.get(transaction.categoryId) ??
+                        {categoryNames.get(transaction.categoryId ?? "") ??
                           t("dashboard.uncategorized")}
+                      </span>
+                      <span className="mt-1 block">
+                        <TransactionMetadata transaction={transaction} />
                       </span>
                     </span>
                   </Button>
@@ -165,8 +169,8 @@ export function RecentTransactions({
         categorySystemKeys={categorySystemKeyMap}
         categoryLabel={
           selectedTransaction
-            ? (categoryNames.get(selectedTransaction.categoryId) ??
-              selectedTransaction.categoryId)
+            ? (categoryNames.get(selectedTransaction.categoryId ?? "") ??
+              t("dashboard.uncategorized"))
             : ""
         }
         paymentSourceLabel={

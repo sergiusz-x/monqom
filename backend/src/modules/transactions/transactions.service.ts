@@ -13,7 +13,7 @@ import {
     ListTransactionsFilters,
     TransactionSortDirection,
     TransactionSortField,
-    TransactionWithTags,
+    TransactionWithOrigin,
     TransactionsPersistenceClient,
     TransactionsRepository,
 } from './transactions.repository'
@@ -41,6 +41,8 @@ export interface CreateTransactionCommand {
 }
 
 export interface CreateTransactionResponse {
+    integration_id?: string | null
+    integration_name?: string | null
     id: string
     workspace_id: string
     category_id: string | null
@@ -57,6 +59,8 @@ export interface CreateTransactionResponse {
 }
 
 export interface ListTransactionsCommand {
+    uncategorized?: boolean
+    origin?: 'manual' | 'integration'
     type?: 'expense' | 'income'
     categoryId?: string
     categoryIds?: string[]
@@ -369,6 +373,8 @@ export class TransactionsService {
 
         const filters: ListTransactionsFilters = {
             workspaceId: normalizedWorkspaceId,
+            ...(input.uncategorized ? { uncategorized: true } : {}),
+            ...(input.origin ? { origin: input.origin } : {}),
             type: input.type,
             categoryIds: validatedInput.categoryIds,
             sortBy: validatedInput.sortBy,
@@ -676,11 +682,19 @@ function validateTagsValue(value: string[] | undefined, errors: string[]): strin
     return normalizedTags
 }
 
-function mapCreateTransactionResponse(transaction: TransactionWithTags): CreateTransactionResponse {
+function mapCreateTransactionResponse(
+    transaction: TransactionWithOrigin,
+): CreateTransactionResponse {
     return {
         id: transaction.id,
         workspace_id: transaction.workspaceId,
         category_id: transaction.categoryId,
+        ...(transaction.integrationId
+            ? {
+                  integration_id: transaction.integrationId,
+                  integration_name: transaction.integration?.name ?? null,
+              }
+            : {}),
         payment_source_id: transaction.paymentSourceId,
         type: transaction.type,
         amount: centsToDisplayAmount(transaction.amount),
@@ -701,6 +715,12 @@ function mapListedTransactionResponse(
         id: transaction.id,
         workspace_id: transaction.workspace_id,
         category_id: transaction.category_id,
+        ...(transaction.integration_id !== undefined
+            ? {
+                  integration_id: transaction.integration_id,
+                  integration_name: transaction.integration_name ?? null,
+              }
+            : {}),
         payment_source_id: transaction.payment_source_id!,
         type: transaction.type,
         amount: centsToDisplayAmount(transaction.amount),

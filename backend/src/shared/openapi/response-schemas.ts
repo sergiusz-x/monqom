@@ -103,7 +103,7 @@ const budgetProgress = object({
     remaining: number(true),
     percentage: number(true),
 })
-const transaction = object({
+const transactionFields = {
     id: string(),
     workspace_id: string(),
     category_id: string(undefined, true),
@@ -117,7 +117,15 @@ const transaction = object({
     tags: array(string()),
     created_at: string('date-time'),
     updated_at: string('date-time'),
-})
+}
+const transaction = object(
+    {
+        ...transactionFields,
+        integration_id: string(undefined, true),
+        integration_name: string(undefined, true),
+    },
+    Object.keys(transactionFields),
+)
 const spendingSummary = object({
     month: string(),
     currency: string(),

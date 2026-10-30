@@ -244,6 +244,7 @@ describe("TransactionsPage", () => {
     const user = userEvent.setup();
     renderPage();
 
+    await user.click(screen.getByRole("button", { name: "More filters" }));
     const tagFilter = screen.getByLabelText("Tags");
     expect(tagFilter).toHaveProperty("tagName", "SELECT");
     await user.selectOptions(tagFilter, "Food");
@@ -256,6 +257,29 @@ describe("TransactionsPage", () => {
     ];
     expect(latestCall[1].tag).toBe("Food");
   });
+  it("keeps an advanced filter visible and removable when its controls are collapsed", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const toggle = screen.getByRole("button", { name: "More filters" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText("Added by")).not.toBeInTheDocument();
+    await user.click(toggle);
+    await user.selectOptions(screen.getByLabelText("Added by"), "manual");
+    await user.click(toggle);
+    expect(screen.queryByLabelText("Added by")).not.toBeInTheDocument();
+    expect(
+      (mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters])[1]
+        .origin,
+    ).toBe("manual");
+    await user.click(
+      screen.getByRole("button", { name: "Remove filter: Added manually" }),
+    );
+    expect(
+      (mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters])[1]
+        .origin,
+    ).toBeUndefined();
+  });
+
   it("prefills filters from query params", () => {
     renderPage(
       "/transactions?category_id=cat-1&date_from=2026-04-01&date_to=2026-04-30",
@@ -407,7 +431,7 @@ describe("TransactionsPage", () => {
 
     const descriptionCell = screen
       .getAllByText("Team lunch")
-      .find((element) => element.tagName === "TD");
+      .find((element) => element.closest("td"));
     const row = descriptionCell?.closest("tr");
     expect(row).not.toBeNull();
 
@@ -440,13 +464,41 @@ describe("TransactionsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens category assignment for an imported transaction needing attention", async () => {
+    const user = userEvent.setup();
+    const response = makeResponse();
+    response.data[0] = {
+      ...response.data[0]!,
+      categoryId: null,
+      integrationId: "bank-sync",
+      integrationName: "Bank sync",
+    };
+    mockUseTransactions.mockReturnValue({
+      data: response,
+      isLoading: false,
+      error: null,
+    });
+    renderPage();
+    const description = screen
+      .getAllByText("Team lunch")
+      .find((element) => element.closest("td"));
+    await user.click(description!.closest("tr")!);
+    const dialog = screen.getByRole("dialog", { name: "Transaction details" });
+    expect(dialog).toHaveTextContent("Needs a category");
+    expect(dialog).not.toHaveTextContent("Bank sync");
+    await user.click(screen.getByRole("button", { name: "Assign category" }));
+    expect(
+      screen.getByRole("dialog", { name: "Edit transaction" }),
+    ).toBeInTheDocument();
+  });
+
   it("returns to transaction details after cancelling edit", async () => {
     const user = userEvent.setup();
     renderPage();
 
     const descriptionCell = screen
       .getAllByText("Team lunch")
-      .find((element) => element.tagName === "TD");
+      .find((element) => element.closest("td"));
     await user.click(descriptionCell!.closest("tr") as HTMLTableRowElement);
     screen.getByRole("button", { name: "Transaction actions" }).focus();
     await user.keyboard("{Enter}");
@@ -467,7 +519,7 @@ describe("TransactionsPage", () => {
 
     const descriptionCell = screen
       .getAllByText("Team lunch")
-      .find((element) => element.tagName === "TD");
+      .find((element) => element.closest("td"));
     await user.click(descriptionCell!.closest("tr") as HTMLTableRowElement);
     screen.getByRole("button", { name: "Transaction actions" }).focus();
     await user.keyboard("{Enter}");
@@ -490,6 +542,7 @@ describe("TransactionsPage", () => {
     const user = userEvent.setup();
     renderPage();
 
+    await user.click(screen.getByRole("button", { name: "More filters" }));
     await user.type(screen.getByLabelText("Date from"), "2026-04-20");
     await user.type(screen.getByLabelText("Date to"), "2026-04-19");
 

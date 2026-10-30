@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import type { Transaction } from "@/types/transaction";
 import { formatLongDate } from "@/lib/date-only";
+import { TransactionMetadata } from "./TransactionMetadata";
 import {
   ActionMenu,
   Button,
@@ -101,7 +102,19 @@ export function TransactionDetailsModal({
               categorySystemKeys={categorySystemKeys}
               className="mt-1 text-3xl font-semibold tabular-nums"
             />
+            <div className="mt-3">
+              <TransactionMetadata transaction={transaction} />
+            </div>
           </div>
+
+          {transaction.categoryId === null && (
+            <div className="space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4">
+              <p className="text-sm">{t("transactions.categoryHelp")}</p>
+              <Button type="button" onClick={onEdit}>
+                {t("transactions.assignCategory")}
+              </Button>
+            </div>
+          )}
 
           <dl
             className={cardVariants({

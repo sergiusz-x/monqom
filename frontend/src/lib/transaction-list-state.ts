@@ -19,6 +19,8 @@ const PREFERENCE_KEY_PREFIX = "monqom:transaction-list-preferences:v1:";
 const LEGACY_KEY_PREFIX = "monqom:transaction-filters:";
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const FILTER_PARAMS = [
+  "category_status",
+  "origin",
   "type",
   "category_ids",
   "category_id",
@@ -48,6 +50,8 @@ export function parseTransactionFilters(
 ): TransactionFilters {
   return normalizeFilters({
     type: params.get("type"),
+    uncategorized: params.get("category_status") === "uncategorized",
+    origin: params.get("origin"),
     categoryIds: (
       params.get("category_ids") ??
       params.get("category_id") ??
@@ -79,6 +83,8 @@ export function buildTransactionListParams(
   params.delete("page");
 
   if (filters.type) params.set("type", filters.type);
+  if (filters.uncategorized) params.set("category_status", "uncategorized");
+  if (filters.origin) params.set("origin", filters.origin);
   if (filters.categoryIds.length > 0) {
     params.set("category_ids", filters.categoryIds.join(","));
   }
@@ -175,6 +181,10 @@ function normalizeFilters(value: Record<string, unknown>): TransactionFilters {
           ? "expense"
           : "",
     categoryIds,
+    ...(value.uncategorized === true ? { uncategorized: true } : {}),
+    ...(value.origin === "manual" || value.origin === "integration"
+      ? { origin: value.origin }
+      : {}),
     tag: normalizeString(value.tag, 100),
     paymentSourceId: normalizeString(value.paymentSourceId, 128),
     dateFrom: normalizeDate(value.dateFrom),

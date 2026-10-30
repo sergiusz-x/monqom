@@ -28,9 +28,12 @@ const FALLBACK_COLORS = [
   "var(--chart-8)",
 ] as const;
 
-function colorForCategory(categoryId: string, color: string | null): string {
+function colorForCategory(
+  categoryId: string | null,
+  color: string | null,
+): string {
   if (color) return color;
-  const hash = [...categoryId].reduce(
+  const hash = [...(categoryId ?? "uncategorized")].reduce(
     (total, character, index) =>
       (total + character.charCodeAt(0) * (index + 1)) % 997,
     0,
@@ -60,7 +63,9 @@ export function SpendingByCategoryChart({
           name: translateSystemLabel(
             t,
             category.categorySystemKey,
-            category.categoryName,
+            category.categoryId === null
+              ? t("dashboard.uncategorized")
+              : category.categoryName,
           ),
         })),
     [breakdown.categories, t],
@@ -143,7 +148,7 @@ export function SpendingByCategoryChart({
               >
                 {categories.map((category) => (
                   <Cell
-                    key={category.categoryId}
+                    key={category.categoryId ?? "uncategorized"}
                     cursor="pointer"
                     fill={colorForCategory(
                       category.categoryId,
@@ -151,7 +156,13 @@ export function SpendingByCategoryChart({
                     )}
                     onClick={() =>
                       navigate(
-                        `/transactions?category_id=${category.categoryId}&date_from=${dateFrom}&date_to=${dateTo}`,
+                        `/transactions?${new URLSearchParams({
+                          ...(category.categoryId === null
+                            ? { category_status: "uncategorized" }
+                            : { category_id: category.categoryId }),
+                          date_from: dateFrom,
+                          date_to: dateTo,
+                        })}`,
                       )
                     }
                   />
