@@ -226,6 +226,8 @@ export const TransactionsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} workspaceId
+     * @param {'uncategorized'} [categoryStatus]
+     * @param {'manual' | 'integration'} [origin]
      * @param {'expense' | 'income'} [type]
      * @param {string} [categoryId]
      * @param {Array<string>} [categoryIds]
@@ -242,6 +244,8 @@ export const TransactionsApiAxiosParamCreator = function (
      */
     transactionsControllerListTransactions: async (
       workspaceId: string,
+      categoryStatus?: "uncategorized",
+      origin?: "manual" | "integration",
       type?: "expense" | "income",
       categoryId?: string,
       categoryIds?: Array<string>,
@@ -286,6 +290,14 @@ export const TransactionsApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (categoryStatus !== undefined) {
+        localVarQueryParameter["category_status"] = categoryStatus;
+      }
+
+      if (origin !== undefined) {
+        localVarQueryParameter["origin"] = origin;
+      }
 
       if (type !== undefined) {
         localVarQueryParameter["type"] = type;
@@ -519,6 +531,8 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} workspaceId
+     * @param {'uncategorized'} [categoryStatus]
+     * @param {'manual' | 'integration'} [origin]
      * @param {'expense' | 'income'} [type]
      * @param {string} [categoryId]
      * @param {Array<string>} [categoryIds]
@@ -535,6 +549,8 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
      */
     async transactionsControllerListTransactions(
       workspaceId: string,
+      categoryStatus?: "uncategorized",
+      origin?: "manual" | "integration",
       type?: "expense" | "income",
       categoryId?: string,
       categoryIds?: Array<string>,
@@ -563,6 +579,8 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerListTransactions(
           workspaceId,
+          categoryStatus,
+          origin,
           type,
           categoryId,
           categoryIds,
@@ -685,6 +703,8 @@ export const TransactionsApiFactory = function (
     /**
      *
      * @param {string} workspaceId
+     * @param {'uncategorized'} [categoryStatus]
+     * @param {'manual' | 'integration'} [origin]
      * @param {'expense' | 'income'} [type]
      * @param {string} [categoryId]
      * @param {Array<string>} [categoryIds]
@@ -701,6 +721,8 @@ export const TransactionsApiFactory = function (
      */
     transactionsControllerListTransactions(
       workspaceId: string,
+      categoryStatus?: "uncategorized",
+      origin?: "manual" | "integration",
       type?: "expense" | "income",
       categoryId?: string,
       categoryIds?: Array<string>,
@@ -724,6 +746,8 @@ export const TransactionsApiFactory = function (
       return localVarFp
         .transactionsControllerListTransactions(
           workspaceId,
+          categoryStatus,
+          origin,
           type,
           categoryId,
           categoryIds,
@@ -833,6 +857,8 @@ export class TransactionsApi extends BaseAPI {
   /**
    *
    * @param {string} workspaceId
+   * @param {'uncategorized'} [categoryStatus]
+   * @param {'manual' | 'integration'} [origin]
    * @param {'expense' | 'income'} [type]
    * @param {string} [categoryId]
    * @param {Array<string>} [categoryIds]
@@ -850,6 +876,8 @@ export class TransactionsApi extends BaseAPI {
    */
   public transactionsControllerListTransactions(
     workspaceId: string,
+    categoryStatus?: "uncategorized",
+    origin?: "manual" | "integration",
     type?: "expense" | "income",
     categoryId?: string,
     categoryIds?: Array<string>,
@@ -873,6 +901,8 @@ export class TransactionsApi extends BaseAPI {
     return TransactionsApiFp(this.configuration)
       .transactionsControllerListTransactions(
         workspaceId,
+        categoryStatus,
+        origin,
         type,
         categoryId,
         categoryIds,

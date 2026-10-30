@@ -15,8 +15,10 @@ export function categorySystemKeys(
 }
 
 export function isSalaryCategory(
-  categoryId: string,
+  categoryId: string | null,
   systemKeys: Record<string, string | null | undefined>,
 ): boolean {
-  return systemKeys[categoryId] === SALARY_CATEGORY_SYSTEM_KEY;
+  return (
+    categoryId !== null && systemKeys[categoryId] === SALARY_CATEGORY_SYSTEM_KEY
+  );
 }

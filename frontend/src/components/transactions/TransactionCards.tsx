@@ -3,6 +3,7 @@ import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransa
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button, cardVariants } from "@monqom/ui";
+import { TransactionMetadata } from "./TransactionMetadata";
 
 interface TransactionCardsProps {
   transactions: Transaction[];
@@ -54,8 +55,14 @@ export function TransactionCards({
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {formatShortDate(transaction.date)} &middot;{" "}
-              {categoryMap[transaction.categoryId] ?? transaction.categoryId}
+              {transaction.categoryId
+                ? (categoryMap[transaction.categoryId] ??
+                  transaction.categoryId)
+                : t("dashboard.uncategorized")}
             </p>
+            <div className="mt-2">
+              <TransactionMetadata transaction={transaction} />
+            </div>
             {transaction.notes && (
               <p className="mt-2 text-sm text-muted-foreground">
                 {transaction.notes}

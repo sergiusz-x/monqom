@@ -317,6 +317,12 @@ function mapRecentTransaction(transaction: ListedTransactionRecord): CreateTrans
         id: transaction.id,
         workspace_id: transaction.workspace_id,
         category_id: transaction.category_id,
+        ...(transaction.integration_id !== undefined
+            ? {
+                  integration_id: transaction.integration_id,
+                  integration_name: transaction.integration_name ?? null,
+              }
+            : {}),
         payment_source_id: transaction.payment_source_id!,
         type: transaction.type,
         amount: centsToDisplayAmount(transaction.amount),

@@ -5,7 +5,9 @@
 export interface ApiTransaction {
   id: string;
   workspace_id: string;
-  category_id: string;
+  category_id: string | null;
+  integration_id?: string | null;
+  integration_name?: string | null;
   payment_source_id: string | null;
   type: "expense" | "income";
   amount: number;
@@ -118,7 +120,7 @@ export interface ApiSpendingSummary {
 }
 
 export interface ApiCategoryBreakdownItem {
-  category_id: string;
+  category_id: string | null;
   category_name: string;
   category_system_key?: string | null;
   category_color: string | null;

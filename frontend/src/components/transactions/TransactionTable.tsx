@@ -8,6 +8,7 @@ import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransa
 import { useTranslation } from "react-i18next";
 import { formatShortDate } from "@/lib/date-only";
 import { Button, Card } from "@monqom/ui";
+import { TransactionMetadata } from "./TransactionMetadata";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -128,8 +129,10 @@ export function TransactionTable({
                   {formatShortDate(transaction.date)}
                 </td>
                 <td className="px-3 py-2">
-                  {categoryMap[transaction.categoryId] ??
-                    transaction.categoryId}
+                  {transaction.categoryId
+                    ? (categoryMap[transaction.categoryId] ??
+                      transaction.categoryId)
+                    : t("dashboard.uncategorized")}
                 </td>
                 <td className="px-3 py-2 font-medium">
                   <SensitiveTransactionAmount
@@ -137,8 +140,11 @@ export function TransactionTable({
                     categorySystemKeys={categorySystemKeys}
                   />
                 </td>
-                <td className="max-w-52 truncate px-3 py-2 text-muted-foreground">
-                  {transaction.description}
+                <td className="max-w-72 px-3 py-3">
+                  <span className="mb-1.5 block truncate font-medium">
+                    {transaction.description}
+                  </span>
+                  <TransactionMetadata transaction={transaction} />
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">
                   {transaction.tags.length ? transaction.tags.join(", ") : "-"}

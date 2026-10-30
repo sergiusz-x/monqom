@@ -56,6 +56,30 @@ describe('TransactionsRepository', () => {
         )
     })
 
+    it.each(['integration', 'manual'] as const)(
+        'uses the same workspace-scoped review and %s origin filters for rows and count',
+        async (origin) => {
+            prisma.$queryRaw.mockResolvedValue([])
+            const filters = { workspaceId: 'workspace-1', uncategorized: true, origin }
+            await repository.listTransactions({ ...filters, limit: 20, offset: 0 })
+            await repository.countTransactions(filters)
+            for (const [query] of prisma.$queryRaw.mock.calls as [Prisma.Sql][]) {
+                const sql = query.strings.join(' ')
+                expect(sql).toContain('t."workspace_id" =')
+                expect(query.values).toContain('workspace-1')
+                expect(sql).toContain('t."deleted_at" IS NULL')
+                expect(sql).toContain('t."category_id" IS NULL')
+                expect(sql).toContain(
+                    origin === 'integration'
+                        ? 't."integration_id" IS NOT NULL'
+                        : 't."integration_id" IS NULL',
+                )
+            }
+            const listSql = (prisma.$queryRaw.mock.calls[0][0] as Prisma.Sql).strings.join(' ')
+            expect(listSql).toContain('i."workspace_id" = t."workspace_id"')
+        },
+    )
+
     it('normalizes tags case-insensitively with LOWER() in the persistence layer', async () => {
         prisma.$queryRaw.mockResolvedValue([{ name: 'Food' }, { name: 'Work' }])
 
@@ -222,6 +246,7 @@ describe('TransactionsRepository', () => {
                 deletedAt: null,
             },
             include: {
+                integration: { select: { name: true } },
                 tags: {
                     orderBy: {
                         name: 'asc',

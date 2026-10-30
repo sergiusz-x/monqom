@@ -3061,6 +3061,14 @@
                                                     "updated_at": {
                                                         "type": "string",
                                                         "format": "date-time"
+                                                    },
+                                                    "integration_id": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "integration_name": {
+                                                        "type": "string",
+                                                        "nullable": true
                                                     }
                                                 },
                                                 "required": [
@@ -3270,6 +3278,24 @@
                 "operationId": "TransactionsController_listTransactions",
                 "parameters": [
                     {
+                        "name": "category_status",
+                        "required": false,
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["uncategorized"]
+                        }
+                    },
+                    {
+                        "name": "origin",
+                        "required": false,
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["manual", "integration"]
+                        }
+                    },
+                    {
                         "name": "type",
                         "required": false,
                         "in": "query",
@@ -3446,6 +3472,14 @@
                                                     "updated_at": {
                                                         "type": "string",
                                                         "format": "date-time"
+                                                    },
+                                                    "integration_id": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "integration_name": {
+                                                        "type": "string",
+                                                        "nullable": true
                                                     }
                                                 },
                                                 "required": [
@@ -3560,6 +3594,14 @@
                                         "updated_at": {
                                             "type": "string",
                                             "format": "date-time"
+                                        },
+                                        "integration_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "integration_name": {
+                                            "type": "string",
+                                            "nullable": true
                                         }
                                     },
                                     "required": [
@@ -3661,6 +3703,14 @@
                                         "updated_at": {
                                             "type": "string",
                                             "format": "date-time"
+                                        },
+                                        "integration_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "integration_name": {
+                                            "type": "string",
+                                            "nullable": true
                                         }
                                     },
                                     "required": [
@@ -3770,6 +3820,14 @@
                                         "updated_at": {
                                             "type": "string",
                                             "format": "date-time"
+                                        },
+                                        "integration_id": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "integration_name": {
+                                            "type": "string",
+                                            "nullable": true
                                         }
                                     },
                                     "required": [

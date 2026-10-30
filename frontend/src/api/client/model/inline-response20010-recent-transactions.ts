@@ -97,6 +97,18 @@ export interface InlineResponse20010RecentTransactions {
    * @memberof InlineResponse20010RecentTransactions
    */
   updated_at: string;
+  /**
+   *
+   * @type {string}
+   * @memberof InlineResponse20010RecentTransactions
+   */
+  integration_id?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof InlineResponse20010RecentTransactions
+   */
+  integration_name?: string | null;
 }
 
 export const InlineResponse20010RecentTransactionsTypeEnum = {

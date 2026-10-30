@@ -33,9 +33,9 @@
       "mysql2": "3.23.1",
       "qs": "6.16.0",
       "proxy-addr": "2.0.8",
-      "multer": "2.4.0",
+      "multer": "2.5.0",
       "follow-redirects": "1.16.1",
-      "undici": "7.29.1",
+      "undici": "7.30.1",
       "handlebars": "4.7.10",
       "shell-quote": "1.11.0",
       "source-map-js": "1.2.2",
@@ -49,7 +49,10 @@
       "vite": "8.1.6",
       "vitest": "4.1.12",
       "basic-ftp": "6.2.1",
-      "@vitest/coverage-v8": "4.1.12"
+      "@vitest/coverage-v8": "4.1.12",
+      "body-parser": "2.4.0",
+      "systeminformation": "5.33.16",
+      "zod": "4.6.6"
     },
     "patchedDependencies": {
       "braces@3.0.3": "patches/braces@3.0.3.patch"

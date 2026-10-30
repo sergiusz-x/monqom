@@ -11,7 +11,7 @@ export interface SpendingSummary {
 }
 
 export interface CategoryBreakdownItem {
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   categorySystemKey?: string | null;
   categoryColor: string | null;

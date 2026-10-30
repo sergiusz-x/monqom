@@ -22,6 +22,8 @@ export function mapTransaction(value: ApiTransaction): Transaction {
     id: value.id,
     workspaceId: value.workspace_id,
     categoryId: value.category_id,
+    integrationId: value.integration_id,
+    integrationName: value.integration_name,
     paymentSourceId: value.payment_source_id,
     type: value.type,
     amount: value.amount,

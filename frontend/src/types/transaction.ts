@@ -1,7 +1,9 @@
 export interface Transaction {
   id: string;
   workspaceId: string;
-  categoryId: string;
+  categoryId: string | null;
+  integrationId?: string | null;
+  integrationName?: string | null;
   paymentSourceId: string | null;
   type: "expense" | "income";
   amount: number;
@@ -33,6 +35,8 @@ export type TransactionSortField =
 export type TransactionSortDirection = "asc" | "desc";
 
 export interface TransactionFilters {
+  uncategorized?: boolean;
+  origin?: "" | "manual" | "integration";
   type?: "" | "expense" | "income";
   categoryIds: string[];
   tag: string;

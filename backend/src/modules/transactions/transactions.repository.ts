@@ -63,6 +63,8 @@ export type TransactionSortField =
 export type TransactionSortDirection = 'asc' | 'desc'
 
 export interface ListTransactionsFilters {
+    uncategorized?: boolean
+    origin?: 'manual' | 'integration'
     type?: 'expense' | 'income'
     workspaceId: string
     categoryId?: string
@@ -90,7 +92,13 @@ export type TransactionWithTags = Transaction & {
     tags: TransactionTag[]
 }
 
+export type TransactionWithOrigin = TransactionWithTags & {
+    integration?: { name: string } | null
+}
+
 export interface ListedTransactionRecord {
+    integration_id?: string | null
+    integration_name?: string | null
     id: string
     workspace_id: string
     category_id: string | null
@@ -281,7 +289,7 @@ export class TransactionsRepository {
         workspaceId: string,
         transactionId: string,
         prisma: TransactionsPersistenceClient = this.prisma,
-    ): Promise<TransactionWithTags | null> {
+    ): Promise<TransactionWithOrigin | null> {
         return prisma.transaction.findFirst({
             where: {
                 workspaceId,
@@ -289,6 +297,7 @@ export class TransactionsRepository {
                 deletedAt: null,
             },
             include: {
+                integration: { select: { name: true } },
                 tags: {
                     orderBy: {
                         name: 'asc',
@@ -471,6 +480,8 @@ export class TransactionsRepository {
                 t."id",
                 t."workspace_id",
                 t."category_id",
+                t."integration_id",
+                MAX(i."name") AS "integration_name",
                 t."payment_source_id",
                 t."type",
                 t."amount",
@@ -485,6 +496,9 @@ export class TransactionsRepository {
                     ARRAY[]::TEXT[]
                 ) AS "tags"
             FROM "transactions" t
+            LEFT JOIN "integrations" i
+                ON i."workspace_id" = t."workspace_id"
+                AND i."id" = t."integration_id"
             LEFT JOIN "transaction_tags" tt
                 ON tt."workspace_id" = t."workspace_id"
                 AND tt."transaction_id" = t."id"
@@ -499,6 +513,7 @@ export class TransactionsRepository {
                 t."id",
                 t."workspace_id",
                 t."category_id",
+                t."integration_id",
                 t."payment_source_id",
                 t."type",
                 t."amount",
@@ -648,7 +663,9 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
         whereClause = Prisma.sql`${whereClause} AND t."type" = ${filters.type}`
     }
 
-    if (filters.categoryIds && filters.categoryIds.length > 0) {
+    if (filters.uncategorized) {
+        whereClause = Prisma.sql`${whereClause} AND t."category_id" IS NULL`
+    } else if (filters.categoryIds && filters.categoryIds.length > 0) {
         whereClause = Prisma.sql`${whereClause} AND t."category_id" IN (${Prisma.join(filters.categoryIds)})`
     } else if (filters.categoryId) {
         whereClause = Prisma.sql`${whereClause} AND t."category_id" = ${filters.categoryId}`
@@ -656,6 +673,12 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
 
     if (filters.paymentSourceId) {
         whereClause = Prisma.sql`${whereClause} AND t."payment_source_id" = ${filters.paymentSourceId}`
+    }
+
+    if (filters.origin === 'integration') {
+        whereClause = Prisma.sql`${whereClause} AND t."integration_id" IS NOT NULL`
+    } else if (filters.origin === 'manual') {
+        whereClause = Prisma.sql`${whereClause} AND t."integration_id" IS NULL`
     }
 
     if (filters.tag) {

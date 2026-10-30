@@ -3,6 +3,7 @@ import { waitFor } from "@testing-library/react";
 import { renderHookWithQueryClient as renderHook } from "@/test/query-test-utils";
 import { useTransactions } from "@/hooks/useTransactions";
 import api from "@/lib/api";
+import { DEFAULT_TRANSACTION_FILTERS } from "@/lib/transaction-list-state";
 
 vi.mock("@/lib/api", () => ({
   default: {
@@ -13,6 +14,28 @@ vi.mock("@/lib/api", () => ({
 const mockGet = api.get as ReturnType<typeof vi.fn>;
 
 describe("useTransactions", () => {
+  it("sends review and origin filters alongside generated pagination parameters", async () => {
+    renderHook(() =>
+      useTransactions(
+        "ws-1",
+        {
+          ...DEFAULT_TRANSACTION_FILTERS,
+          uncategorized: true,
+          origin: "integration",
+        },
+        20,
+        0,
+      ),
+    );
+    await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(1));
+    const url = new URL(
+      mockGet.mock.calls[0]?.[0] ?? "",
+      "https://app.example.test",
+    );
+    expect(url.searchParams.get("category_status")).toBe("uncategorized");
+    expect(url.searchParams.get("origin")).toBe("integration");
+    expect(url.searchParams.get("limit")).toBe("20");
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockResolvedValue({

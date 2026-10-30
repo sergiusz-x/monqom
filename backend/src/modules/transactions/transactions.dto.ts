@@ -68,6 +68,16 @@ export class TransactionBodyDto {
 }
 
 export class ListTransactionsQueryDto {
+    @ApiPropertyOptional({ enum: ['uncategorized'] })
+    @IsOptional()
+    @IsIn(['uncategorized'])
+    category_status?: 'uncategorized'
+
+    @ApiPropertyOptional({ enum: ['manual', 'integration'] })
+    @IsOptional()
+    @IsIn(['manual', 'integration'])
+    origin?: 'manual' | 'integration'
+
     @ApiPropertyOptional({ enum: ['expense', 'income'] })
     @IsOptional()
     @IsIn(['expense', 'income'])
