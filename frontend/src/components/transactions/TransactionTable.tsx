@@ -6,13 +6,16 @@ import type {
 } from "@/types/transaction";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { useTranslation } from "react-i18next";
-import { formatShortDate } from "@/lib/date-only";
+import { formatShortDateWithWeekday } from "@/lib/date-only";
 import { Button, Card } from "@monqom/ui";
-import { TransactionMetadata } from "./TransactionMetadata";
+import {
+  TransactionListCategory,
+  type ListCategory,
+} from "./TransactionListCategory";
 
 interface TransactionTableProps {
   transactions: Transaction[];
-  categoryMap: Record<string, string>;
+  categories: Record<string, ListCategory>;
   categorySystemKeys: Record<string, string | null | undefined>;
   paymentSourceMap: Record<string, string>;
   sortBy: TransactionSortField;
@@ -70,7 +73,7 @@ function SortableHeader({
 
 export function TransactionTable({
   transactions,
-  categoryMap,
+  categories,
   categorySystemKeys,
   paymentSourceMap,
   sortBy,
@@ -87,7 +90,6 @@ export function TransactionTable({
     { field: "category", label: t("common.category") },
     { field: "amount", label: t("common.amount") },
     { field: "description", label: t("transactions.description") },
-    { field: "tags", label: t("common.tags") },
     { field: "payment_source", label: t("common.paymentSource") },
   ];
 
@@ -126,13 +128,13 @@ export function TransactionTable({
                 className="cursor-pointer border-t border-border transition-colors hover:bg-muted/30"
               >
                 <td className="px-3 py-2">
-                  {formatShortDate(transaction.date)}
+                  {formatShortDateWithWeekday(transaction.date)}
                 </td>
                 <td className="px-3 py-2">
-                  {transaction.categoryId
-                    ? (categoryMap[transaction.categoryId] ??
-                      transaction.categoryId)
-                    : t("dashboard.uncategorized")}
+                  <TransactionListCategory
+                    transaction={transaction}
+                    categories={categories}
+                  />
                 </td>
                 <td className="px-3 py-2 font-medium">
                   <SensitiveTransactionAmount
@@ -144,10 +146,6 @@ export function TransactionTable({
                   <span className="mb-1.5 block truncate font-medium">
                     {transaction.description}
                   </span>
-                  <TransactionMetadata transaction={transaction} />
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {transaction.tags.length ? transaction.tags.join(", ") : "-"}
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">
                   {paymentSourceLabel}

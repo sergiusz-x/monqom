@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { SalaryPrivacyProvider } from "@/contexts/SalaryPrivacyContext";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -134,7 +136,9 @@ describe("SettingsPage", () => {
     });
     renderSettings();
 
-    await user.click(screen.getByRole("button", { name: "Workspace" }));
+    await user.click(
+      screen.getByRole("button", { name: "Financial settings" }),
+    );
     const workspaceName = screen.getByLabelText("Workspace name");
     expect(workspaceName).toHaveValue("Ada's Finances");
     await user.clear(workspaceName);
@@ -162,7 +166,9 @@ describe("SettingsPage", () => {
     const user = userEvent.setup();
     renderSettings();
 
-    await user.click(screen.getByRole("button", { name: "Workspace" }));
+    await user.click(
+      screen.getByRole("button", { name: "Financial settings" }),
+    );
     const workspaceName = screen.getByLabelText("Workspace name");
     await user.clear(workspaceName);
     await user.click(screen.getByRole("button", { name: "Save workspace" }));
@@ -192,7 +198,9 @@ describe("SettingsPage", () => {
     });
     renderSettings();
 
-    await user.click(screen.getByRole("button", { name: "Workspace" }));
+    await user.click(
+      screen.getByRole("button", { name: "Financial settings" }),
+    );
 
     expect(screen.getByLabelText("Workspace base currency")).toBeDisabled();
     expect(
@@ -210,7 +218,7 @@ describe("SettingsPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Privacy" }));
     const toggle = screen.getByRole("switch", {
-      name: "Hide salary amounts",
+      name: "Hide sensitive amounts",
     });
     expect(toggle).not.toBeChecked();
 
@@ -225,6 +233,50 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Privacy preference saved",
     );
+  });
+
+  it("stays in the mobile privacy section after saving and shows the updated setting", async () => {
+    const user = userEvent.setup();
+    mockApi.put.mockResolvedValueOnce({
+      data: { ...testUser, hideSalaryAmounts: true, updatedAt: "2026-03-21" },
+    });
+    function App() {
+      const [currentUser, setCurrentUser] = useState<User | null>(testUser);
+      const auth: AuthContextValue = {
+        user: currentUser,
+        setUser: setCurrentUser,
+        isLoading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+      };
+      return (
+        <ThemeProvider>
+          <ToastProvider>
+            <AuthContext.Provider value={auth}>
+              <SalaryPrivacyProvider>
+                <SettingsPage />
+              </SalaryPrivacyProvider>
+            </AuthContext.Provider>
+          </ToastProvider>
+        </ThemeProvider>
+      );
+    }
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Open Privacy" }));
+    await user.click(
+      screen.getByRole("switch", { name: "Hide sensitive amounts" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: "Hide sensitive amounts" }),
+      ).toBeChecked(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Settings" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open Privacy" }),
+    ).not.toBeInTheDocument();
   });
 
   it("changes password through the security section", async () => {
@@ -264,7 +316,9 @@ describe("SettingsPage", () => {
     mockApi.get.mockResolvedValueOnce({ data: new Blob(["date,amount"]) });
     renderSettings();
 
-    await user.click(screen.getByRole("button", { name: "Data" }));
+    await user.click(
+      screen.getByRole("button", { name: "Export transactions" }),
+    );
     await user.click(screen.getByRole("button", { name: "Export CSV" }));
 
     await waitFor(() => expect(mockApi.get).toHaveBeenCalledTimes(1));
@@ -288,6 +342,40 @@ describe("SettingsPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Log out" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps an unsaved profile draft when switching sections", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.clear(screen.getByLabelText("Display name"));
+    await user.type(screen.getByLabelText("Display name"), "Draft name");
+    await user.click(screen.getByRole("button", { name: "Privacy" }));
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    expect(screen.getByLabelText("Display name")).toHaveValue("Draft name");
+  });
+
+  it("shows the two-factor disable form only after requesting it", async () => {
+    const user = userEvent.setup();
+    renderSettings({ user: { ...testUser, totpEnabled: true } });
+    await user.click(screen.getByRole("button", { name: "Security" }));
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Disable 2FA" }));
+    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+  });
+
+  it("opens and returns from a mobile settings section", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(screen.getByRole("button", { name: "Open Privacy" }));
+    expect(
+      screen.getByRole("switch", { name: "Hide sensitive amounts" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(
+      screen.getByRole("button", { name: "Open Privacy" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the deployed application version in settings", async () => {
@@ -343,7 +431,6 @@ describe("SettingsPage", () => {
     mockApi.delete.mockResolvedValueOnce({ data: { message: "deleted" } });
     const authValue = renderSettings();
 
-    await user.click(screen.getByRole("button", { name: "Data" }));
     await user.click(screen.getByRole("button", { name: "Delete account" }));
     await user.click(screen.getByRole("button", { name: "Confirm delete" }));
 

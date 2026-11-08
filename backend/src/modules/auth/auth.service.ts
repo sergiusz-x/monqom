@@ -35,6 +35,9 @@ const PASSWORD_RESET_SENT_MESSAGE =
 const PASSWORD_RESET_SUCCESS_MESSAGE = 'Password reset successfully'
 const PASSWORD_CHANGE_SUCCESS_MESSAGE = 'Password changed successfully'
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password'
+// Match the cost of a real password check when no usable account exists.
+const DUMMY_PASSWORD_HASH =
+    '$argon2id$v=19$m=65536,t=3,p=4$vCOQNlPyvBIAAaqePYi7MQ$A7mHEIkymU53qFYEPoPH7r1frwzpBtdPMsJbqTJO0NA'
 const EMAIL_NOT_VERIFIED_MESSAGE = 'Email address must be verified before logging in'
 
 export interface RegisterCommand {
@@ -258,15 +261,10 @@ export class AuthService {
 
         const user = await this.authRepository.findUserByEmail(email)
 
-        if (!user) {
+        if (!user || (user.lockedUntil && user.lockedUntil.getTime() > Date.now())) {
+            await argon2.verify(DUMMY_PASSWORD_HASH, password)
             throw new UnauthorizedException({
                 code: 'INVALID_CREDENTIALS',
-                message: INVALID_CREDENTIALS_MESSAGE,
-            })
-        }
-        if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-            throw new UnauthorizedException({
-                code: 'ACCOUNT_TEMPORARILY_LOCKED',
                 message: INVALID_CREDENTIALS_MESSAGE,
             })
         }

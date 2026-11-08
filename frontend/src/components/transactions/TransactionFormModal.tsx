@@ -1,7 +1,9 @@
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { formatDateOnly, getDateOnlyInTimeZone } from "@/lib/date-only";
 import { useTranslation } from "react-i18next";
 import { CategorySelector } from "@/components/CategorySelector";
 import { PaymentSourceDialog } from "@/components/payment-sources/PaymentSourceDialog";
-import { TransactionTagSelector } from "@/components/transactions/TransactionTagSelector";
 
 import { useTransactionForm } from "@/hooks/useTransactionForm";
 import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
@@ -11,7 +13,6 @@ import type { TransactionFormMode } from "@/hooks/useTransactionForm";
 import {
   Alert,
   Button,
-  Card,
   FieldError,
   FormField,
   Input,
@@ -51,6 +52,7 @@ export function TransactionFormModal({
   onSaved,
 }: TransactionFormModalProps) {
   const { t } = useTranslation();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const {
     isEdit,
     formRef,
@@ -62,7 +64,6 @@ export function TransactionFormModal({
     transactionType,
     setTransactionType,
     sources,
-    advanced,
   } = useTransactionForm({
     mode,
     workspaceId,
@@ -75,21 +76,37 @@ export function TransactionFormModal({
   });
   if (!open) return null;
 
+  const selectedSource = sources.available.find(
+    (source) => source.id === sources.selectedId,
+  );
+  const dateLabel =
+    fields.date === getDateOnlyInTimeZone(new Date(), defaultTimezone)
+      ? t("transactions.today")
+      : fields.date
+        ? formatDateOnly(fields.date)
+        : t("common.date");
+  const sourceLabel = selectedSource
+    ? paymentSourceName(selectedSource, t)
+    : t("transactions.selectPaymentSource");
+
   return (
     <Modal
       open
       onClose={onClose}
       preventClose={isSaving}
       ariaLabel={isEdit ? t("transactions.edit") : t("transactions.add")}
-      contentClassName="max-w-lg"
+      contentClassName="flex max-w-lg flex-col overflow-hidden p-0"
     >
-      <h2 className="text-lg font-semibold">
+      <h2 className="shrink-0 px-5 pt-5 text-lg font-semibold">
         {isEdit ? t("transactions.edit") : t("transactions.add")}
       </h2>
       <form
         ref={formRef}
-        className="mt-4 space-y-4"
-        onSubmit={handleSubmit}
+        className="flex min-h-0 flex-1 flex-col"
+        onSubmit={(event) => {
+          if (!fields.date || !sources.selectedId) setDetailsOpen(true);
+          void handleSubmit(event);
+        }}
         onKeyDown={(event) => {
           if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
             event.preventDefault();
@@ -99,142 +116,161 @@ export function TransactionFormModal({
           }
         }}
       >
-        {!isEdit ? (
-          <SegmentedControl
-            value={transactionType}
-            ariaLabel={t("transactions.type")}
-            options={(["expense", "income"] as const).map((type) => ({
-              value: type,
-              label: t(`transactions.${type}`),
-            }))}
-            onChange={setTransactionType}
-          />
-        ) : null}
-        <FormField
-          id="transaction-amount"
-          label={t("common.amount")}
-          error={errors.amount}
-          required
-        >
-          <MoneyInput
-            currency={fields.currency}
-            minorUnits={fields.amountMinorUnits}
-            onMinorUnitsChange={fields.setAmountMinorUnits}
-            autoFocus={!isEdit}
-            onFocus={(event) => event.currentTarget.select()}
-            className="h-14 px-4 pr-16 text-right text-2xl font-semibold"
-          />
-        </FormField>
-
-        <FormField
-          id="transaction-description"
-          label={t("transactions.description")}
-          error={errors.description}
-          required
-        >
-          <Input
-            type="text"
-            maxLength={200}
-            value={fields.description}
-            onChange={(event) => fields.setDescription(event.target.value)}
-            placeholder={t("transactions.descriptionPlaceholder")}
-          />
-        </FormField>
-        <FormField
-          id="transaction-category"
-          label={t("common.category")}
-          error={errors.categoryId}
-          required
-        >
-          <CategorySelector
-            workspaceId={workspaceId}
-            value={fields.categoryId}
-            onChange={fields.setCategoryId}
-            type={transactionType}
-          />
-        </FormField>
-
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="min-h-0 space-y-4 overflow-y-auto px-5 pb-4 pt-4">
+          {!isEdit ? (
+            <SegmentedControl
+              value={transactionType}
+              ariaLabel={t("transactions.type")}
+              options={(["expense", "income"] as const).map((type) => ({
+                value: type,
+                label: t(`transactions.${type}`),
+              }))}
+              onChange={setTransactionType}
+            />
+          ) : null}
           <FormField
-            id="transaction-date"
-            label={t("common.date")}
-            error={errors.date}
+            id="transaction-amount"
+            label={t("common.amount")}
+            error={errors.amount}
             required
           >
-            <Input
-              type="date"
-              value={fields.date}
-              onChange={(event) => fields.setDate(event.target.value)}
+            <MoneyInput
+              currency={fields.currency}
+              minorUnits={fields.amountMinorUnits}
+              onMinorUnitsChange={fields.setAmountMinorUnits}
+              autoFocus={!isEdit}
+              onFocus={(event) => event.currentTarget.select()}
+              className="h-14 px-4 pr-16 text-right text-2xl font-semibold"
             />
           </FormField>
 
           <FormField
-            id="transaction-payment-source"
-            label={t("transactions.accountOrWallet")}
-            error={errors.paymentSourceId}
+            id="transaction-description"
+            label={t("transactions.description")}
+            error={errors.description}
             required
           >
-            <Select
-              value={sources.selectedId}
-              onChange={(event) => sources.setSelectedId(event.target.value)}
-              disabled={sources.isLoading}
-            >
-              {sources.available.map((source) => (
-                <option
-                  key={source.id}
-                  value={source.id}
-                  disabled={
-                    source.isArchived && source.id !== sources.selectedId
-                  }
-                >
-                  {paymentSourceName(source, t)}
-                  {source.isArchived
-                    ? ` (${t("paymentSources.archived")})`
-                    : ""}
-                </option>
-              ))}
-            </Select>
-            <Button
-              type="button"
-              onClick={() => sources.setDialogOpen(true)}
-              variant="link"
-              size="xs"
-              className="h-auto px-0"
-            >
-              {t("paymentSources.quickAdd")}
-            </Button>
+            <Input
+              type="text"
+              maxLength={200}
+              value={fields.description}
+              onChange={(event) => fields.setDescription(event.target.value)}
+              placeholder={t("transactions.descriptionPlaceholder")}
+            />
           </FormField>
-        </div>
+          <FormField
+            id="transaction-category"
+            label={t("common.category")}
+            error={errors.categoryId}
+            required
+          >
+            <CategorySelector
+              workspaceId={workspaceId}
+              value={fields.categoryId}
+              onChange={fields.setCategoryId}
+              type={transactionType}
+            />
+          </FormField>
 
-        <Button
-          type="button"
-          aria-expanded={advanced.open}
-          onClick={() => advanced.setOpen((current) => !current)}
-          variant="outline"
-          className="flex w-full items-center justify-between"
-        >
-          <span>{t("transactions.advanced")}</span>
-          <span aria-hidden="true">{advanced.open ? "-" : "+"}</span>
-        </Button>
-
-        {advanced.open ? (
-          <Card tone="muted" className="space-y-4">
-            <FormField
-              id="transaction-currency"
-              label={t("common.currency")}
-              required
-            >
-              <Select
-                value={fields.currency}
-                onChange={(event) => fields.setCurrency(event.target.value)}
+          <Button
+            type="button"
+            variant="outline"
+            className="flex h-auto min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left font-normal"
+            aria-expanded={detailsOpen}
+            aria-controls="transaction-default-details"
+            onClick={() => setDetailsOpen((current) => !current)}
+          >
+            <span className="min-w-0">
+              <span className="block font-medium">
+                {t("transactions.extraDetails")}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {dateLabel} · {sourceLabel}
+              </span>
+            </span>
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
+              className={detailsOpen ? "shrink-0 rotate-180" : "shrink-0"}
+            />
+          </Button>
+          <div
+            id="transaction-default-details"
+            className={detailsOpen ? "space-y-4" : "hidden"}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                id="transaction-date"
+                label={t("common.date")}
+                error={errors.date}
+                required
               >
-                {SUPPORTED_CURRENCIES.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
+                <Input
+                  type="date"
+                  value={fields.date}
+                  onChange={(event) => fields.setDate(event.target.value)}
+                />
+              </FormField>
+
+              <FormField
+                id="transaction-payment-source"
+                label={t("transactions.accountOrWallet")}
+                error={errors.paymentSourceId}
+              >
+                <Select
+                  value={sources.selectedId}
+                  aria-required="true"
+                  onChange={(event) => {
+                    if (event.target.value === "__create_payment_source__") {
+                      sources.setDialogOpen(true);
+                    } else {
+                      sources.setSelectedId(event.target.value);
+                    }
+                  }}
+                  disabled={sources.isLoading}
+                >
+                  {!sources.selectedId && (
+                    <option value="" disabled>
+                      {t("transactions.selectPaymentSource")}
+                    </option>
+                  )}
+                  {sources.available.map((source) => (
+                    <option
+                      key={source.id}
+                      value={source.id}
+                      disabled={
+                        source.isArchived && source.id !== sources.selectedId
+                      }
+                    >
+                      {paymentSourceName(source, t)}
+                      {source.isArchived
+                        ? ` (${t("paymentSources.archived")})`
+                        : ""}
+                    </option>
+                  ))}
+                  <option value="__create_payment_source__">
+                    + {t("paymentSources.quickAdd")}
                   </option>
-                ))}
-              </Select>
-            </FormField>
+                </Select>
+              </FormField>
+
+              <FormField
+                id="transaction-currency"
+                label={t("common.currency")}
+                required
+              >
+                <Select
+                  value={fields.currency}
+                  onChange={(event) => fields.setCurrency(event.target.value)}
+                >
+                  {SUPPORTED_CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            </div>
 
             <FormField id="transaction-notes" label={t("common.notes")}>
               <Textarea
@@ -243,26 +279,16 @@ export function TransactionFormModal({
                 rows={3}
               />
             </FormField>
+          </div>
 
-            <div className="space-y-1 text-sm">
-              <span className="block">{t("common.tags")}</span>
-              <TransactionTagSelector
-                availableTags={advanced.workspaceTags}
-                value={fields.selectedTags}
-                onChange={fields.setSelectedTags}
-              />
-            </div>
-          </Card>
-        ) : null}
-
-        <FieldError message={sources.error} />
-        {submitError ? (
-          <Alert variant="error" compact>
-            {submitError}
-          </Alert>
-        ) : null}
-
-        <div className="flex justify-end gap-2">
+          <FieldError message={sources.error} />
+          {submitError ? (
+            <Alert variant="error" compact>
+              {submitError}
+            </Alert>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-5 py-2 md:border-0 md:pb-5 md:pt-0">
           <Button type="button" onClick={onClose} variant="outline">
             {t("common.cancel")}
           </Button>

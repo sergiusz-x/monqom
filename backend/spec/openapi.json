@@ -2746,6 +2746,76 @@
                 "tags": ["Budgets"]
             }
         },
+        "/workspaces/{workspaceId}/budgets/recurring": {
+            "post": {
+                "operationId": "BudgetsController_setRecurringBudget",
+                "parameters": [
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BudgetBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            }
+        },
+        "/workspaces/{workspaceId}/budgets/recurring/remove": {
+            "post": {
+                "operationId": "BudgetsController_removeRecurringBudget",
+                "parameters": [
+                    {
+                        "name": "scope",
+                        "required": true,
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BudgetBodyDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
+                    }
+                },
+                "tags": ["Budgets"]
+            }
+        },
         "/workspaces/{workspaceId}/budgets/{id}": {
             "put": {
                 "operationId": "BudgetsController_updateBudget",
@@ -2862,6 +2932,113 @@
                 "tags": ["Budgets"]
             }
         },
+        "/workspaces/{workspaceId}/budgets/plan/{month}": {
+            "get": {
+                "operationId": "MonthlyPlanController_get",
+                "parameters": [
+                    {
+                        "name": "month",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["MonthlyPlan"]
+            }
+        },
+        "/workspaces/{workspaceId}/budgets/plan/{month}/funds": {
+            "put": {
+                "operationId": "MonthlyPlanController_confirmFunds",
+                "parameters": [
+                    {
+                        "name": "month",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConfirmFundsDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["MonthlyPlan"]
+            }
+        },
+        "/workspaces/{workspaceId}/budgets/plan/{month}/goals": {
+            "put": {
+                "operationId": "MonthlyPlanController_saveGoals",
+                "parameters": [
+                    {
+                        "name": "month",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveGoalAllocationsDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": ["MonthlyPlan"]
+            }
+        },
         "/workspaces/{workspaceId}/dashboard": {
             "get": {
                 "operationId": "DashboardController_getOverview",
@@ -2937,6 +3114,20 @@
                                                 "net_total"
                                             ]
                                         },
+                                        "spending_pace": {
+                                            "type": "object",
+                                            "properties": {
+                                                "change_percentage": {
+                                                    "type": "number"
+                                                },
+                                                "direction": {
+                                                    "type": "string",
+                                                    "enum": ["up", "down", "flat"]
+                                                }
+                                            },
+                                            "required": ["change_percentage", "direction"],
+                                            "nullable": true
+                                        },
                                         "category_breakdown": {
                                             "type": "object",
                                             "properties": {
@@ -3007,6 +3198,26 @@
                                                     }
                                                 },
                                                 "required": ["month", "total"]
+                                            }
+                                        },
+                                        "financial_trend": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "month": {
+                                                        "type": "string"
+                                                    },
+                                                    "income": {
+                                                        "type": "number",
+                                                        "nullable": true
+                                                    },
+                                                    "spending": {
+                                                        "type": "number",
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "required": ["month", "income", "spending"]
                                             }
                                         },
                                         "recent_transactions": {
@@ -3091,8 +3302,10 @@
                                     },
                                     "required": [
                                         "summary",
+                                        "spending_pace",
                                         "category_breakdown",
                                         "spending_trend",
+                                        "financial_trend",
                                         "recent_transactions"
                                     ]
                                 }
@@ -3277,6 +3490,15 @@
             "get": {
                 "operationId": "TransactionsController_listTransactions",
                 "parameters": [
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "schema": {
+                            "maxLength": 200,
+                            "type": "string"
+                        }
+                    },
                     {
                         "name": "category_status",
                         "required": false,
@@ -3622,6 +3844,45 @@
                                 }
                             }
                         }
+                    }
+                },
+                "tags": ["Transactions"]
+            }
+        },
+        "/workspaces/{workspaceId}/transactions/{id}/category": {
+            "patch": {
+                "operationId": "TransactionsController_assignCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignTransactionCategoryDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": ""
                     }
                 },
                 "tags": ["Transactions"]
@@ -4183,6 +4444,94 @@
                         }
                     }
                 },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "workspace_id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "cash",
+                                                "debit_card",
+                                                "credit_card",
+                                                "bank",
+                                                "other"
+                                            ]
+                                        },
+                                        "system_key": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "is_archived": {
+                                            "type": "boolean"
+                                        },
+                                        "archived_at": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "nullable": true
+                                        },
+                                        "created_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updated_at": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "workspace_id",
+                                        "name",
+                                        "type",
+                                        "system_key",
+                                        "is_archived",
+                                        "archived_at",
+                                        "created_at",
+                                        "updated_at"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": ["PaymentSources"]
+            }
+        },
+        "/workspaces/{workspaceId}/payment-sources/{id}/restore": {
+            "post": {
+                "operationId": "PaymentSourcesController_restorePaymentSource",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "workspaceId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "",
@@ -9424,6 +9773,23 @@
                     }
                 },
                 "required": ["amount", "category_id", "year", "month"]
+            },
+            "ConfirmFundsDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "SaveGoalAllocationsDto": {
+                "type": "object",
+                "properties": {}
+            },
+            "AssignTransactionCategoryDto": {
+                "type": "object",
+                "properties": {
+                    "category_id": {
+                        "type": "string"
+                    }
+                },
+                "required": ["category_id"]
             },
             "TransactionBodyDto": {
                 "type": "object",

@@ -22,7 +22,6 @@ import {
 import { isPrismaUniqueConstraintError } from '../../shared/database/prisma-errors'
 
 const BUDGET_ALREADY_EXISTS_MESSAGE = 'Budget already exists for category and month'
-const BUDGET_CATEGORY_CHILD_REQUIRED_MESSAGE = 'Budget category must be a child category'
 const BUDGET_MAX_AMOUNT_CENTS = 2147483647
 const BUDGET_MAX_AMOUNT_MESSAGE = 'Amount must be less than or equal to 21474836.47'
 const BUDGET_NOT_FOUND_MESSAGE = 'Budget not found'
@@ -139,9 +138,187 @@ export class BudgetsService {
 
         return calculateBudgetProgress({
             categories,
-            budgets,
+            budgets: budgets.map((budget) => ({ ...budget, amount: budget.baseAmount })),
             spending,
         }).map((progress) => mapBudgetProgressResponse(progress))
+    }
+
+    async setRecurringBudget(
+        input: BudgetCommand,
+        workspaceId: string,
+        userId: string,
+    ): Promise<void> {
+        const workspace = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const user = normalizeRequiredValue(userId, 'User id')
+        const validated = validateBudgetInput(input)
+        if (
+            validated.errors.length ||
+            !validated.categoryId ||
+            typeof validated.amountCents !== 'number' ||
+            typeof validated.year !== 'number' ||
+            typeof validated.month !== 'number'
+        ) {
+            throw new BadRequestException(validated.errors)
+        }
+        const month = `${validated.year}-${String(validated.month).padStart(2, '0')}`
+        await this.prisma.$transaction(
+            async (tx) => {
+                const currentWorkspace = this.workspaceService
+                    ? await this.workspaceService.getWorkspaceById(workspace, tx)
+                    : { baseCurrency: 'USD' }
+                const currency = normalizeCurrency(input.currency ?? currentWorkspace.baseCurrency)
+                if (currency !== currentWorkspace.baseCurrency)
+                    throw new BadRequestException(
+                        'Recurring budgets must use the workspace currency',
+                    )
+                await this.assertValidBudgetCategory(workspace, validated.categoryId!, tx)
+                const existing = await this.budgetsRepository.findBudgetByCategoryAndMonth(
+                    workspace,
+                    validated.categoryId!,
+                    validated.year!,
+                    validated.month!,
+                    tx,
+                )
+                if (existing) {
+                    await this.budgetsRepository.updateBudget(
+                        {
+                            workspaceId: workspace,
+                            userId: user,
+                            budgetId: existing.id,
+                            categoryId: validated.categoryId!,
+                            amount: validated.amountCents!,
+                            currency,
+                            baseAmount: validated.amountCents!,
+                            year: validated.year!,
+                            month: validated.month!,
+                            previousBudget: existing,
+                        },
+                        tx,
+                    )
+                }
+                await this.budgetsRepository.clearLaterRecurringVersions(
+                    {
+                        workspaceId: workspace,
+                        userId: user,
+                        categoryId: validated.categoryId!,
+                        effectiveMonth: month,
+                    },
+                    tx,
+                )
+                await this.budgetsRepository.saveRecurringVersion(
+                    {
+                        workspaceId: workspace,
+                        userId: user,
+                        categoryId: validated.categoryId!,
+                        effectiveMonth: month,
+                        active: true,
+                        amount: validated.amountCents!,
+                        baseAmount: validated.amountCents!,
+                        currency,
+                    },
+                    tx,
+                )
+                await this.budgetsRepository.clearMonthExclusion(
+                    workspace,
+                    validated.categoryId!,
+                    month,
+                    tx,
+                )
+            },
+            { isolationLevel: 'Serializable' },
+        )
+    }
+
+    async removeRecurringBudget(
+        input: BudgetCommand,
+        scope: string,
+        workspaceId: string,
+        userId: string,
+    ): Promise<void> {
+        const workspace = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const user = normalizeRequiredValue(userId, 'User id')
+        const validated = validateBudgetInput(input)
+        if (
+            validated.errors.length ||
+            !validated.categoryId ||
+            typeof validated.year !== 'number' ||
+            typeof validated.month !== 'number' ||
+            !['month', 'future'].includes(scope)
+        )
+            throw new BadRequestException('Invalid budget removal')
+        const month = `${validated.year}-${String(validated.month).padStart(2, '0')}`
+        await this.prisma.$transaction(
+            async (tx) => {
+                const visible = await this.budgetsRepository.listBudgetsByMonth(
+                    workspace,
+                    validated.year!,
+                    validated.month!,
+                    tx,
+                )
+                const existing = visible.find(
+                    (budget) => budget.categoryId === validated.categoryId,
+                )
+                if (!existing) throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
+                const explicit = await this.budgetsRepository.findBudgetByCategoryAndMonth(
+                    workspace,
+                    validated.categoryId!,
+                    validated.year!,
+                    validated.month!,
+                    tx,
+                )
+                if (explicit)
+                    await this.budgetsRepository.deleteBudget(
+                        {
+                            workspaceId: workspace,
+                            userId: user,
+                            budgetId: explicit.id,
+                            budget: explicit,
+                        },
+                        tx,
+                    )
+                if (scope === 'month') {
+                    await this.budgetsRepository.excludeRecurringMonth(
+                        {
+                            workspaceId: workspace,
+                            userId: user,
+                            categoryId: validated.categoryId!,
+                            month,
+                        },
+                        tx,
+                    )
+                } else {
+                    await this.budgetsRepository.clearLaterRecurringVersions(
+                        {
+                            workspaceId: workspace,
+                            userId: user,
+                            categoryId: validated.categoryId!,
+                            effectiveMonth: month,
+                        },
+                        tx,
+                    )
+                    await this.budgetsRepository.saveRecurringVersion(
+                        {
+                            workspaceId: workspace,
+                            userId: user,
+                            categoryId: validated.categoryId!,
+                            effectiveMonth: month,
+                            active: false,
+                            amount: existing.amount,
+                            baseAmount: existing.baseAmount,
+                            currency: existing.currency,
+                        },
+                        tx,
+                    )
+                    await this.budgetsRepository.clearMonthExclusion(
+                        workspace,
+                        validated.categoryId!,
+                        month,
+                        tx,
+                    )
+                }
+            },
+            { isolationLevel: 'Serializable' },
+        )
     }
 
     async createBudget(
@@ -243,6 +420,23 @@ export class BudgetsService {
         const normalizedBudgetId = normalizeRequiredValue(budgetId, 'Budget id')
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        if (normalizedBudgetId.startsWith('recurring:')) {
+            const visible = await this.budgetsRepository.listBudgetsByMonth(
+                normalizedWorkspaceId,
+                input.year,
+                input.month,
+                this.prisma,
+            )
+            if (
+                !visible.some(
+                    (budget) =>
+                        budget.id === normalizedBudgetId &&
+                        budget.categoryId === input.categoryId.trim(),
+                )
+            )
+                throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
+            return this.createBudget(input, normalizedWorkspaceId, normalizedUserId)
+        }
         const validatedInput = validateBudgetInput(input)
 
         if (
@@ -346,6 +540,33 @@ export class BudgetsService {
         const normalizedBudgetId = normalizeRequiredValue(budgetId, 'Budget id')
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        if (normalizedBudgetId.startsWith('recurring:')) {
+            const match = /^recurring:[^:]+:(\d{4})-(0[1-9]|1[0-2])$/.exec(normalizedBudgetId)
+            if (!match) throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
+            const year = Number(match[1])
+            const month = Number(match[2])
+            const visible = await this.budgetsRepository.listBudgetsByMonth(
+                normalizedWorkspaceId,
+                year,
+                month,
+                this.prisma,
+            )
+            const budget = visible.find((item) => item.id === normalizedBudgetId)
+            if (!budget?.categoryId) throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
+            await this.removeRecurringBudget(
+                {
+                    amount: centsToDisplayAmount(budget.amount),
+                    currency: budget.currency,
+                    categoryId: budget.categoryId,
+                    year,
+                    month,
+                },
+                'month',
+                normalizedWorkspaceId,
+                normalizedUserId,
+            )
+            return
+        }
 
         await this.prisma.$transaction(async (tx) => {
             const existingBudget = await this.budgetsRepository.findBudgetById(
@@ -371,6 +592,18 @@ export class BudgetsService {
             if (!wasDeleted) {
                 throw new NotFoundException(BUDGET_NOT_FOUND_MESSAGE)
             }
+            if (existingBudget.categoryId) {
+                const month = `${existingBudget.year}-${String(existingBudget.month).padStart(2, '0')}`
+                await this.budgetsRepository.excludeRecurringMonth(
+                    {
+                        workspaceId: normalizedWorkspaceId,
+                        userId: normalizedUserId,
+                        categoryId: existingBudget.categoryId,
+                        month,
+                    },
+                    tx,
+                )
+            }
         })
     }
 
@@ -387,10 +620,6 @@ export class BudgetsService {
 
         if (!category) {
             throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
-        }
-
-        if (!category.parentId) {
-            throw new BadRequestException(BUDGET_CATEGORY_CHILD_REQUIRED_MESSAGE)
         }
     }
 }

@@ -22,8 +22,34 @@ describe("transaction list URL and preferences", () => {
     expect(filters).toEqual({
       ...DEFAULT_TRANSACTION_FILTERS,
       categoryIds: ["cat-1", "cat-2"],
-      tag: "food",
       sortDirection: "asc",
+    });
+  });
+
+  it("drops legacy tag filters and tag sorting from links and preferences", () => {
+    const oldUrl = new URLSearchParams(
+      "tag=food&sort_by=tags&sort_direction=asc",
+    );
+    const filters = parseTransactionFilters(oldUrl);
+    expect(filters).not.toHaveProperty("tag");
+    expect(filters.sortBy).toBe("date");
+    expect(buildTransactionListParams(oldUrl, filters).has("tag")).toBe(false);
+    expect(
+      buildTransactionListParams(oldUrl, filters).get("sort_by"),
+    ).toBeNull();
+    localStorage.setItem(
+      "monqom:transaction-list-preferences:v1:ws-1",
+      JSON.stringify({
+        version: 1,
+        filters: {
+          ...DEFAULT_TRANSACTION_FILTERS,
+          tag: "food",
+          sortBy: "tags",
+        },
+      }),
+    );
+    expect(loadTransactionPreferences(localStorage, "ws-1")).toMatchObject({
+      sortBy: "date",
     });
   });
 
@@ -49,7 +75,6 @@ describe("transaction list URL and preferences", () => {
   it("stores a versioned preference document", () => {
     saveTransactionPreferences(localStorage, "ws-1", {
       ...DEFAULT_TRANSACTION_FILTERS,
-      tag: "weekly",
     });
 
     expect(
@@ -58,7 +83,7 @@ describe("transaction list URL and preferences", () => {
       ),
     ).toEqual({
       version: 1,
-      filters: { ...DEFAULT_TRANSACTION_FILTERS, tag: "weekly" },
+      filters: DEFAULT_TRANSACTION_FILTERS,
     });
   });
 
@@ -78,7 +103,6 @@ describe("transaction list URL and preferences", () => {
     expect(loadTransactionPreferences(localStorage, "ws-1")).toEqual({
       ...DEFAULT_TRANSACTION_FILTERS,
       categoryIds: ["cat-1"],
-      tag: "food",
       sortDirection: "asc",
     });
     expect(localStorage.getItem("monqom:transaction-filters:ws-1")).toBeNull();

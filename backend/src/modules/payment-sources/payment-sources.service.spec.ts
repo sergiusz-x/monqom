@@ -12,6 +12,7 @@ describe('PaymentSourcesService', () => {
         Pick<
             PaymentSourcesRepository,
             | 'archivePaymentSource'
+            | 'restorePaymentSource'
             | 'createPaymentSource'
             | 'findPaymentSourceById'
             | 'findActivePaymentSourceByName'
@@ -31,6 +32,7 @@ describe('PaymentSourcesService', () => {
         }
         paymentSourcesRepository = {
             archivePaymentSource: jest.fn(),
+            restorePaymentSource: jest.fn(),
             createPaymentSource: jest.fn(),
             findPaymentSourceById: jest.fn(),
             findActivePaymentSourceByName: jest.fn(),
@@ -54,6 +56,73 @@ describe('PaymentSourcesService', () => {
             prisma as never,
             paymentSourcesRepository as unknown as PaymentSourcesRepository,
         )
+    })
+
+    it('restores an archived source in its workspace', async () => {
+        const source = createStoredPaymentSource({
+            id: 'source-1',
+            name: 'Card',
+            type: 'debit_card',
+            deletedAt: new Date('2026-01-01'),
+        })
+        paymentSourcesRepository.findPaymentSourceById.mockResolvedValue(source as never)
+        paymentSourcesRepository.restorePaymentSource.mockResolvedValue({
+            ...source,
+            deletedAt: null,
+        } as never)
+        await expect(
+            service.restorePaymentSource('source-1', 'workspace-1', 'user-1'),
+        ).resolves.toMatchObject({ id: 'source-1', is_archived: false })
+        expect(paymentSourcesRepository.findPaymentSourceById).toHaveBeenCalledWith(
+            'workspace-1',
+            'source-1',
+            true,
+            transactionClient,
+        )
+        expect(paymentSourcesRepository.restorePaymentSource).toHaveBeenCalledWith(
+            'workspace-1',
+            'source-1',
+            'user-1',
+            transactionClient,
+        )
+    })
+
+    it('rejects a conflicting active name and a concurrent uniqueness conflict', async () => {
+        const source = createStoredPaymentSource({
+            id: 'source-1',
+            name: 'Card',
+            type: 'debit_card',
+            deletedAt: new Date('2026-01-01'),
+        })
+        paymentSourcesRepository.findPaymentSourceById.mockResolvedValue(source as never)
+        paymentSourcesRepository.findActivePaymentSourceByName.mockResolvedValue({
+            ...source,
+            id: 'source-2',
+            deletedAt: null,
+        } as never)
+        await expect(
+            service.restorePaymentSource('source-1', 'workspace-1', 'user-1'),
+        ).rejects.toBeInstanceOf(ConflictException)
+        expect(paymentSourcesRepository.restorePaymentSource).not.toHaveBeenCalled()
+        paymentSourcesRepository.findActivePaymentSourceByName.mockResolvedValue(null)
+        paymentSourcesRepository.restorePaymentSource.mockRejectedValue({ code: 'P2002' })
+        await expect(
+            service.restorePaymentSource('source-1', 'workspace-1', 'user-1'),
+        ).rejects.toBeInstanceOf(ConflictException)
+    })
+
+    it('does not restore a source outside the workspace or an already active source', async () => {
+        paymentSourcesRepository.findPaymentSourceById.mockResolvedValue(null)
+        await expect(
+            service.restorePaymentSource('source-1', 'other-workspace', 'user-1'),
+        ).rejects.toBeInstanceOf(NotFoundException)
+        paymentSourcesRepository.findPaymentSourceById.mockResolvedValue(
+            createStoredPaymentSource({ id: 'source-1', name: 'Card', type: 'bank' }) as never,
+        )
+        await expect(
+            service.restorePaymentSource('source-1', 'workspace-1', 'user-1'),
+        ).rejects.toBeInstanceOf(NotFoundException)
+        expect(paymentSourcesRepository.restorePaymentSource).not.toHaveBeenCalled()
     })
 
     it('lists active payment sources by default', async () => {
@@ -299,6 +368,7 @@ function createStoredPaymentSource(input: {
     name: string
     type: string
     systemKey?: string
+    deletedAt?: Date
 }) {
     return {
         id: input.id,
@@ -308,6 +378,6 @@ function createStoredPaymentSource(input: {
         systemKey: input.systemKey ?? null,
         createdAt: new Date('2026-03-24T10:00:00.000Z'),
         updatedAt: new Date('2026-03-24T10:00:00.000Z'),
-        deletedAt: null,
+        deletedAt: input.deletedAt ?? null,
     }
 }

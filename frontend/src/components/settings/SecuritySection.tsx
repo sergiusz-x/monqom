@@ -32,6 +32,7 @@ export function SecuritySection({
   onSaved,
 }: SecuritySectionProps) {
   const { t } = useTranslation();
+  const [isDisableFormOpen, setIsDisableFormOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -282,7 +283,17 @@ export function SecuritySection({
           )}
         </div>
 
-        {twoFactorEnabled && (
+        {twoFactorEnabled && !isDisableFormOpen && (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4"
+            onClick={() => setIsDisableFormOpen(true)}
+          >
+            {t("settings.disable2fa")}
+          </Button>
+        )}
+        {twoFactorEnabled && isDisableFormOpen && (
           <form
             ref={disableTwoFactorFormRef}
             className="mt-5 max-w-xl space-y-4"
@@ -308,6 +319,16 @@ export function SecuritySection({
             >
               {t("settings.disable2fa")}
             </PendingButton>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsDisableFormOpen(false);
+                setDisablePassword("");
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
           </form>
         )}
 

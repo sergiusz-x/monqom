@@ -105,7 +105,7 @@ describe("TransactionDetailPage", () => {
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Wallet")).toBeInTheDocument();
     expect(screen.getByText("Local market")).toBeInTheDocument();
-    expect(screen.getByText("home")).toBeInTheDocument();
+    expect(screen.queryByText("home")).not.toBeInTheDocument();
     expect(mockApi.get).toHaveBeenCalledWith(
       "/workspaces/ws-1/transactions/tx-1",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),

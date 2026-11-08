@@ -3,6 +3,7 @@ import { Budget, Category, Prisma } from '@prisma/client'
 import { AuditService } from '../../shared/audit/audit.service'
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { resolveRecurringBudgets } from './recurring-budget.resolver'
 
 export interface BudgetCategoryRecord extends Pick<Category, 'id' | 'parentId'> {}
 export interface BudgetProgressCategoryRecord extends Pick<
@@ -66,14 +67,45 @@ export class BudgetsRepository {
         month: number,
         prisma: BudgetsPersistenceClient = this.prisma,
     ): Promise<Budget[]> {
-        return prisma.budget.findMany({
-            where: {
+        const selectedMonth = `${year}-${String(month).padStart(2, '0')}`
+        const [monthly, versions, exclusions] = await Promise.all([
+            prisma.budget.findMany({
+                where: { workspaceId, year, month },
+                orderBy: [{ categoryId: 'asc' }, { id: 'asc' }],
+            }),
+            prisma.recurringBudgetVersion.findMany({
+                where: { workspaceId, effectiveMonth: { lte: selectedMonth } },
+            }),
+            prisma.budgetMonthExclusion.findMany({ where: { workspaceId, month: selectedMonth } }),
+        ])
+        const inherited = resolveRecurringBudgets(
+            selectedMonth,
+            versions.map((version) => ({
+                categoryId: version.categoryId,
+                effectiveMonth: version.effectiveMonth,
+                value: version.active ? version : null,
+            })),
+            exclusions.map((exclusion) => ({ categoryId: exclusion.categoryId, value: null })),
+        )
+        const explicitCategories = new Set(monthly.map((budget) => budget.categoryId))
+        const recurring = inherited
+            .filter((item) => !explicitCategories.has(item.categoryId))
+            .map(({ value }) => ({
+                id: `recurring:${value.id}:${selectedMonth}`,
                 workspaceId,
+                categoryId: value.categoryId,
+                amount: value.amount,
+                currency: value.currency,
+                baseAmount: value.baseAmount,
+                fxRate: new Prisma.Decimal(1),
+                fxRateDate: new Date(Date.UTC(year, month - 1, 1)),
+                fxSource: 'recurring',
                 year,
                 month,
-            },
-            orderBy: [{ categoryId: 'asc' }, { id: 'asc' }],
-        })
+                createdAt: value.createdAt,
+                updatedAt: value.updatedAt,
+            }))
+        return [...monthly, ...recurring]
     }
 
     async findBudgetById(
@@ -154,6 +186,7 @@ export class BudgetsRepository {
             where: {
                 workspaceId,
                 deletedAt: null,
+                type: 'expense',
                 date: {
                     gte: startDate,
                     lt: endDateExclusive,
@@ -174,6 +207,133 @@ export class BudgetsRepository {
                       },
                   ],
         )
+    }
+
+    async saveRecurringVersion(
+        input: {
+            workspaceId: string
+            categoryId: string
+            userId: string
+            effectiveMonth: string
+            active: boolean
+            amount: number
+            currency: string
+            baseAmount: number
+        },
+        prisma: BudgetsPersistenceClient = this.prisma,
+    ) {
+        const key = {
+            workspaceId: input.workspaceId,
+            categoryId: input.categoryId,
+            effectiveMonth: input.effectiveMonth,
+        }
+        const previous = await prisma.recurringBudgetVersion.findUnique({
+            where: { workspaceId_categoryId_effectiveMonth: key },
+        })
+        const current = await prisma.recurringBudgetVersion.upsert({
+            where: { workspaceId_categoryId_effectiveMonth: key },
+            create: {
+                ...key,
+                active: input.active,
+                amount: input.amount,
+                currency: input.currency,
+                baseAmount: input.baseAmount,
+            },
+            update: {
+                active: input.active,
+                amount: input.amount,
+                currency: input.currency,
+                baseAmount: input.baseAmount,
+            },
+        })
+        await this.auditService.record(
+            {
+                action: previous ? AUDIT_ACTIONS.BUDGET_UPDATED : AUDIT_ACTIONS.BUDGET_CREATED,
+                workspaceId: input.workspaceId,
+                userId: input.userId,
+                entityType: AUDIT_ENTITY_TYPES.BUDGET,
+                entityId: current.id,
+                metadata: {
+                    category_id: input.categoryId,
+                    effective_month: input.effectiveMonth,
+                    active: input.active,
+                    amount: input.amount,
+                    currency: input.currency,
+                    previous_amount: previous?.amount ?? null,
+                    previous_active: previous?.active ?? null,
+                },
+            },
+            prisma,
+        )
+        return current
+    }
+
+    async clearLaterRecurringVersions(
+        input: { workspaceId: string; categoryId: string; userId: string; effectiveMonth: string },
+        prisma: BudgetsPersistenceClient = this.prisma,
+    ) {
+        const where = {
+            workspaceId: input.workspaceId,
+            categoryId: input.categoryId,
+            effectiveMonth: { gt: input.effectiveMonth },
+        }
+        const later = await prisma.recurringBudgetVersion.findMany({ where })
+        await prisma.recurringBudgetVersion.deleteMany({ where })
+        for (const version of later) {
+            await this.auditService.record(
+                {
+                    action: AUDIT_ACTIONS.BUDGET_DELETED,
+                    workspaceId: input.workspaceId,
+                    userId: input.userId,
+                    entityType: AUDIT_ENTITY_TYPES.BUDGET,
+                    entityId: version.id,
+                    metadata: {
+                        category_id: version.categoryId,
+                        effective_month: version.effectiveMonth,
+                        amount: version.amount,
+                        currency: version.currency,
+                        active: version.active,
+                    },
+                },
+                prisma,
+            )
+        }
+    }
+
+    async excludeRecurringMonth(
+        input: { workspaceId: string; categoryId: string; userId: string; month: string },
+        prisma: BudgetsPersistenceClient = this.prisma,
+    ) {
+        const key = {
+            workspaceId: input.workspaceId,
+            categoryId: input.categoryId,
+            month: input.month,
+        }
+        const exclusion = await prisma.budgetMonthExclusion.upsert({
+            where: { workspaceId_categoryId_month: key },
+            create: key,
+            update: {},
+        })
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.BUDGET_DELETED,
+                workspaceId: input.workspaceId,
+                userId: input.userId,
+                entityType: AUDIT_ENTITY_TYPES.BUDGET,
+                entityId: exclusion.id,
+                metadata: { category_id: input.categoryId, month: input.month, scope: 'month' },
+            },
+            prisma,
+        )
+    }
+
+    async clearMonthExclusion(
+        workspaceId: string,
+        categoryId: string,
+        month: string,
+        prisma: BudgetsPersistenceClient = this.prisma,
+    ) {
+        await prisma.budgetMonthExclusion.deleteMany({ where: { workspaceId, categoryId, month } })
     }
 
     async createBudget(

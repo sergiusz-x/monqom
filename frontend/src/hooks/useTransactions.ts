@@ -17,11 +17,11 @@ export function useTransactions(
       ...queryKeys.transactions(workspaceId),
       "list",
       {
+        search: filters.search,
         type: filters.type,
         categoryIds: filters.categoryIds,
         uncategorized: filters.uncategorized,
         origin: filters.origin,
-        tag: filters.tag,
         paymentSourceId: filters.paymentSourceId,
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
@@ -36,6 +36,7 @@ export function useTransactions(
       const response =
         await transactionsApi.transactionsControllerListTransactions(
           workspaceId,
+          filters.search || undefined,
           filters.uncategorized ? "uncategorized" : undefined,
           filters.origin || undefined,
           filters.type || undefined,
@@ -44,12 +45,14 @@ export function useTransactions(
           filters.sortBy,
           filters.sortDirection,
           filters.paymentSourceId || undefined,
-          filters.tag || undefined,
+          undefined,
           filters.dateFrom || undefined,
           filters.dateTo || undefined,
           limit,
           offset,
-          { signal },
+          {
+            signal,
+          },
         );
       return mapTransactionsPage(response.data as ApiTransactionsPage);
     },

@@ -11,7 +11,7 @@ import {
   Server,
   ShieldCheck,
   Smartphone,
-  Tags,
+  ReceiptText,
 } from "lucide-react";
 import MonqomLogo from "@/components/MonqomLogo";
 import { ProductPreview } from "@/components/marketing/ProductPreview";
@@ -60,7 +60,7 @@ export default function LandingPage() {
       description: t("landing.featureCards.dashboard.description"),
     },
     {
-      icon: Tags,
+      icon: ReceiptText,
       title: t("landing.featureCards.organization.title"),
       description: t("landing.featureCards.organization.description"),
     },

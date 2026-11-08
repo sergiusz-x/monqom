@@ -22,6 +22,7 @@ export * from "./api/external-transactions-api";
 export * from "./api/goals-api";
 export * from "./api/health-api";
 export * from "./api/integrations-api";
+export * from "./api/monthly-plan-api";
 export * from "./api/payment-sources-api";
 export * from "./api/transaction-tags-api";
 export * from "./api/transactions-api";

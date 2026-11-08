@@ -1,5 +1,6 @@
 /* eslint-disable */
 // @ts-nocheck
+export * from "./assign-transaction-category-dto";
 export * from "./budget-body-dto";
 export * from "./category-body-dto";
 export * from "./category-order-body-dto";
@@ -18,7 +19,9 @@ export * from "./inline-response2001";
 export * from "./inline-response20010";
 export * from "./inline-response20010-category-breakdown";
 export * from "./inline-response20010-category-breakdown-categories";
+export * from "./inline-response20010-financial-trend";
 export * from "./inline-response20010-recent-transactions";
+export * from "./inline-response20010-spending-pace";
 export * from "./inline-response20010-spending-trend";
 export * from "./inline-response20010-summary";
 export * from "./inline-response20011";

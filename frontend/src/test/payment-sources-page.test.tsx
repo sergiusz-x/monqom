@@ -49,7 +49,7 @@ const mockPost = api.post as ReturnType<typeof vi.fn>;
 
 describe("PaymentSourcesPage", () => {
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     paymentSources = [
       {
         id: "cash-1",
@@ -78,25 +78,40 @@ describe("PaymentSourcesPage", () => {
       },
     ];
     mockPost.mockResolvedValueOnce({});
-    render(
+    const { queryClient } = render(
       <ToastProvider>
         <PaymentSourcesPage />
       </ToastProvider>,
     );
+    queryClient.setQueryData(
+      ["workspaces"],
+      [{ id: "ws-1", lastPaymentSourceId: "card-1" }],
+    );
 
-    await user.click(screen.getByRole("button", { name: "Archive" }));
+    await user.click(
+      screen.getByRole("button", { name: "Options for Daily card" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Options for Daily card" }),
+      ).toHaveAttribute("aria-expanded", "true"),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Archive" }));
     expect(mockPost).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog", { name: "Archive" });
     expect(dialog).toHaveAccessibleDescription(
-      "Archive Daily card? Historical transactions will keep this source.",
+      "Archive Daily card? It will no longer be available for new transactions, but existing transactions will keep it. If it was last used, Cash will be selected instead.",
     );
     await user.click(within(dialog).getByRole("button", { name: "Archive" }));
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith(
         "/workspaces/ws-1/payment-sources/card-1/archive",
-      ),
-    );
+      );
+      expect(queryClient.getQueryState(["workspaces"])?.isInvalidated).toBe(
+        true,
+      );
+    });
   });
 
   it("renders payment sources as a standalone page", () => {
@@ -109,10 +124,63 @@ describe("PaymentSourcesPage", () => {
     expect(
       screen.getByRole("heading", { name: "Payment sources" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Cash")).toHaveLength(2);
+    expect(screen.getAllByText("Cash")).toHaveLength(1);
     expect(screen.queryByText("System")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Archive" }),
     ).not.toBeInTheDocument();
+  });
+  it("keeps archived sources separate and restores them", async () => {
+    const user = userEvent.setup();
+    paymentSources = [
+      paymentSources[0]!,
+      {
+        ...paymentSources[0]!,
+        id: "card-1",
+        name: "Old card",
+        type: "debit_card",
+        systemKey: null,
+        isArchived: true,
+      },
+    ];
+    mockPost.mockResolvedValueOnce({ data: {} });
+    render(
+      <ToastProvider>
+        <PaymentSourcesPage />
+      </ToastProvider>,
+    );
+    expect(screen.queryByText("Old card")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Archived" }));
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith(
+        "/workspaces/ws-1/payment-sources/card-1/restore",
+      ),
+    );
+  });
+
+  it("explains a restore name conflict", async () => {
+    const user = userEvent.setup();
+    paymentSources = [
+      {
+        ...paymentSources[0]!,
+        id: "card-1",
+        name: "Old card",
+        type: "debit_card",
+        systemKey: null,
+        isArchived: true,
+      },
+    ];
+    mockPost.mockRejectedValueOnce({ response: { status: 409 } });
+    render(
+      <ToastProvider>
+        <PaymentSourcesPage />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole("tab", { name: "Archived" }));
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    expect(
+      await screen.findByText(/An active payment source already has this name/),
+    ).toBeInTheDocument();
   });
 });

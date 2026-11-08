@@ -20,7 +20,7 @@ describe("OperationDialog", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Add operation" }),
+      screen.getByRole("heading", { name: "Add savings" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Deposit" })).toHaveAttribute(
       "aria-selected",
@@ -29,6 +29,9 @@ describe("OperationDialog", () => {
 
     await user.click(screen.getByRole("tab", { name: "Withdrawal" }));
 
+    expect(
+      screen.getByRole("heading", { name: "Withdraw money" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Withdrawal" })).toHaveAttribute(
       "aria-selected",
       "true",

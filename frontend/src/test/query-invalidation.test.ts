@@ -12,7 +12,6 @@ describe("invalidateFinancialData", () => {
       queryKeys.transaction(workspaceId, "tx-1"),
       [...queryKeys.dashboard(workspaceId), "2026-07"],
       [...queryKeys.budgets(workspaceId), "overview", "2026-07"],
-      queryKeys.tags(workspaceId),
       queryKeys.workspaces,
     ] as const;
 

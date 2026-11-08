@@ -419,10 +419,7 @@ describe('Auth registration (e2e)', () => {
                 message: expect.arrayContaining([
                     'Email must be a valid email address',
                     'Name is required',
-                    'Password must be at least 16 characters long',
-                    'Password must contain at least one uppercase letter',
-                    'Password must contain at least one number',
-                    'Password must contain at least one special character',
+                    'Password must be at least 15 characters long',
                 ]),
             }),
         )

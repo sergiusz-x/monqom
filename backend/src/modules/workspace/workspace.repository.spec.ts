@@ -5,6 +5,14 @@ describe('WorkspaceRepository', () => {
         [{ transactions: 1, budgets: 0, goals: 0 }, true],
         [{ transactions: 0, budgets: 1, goals: 0 }, true],
         [{ transactions: 0, budgets: 0, goals: 1 }, true],
+        [
+            { transactions: 0, budgets: 0, goals: 0, recurringBudgetVersions: 1, monthlyPlans: 0 },
+            true,
+        ],
+        [
+            { transactions: 0, budgets: 0, goals: 0, recurringBudgetVersions: 0, monthlyPlans: 1 },
+            true,
+        ],
         [{ transactions: 0, budgets: 0, goals: 0 }, false],
     ])('derives the base currency lock from financial records', async (_count, expected) => {
         const prisma = {
@@ -26,6 +34,18 @@ describe('WorkspaceRepository', () => {
         await expect(repository.findWorkspaceById('workspace-1')).resolves.toMatchObject({
             baseCurrencyLocked: expected,
         })
+        const listPrisma = {
+            workspace: {
+                findMany: jest
+                    .fn()
+                    .mockResolvedValue([
+                        { id: 'workspace-1', memberships: [{ role: 'owner' }], _count },
+                    ]),
+            },
+        }
+        await expect(
+            new WorkspaceRepository(listPrisma as never).findWorkspacesByUserId('user-1'),
+        ).resolves.toMatchObject([{ baseCurrencyLocked: expected }])
         expect(prisma.workspace.findUnique).toHaveBeenCalledWith(
             expect.objectContaining({
                 include: {
@@ -33,6 +53,8 @@ describe('WorkspaceRepository', () => {
                         select: {
                             transactions: true,
                             budgets: true,
+                            recurringBudgetVersions: true,
+                            monthlyPlans: true,
                             goals: true,
                         },
                     },

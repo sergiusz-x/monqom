@@ -243,8 +243,18 @@ export const ApiDashboardResponse = () =>
     response(
         object({
             summary: spendingSummary,
+            spending_pace: {
+                ...object({
+                    change_percentage: number(),
+                    direction: { type: 'string', enum: ['up', 'down', 'flat'] },
+                }),
+                nullable: true,
+            },
             category_breakdown: categoryBreakdown,
             spending_trend: array(object({ month: string(), total: number() })),
+            financial_trend: array(
+                object({ month: string(), income: number(true), spending: number(true) }),
+            ),
             recent_transactions: array(transaction),
         }),
     )

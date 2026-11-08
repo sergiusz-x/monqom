@@ -16,6 +16,7 @@ import { IntegrationManagementAuditService } from './modules/integrations/integr
 import { externalApiBodyMiddleware } from './modules/integrations/external-api-body.middleware'
 import { createRequestValidationPipe } from './shared/validation/request-validation.pipe'
 import type { RuntimeConfig } from './config/env'
+import type { NextFunction, Request, Response } from 'express'
 
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -24,6 +25,13 @@ async function bootstrap() {
 
     app.use(helmet({ crossOriginEmbedderPolicy: false }))
     app.use(compression())
+    app.use((req: Request, res: Response, next: NextFunction) => {
+        const path = req.path.toLowerCase()
+        if (path === '/api/v1' || path.startsWith('/api/v1/')) {
+            res.setHeader('Cache-Control', 'no-store')
+        }
+        next()
+    })
     app.use(externalApiBodyMiddleware)
 
     const configService = app.get(ConfigService)

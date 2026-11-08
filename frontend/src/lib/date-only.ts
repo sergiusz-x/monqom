@@ -67,6 +67,15 @@ export function formatShortDate(value: string): string {
   });
 }
 
+export function formatShortDateWithWeekday(value: string): string {
+  return formatDateOnly(value, {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function formatLongDate(value: string, locale?: string): string {
   return formatDateOnly(
     value,

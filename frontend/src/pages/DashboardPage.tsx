@@ -1,17 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useOptionalAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSummary";
+import { FinancialTrend } from "@/components/dashboard/FinancialTrend";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { SpendingByCategoryChart } from "@/components/dashboard/SpendingByCategoryChart";
-import { SpendingTrendChart } from "@/components/dashboard/SpendingTrendChart";
+import { useBudgetOverview } from "@/hooks/useBudgetOverview";
+import { Link } from "react-router";
+import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { useTranslation } from "react-i18next";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 
-import { formatMonth, getMonthInTimeZone, shiftMonth } from "@/lib/date-only";
+import { getMonthInTimeZone, shiftMonth } from "@/lib/date-only";
 import { RetryAlert, Skeleton } from "@monqom/ui";
 
 function LoadingSkeleton() {
@@ -38,6 +42,17 @@ export default function DashboardPage() {
     refetch: retryWorkspace,
   } = useWorkspace();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const user = useOptionalAuth()?.user;
+  const privacyKey = `${user?.id ?? "anonymous"}:${user?.hideSalaryAmounts ? user.updatedAt : "disabled"}:${workspaceId ?? ""}`;
+  const [trendPrivacy, setTrendPrivacy] = useState({
+    key: privacyKey,
+    revealed: false,
+  });
+  if (trendPrivacy.key !== privacyKey)
+    setTrendPrivacy({ key: privacyKey, revealed: false });
+  const [trendRange, setTrendRange] = useState<6 | 12>(6);
+  const categoryCardRef = useRef<HTMLDivElement>(null);
+  const [categoryHeight, setCategoryHeight] = useState(0);
   const currentMonth = getMonthInTimeZone(
     new Date(),
     workspace?.timezone ?? "UTC",
@@ -45,12 +60,12 @@ export default function DashboardPage() {
   const month = selectedMonth ?? currentMonth;
   const { categories: expenseCategories } = useCategories(
     workspaceId ?? "",
-    false,
+    true,
     "expense",
   );
   const { categories: incomeCategories } = useCategories(
     workspaceId ?? "",
-    false,
+    true,
     "income",
   );
   const categories = useMemo(
@@ -59,15 +74,38 @@ export default function DashboardPage() {
   );
   const {
     summary,
+    spendingPace,
     categoryBreakdown,
-    spendingTrend,
     transactions,
+    financialTrend,
     isLoading,
     error,
     retry,
   } = useDashboardData(workspaceId ?? "", month);
 
-  const selectedMonthLabel = useMemo(() => formatMonth(month), [month]);
+  const {
+    progressItems,
+    error: budgetError,
+    retry: retryBudgets,
+  } = useBudgetOverview(workspaceId ?? "", month);
+  useEffect(() => {
+    const card = categoryCardRef.current;
+    if (!card || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setCategoryHeight(entry.contentRect.height);
+    });
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [workspaceLoading, workspaceError, workspaceId, isLoading, error]);
+  const exceededBudgets = progressItems.filter(
+    (item) => item.limit !== null && item.spent > item.limit,
+  );
+  const nearLimitBudgets = progressItems.filter(
+    (item) =>
+      item.percentage !== null &&
+      item.percentage >= 80 &&
+      item.percentage <= 100,
+  );
 
   if (workspaceLoading) {
     return (
@@ -110,24 +148,100 @@ export default function DashboardPage() {
 
   return (
     <PageContainer className="flex flex-col gap-6">
-      <PageHeader title={t("dashboard.title")} visuallyHidden />
       <MonthlySpendingSummary
+        key={month}
         summary={summary}
-        monthLabel={selectedMonthLabel}
+        spendingPace={spendingPace}
+        month={month}
+        currentMonth={currentMonth}
+        onSelectMonth={setSelectedMonth}
         onPreviousMonth={() => setSelectedMonth(shiftMonth(month, -1))}
         onNextMonth={() => setSelectedMonth(shiftMonth(month, 1))}
       />
-      <SpendingTrendChart
-        trend={spendingTrend}
+      <FinancialTrend
+        trend={financialTrend ?? []}
         currency={summary.currency}
+        selectedMonth={month}
         currentMonth={currentMonth}
+        revealed={trendPrivacy.key === privacyKey && trendPrivacy.revealed}
+        onReveal={() => setTrendPrivacy({ key: privacyKey, revealed: true })}
+        onSelectMonth={setSelectedMonth}
+        range={trendRange}
+        onRangeChange={setTrendRange}
       />
-      <SpendingByCategoryChart breakdown={categoryBreakdown} month={month} />
-      <RecentTransactions
-        workspaceId={workspaceId}
-        transactions={transactions}
-        categories={categories}
-      />
+      {!budgetError &&
+      exceededBudgets.length === 0 &&
+      nearLimitBudgets.length > 0 ? (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm">
+          <p className="font-medium">
+            {t("dashboard.nearLimitBudgets", {
+              count: nearLimitBudgets.length,
+            })}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {nearLimitBudgets
+              .map((item) =>
+                translateSystemLabel(
+                  t,
+                  item.categorySystemKey,
+                  item.categoryName,
+                ),
+              )
+              .join(", ")}
+          </p>
+          {month === currentMonth && (
+            <Link
+              to="/budgets"
+              className="mt-2 inline-block font-medium text-primary hover:underline"
+            >
+              {t("dashboard.viewBudgets")}
+            </Link>
+          )}
+        </div>
+      ) : null}
+      {budgetError ? (
+        <RetryAlert message={budgetError} onRetry={() => void retryBudgets()} />
+      ) : exceededBudgets.length > 0 ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <p className="font-medium">
+            {t("dashboard.exceededBudgets", { count: exceededBudgets.length })}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {exceededBudgets
+              .map((item) =>
+                translateSystemLabel(
+                  t,
+                  item.categorySystemKey,
+                  item.categoryName,
+                ),
+              )
+              .join(", ")}
+          </p>
+          {month === currentMonth && (
+            <Link
+              to="/budgets"
+              className="mt-2 inline-block font-medium text-primary hover:underline"
+            >
+              {t("dashboard.viewBudgets")}
+            </Link>
+          )}
+        </div>
+      ) : null}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div ref={categoryCardRef}>
+          <SpendingByCategoryChart
+            breakdown={categoryBreakdown}
+            month={month}
+            categories={expenseCategories}
+          />
+        </div>
+        <RecentTransactions
+          workspaceId={workspaceId}
+          transactions={transactions}
+          categories={categories}
+          categoryHeight={categoryHeight}
+        />
+      </div>
     </PageContainer>
   );
 }

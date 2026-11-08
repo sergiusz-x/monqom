@@ -23,7 +23,6 @@ export const queryKeys = {
       ...queryKeys.paymentSourcesRoot(workspaceId),
       { includeArchived },
     ] as const,
-  tags: (workspaceId: string) => ["workspaces", workspaceId, "tags"] as const,
   transactions: (workspaceId: string) =>
     ["workspaces", workspaceId, "transactions"] as const,
   transaction: (workspaceId: string, transactionId: string) =>

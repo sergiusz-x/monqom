@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common'
 import { PrismaService } from '../../shared/database/prisma.service'
 import {
     normalizeRequiredValue,
@@ -59,6 +64,7 @@ export interface CreateTransactionResponse {
 }
 
 export interface ListTransactionsCommand {
+    search?: string
     uncategorized?: boolean
     origin?: 'manual' | 'integration'
     type?: 'expense' | 'income'
@@ -218,6 +224,48 @@ export class TransactionsService {
         return mapCreateTransactionResponse(transaction)
     }
 
+    async assignCategory(
+        transactionId: string,
+        workspaceId: string,
+        userId: string,
+        categoryId: string,
+    ): Promise<void> {
+        const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const normalizedTransactionId = normalizeRequiredValue(transactionId, 'Transaction id')
+        const normalizedUserId = normalizeRequiredValue(userId, 'User id')
+        const normalizedCategoryId = normalizeRequiredValue(categoryId, 'Category id')
+
+        await this.prisma.$transaction(async (tx) => {
+            const transaction = await this.transactionsRepository.findTransactionById(
+                normalizedWorkspaceId,
+                normalizedTransactionId,
+                tx,
+            )
+            if (!transaction) throw new NotFoundException(TRANSACTION_NOT_FOUND_MESSAGE)
+            const category = await this.transactionsRepository.findCategoryById(
+                normalizedWorkspaceId,
+                normalizedCategoryId,
+                tx,
+            )
+            if (!category || category.type !== transaction.type)
+                throw new NotFoundException(CATEGORY_NOT_FOUND_MESSAGE)
+            const updated = await this.transactionsRepository.assignCategory(
+                {
+                    workspaceId: normalizedWorkspaceId,
+                    transactionId: normalizedTransactionId,
+                    categoryId: normalizedCategoryId,
+                    userId: normalizedUserId,
+                    previousTransaction: transaction,
+                },
+                tx,
+            )
+            if (!updated)
+                throw new ConflictException(
+                    'Transaction already has a category or is no longer available',
+                )
+        })
+    }
+
     async updateTransaction(
         input: CreateTransactionCommand,
         transactionId: string,
@@ -373,6 +421,7 @@ export class TransactionsService {
 
         const filters: ListTransactionsFilters = {
             workspaceId: normalizedWorkspaceId,
+            ...(input.search?.trim() ? { search: input.search.trim() } : {}),
             ...(input.uncategorized ? { uncategorized: true } : {}),
             ...(input.origin ? { origin: input.origin } : {}),
             type: input.type,

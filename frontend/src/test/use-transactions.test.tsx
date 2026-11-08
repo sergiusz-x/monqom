@@ -20,6 +20,7 @@ describe("useTransactions", () => {
         "ws-1",
         {
           ...DEFAULT_TRANSACTION_FILTERS,
+          search: "coffee",
           uncategorized: true,
           origin: "integration",
         },
@@ -35,6 +36,7 @@ describe("useTransactions", () => {
     expect(url.searchParams.get("category_status")).toBe("uncategorized");
     expect(url.searchParams.get("origin")).toBe("integration");
     expect(url.searchParams.get("limit")).toBe("20");
+    expect(url.searchParams.get("search")).toBe("coffee");
   });
   beforeEach(() => {
     vi.clearAllMocks();
@@ -49,7 +51,6 @@ describe("useTransactions", () => {
         "ws-1",
         {
           categoryIds: ["cat-1"],
-          tag: "food",
           paymentSourceId: "src-1",
           dateFrom: "2026-04-01",
           dateTo: "2026-04-30",
@@ -68,7 +69,7 @@ describe("useTransactions", () => {
       "https://app.example.test",
     ).searchParams;
     expect(params.get("category_ids")).toBe("cat-1");
-    expect(params.get("tag")).toBe("food");
+    expect(params.has("tag")).toBe(false);
     expect(params.get("payment_source_id")).toBe("src-1");
     expect(params.get("date_from")).toBe("2026-04-01");
     expect(params.get("date_to")).toBe("2026-04-30");
@@ -84,7 +85,6 @@ describe("useTransactions", () => {
         "ws-1",
         {
           categoryIds: [],
-          tag: "",
           paymentSourceId: "",
           dateFrom: "",
           dateTo: "",

@@ -6,6 +6,7 @@ import {
     HttpCode,
     HttpStatus,
     Param,
+    Patch,
     Post,
     Query,
     Put,
@@ -21,7 +22,11 @@ import {
     ListTransactionsResponse,
     TransactionsService,
 } from './transactions.service'
-import { ListTransactionsQueryDto, TransactionBodyDto } from './transactions.dto'
+import {
+    AssignTransactionCategoryDto,
+    ListTransactionsQueryDto,
+    TransactionBodyDto,
+} from './transactions.dto'
 import {
     ApiStringArrayResponse,
     ApiTransactionResponse,
@@ -45,6 +50,7 @@ export class TransactionsController {
         return this.transactionsService.listTransactions(
             {
                 type: query.type,
+                ...(query.search ? { search: query.search } : {}),
                 ...(query.category_status ? { uncategorized: true } : {}),
                 ...(query.origin ? { origin: query.origin } : {}),
                 categoryId: query.category_id,
@@ -59,6 +65,24 @@ export class TransactionsController {
                 offset: query.offset,
             },
             workspaceId,
+        )
+    }
+
+    @Patch(':id/category')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async assignCategory(
+        @Param('id') transactionId: string,
+        @Body() body: AssignTransactionCategoryDto,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+    ): Promise<void> {
+        await this.transactionsService.assignCategory(
+            transactionId,
+            workspaceId,
+            userId,
+            body.category_id,
         )
     }
 

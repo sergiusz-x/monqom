@@ -21,7 +21,7 @@ Personal finance should help you make sense of the month, not create more work. 
 |     | What you get                                                                                                               |
 | --- | -------------------------------------------------------------------------------------------------------------------------- |
 | 📊  | **A calm monthly overview** — totals, category breakdowns, spending trends, and recent activity in one place.              |
-| 🧾  | **Organized transactions** — categories, payment sources, tags, notes, search, and filters.                                |
+| 🧾  | **Organized transactions** — categories, payment sources, notes, search, and filters.                                |
 | 🎯  | **Practical budgets** — set monthly category limits and see how close you are to each one.                                 |
 | 🔐  | **Control over your data** — export transactions as CSV or JSON, use the hosted app, or run the open-source core yourself. |
 | 🌗  | **Comfortable everywhere** — responsive layouts, dark and light themes, Polish and English.                                |
@@ -32,8 +32,8 @@ Monqom is not a bank, accounting system, tax tool, or financial adviser. It is a
 
 <div align="center">
   <h3>🧾 Keep everyday spending organized</h3>
-  <p>Find the detail behind each expense with filters, categories, payment sources, and tags.</p>
-  <img src="frontend/public/marketing/screenshots/transactions-dark.png" width="960" alt="Transactions with categories, tags, payment sources, and filters" />
+  <p>Find the detail behind each expense with filters, categories, and payment sources.</p>
+  <img src="frontend/public/marketing/screenshots/transactions-dark.png" width="960" alt="Transactions with categories, payment sources, and filters" />
 </div>
 
 <div align="center">

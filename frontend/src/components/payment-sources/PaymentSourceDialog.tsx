@@ -40,7 +40,7 @@ export function PaymentSourceDialog({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [name, setName] = useState(source?.name ?? "");
-  const [type, setType] = useState<PaymentSourceType>(source?.type ?? "other");
+  const [type, setType] = useState<PaymentSourceType>(source?.type ?? "bank");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const formRef = useFocusOnError(error);
@@ -105,6 +105,7 @@ export function PaymentSourceDialog({
         >
           <Input
             value={name}
+            placeholder={t("paymentSources.namePlaceholder")}
             onChange={(event) => setName(event.target.value)}
             autoFocus
             maxLength={100}

@@ -295,6 +295,148 @@ export const BudgetsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} scope
+     * @param {string} workspaceId
+     * @param {BudgetBodyDto} budgetBodyDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    budgetsControllerRemoveRecurringBudget: async (
+      scope: string,
+      workspaceId: string,
+      budgetBodyDto: BudgetBodyDto,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'scope' is not null or undefined
+      assertParamExists(
+        "budgetsControllerRemoveRecurringBudget",
+        "scope",
+        scope,
+      );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "budgetsControllerRemoveRecurringBudget",
+        "workspaceId",
+        workspaceId,
+      );
+      // verify required parameter 'budgetBodyDto' is not null or undefined
+      assertParamExists(
+        "budgetsControllerRemoveRecurringBudget",
+        "budgetBodyDto",
+        budgetBodyDto,
+      );
+      const localVarPath =
+        `/workspaces/{workspaceId}/budgets/recurring/remove`.replace(
+          `{${"workspaceId"}}`,
+          encodeURIComponent(String(workspaceId)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "POST",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      if (scope !== undefined) {
+        localVarQueryParameter["scope"] = scope;
+      }
+
+      localVarHeaderParameter["Content-Type"] = "application/json";
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        budgetBodyDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} workspaceId
+     * @param {BudgetBodyDto} budgetBodyDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    budgetsControllerSetRecurringBudget: async (
+      workspaceId: string,
+      budgetBodyDto: BudgetBodyDto,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "budgetsControllerSetRecurringBudget",
+        "workspaceId",
+        workspaceId,
+      );
+      // verify required parameter 'budgetBodyDto' is not null or undefined
+      assertParamExists(
+        "budgetsControllerSetRecurringBudget",
+        "budgetBodyDto",
+        budgetBodyDto,
+      );
+      const localVarPath =
+        `/workspaces/{workspaceId}/budgets/recurring`.replace(
+          `{${"workspaceId"}}`,
+          encodeURIComponent(String(workspaceId)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "POST",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      localVarHeaderParameter["Content-Type"] = "application/json";
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        budgetBodyDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
      * @param {string} id
      * @param {string} workspaceId
      * @param {BudgetBodyDto} budgetBodyDto
@@ -492,6 +634,63 @@ export const BudgetsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} scope
+     * @param {string} workspaceId
+     * @param {BudgetBodyDto} budgetBodyDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async budgetsControllerRemoveRecurringBudget(
+      scope: string,
+      workspaceId: string,
+      budgetBodyDto: BudgetBodyDto,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.budgetsControllerRemoveRecurringBudget(
+          scope,
+          workspaceId,
+          budgetBodyDto,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
+     * @param {string} workspaceId
+     * @param {BudgetBodyDto} budgetBodyDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async budgetsControllerSetRecurringBudget(
+      workspaceId: string,
+      budgetBodyDto: BudgetBodyDto,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.budgetsControllerSetRecurringBudget(
+          workspaceId,
+          budgetBodyDto,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
      * @param {string} id
      * @param {string} workspaceId
      * @param {BudgetBodyDto} budgetBodyDto
@@ -605,6 +804,49 @@ export const BudgetsApiFactory = function (
     },
     /**
      *
+     * @param {string} scope
+     * @param {string} workspaceId
+     * @param {BudgetBodyDto} budgetBodyDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    budgetsControllerRemoveRecurringBudget(
+      scope: string,
+      workspaceId: string,
+      budgetBodyDto: BudgetBodyDto,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .budgetsControllerRemoveRecurringBudget(
+          scope,
+          workspaceId,
+          budgetBodyDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} workspaceId
+     * @param {BudgetBodyDto} budgetBodyDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    budgetsControllerSetRecurringBudget(
+      workspaceId: string,
+      budgetBodyDto: BudgetBodyDto,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .budgetsControllerSetRecurringBudget(
+          workspaceId,
+          budgetBodyDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
      * @param {string} id
      * @param {string} workspaceId
      * @param {BudgetBodyDto} budgetBodyDto
@@ -702,6 +944,49 @@ export class BudgetsApi extends BaseAPI {
   ) {
     return BudgetsApiFp(this.configuration)
       .budgetsControllerListBudgets(year, month, workspaceId, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} scope
+   * @param {string} workspaceId
+   * @param {BudgetBodyDto} budgetBodyDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof BudgetsApi
+   */
+  public budgetsControllerRemoveRecurringBudget(
+    scope: string,
+    workspaceId: string,
+    budgetBodyDto: BudgetBodyDto,
+    options?: AxiosRequestConfig,
+  ) {
+    return BudgetsApiFp(this.configuration)
+      .budgetsControllerRemoveRecurringBudget(
+        scope,
+        workspaceId,
+        budgetBodyDto,
+        options,
+      )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} workspaceId
+   * @param {BudgetBodyDto} budgetBodyDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof BudgetsApi
+   */
+  public budgetsControllerSetRecurringBudget(
+    workspaceId: string,
+    budgetBodyDto: BudgetBodyDto,
+    options?: AxiosRequestConfig,
+  ) {
+    return BudgetsApiFp(this.configuration)
+      .budgetsControllerSetRecurringBudget(workspaceId, budgetBodyDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 

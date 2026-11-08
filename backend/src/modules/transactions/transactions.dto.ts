@@ -67,7 +67,22 @@ export class TransactionBodyDto {
     payment_source_id!: string
 }
 
+export class AssignTransactionCategoryDto {
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(128)
+    category_id!: string
+}
+
 export class ListTransactionsQueryDto {
+    @ApiPropertyOptional({ maxLength: 200 })
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(200)
+    search?: string
+
     @ApiPropertyOptional({ enum: ['uncategorized'] })
     @IsOptional()
     @IsIn(['uncategorized'])

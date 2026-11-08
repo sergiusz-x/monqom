@@ -1,10 +1,10 @@
+import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
-import { useTags } from "@/hooks/useTags";
 import { useTransactions } from "@/hooks/useTransactions";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
@@ -17,6 +17,7 @@ import { TransactionDetailsModal } from "@/components/transactions/TransactionDe
 import { paymentSourceLabels } from "@/lib/payment-sources";
 import { transactionsApi } from "@/api/contract";
 import type {
+  Transaction,
   TransactionFilters,
   TransactionSortField,
 } from "@/types/transaction";
@@ -28,6 +29,7 @@ import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { categorySystemKeys } from "@/lib/category-system-keys";
 import { buildCategoryLabels } from "@/lib/category-labels";
+import { flattenCategories } from "@/lib/category-tree";
 import {
   buildTransactionListParams,
   DEFAULT_TRANSACTION_FILTERS,
@@ -37,7 +39,7 @@ import {
   parseTransactionPage,
   saveTransactionPreferences,
 } from "@/lib/transaction-list-state";
-import { Alert, Button, EmptyState, RetryAlert } from "@monqom/ui";
+import { Button, EmptyState, RetryAlert } from "@monqom/ui";
 
 const PAGE_SIZE = 20;
 
@@ -65,6 +67,8 @@ export default function TransactionsPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<
     string | null
   >(null);
+  const [assignedTransaction, setAssignedTransaction] =
+    useState<Transaction | null>(null);
   const [isCreatingTransaction, setIsCreatingTransaction] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<
     string | null
@@ -137,7 +141,6 @@ export default function TransactionsPage() {
     [expenseCategories, incomeCategories],
   );
   const { paymentSources } = usePaymentSources(workspaceId ?? "", true);
-  const { tags } = useTags(workspaceId ?? "");
   const { data: attentionData } = useTransactions(
     workspaceId ?? "",
     { ...DEFAULT_TRANSACTION_FILTERS, uncategorized: true },
@@ -152,9 +155,13 @@ export default function TransactionsPage() {
   );
 
   const selectedTransaction =
-    data?.data.find((item) => item.id === selectedTransactionId) ?? null;
+    assignedTransaction?.id === selectedTransactionId
+      ? assignedTransaction
+      : (data?.data.find((item) => item.id === selectedTransactionId) ?? null);
   const editingTransaction =
-    data?.data.find((item) => item.id === editingTransactionId) ?? null;
+    assignedTransaction?.id === editingTransactionId
+      ? assignedTransaction
+      : (data?.data.find((item) => item.id === editingTransactionId) ?? null);
 
   const categorySystemKeyMap = useMemo(
     () => categorySystemKeys(categories),
@@ -165,6 +172,22 @@ export default function TransactionsPage() {
     () => buildCategoryLabels(categories, t),
     [categories, t],
   );
+  const listCategories = useMemo(() => {
+    const result: Record<
+      string,
+      { name: string; parentName?: string; icon: string | null }
+    > = {};
+    const visit = (
+      category: (typeof categories)[number],
+      parentName?: string,
+    ) => {
+      const name = translateSystemLabel(t, category.systemKey, category.name);
+      result[category.id] = { name, parentName, icon: category.icon };
+      category.children.forEach((child) => visit(child, name));
+    };
+    categories.forEach((category) => visit(category));
+    return result;
+  }, [categories, t]);
   const paymentSourceMap = useMemo(
     () => paymentSourceLabels(paymentSources, t),
     [paymentSources, t],
@@ -192,11 +215,13 @@ export default function TransactionsPage() {
     );
   }
   function openTransaction(transactionId: string) {
+    setAssignedTransaction(null);
     setDeleteError(null);
     setSelectedTransactionId(transactionId);
   }
 
   function handleSaved(result: { paymentSourceId: string | null }) {
+    setAssignedTransaction(null);
     editWasSavedRef.current = true;
     patchWorkspace({ lastPaymentSourceId: result.paymentSourceId });
     setEditingTransactionId(null);
@@ -236,19 +261,35 @@ export default function TransactionsPage() {
         />
       );
     if (hasInvalidDateRange) {
-      return <Alert variant="error">{t("transactions.invalidRange")}</Alert>;
+      return null;
     }
     if (error)
       return <RetryAlert message={error} onRetry={() => void retry()} />;
 
     const transactions = data?.data ?? [];
 
-    if (transactions.length === 0 && filters.uncategorized) {
+    const hasActiveFilters = Boolean(
+      filters.search ||
+      filters.type ||
+      filters.uncategorized ||
+      filters.origin ||
+      filters.categoryIds.length ||
+      filters.paymentSourceId ||
+      filters.dateFrom ||
+      filters.dateTo,
+    );
+    if (transactions.length === 0 && hasActiveFilters) {
       return (
         <EmptyState
-          title={t("transactions.noAttention")}
-          actionLabel={t("transactions.showAll")}
-          onAction={() => handleFilterChange(DEFAULT_TRANSACTION_FILTERS)}
+          title={t("transactions.noMatches")}
+          actionLabel={t("transactions.clearFilters")}
+          onAction={() =>
+            handleFilterChange({
+              ...DEFAULT_TRANSACTION_FILTERS,
+              sortBy: filters.sortBy,
+              sortDirection: filters.sortDirection,
+            })
+          }
         />
       );
     }
@@ -261,7 +302,7 @@ export default function TransactionsPage() {
       <>
         <TransactionTable
           transactions={transactions}
-          categoryMap={categoryMap}
+          categories={listCategories}
           categorySystemKeys={categorySystemKeyMap}
           paymentSourceMap={paymentSourceMap}
           sortBy={filters.sortBy}
@@ -271,7 +312,7 @@ export default function TransactionsPage() {
         />
         <TransactionCards
           transactions={transactions}
-          categoryMap={categoryMap}
+          categories={listCategories}
           categorySystemKeys={categorySystemKeyMap}
           paymentSourceMap={paymentSourceMap}
           onOpen={openTransaction}
@@ -330,7 +371,6 @@ export default function TransactionsPage() {
         <TransactionFilterBar
           filters={filters}
           categories={categories}
-          tags={tags}
           paymentSources={paymentSources}
           timeZone={workspace?.timezone ?? "UTC"}
           onChange={handleFilterChange}
@@ -342,10 +382,15 @@ export default function TransactionsPage() {
         open={Boolean(selectedTransactionId && selectedTransaction)}
         transaction={selectedTransaction}
         categorySystemKeys={categorySystemKeyMap}
+        categoryIcon={
+          flattenCategories(categories).find(
+            (category) => category.id === selectedTransaction?.categoryId,
+          )?.icon
+        }
         categoryLabel={
           selectedTransaction?.categoryId
             ? (categoryMap[selectedTransaction.categoryId] ??
-              selectedTransaction.categoryId)
+              t("transactions.unavailableCategory"))
             : t("dashboard.uncategorized")
         }
         paymentSourceLabel={
@@ -359,6 +404,10 @@ export default function TransactionsPage() {
         onClose={() => {
           setSelectedTransactionId(null);
           setDeleteError(null);
+        }}
+        onCategorySaved={(categoryId) => {
+          if (selectedTransaction)
+            setAssignedTransaction({ ...selectedTransaction, categoryId });
         }}
         onEdit={() => {
           if (!selectedTransaction) return;

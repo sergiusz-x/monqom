@@ -128,8 +128,15 @@ export function mapDashboardOverview(
 
   return {
     summary,
+    spendingPace: value.spending_pace
+      ? {
+          changePercentage: value.spending_pace.change_percentage,
+          direction: value.spending_pace.direction,
+        }
+      : null,
     categoryBreakdown,
     spendingTrend: value.spending_trend,
+    financialTrend: value.financial_trend ?? [],
     recentTransactions: value.recent_transactions.map(mapTransaction),
   };
 }

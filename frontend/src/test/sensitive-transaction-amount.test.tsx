@@ -6,6 +6,7 @@ import {
   type AuthContextValue,
   type User,
 } from "@/contexts/AuthContext";
+import { TransactionCards } from "@/components/transactions/TransactionCards";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { SalaryPrivacyProvider } from "@/contexts/SalaryPrivacyContext";
 import { SALARY_CATEGORY_SYSTEM_KEY } from "@/lib/category-system-keys";
@@ -62,6 +63,56 @@ function renderAmount(
 }
 
 describe("SensitiveTransactionAmount", () => {
+  it("provides separate keyboard controls for a salary card and its amount", async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    const auth: AuthContextValue = {
+      user: {
+        id: "u",
+        email: "a@example.com",
+        name: "A",
+        hideSalaryAmounts: true,
+        emailVerified: true,
+        totpEnabled: false,
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      },
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setUser: vi.fn(),
+    };
+    render(
+      <AuthContext.Provider value={auth}>
+        <SalaryPrivacyProvider>
+          <TransactionCards
+            transactions={[salaryTransaction]}
+            categories={{}}
+            categorySystemKeys={{
+              "salary-category": SALARY_CATEGORY_SYSTEM_KEY,
+            }}
+            paymentSourceMap={{}}
+            onOpen={onOpen}
+          />
+        </SalaryPrivacyProvider>
+      </AuthContext.Provider>,
+    );
+    const reveal = screen.getByRole("button", { name: "Reveal salary amount" });
+    expect(
+      reveal.closest("button")?.parentElement?.closest("button"),
+    ).toBeNull();
+    const card = screen.getByRole("button", { name: /August salary/ });
+    await user.tab();
+    expect(card).toHaveFocus();
+    await user.tab();
+    expect(reveal).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(onOpen).not.toHaveBeenCalled();
+    card.focus();
+    await user.keyboard("{Enter}");
+    expect(onOpen).toHaveBeenCalledWith("salary-1");
+  });
+
   it("keeps the salary amount visible when privacy mode is disabled", () => {
     renderAmount(false);
 
@@ -135,6 +186,51 @@ describe("SensitiveTransactionAmount", () => {
     expect(
       document.querySelectorAll('[data-sensitive-amount="revealed"]'),
     ).toHaveLength(2);
+  });
+  it("resets revealed amounts without remounting the current screen when preferences change", async () => {
+    const user = userEvent.setup();
+    const initialUser: User = {
+      id: "user-1",
+      email: "ada@example.com",
+      name: "Ada",
+      hideSalaryAmounts: true,
+      emailVerified: true,
+      totpEnabled: false,
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+    const auth: AuthContextValue = {
+      user: initialUser,
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setUser: vi.fn(),
+    };
+    const view = (value: AuthContextValue) => (
+      <AuthContext.Provider value={value}>
+        <SalaryPrivacyProvider>
+          <input aria-label="Draft" defaultValue="" />
+          <SensitiveTransactionAmount
+            transaction={salaryTransaction}
+            categorySystemKeys={{
+              "salary-category": SALARY_CATEGORY_SYSTEM_KEY,
+            }}
+          />
+        </SalaryPrivacyProvider>
+      </AuthContext.Provider>
+    );
+    const { rerender } = render(view(auth));
+    await user.type(screen.getByLabelText("Draft"), "unsaved changes");
+    await user.click(
+      screen.getByRole("button", { name: "Reveal salary amount" }),
+    );
+    rerender(
+      view({ ...auth, user: { ...initialUser, updatedAt: "2026-08-02" } }),
+    );
+    expect(screen.getByLabelText("Draft")).toHaveValue("unsaved changes");
+    expect(
+      screen.getByRole("button", { name: "Reveal salary amount" }),
+    ).toHaveClass("blur-[8px]");
   });
   it("does not hide a custom category that only shares the Salary name", () => {
     renderAmount(true, "categories.income.custom-salary");

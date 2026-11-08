@@ -24,22 +24,16 @@ export interface TransactionsPage {
 }
 
 export type TransactionSortField =
-  | "date"
-  | "category"
-  | "amount"
-  | "description"
-  | "notes"
-  | "tags"
-  | "payment_source";
+  "date" | "category" | "amount" | "description" | "notes" | "payment_source";
 
 export type TransactionSortDirection = "asc" | "desc";
 
 export interface TransactionFilters {
+  search?: string;
   uncategorized?: boolean;
   origin?: "" | "manual" | "integration";
   type?: "" | "expense" | "income";
   categoryIds: string[];
-  tag: string;
   paymentSourceId: string;
   dateFrom: string;
   dateTo: string;

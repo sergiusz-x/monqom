@@ -1,6 +1,7 @@
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   CalendarDays,
+  Search,
   ChevronDown,
   CircleAlert,
   SlidersHorizontal,
@@ -10,10 +11,13 @@ import { useTranslation } from "react-i18next";
 import { Button, Card, Input, Select } from "@monqom/ui";
 import {
   formatShortDate,
+  getDateOnlyInTimeZone,
   getMonthDateRange,
   getMonthInTimeZone,
+  shiftMonth,
 } from "@/lib/date-only";
 import { DEFAULT_TRANSACTION_FILTERS } from "@/lib/transaction-list-state";
+import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { paymentSourceName } from "@/lib/payment-sources";
 import type { Category } from "@/types/category";
 import type { PaymentSource } from "@/types/payment-source";
@@ -23,7 +27,6 @@ import { TransactionCategoryFilter } from "./TransactionCategoryFilter";
 interface TransactionFilterBarProps {
   filters: TransactionFilters;
   categories: Category[];
-  tags: string[];
   paymentSources: PaymentSource[];
   timeZone: string;
   onChange: (next: TransactionFilters) => void;
@@ -68,7 +71,6 @@ function FilterChip({
 export function TransactionFilterBar({
   filters,
   categories,
-  tags,
   paymentSources,
   timeZone,
   onChange,
@@ -76,6 +78,29 @@ export function TransactionFilterBar({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
+  const [search, setSearch] = useState(filters.search ?? "");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const latestFilters = useRef(filters);
+  useEffect(() => {
+    latestFilters.current = filters;
+  }, [filters]);
+  useEffect(() => {
+    // Keep the draft in sync with navigation and filters cleared elsewhere.
+    clearTimeout(searchTimer.current);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearch(filters.search ?? "");
+  }, [filters.search]);
+  useEffect(() => () => clearTimeout(searchTimer.current), []);
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      onChange({ ...latestFilters.current, search: value.trim() });
+    }, 300);
+  }
   const currentMonth = getMonthDateRange(
     getMonthInTimeZone(new Date(), timeZone),
   );
@@ -83,14 +108,33 @@ export function TransactionFilterBar({
     filters.dateFrom === currentMonth.dateFrom &&
     filters.dateTo === currentMonth.dateTo;
   const hasDates = Boolean(filters.dateFrom || filters.dateTo);
-  const extraCount = [
-    filters.origin,
-    filters.tag,
-    filters.paymentSourceId,
-    hasDates,
-  ].filter(Boolean).length;
+  const invalidDates = Boolean(
+    filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo,
+  );
+  const previousMonth = getMonthDateRange(
+    shiftMonth(getMonthInTimeZone(new Date(), timeZone), -1),
+  );
+  const today = getDateOnlyInTimeZone(new Date(), timeZone);
+  const thirtyDaysStart = new Date(`${today}T00:00:00Z`);
+  thirtyDaysStart.setUTCDate(thirtyDaysStart.getUTCDate() - 29);
+  const lastThirtyDays = {
+    dateFrom: thirtyDaysStart.toISOString().slice(0, 10),
+    dateTo: today,
+  };
+  const categoryNames = new Map(
+    categories
+      .flatMap((parent) => [parent, ...parent.children])
+      .map((category) => [
+        category.id,
+        translateSystemLabel(t, category.systemKey, category.name),
+      ]),
+  );
+  const extraCount = [filters.origin, filters.paymentSourceId, hasDates].filter(
+    Boolean,
+  ).length;
   const hasFilters = Boolean(
     extraCount ||
+    filters.search ||
     filters.type ||
     filters.uncategorized ||
     filters.categoryIds.length,
@@ -108,6 +152,8 @@ export function TransactionFilterBar({
   ].join(" - ");
 
   function resetFilters() {
+    clearTimeout(searchTimer.current);
+    setSearch("");
     onChange({
       ...DEFAULT_TRANSACTION_FILTERS,
       sortBy: filters.sortBy,
@@ -117,6 +163,22 @@ export function TransactionFilterBar({
 
   return (
     <Card padding="none">
+      <div className="relative border-b border-border p-3">
+        <Search
+          size={16}
+          aria-hidden="true"
+          className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          aria-label={t("transactions.search")}
+          placeholder={t("transactions.searchPlaceholder")}
+          value={search}
+          maxLength={200}
+          onChange={(event) => updateSearch(event.target.value)}
+          className="w-full pl-9"
+        />
+      </div>
       <div
         className="flex flex-wrap items-center gap-2 p-3"
         role="group"
@@ -130,7 +192,19 @@ export function TransactionFilterBar({
               onChange({
                 ...filters,
                 type: event.target.value as TransactionFilters["type"],
-                categoryIds: [],
+                categoryIds: filters.categoryIds.filter((id) => {
+                  const category = categories.find(
+                    (parent) =>
+                      parent.id === id ||
+                      parent.children.some((child) => child.id === id),
+                  );
+                  return (
+                    !category ||
+                    !category.type ||
+                    !event.target.value ||
+                    category.type === event.target.value
+                  );
+                }),
               })
             }
             className="h-9 w-full text-sm max-sm:min-h-11"
@@ -152,7 +226,7 @@ export function TransactionFilterBar({
           size="sm"
           variant={isCurrentMonth ? "secondary" : "ghost"}
           aria-pressed={isCurrentMonth}
-          className="h-9 gap-1.5"
+          className="min-h-11 gap-1.5 sm:min-h-0 sm:h-9"
           onClick={() =>
             onChange({
               ...filters,
@@ -169,7 +243,7 @@ export function TransactionFilterBar({
           size="sm"
           variant={filters.uncategorized ? "secondary" : "ghost"}
           aria-pressed={Boolean(filters.uncategorized)}
-          className="h-9 gap-1.5"
+          className="min-h-11 gap-1.5 sm:min-h-0 sm:h-9"
           onClick={() =>
             onChange({
               ...filters,
@@ -179,9 +253,9 @@ export function TransactionFilterBar({
           }
         >
           <CircleAlert size={15} aria-hidden="true" />
-          {t("transactions.needsAttention")}
+          {t("transactions.withoutCategory")}
         </Button>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:ml-auto">
           <Button
             type="button"
             size="sm"
@@ -221,6 +295,44 @@ export function TransactionFilterBar({
         </div>
       </div>
 
+      {invalidDates && !expanded && (
+        <p
+          role="alert"
+          className="border-t border-border px-3 py-2 text-sm text-destructive"
+        >
+          {t("transactions.invalidRange")}
+        </p>
+      )}
+      <div className="border-t border-border px-3 py-2 md:hidden">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{t("transactions.sort")}</span>
+          <Select
+            value={`${filters.sortBy}:${filters.sortDirection}`}
+            onChange={(event) => {
+              const [sortBy, sortDirection] = event.target.value.split(":") as [
+                TransactionFilters["sortBy"],
+                TransactionFilters["sortDirection"],
+              ];
+              onChange({ ...filters, sortBy, sortDirection });
+            }}
+            className="h-9 flex-1 text-sm"
+          >
+            {!["date:desc", "date:asc", "amount:desc", "amount:asc"].includes(
+              `${filters.sortBy}:${filters.sortDirection}`,
+            ) && (
+              <option value={`${filters.sortBy}:${filters.sortDirection}`}>
+                {t("transactions.sort")}
+              </option>
+            )}
+            <option value="date:desc">{t("transactions.newest")}</option>
+            <option value="date:asc">{t("transactions.oldest")}</option>
+            <option value="amount:desc">
+              {t("transactions.highestAmount")}
+            </option>
+            <option value="amount:asc">{t("transactions.lowestAmount")}</option>
+          </Select>
+        </label>
+      </div>
       {expanded && (
         <div
           id={panelId}
@@ -257,24 +369,38 @@ export function TransactionFilterBar({
               ))}
             </Select>
           </FilterField>
-          <FilterField label={t("common.tags")}>
-            <Select
-              value={filters.tag}
-              onChange={(event) =>
-                onChange({ ...filters, tag: event.target.value })
-              }
-            >
-              <option value="">{t("transactions.allTags")}</option>
-              {tags.map((tag) => (
-                <option key={tag} value={tag}>
-                  {tag}
-                </option>
-              ))}
-            </Select>
-          </FilterField>
+          <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-5">
+            {[
+              { label: t("transactions.previousMonth"), range: previousMonth },
+              {
+                label: t("transactions.lastThirtyDays"),
+                range: lastThirtyDays,
+              },
+            ].map(({ label, range }) => (
+              <Button
+                key={label}
+                type="button"
+                size="sm"
+                variant={
+                  filters.dateFrom === range.dateFrom &&
+                  filters.dateTo === range.dateTo
+                    ? "secondary"
+                    : "ghost"
+                }
+                aria-pressed={
+                  filters.dateFrom === range.dateFrom &&
+                  filters.dateTo === range.dateTo
+                }
+                onClick={() => onChange({ ...filters, ...range })}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           <FilterField label={t("transactions.dateFrom")}>
             <Input
               type="date"
+              aria-invalid={invalidDates}
               value={filters.dateFrom}
               onChange={(event) =>
                 onChange({ ...filters, dateFrom: event.target.value })
@@ -284,17 +410,66 @@ export function TransactionFilterBar({
           <FilterField label={t("transactions.dateTo")}>
             <Input
               type="date"
+              aria-invalid={invalidDates}
               value={filters.dateTo}
               onChange={(event) =>
                 onChange({ ...filters, dateTo: event.target.value })
               }
             />
           </FilterField>
+          {invalidDates && (
+            <p
+              role="alert"
+              className="text-sm text-destructive sm:col-span-2 lg:col-span-5"
+            >
+              {t("transactions.invalidRange")}
+            </p>
+          )}
         </div>
       )}
 
-      {extraCount > 0 && (
+      {hasFilters && (
         <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2">
+          {filters.search && (
+            <FilterChip
+              label={filters.search}
+              onRemove={() => {
+                clearTimeout(searchTimer.current);
+                setSearch("");
+                onChange({ ...filters, search: "" });
+              }}
+            />
+          )}
+          {filters.type && (
+            <FilterChip
+              label={t(
+                filters.type === "expense"
+                  ? "transactions.expense"
+                  : "transactions.income",
+              )}
+              onRemove={() => onChange({ ...filters, type: "" })}
+            />
+          )}
+          {filters.uncategorized && (
+            <FilterChip
+              label={t("transactions.withoutCategory")}
+              onRemove={() => onChange({ ...filters, uncategorized: false })}
+            />
+          )}
+          {filters.categoryIds.map((id) => (
+            <FilterChip
+              key={id}
+              label={categoryNames.get(id) ?? t("transactions.categories")}
+              onRemove={() =>
+                onChange({
+                  ...filters,
+                  categoryIds: filters.categoryIds.filter(
+                    (value) => value !== id,
+                  ),
+                })
+              }
+            />
+          ))}
           {filters.origin && (
             <FilterChip
               label={originLabel}
@@ -307,12 +482,6 @@ export function TransactionFilterBar({
                 source ? paymentSourceName(source, t) : filters.paymentSourceId
               }
               onRemove={() => onChange({ ...filters, paymentSourceId: "" })}
-            />
-          )}
-          {filters.tag && (
-            <FilterChip
-              label={`${t("common.tags")}: ${filters.tag}`}
-              onRemove={() => onChange({ ...filters, tag: "" })}
             />
           )}
           {hasDates && (

@@ -420,12 +420,7 @@ describe('Auth password reset (e2e)', () => {
             expect.objectContaining({
                 statusCode: 400,
                 error: 'Bad Request',
-                message: [
-                    'Password must be at least 16 characters long',
-                    'Password must contain at least one uppercase letter',
-                    'Password must contain at least one number',
-                    'Password must contain at least one special character',
-                ],
+                message: ['Password must be at least 15 characters long'],
             }),
         )
     })

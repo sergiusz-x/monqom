@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   Archive,
@@ -33,10 +33,12 @@ import {
 import { goalsApi } from "@/api/contract";
 import { getApiErrorMessage } from "@/lib/api-errors";
 import { todayInTimeZone } from "@/lib/goals";
-import { formatLongDate } from "@/lib/date-only";
+import { formatLongDate, getMonthInTimeZone } from "@/lib/date-only";
+import api from "@/lib/api";
 import { formatCurrency } from "@/lib/money";
 import { queryKeys } from "@/lib/query-client";
 import { useGoal } from "@/hooks/useGoals";
+import { useOptionalAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
@@ -58,7 +60,26 @@ export default function GoalDetailPage() {
   } = useWorkspace();
   const queryClient = useQueryClient();
   const { goal, isLoading, error, retry } = useGoal(workspaceId ?? "", goalId);
+  const currentMonth = getMonthInTimeZone(
+    new Date(),
+    workspace?.timezone ?? "UTC",
+  );
+  const planQuery = useQuery({
+    queryKey: [...queryKeys.budgets(workspaceId ?? ""), "plan", currentMonth],
+    queryFn: async ({ signal }) =>
+      (
+        await api.get<{
+          currency: string;
+          allocations: { goal_id: string | null; amount_cents: number }[];
+        } | null>(
+          `/workspaces/${encodeURIComponent(workspaceId ?? "")}/budgets/plan/${encodeURIComponent(currentMonth)}`,
+          { signal },
+        )
+      ).data,
+    enabled: Boolean(workspaceId && workspace),
+  });
   const { showToast } = useToast(3000);
+  const hidePlanAmount = useOptionalAuth()?.user?.hideSalaryAmounts;
   const [operationDialog, setOperationDialog] = useState<{
     type: GoalOperationType;
     operation?: GoalOperation;
@@ -71,9 +92,12 @@ export default function GoalDetailPage() {
 
   async function refresh() {
     if (!workspaceId) return;
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.goals(workspaceId),
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals(workspaceId) }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.budgets(workspaceId),
+      }),
+    ]);
   }
 
   async function archiveOrRestore() {
@@ -253,6 +277,19 @@ export default function GoalDetailPage() {
             })}
           />
         </div>
+        {!goal.archivedAt ? (
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setOperationDialog({ type: "deposit" })}>
+              <Plus aria-hidden="true" /> {t("goals.addOperationButton")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setOperationDialog({ type: "withdrawal" })}
+            >
+              {t("goals.withdrawMoney")}
+            </Button>
+          </div>
+        ) : null}
         <div className="grid gap-5 border-t border-border pt-5 sm:grid-cols-2 sm:divide-x sm:divide-border">
           <div>
             <p className="text-xs text-muted-foreground">
@@ -262,33 +299,77 @@ export default function GoalDetailPage() {
               {formatCurrency(goal.remainingAmount, goal.currency)}
             </p>
           </div>
-          <div className="sm:pl-5">
-            <p className="text-xs text-muted-foreground">
-              {t("goals.monthlyNeeded")}
+          {goal.status === "active" ? (
+            <div className="sm:pl-5">
+              <p className="text-xs text-muted-foreground">
+                {t("goals.monthlyNeeded")}
+              </p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">
+                {goal.recommendedMonthlyAmount === null
+                  ? "-"
+                  : formatCurrency(
+                      goal.recommendedMonthlyAmount,
+                      goal.currency,
+                    )}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("goals.months", { count: goal.remainingMonths })}
+              </p>
+            </div>
+          ) : goal.status === "overdue" ? (
+            <div className="sm:pl-5">
+              <p className="text-sm text-muted-foreground">
+                {t("goals.deadlinePassed")}
+              </p>
+              {!goal.archivedAt ? (
+                <Link
+                  className="text-sm text-primary underline"
+                  to={`/goals/${goal.id}/edit`}
+                >
+                  {t("goals.changeDeadline")}
+                </Link>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 sm:pl-5">
+              {t("goals.completedMessage")}
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums">
-              {goal.recommendedMonthlyAmount === null
-                ? "-"
-                : formatCurrency(goal.recommendedMonthlyAmount, goal.currency)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {goal.status === "overdue"
-                ? t("goals.deadlinePassed")
-                : t("goals.months", { count: goal.remainingMonths })}
-            </p>
-          </div>
+          )}
         </div>
       </SectionCard>
+
+      {!goal.archivedAt &&
+      goal.status !== "completed" &&
+      planQuery.isSuccess &&
+      (!planQuery.data || planQuery.data.currency === goal.currency) ? (
+        <SectionCard className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold">{t("goals.monthPlan")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {hidePlanAmount
+                ? t("goals.privatePlan")
+                : t("goals.monthPlanned", {
+                    amount: formatCurrency(
+                      (planQuery.data?.allocations.find(
+                        (item) => item.goal_id === goal.id,
+                      )?.amount_cents ?? 0) / 100,
+                      goal.currency,
+                    ),
+                  })}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("goals.planHint")}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/budgets")}>
+            {t("goals.openBudget")}
+          </Button>
+        </SectionCard>
+      ) : null}
 
       <SectionCard className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold">{t("goals.operations")}</h2>
-          {!goal.archivedAt ? (
-            <Button onClick={() => setOperationDialog({ type: "deposit" })}>
-              <Plus aria-hidden="true" />
-              {t("goals.addOperationButton")}
-            </Button>
-          ) : null}
         </div>
         {goal.operations?.length ? (
           <div className="space-y-2">
@@ -378,9 +459,6 @@ export default function GoalDetailPage() {
           >
             <div>
               <p className="font-medium">{t("goals.openingBalance")}</p>
-              <p className="text-xs text-muted-foreground">
-                {goal.planStartMonth}
-              </p>
             </div>
             <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
               +{formatCurrency(goal.initialAmount, goal.currency)}
@@ -515,7 +593,13 @@ export function OperationDialog({
     >
       <form onSubmit={(event) => void submit(event)} className="space-y-4">
         <h2 id="goal-operation-title" className="text-lg font-semibold">
-          {operation ? t("goals.editOperation") : t("goals.addOperationButton")}
+          {operation
+            ? t("goals.editOperation")
+            : t(
+                operationType === "deposit"
+                  ? "goals.addOperationButton"
+                  : "goals.withdrawMoney",
+              )}
         </h2>
         {!operation ? (
           <SegmentedControl

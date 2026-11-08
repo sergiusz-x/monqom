@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import { PaymentSource } from '@prisma/client'
 import { PrismaService } from '../../shared/database/prisma.service'
+import { isPrismaUniqueConstraintError } from '../../shared/database/prisma-errors'
 import { PaymentSourcesRepository } from './payment-sources.repository'
 import { normalizeRequiredValue } from '../../shared/utils/validation'
 
@@ -163,6 +164,47 @@ export class PaymentSourcesService {
 
             return mapPaymentSourceResponse(updatedPaymentSource)
         })
+    }
+
+    async restorePaymentSource(
+        paymentSourceId: string,
+        workspaceId: string,
+        userId: string,
+    ): Promise<PaymentSourceResponse> {
+        const id = normalizeRequiredValue(paymentSourceId, 'Payment source id')
+        const workspace = normalizeRequiredValue(workspaceId, 'Workspace id')
+        const user = normalizeRequiredValue(userId, 'User id')
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const source = await this.paymentSourcesRepository.findPaymentSourceById(
+                    workspace,
+                    id,
+                    true,
+                    tx,
+                )
+                if (!source || !source.deletedAt)
+                    throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
+                const duplicate = await this.paymentSourcesRepository.findActivePaymentSourceByName(
+                    workspace,
+                    source.name,
+                    id,
+                    tx,
+                )
+                if (duplicate) throw new ConflictException(PAYMENT_SOURCE_NAME_CONFLICT_MESSAGE)
+                const restored = await this.paymentSourcesRepository.restorePaymentSource(
+                    workspace,
+                    id,
+                    user,
+                    tx,
+                )
+                if (!restored) throw new NotFoundException(PAYMENT_SOURCE_NOT_FOUND_MESSAGE)
+                return mapPaymentSourceResponse(restored)
+            })
+        } catch (error) {
+            if (isPrismaUniqueConstraintError(error))
+                throw new ConflictException(PAYMENT_SOURCE_NAME_CONFLICT_MESSAGE)
+            throw error
+        }
     }
 
     async archivePaymentSource(

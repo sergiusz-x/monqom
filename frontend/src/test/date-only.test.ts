@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import i18n from "@/i18n";
 import {
   formatDateOnly,
+  formatShortDateWithWeekday,
   getDateOnlyInTimeZone,
   getMonthDateRange,
   getMonthInTimeZone,
@@ -36,6 +37,17 @@ describe("date-only and workspace timezone helpers", () => {
         "pl-PL",
       ),
     ).toBe("1 lipca 2026");
+  });
+
+  it("includes the localized weekday without shifting the calendar date", async () => {
+    await i18n.changeLanguage("en");
+    expect(formatShortDateWithWeekday("2026-07-01T00:00:00.000Z")).toBe(
+      "Wed, Jul 1, 2026",
+    );
+    await i18n.changeLanguage("pl");
+    expect(formatShortDateWithWeekday("2026-07-01T00:00:00.000Z")).toBe(
+      "śr., 1 lip 2026",
+    );
   });
 
   it("derives current dates and report months from the workspace timezone", () => {

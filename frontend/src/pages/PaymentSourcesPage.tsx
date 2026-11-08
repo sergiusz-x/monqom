@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import {
+  Archive,
+  Banknote,
+  CreditCard,
+  Landmark,
+  Pencil,
+  Wallet,
+} from "lucide-react";
+import { getApiErrorStatus } from "@/lib/api-errors";
 import { useToast } from "@/hooks/useToast";
 
 import { paymentSourcesApi } from "@/api/contract";
@@ -17,6 +26,7 @@ import {
 import { queryKeys } from "@/lib/query-client";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import {
+  ActionMenu,
   Alert,
   AsyncState,
   Button,
@@ -24,6 +34,7 @@ import {
   ConfirmationDialog,
   EmptyState,
   SectionCard,
+  SegmentedControl,
 } from "@monqom/ui";
 
 export default function PaymentSourcesPage() {
@@ -36,6 +47,8 @@ export default function PaymentSourcesPage() {
     true,
   );
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [view, setView] = useState<"active" | "archived">("active");
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<PaymentSource | null>(
     null,
   );
@@ -65,9 +78,12 @@ export default function PaymentSourcesPage() {
         source.id,
         workspaceId,
       );
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.paymentSourcesRoot(workspaceId),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.paymentSourcesRoot(workspaceId),
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces }),
+      ]);
       showToast(t("paymentSources.archivedSuccess"));
       setSourceToArchive(null);
     } catch {
@@ -76,6 +92,37 @@ export default function PaymentSourcesPage() {
       setArchivingId(null);
     }
   }
+
+  async function restoreSource(source: PaymentSource) {
+    if (!workspaceId) return;
+    setRestoringId(source.id);
+    setActionError(null);
+    try {
+      await paymentSourcesApi.paymentSourcesControllerRestorePaymentSource(
+        source.id,
+        workspaceId,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.paymentSourcesRoot(workspaceId),
+      });
+      setView("active");
+      showToast(t("paymentSources.restoredSuccess"));
+    } catch (error) {
+      setActionError(
+        t(
+          getApiErrorStatus(error) === 409
+            ? "paymentSources.restoreConflict"
+            : "paymentSources.restoreError",
+        ),
+      );
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
+  const visibleSources = paymentSources.filter(
+    (source) => source.isArchived === (view === "archived"),
+  );
 
   return (
     <PageContainer className="space-y-6">
@@ -95,6 +142,18 @@ export default function PaymentSourcesPage() {
         }
       />
 
+      <SegmentedControl
+        value={view}
+        ariaLabel={t("paymentSources.title")}
+        options={[
+          { value: "active", label: t("paymentSources.active") },
+          { value: "archived", label: t("paymentSources.archived") },
+        ]}
+        onChange={(next) => {
+          setView(next);
+          setActionError(null);
+        }}
+      />
       <SectionCard>
         {isLoading ? (
           <AsyncState
@@ -108,57 +167,93 @@ export default function PaymentSourcesPage() {
             message={error}
             onRetry={() => void retry()}
           />
-        ) : paymentSources.length === 0 ? (
+        ) : paymentSources.length === 0 && view === "active" ? (
           <EmptyState
             title={t("paymentSources.empty")}
             description={t("paymentSources.emptyDescription")}
             actionLabel={canConfigure ? t("paymentSources.add") : undefined}
             onAction={canConfigure ? openCreateDialog : undefined}
           />
+        ) : visibleSources.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {t(
+              view === "active"
+                ? "paymentSources.noActive"
+                : "paymentSources.noArchived",
+            )}
+          </p>
         ) : (
           <div className="space-y-2">
-            {paymentSources.map((source) => (
-              <Card
-                key={source.id}
-                padding="compact"
-                tone="transparent"
-                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium">{paymentSourceName(source, t)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {paymentSourceTypeLabel(source.type, t)}
-                    {source.isArchived
-                      ? ` - ${t("paymentSources.archived")}`
-                      : ""}
-                  </p>
-                </div>
-                {canConfigure &&
-                  !source.isArchived &&
-                  source.systemKey !== "cash" && (
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => openEditDialog(source)}
-                      >
-                        {t("common.edit")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={archivingId === source.id}
-                        onClick={() => {
-                          setActionError(null);
-                          setSourceToArchive(source);
-                        }}
-                      >
-                        {t("paymentSources.archive")}
-                      </Button>
+            {visibleSources.map((source) => {
+              const Icon =
+                source.type === "cash"
+                  ? Banknote
+                  : source.type === "bank"
+                    ? Landmark
+                    : source.type === "other"
+                      ? Wallet
+                      : CreditCard;
+              const name = paymentSourceName(source, t);
+              return (
+                <Card
+                  key={source.id}
+                  padding="compact"
+                  tone="transparent"
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="rounded-lg bg-muted p-2 text-muted-foreground">
+                      <Icon size={20} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{name}</p>
+                      {name.toLocaleLowerCase() !==
+                      paymentSourceTypeLabel(
+                        source.type,
+                        t,
+                      ).toLocaleLowerCase() ? (
+                        <p className="text-sm text-muted-foreground">
+                          {paymentSourceTypeLabel(source.type, t)}
+                        </p>
+                      ) : null}
                     </div>
-                  )}
-              </Card>
-            ))}
+                  </div>
+                  {canConfigure && source.systemKey !== "cash" ? (
+                    source.isArchived ? (
+                      <Button
+                        variant="outline"
+                        disabled={restoringId === source.id}
+                        onClick={() => void restoreSource(source)}
+                      >
+                        {t("paymentSources.restore")}
+                      </Button>
+                    ) : (
+                      <ActionMenu
+                        ariaLabel={t("paymentSources.actions", { name })}
+                        disabled={archivingId === source.id}
+                        items={[
+                          {
+                            id: "edit",
+                            label: t("common.edit"),
+                            icon: Pencil,
+                            onSelect: () => openEditDialog(source),
+                          },
+                          {
+                            id: "archive",
+                            label: t("paymentSources.archive"),
+                            icon: Archive,
+                            onSelect: () => {
+                              setActionError(null);
+                              setSourceToArchive(source);
+                            },
+                          },
+                        ]}
+                      />
+                    )
+                  ) : null}
+                </Card>
+              );
+            })}
           </div>
         )}
 

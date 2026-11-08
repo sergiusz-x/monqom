@@ -4,10 +4,12 @@ import { WorkspaceModule } from '../workspace/workspace.module'
 import { BudgetsController } from './budgets.controller'
 import { BudgetsRepository } from './budgets.repository'
 import { BudgetsService } from './budgets.service'
+import { MonthlyPlanController } from './monthly-plan.controller'
+import { MonthlyPlanService } from './monthly-plan.service'
 
 @Module({
     imports: [AuthCoreModule, WorkspaceModule],
-    controllers: [BudgetsController],
-    providers: [BudgetsService, BudgetsRepository],
+    controllers: [BudgetsController, MonthlyPlanController],
+    providers: [BudgetsService, BudgetsRepository, MonthlyPlanService],
 })
 export class BudgetsModule {}

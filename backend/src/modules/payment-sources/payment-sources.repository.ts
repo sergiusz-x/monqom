@@ -214,6 +214,37 @@ export class PaymentSourcesRepository {
 
         return true
     }
+    async restorePaymentSource(
+        workspaceId: string,
+        paymentSourceId: string,
+        userId: string,
+        prisma: PaymentSourcesPersistenceClient = this.prisma,
+    ): Promise<PaymentSource | null> {
+        const updated = await prisma.paymentSource.updateMany({
+            where: { workspaceId, id: paymentSourceId, deletedAt: { not: null } },
+            data: { deletedAt: null },
+        })
+        if (updated.count === 0) return null
+        const paymentSource = await this.findPaymentSourceById(
+            workspaceId,
+            paymentSourceId,
+            false,
+            prisma,
+        )
+        if (!paymentSource) return null
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.PAYMENT_SOURCE_RESTORED,
+                workspaceId,
+                userId,
+                entityType: AUDIT_ENTITY_TYPES.PAYMENT_SOURCE,
+                entityId: paymentSourceId,
+                metadata: mapPaymentSourceAuditMetadata(paymentSource),
+            },
+            prisma,
+        )
+        return paymentSource
+    }
 }
 
 function mapPaymentSourceAuditMetadata(paymentSource: PaymentSource) {

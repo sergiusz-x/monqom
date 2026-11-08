@@ -53,6 +53,8 @@ export interface DashboardOverviewResponse {
     summary: SpendingSummaryResponse
     category_breakdown: CategoryBreakdownResponse
     spending_trend: SpendingTrendItemResponse[]
+    financial_trend: Array<{ month: string; income: number | null; spending: number | null }>
+    spending_pace: { change_percentage: number; direction: 'up' | 'down' | 'flat' } | null
     recent_transactions: CreateTransactionResponse[]
 }
 
@@ -80,39 +82,51 @@ export class DashboardService {
         const monthRange = validateDashboardMonthInput(input)
         const trendMonths = getMonthSequence(monthRange.month, 6)
         const trendStart = parseMonthStart(trendMonths[0])
+        const financialMonths = getMonthSequence(monthRange.month, 12)
         const workspacePromise = this.workspaceService
             ? this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
-            : Promise.resolve({ baseCurrency: 'USD' } as const)
+            : Promise.resolve({ baseCurrency: 'USD', timezone: 'UTC' } as const)
         const recentTransactionsPromise = this.transactionsRepository
             ? this.transactionsRepository.listTransactions({
                   workspaceId: normalizedWorkspaceId,
-                  limit: 5,
+                  limit: 30,
                   offset: 0,
                   sortBy: 'date',
                   sortDirection: 'desc',
               })
             : Promise.resolve([])
 
-        const [workspace, monthlySpend, categorySpend, recentTransactions, incomeCents] =
-            await Promise.all([
-                workspacePromise,
-                this.dashboardRepository.listMonthlySpendForRange(
-                    normalizedWorkspaceId,
-                    trendStart,
-                    monthRange.endDateExclusive,
-                ),
-                this.dashboardRepository.listCategorySpendForRange(
-                    normalizedWorkspaceId,
-                    monthRange.startDate,
-                    monthRange.endDateExclusive,
-                ),
-                recentTransactionsPromise,
-                this.dashboardRepository.getTotalIncomeForRange(
-                    normalizedWorkspaceId,
-                    monthRange.startDate,
-                    monthRange.endDateExclusive,
-                ),
-            ])
+        const [
+            workspace,
+            monthlySpend,
+            categorySpend,
+            recentTransactions,
+            incomeCents,
+            monthlyFinancials,
+        ] = await Promise.all([
+            workspacePromise,
+            this.dashboardRepository.listMonthlySpendForRange(
+                normalizedWorkspaceId,
+                trendStart,
+                monthRange.endDateExclusive,
+            ),
+            this.dashboardRepository.listCategorySpendForRange(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+            ),
+            recentTransactionsPromise,
+            this.dashboardRepository.getTotalIncomeForRange(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+            ),
+            this.dashboardRepository.listMonthlyFinancialsForRange(
+                normalizedWorkspaceId,
+                parseMonthStart(financialMonths[0]),
+                monthRange.endDateExclusive,
+            ),
+        ])
         const totalsByMonth = new Map(monthlySpend.map((item) => [item.month, item.amount]))
         const currentTotalCents = totalsByMonth.get(monthRange.month) ?? 0
         const previousMonth = getMonthSequence(monthRange.month, 2)[0]
@@ -131,13 +145,57 @@ export class DashboardService {
             categorySpend,
         )
 
+        const financialByMonth = new Map(monthlyFinancials.map((item) => [item.month, item]))
+        const today = new Intl.DateTimeFormat('en-CA', {
+            timeZone: workspace.timezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(new Date())
+        const dateParts = new Map(today.map((part) => [part.type, part.value]))
+        const currentMonth = `${dateParts.get('year')}-${dateParts.get('month')}`
+        let spendingPace: DashboardOverviewResponse['spending_pace'] = null
+        if (monthRange.month === currentMonth) {
+            const day = Number(dateParts.get('day'))
+            const year = monthRange.startDate.getUTCFullYear()
+            const month = monthRange.startDate.getUTCMonth()
+            const previousDays = new Date(Date.UTC(year, month, 0)).getUTCDate()
+            const [currentSpend, previousSpend] = await Promise.all([
+                this.dashboardRepository.getTotalSpendForRange(
+                    normalizedWorkspaceId,
+                    monthRange.startDate,
+                    new Date(Date.UTC(year, month, day + 1)),
+                ),
+                this.dashboardRepository.getTotalSpendForRange(
+                    normalizedWorkspaceId,
+                    monthRange.previousStartDate,
+                    new Date(Date.UTC(year, month - 1, Math.min(day, previousDays) + 1)),
+                ),
+            ])
+            if (previousSpend > 0) {
+                spendingPace = {
+                    change_percentage: calculateChangePercentage(currentSpend, previousSpend)!,
+                    direction: determineDirection(currentSpend - previousSpend),
+                }
+            }
+        }
+
         return {
             summary,
+            spending_pace: spendingPace,
             category_breakdown: categoryBreakdown,
             spending_trend: trendMonths.map((month) => ({
                 month,
                 total: centsToDisplayAmount(totalsByMonth.get(month) ?? 0),
             })),
+            financial_trend: financialMonths.map((month) => {
+                const item = financialByMonth.get(month)
+                return {
+                    month,
+                    income: item ? centsToDisplayAmount(item.income) : null,
+                    spending: item ? centsToDisplayAmount(item.spending) : null,
+                }
+            }),
             recent_transactions: recentTransactions.map(mapRecentTransaction),
         }
     }

@@ -18,7 +18,6 @@ export const enCore = {
     date: "Date",
     category: "Category",
     notes: "Notes",
-    tags: "Tags",
     paymentSource: "Payment source",
     error: "Something went wrong.",
     retry: "Try again",
@@ -96,9 +95,9 @@ export const enCore = {
       eyebrow: "Everyday tracking",
       title: "Capture the details that make your spending make sense.",
       description:
-        "Record expenses in seconds, then use categories, payment sources, tags, search, and filters to find what matters.",
+        "Record expenses in seconds, then use categories, payment sources, search, and filters to find what matters.",
       imageAlt:
-        "Transaction list with filters, categories, tags, and payment sources",
+        "Transaction list with filters, categories, and payment sources",
     },
     budgets: {
       eyebrow: "Simple budgets",
@@ -116,7 +115,7 @@ export const enCore = {
       organization: {
         title: "Keep spending organized",
         description:
-          "Categories, tags, payment sources, search, and filters stay close to the data.",
+          "Categories, payment sources, search, and filters stay close to the data.",
       },
       budgets: {
         title: "Stay close to your limits",
@@ -177,6 +176,7 @@ export const enCore = {
     changeLanguage: "Change language",
     theme: "Theme",
     cycleTheme: "Current theme: {{theme}}. Click to change.",
+    switchTheme: "Switch to {{theme}} theme",
     system: "System",
     light: "Light",
     dark: "Dark",
@@ -210,7 +210,6 @@ export const plCore = {
     date: "Data",
     category: "Kategoria",
     notes: "Notatki",
-    tags: "Tagi",
     paymentSource: "Źródło płatności",
     error: "Wystąpił błąd.",
     retry: "Spróbuj ponownie",
@@ -288,9 +287,8 @@ export const plCore = {
       eyebrow: "Codzienne śledzenie",
       title: "Zapisuj szczegóły, dzięki którym wydatki mają sens.",
       description:
-        "Dodawaj wydatki w kilka chwil, a potem korzystaj z kategorii, źródeł płatności, tagów, wyszukiwania i filtrów.",
-      imageAlt:
-        "Lista transakcji z filtrami, kategoriami, tagami i źródłami płatności",
+        "Dodawaj wydatki w kilka chwil, a potem korzystaj z kategorii, źródeł płatności, wyszukiwania i filtrów.",
+      imageAlt: "Lista transakcji z filtrami, kategoriami i źródłami płatności",
     },
     budgets: {
       eyebrow: "Proste budżety",
@@ -307,7 +305,7 @@ export const plCore = {
       organization: {
         title: "Uporządkuj wydatki",
         description:
-          "Kategorie, tagi, źródła płatności, wyszukiwanie i filtry są blisko danych.",
+          "Kategorie, źródła płatności, wyszukiwanie i filtry są blisko danych.",
       },
       budgets: {
         title: "Trzymaj się limitów",
@@ -368,6 +366,7 @@ export const plCore = {
     changeLanguage: "Zmień język",
     theme: "Motyw",
     cycleTheme: "Obecny motyw: {{theme}}. Kliknij, aby zmienić.",
+    switchTheme: "Przełącz motyw na {{theme}}",
     system: "Systemowy",
     light: "Jasny",
     dark: "Ciemny",

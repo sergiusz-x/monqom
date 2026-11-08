@@ -50,6 +50,36 @@ export class BudgetsController {
         )
     }
 
+    @Post('recurring')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async setRecurringBudget(
+        @Body() body: BudgetBodyDto,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+    ): Promise<void> {
+        await this.budgetsService.setRecurringBudget(toBudgetCommand(body), workspaceId, userId)
+    }
+
+    @Post('recurring/remove')
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeRecurringBudget(
+        @Body() body: BudgetBodyDto,
+        @Query('scope') scope: string,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+    ): Promise<void> {
+        await this.budgetsService.removeRecurringBudget(
+            toBudgetCommand(body),
+            scope,
+            workspaceId,
+            userId,
+        )
+    }
+
     @Post()
     @ApiBudgetResponse(false, HttpStatus.CREATED)
     @UseGuards(WorkspaceRoleGuard)

@@ -14,7 +14,9 @@
  */
 
 import type { InlineResponse20010CategoryBreakdown } from "./inline-response20010-category-breakdown";
+import type { InlineResponse20010FinancialTrend } from "./inline-response20010-financial-trend";
 import type { InlineResponse20010RecentTransactions } from "./inline-response20010-recent-transactions";
+import type { InlineResponse20010SpendingPace } from "./inline-response20010-spending-pace";
 import type { InlineResponse20010SpendingTrend } from "./inline-response20010-spending-trend";
 import type { InlineResponse20010Summary } from "./inline-response20010-summary";
 
@@ -32,6 +34,12 @@ export interface InlineResponse20010 {
   summary: InlineResponse20010Summary;
   /**
    *
+   * @type {InlineResponse20010SpendingPace}
+   * @memberof InlineResponse20010
+   */
+  spending_pace: InlineResponse20010SpendingPace | null;
+  /**
+   *
    * @type {InlineResponse20010CategoryBreakdown}
    * @memberof InlineResponse20010
    */
@@ -42,6 +50,12 @@ export interface InlineResponse20010 {
    * @memberof InlineResponse20010
    */
   spending_trend: Array<InlineResponse20010SpendingTrend>;
+  /**
+   *
+   * @type {Array<InlineResponse20010FinancialTrend>}
+   * @memberof InlineResponse20010
+   */
+  financial_trend: Array<InlineResponse20010FinancialTrend>;
   /**
    *
    * @type {Array<InlineResponse20010RecentTransactions>}

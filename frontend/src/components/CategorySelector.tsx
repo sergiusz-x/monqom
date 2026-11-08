@@ -22,13 +22,14 @@ export interface CategorySelectorProps {
   placeholder?: string;
   disabled?: boolean;
   type?: "expense" | "income";
+  defaultOpen?: boolean;
 }
 
 interface VisibleItem {
   id: string;
   name: string;
   isParent: boolean;
-  displayPath: string;
+  icon: string | null;
 }
 
 function buildVisibleItems(
@@ -50,7 +51,7 @@ function buildVisibleItems(
       id: parent.id,
       name: parent.name,
       isParent: true,
-      displayPath: parent.name,
+      icon: parent.icon,
     });
 
     const childrenToShow = parentMatches ? parent.children : matchingChildren;
@@ -59,7 +60,7 @@ function buildVisibleItems(
         id: child.id,
         name: child.name,
         isParent: false,
-        displayPath: `${parent.name} → ${child.name}`,
+        icon: child.icon,
       });
     }
   }
@@ -67,11 +68,15 @@ function buildVisibleItems(
   return items;
 }
 
-function findDisplayPath(categories: Category[], id: string): string | null {
+function findDisplayCategory(
+  categories: Category[],
+  id: string,
+): { path: string; icon: string | null } | null {
   for (const parent of categories) {
-    if (parent.id === id) return parent.name;
+    if (parent.id === id) return { path: parent.name, icon: parent.icon };
     for (const child of parent.children) {
-      if (child.id === id) return `${parent.name} → ${child.name}`;
+      if (child.id === id)
+        return { path: `${parent.name} → ${child.name}`, icon: child.icon };
     }
   }
   return null;
@@ -84,11 +89,12 @@ export function CategorySelector({
   placeholder,
   disabled = false,
   type = "expense",
+  defaultOpen = false,
 }: CategorySelectorProps) {
   const field = useFieldControlProps();
   const { t } = useTranslation();
   const listboxId = useId();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [search, setSearch] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -113,8 +119,8 @@ export function CategorySelector({
     [categories, t],
   );
   const visibleItems = buildVisibleItems(localizedCategories, search);
-  const displayPath = value
-    ? findDisplayPath(localizedCategories, value)
+  const selectedCategory = value
+    ? findDisplayCategory(localizedCategories, value)
     : null;
 
   function closeDropdown() {
@@ -197,12 +203,17 @@ export function CategorySelector({
           variant: "outline",
           className: cn(
             "h-10 w-full justify-between gap-2 px-3 font-normal",
-            !displayPath && "text-muted-foreground",
+            !selectedCategory && "text-muted-foreground",
           ),
         })}
       >
         <span className="truncate">
-          {displayPath ?? placeholder ?? t("transactions.chooseCategory")}
+          {selectedCategory?.icon && (
+            <span aria-hidden="true">{selectedCategory.icon} </span>
+          )}
+          {selectedCategory?.path ??
+            placeholder ??
+            t("transactions.chooseCategory")}
         </span>
         <ChevronDown
           className={cn(
@@ -296,6 +307,7 @@ export function CategorySelector({
                         : "pr-3 pl-8 font-normal",
                     )}
                   >
+                    {item.icon && <span aria-hidden="true">{item.icon}</span>}
                     <span className="flex-1 truncate">{item.name}</span>
                     {item.id === value && (
                       <Check className="size-3.5 shrink-0" />

@@ -20,10 +20,10 @@ import { getApiErrorMessage } from "@/lib/api-errors";
 import {
   addMonthsClamped,
   mapGoal,
-  monthsUntilDate,
   previewMonthlyAmount,
   todayInTimeZone,
 } from "@/lib/goals";
+import { formatLongDate } from "@/lib/date-only";
 import { formatCurrency } from "@/lib/money";
 import { queryKeys } from "@/lib/query-client";
 import { useGoal } from "@/hooks/useGoals";
@@ -34,7 +34,7 @@ import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 import type { ApiGoal } from "@/types/api-contracts";
 
 export default function GoalFormPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { goalId = "" } = useParams();
   const editing = Boolean(goalId);
@@ -52,7 +52,6 @@ export default function GoalFormPage() {
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState<number | null>(null);
   const [initialAmount, setInitialAmount] = useState<number | null>(0);
-  const [months, setMonths] = useState(12);
   const [targetDate, setTargetDate] = useState(() =>
     addMonthsClamped(today, 12),
   );
@@ -73,7 +72,6 @@ export default function GoalFormPage() {
     setTargetAmount(Math.round(detail.goal.targetAmount * 100));
     setInitialAmount(Math.round(detail.goal.initialAmount * 100));
     setTargetDate(detail.goal.targetDate);
-    setMonths(monthsUntilDate(today, detail.goal.targetDate));
     setLoadedGoalId(detail.goal.id);
   }, [detail.goal, loadedGoalId, today]);
 
@@ -84,35 +82,41 @@ export default function GoalFormPage() {
     // Initialize date-sensitive defaults only after the workspace timezone is known.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTargetDate(addMonthsClamped(today, 12));
-    setMonths(12);
     setCreateDefaultsWorkspaceKey(workspaceKey);
   }, [createDefaultsWorkspaceKey, editing, today, workspace]);
 
   const minDate = addMonthsClamped(today, 1);
   const maxDate = addMonthsClamped(today, 120);
-  const preview = useMemo(
-    () =>
-      previewMonthlyAmount({
-        targetAmountCents: targetAmount ?? 0,
-        initialAmountCents: initialAmount ?? 0,
-        today,
-        targetDate,
-        includeCurrentMonth,
-      }),
-    [includeCurrentMonth, initialAmount, targetAmount, targetDate, today],
-  );
+  const savedCents =
+    editing && detail.goal
+      ? Math.round(
+          (detail.goal.currentAmount - detail.goal.initialAmount) * 100,
+        ) + (initialAmount ?? 0)
+      : (initialAmount ?? 0);
+  const preview = useMemo(() => {
+    if (!targetDate) return null;
+    const startMonth =
+      editing && detail.goal ? detail.goal.planStartMonth : null;
+    const includeMonth = startMonth
+      ? startMonth <= today.slice(0, 7)
+      : includeCurrentMonth;
+    return previewMonthlyAmount({
+      targetAmountCents: targetAmount ?? 0,
+      initialAmountCents: savedCents,
+      today,
+      targetDate,
+      includeCurrentMonth: includeMonth,
+    });
+  }, [
+    detail.goal,
+    editing,
+    includeCurrentMonth,
+    savedCents,
+    targetAmount,
+    targetDate,
+    today,
+  ]);
   const currency = workspace?.baseCurrency ?? "USD";
-
-  function changeMonths(value: number) {
-    setMonths(value);
-    setTargetDate(addMonthsClamped(today, value));
-  }
-
-  function changeDate(value: string) {
-    setTargetDate(value);
-    if (value >= minDate && value <= maxDate)
-      setMonths(monthsUntilDate(today, value));
-  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -120,7 +124,11 @@ export default function GoalFormPage() {
     if (!name.trim()) nextErrors.name = t("goals.invalidName");
     if (!targetAmount || targetAmount <= 0)
       nextErrors.target = t("goals.invalidTarget");
-    if (!targetDate || targetDate < minDate || targetDate > maxDate) {
+    if (
+      !targetDate ||
+      (targetDate !== detail.goal?.targetDate &&
+        (targetDate < minDate || targetDate > maxDate))
+    ) {
       nextErrors.date = t("goals.invalidDate");
     }
     setErrors(nextErrors);
@@ -248,6 +256,7 @@ export default function GoalFormPage() {
 
       <form
         onSubmit={(event) => void submit(event)}
+        noValidate
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
       >
         <SectionCard className="space-y-5">
@@ -282,25 +291,16 @@ export default function GoalFormPage() {
           <FormField label={t("goals.targetDate")} error={errors.date} required>
             <Input
               type="date"
-              min={minDate}
+              min={
+                editing &&
+                targetDate === detail.goal?.targetDate &&
+                targetDate < minDate
+                  ? targetDate
+                  : minDate
+              }
               max={maxDate}
               value={targetDate}
-              onChange={(event) => changeDate(event.target.value)}
-            />
-          </FormField>
-          <FormField
-            label={t("goals.sliderLabel")}
-            hint={t("goals.months", { count: months })}
-          >
-            <input
-              id="goal-months"
-              type="range"
-              min={1}
-              max={120}
-              value={months}
-              aria-valuetext={t("goals.months", { count: months })}
-              className="h-10 w-full accent-primary"
-              onChange={(event) => changeMonths(Number(event.target.value))}
+              onChange={(event) => setTargetDate(event.target.value)}
             />
           </FormField>
           {!editing ? (
@@ -352,23 +352,27 @@ export default function GoalFormPage() {
           </div>
           <PlanValue
             label={t("goals.monthlyNeeded")}
-            value={formatCurrency(preview.monthlyAmountCents / 100, currency)}
+            value={
+              preview && targetDate >= today && preview.months > 0
+                ? formatCurrency(preview.monthlyAmountCents / 100, currency)
+                : t("goals.noMonthlyEstimate")
+            }
             prominent
           />
           <PlanValue
             label={t("goals.remaining")}
             value={formatCurrency(
-              Math.max((targetAmount ?? 0) - (initialAmount ?? 0), 0) / 100,
+              Math.max((targetAmount ?? 0) - savedCents, 0) / 100,
               currency,
             )}
           />
           <PlanValue
             label={t("goals.plannedMonths")}
-            value={String(preview.months)}
+            value={String(preview?.months ?? 0)}
           />
           <div className="flex items-center gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
             <CalendarDays size={16} aria-hidden="true" />
-            {targetDate}
+            {targetDate ? formatLongDate(targetDate, i18n.language) : "-"}
           </div>
         </Card>
       </form>

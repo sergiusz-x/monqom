@@ -142,7 +142,16 @@ export interface ApiSpendingTrendItem {
 
 export interface ApiDashboardOverview {
   summary: ApiSpendingSummary;
+  spending_pace?: {
+    change_percentage: number;
+    direction: "up" | "down" | "flat";
+  } | null;
   category_breakdown: ApiCategoryBreakdown;
   spending_trend: ApiSpendingTrendItem[];
+  financial_trend?: Array<{
+    month: string;
+    income: number | null;
+    spending: number | null;
+  }>;
   recent_transactions: ApiTransaction[];
 }

@@ -118,8 +118,8 @@ interface PrismaMock {
             orderBy: Array<Record<string, 'asc' | 'desc'>>
         }): Promise<StoredPaymentSource[]>
         updateMany(args: {
-            where: { workspaceId: string; id: string; deletedAt: null }
-            data: { name?: string; type?: string; deletedAt?: Date }
+            where: { workspaceId: string; id: string; deletedAt: null | { not: null } }
+            data: { name?: string; type?: string; deletedAt?: Date | null }
         }): Promise<{ count: number }>
     }
     auditEvent: {
@@ -308,6 +308,46 @@ describe('Payment sources endpoints (e2e)', () => {
         ])
     })
 
+    it('restores an archived source and enforces workspace and role access', async () => {
+        const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
+        const created = await agent
+            .post('/api/v1/workspaces/workspace-1/payment-sources')
+            .send({ name: 'Travel Card', type: 'debit_card' })
+            .expect(201)
+        const route = `/api/v1/workspaces/workspace-1/payment-sources/${created.body.id}`
+        await agent.post(`${route}/archive`).expect(200)
+        await agent
+            .post(`/api/v1/workspaces/workspace-2/payment-sources/${created.body.id}/restore`)
+            .expect(404)
+        const member = prismaMock.workspaceMemberships.find(
+            (item) => item.workspaceId === 'workspace-1',
+        )!
+        member.role = 'member'
+        await agent.post(`${route}/restore`).expect(403)
+        member.role = 'owner'
+        const restored = await agent.post(`${route}/restore`).expect(200)
+        expect(restored.body).toMatchObject({
+            id: created.body.id,
+            is_archived: false,
+            archived_at: null,
+        })
+        const sources = await agent
+            .get('/api/v1/workspaces/workspace-1/payment-sources')
+            .expect(200)
+        expect(sources.body).toEqual(
+            expect.arrayContaining([expect.objectContaining({ id: created.body.id })]),
+        )
+        expect(prismaMock.auditEvents).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    action: 'PAYMENT_SOURCE_RESTORED',
+                    workspaceId: 'workspace-1',
+                    entityId: created.body.id,
+                }),
+            ]),
+        )
+    })
+
     it('returns no default payment sources for a workspace without any custom sources', async () => {
         const agent = await authenticateAs(app, 'ada@example.com', 'GraniteHarbor!1234')
 
@@ -475,7 +515,9 @@ function createPrismaMock(): PrismaMock {
                     if (
                         paymentSource.workspaceId !== where.workspaceId ||
                         paymentSource.id !== where.id ||
-                        paymentSource.deletedAt !== where.deletedAt
+                        (where.deletedAt === null
+                            ? paymentSource.deletedAt !== null
+                            : paymentSource.deletedAt === null)
                     ) {
                         continue
                     }

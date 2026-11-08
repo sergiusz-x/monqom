@@ -7,13 +7,12 @@ import {
   WalletCards,
   Settings,
   Plus,
-  Monitor,
   Sun,
   Moon,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme, type ThemeMode } from "@/contexts/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 import MonqomLogo from "@/components/MonqomLogo";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,6 @@ import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 import { useState } from "react";
 import { useToast } from "@/hooks/useToast";
 
-import type { AppTranslationKey } from "@/i18n";
 import { Button, PendingButton } from "@monqom/ui";
 
 const navItems = [
@@ -44,31 +42,6 @@ const navItems = [
   { to: "/settings", label: "nav.settings", icon: Settings, end: false },
 ] as const;
 
-const themeOptions: Record<
-  ThemeMode,
-  {
-    next: ThemeMode;
-    label: AppTranslationKey;
-    icon: typeof Monitor;
-  }
-> = {
-  system: {
-    next: "light",
-    label: "publicPreferences.system",
-    icon: Monitor,
-  },
-  light: {
-    next: "dark",
-    label: "publicPreferences.light",
-    icon: Sun,
-  },
-  dark: {
-    next: "system",
-    label: "publicPreferences.dark",
-    icon: Moon,
-  },
-};
-
 interface SidebarProps {
   onAddTransaction: () => void;
 }
@@ -76,9 +49,11 @@ interface SidebarProps {
 export default function Sidebar({ onAddTransaction }: SidebarProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
-  const { mode, setMode } = useTheme();
-  const currentTheme = themeOptions[mode];
-  const ThemeIcon = currentTheme.icon;
+  const { isDark, setMode } = useTheme();
+  const ThemeIcon = isDark ? Sun : Moon;
+  const nextThemeLabel = isDark
+    ? "publicPreferences.light"
+    : "publicPreferences.dark";
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { showToast } = useToast(6000);
 
@@ -157,11 +132,13 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
               variant="ghost"
               size="icon"
               className="shrink-0"
-              aria-label={t("publicPreferences.cycleTheme", {
-                theme: t(currentTheme.label),
+              aria-label={t("publicPreferences.switchTheme", {
+                theme: t(nextThemeLabel),
               })}
-              title={t(currentTheme.label)}
-              onClick={() => setMode(currentTheme.next)}
+              title={t("publicPreferences.switchTheme", {
+                theme: t(nextThemeLabel),
+              })}
+              onClick={() => setMode(isDark ? "light" : "dark")}
             >
               <ThemeIcon size={16} aria-hidden="true" />
             </Button>

@@ -80,6 +80,18 @@ describe('TransactionsRepository', () => {
         },
     )
 
+    it('applies literal case-insensitive search to both rows and count within the workspace', async () => {
+        prisma.$queryRaw.mockResolvedValue([])
+        const filters = { workspaceId: 'workspace-1', search: '50%_Coffee' }
+        await repository.listTransactions({ ...filters, limit: 20, offset: 0 })
+        await repository.countTransactions(filters)
+        for (const [query] of prisma.$queryRaw.mock.calls as [Prisma.Sql][]) {
+            expect(query.strings.join(' ')).toContain('POSITION(LOWER(')
+            expect(query.values).toContain('50%_Coffee')
+            expect(query.values).toContain('workspace-1')
+        }
+    })
+
     it('normalizes tags case-insensitively with LOWER() in the persistence layer', async () => {
         prisma.$queryRaw.mockResolvedValue([{ name: 'Food' }, { name: 'Work' }])
 
@@ -123,6 +135,8 @@ describe('TransactionsRepository', () => {
         expect(renderedQuery).toContain('t."workspace_id" =')
         expect(renderedQuery).toContain('t."deleted_at" IS NULL')
         expect(renderedQuery).toContain('t."category_id" IN (')
+        expect(renderedQuery).toContain('child."parent_id" IN (')
+        expect(renderedQuery).toContain('child."workspace_id" =')
         expect(renderedQuery).toContain('t."payment_source_id" =')
         expect(renderedQuery).toContain('LOWER(BTRIM(tt_filter."name")) = LOWER(BTRIM(')
         expect(renderedQuery).toContain('t."date" >=')
