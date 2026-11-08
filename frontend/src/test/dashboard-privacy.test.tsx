@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { AuthContext, type AuthContextValue } from "@/contexts/AuthContext";
 import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSummary";
 
-function renderSummary(hideSalaryAmounts: boolean) {
+function summaryView(hideSalaryAmounts: boolean) {
   const auth: AuthContextValue = {
     user: {
       id: "user-1",
@@ -21,7 +21,7 @@ function renderSummary(hideSalaryAmounts: boolean) {
     logout: vi.fn(),
     setUser: vi.fn(),
   };
-  return render(
+  return (
     <AuthContext.Provider value={auth}>
       <MonthlySpendingSummary
         summary={{
@@ -41,11 +41,31 @@ function renderSummary(hideSalaryAmounts: boolean) {
         onPreviousMonth={vi.fn()}
         onNextMonth={vi.fn()}
       />
-    </AuthContext.Provider>,
+    </AuthContext.Provider>
   );
 }
 
+function renderSummary(hideSalaryAmounts: boolean) {
+  return render(summaryView(hideSalaryAmounts));
+}
+
 describe("dashboard privacy", () => {
+  it("masks revealed amounts again when privacy is re-enabled", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderSummary(true);
+    await user.click(screen.getByRole("button", { name: "Reveal income" }));
+    await user.click(
+      screen.getByRole("button", { name: "Reveal monthly balance" }),
+    );
+    rerender(summaryView(false));
+    rerender(summaryView(true));
+    expect(
+      screen.getByRole("button", { name: "Reveal income" }),
+    ).toHaveAttribute("data-sensitive-amount", "masked");
+    expect(
+      screen.getByRole("button", { name: "Reveal monthly balance" }),
+    ).toHaveAttribute("data-sensitive-amount", "masked");
+  });
   it("shows income and balance when privacy is off", () => {
     renderSummary(false);
     expect(screen.getByText("$1,000.00")).not.toHaveAttribute(

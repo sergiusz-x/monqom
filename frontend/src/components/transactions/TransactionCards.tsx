@@ -35,39 +35,41 @@ export function TransactionCards({
           : t("common.none");
 
         return (
-          <button
+          <div
             key={transaction.id}
-            type="button"
-            onClick={() => onOpen(transaction.id)}
-            className="block w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
           >
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 truncate font-medium">
+            <button
+              type="button"
+              onClick={() => onOpen(transaction.id)}
+              className="block min-w-0 cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <span className="block min-w-0 truncate font-medium">
                 {transaction.description}
               </span>
-              <SensitiveTransactionAmount
-                transaction={transaction}
-                categorySystemKeys={categorySystemKeys}
-                className="shrink-0 font-semibold"
-              />
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-              <span>{formatShortDateWithWeekday(transaction.date)}</span>
-              <span aria-hidden="true">·</span>
-              <TransactionListCategory
-                transaction={transaction}
-                categories={categories}
-              />
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {paymentSourceLabel}
-            </div>
-            {transaction.notes && (
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                {transaction.notes}
-              </p>
-            )}
-          </button>
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <span>{formatShortDateWithWeekday(transaction.date)}</span>
+                <span aria-hidden="true">·</span>
+                <TransactionListCategory
+                  transaction={transaction}
+                  categories={categories}
+                />
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {paymentSourceLabel}
+              </span>
+              {transaction.notes && (
+                <span className="mt-1 block line-clamp-2 text-sm text-muted-foreground">
+                  {transaction.notes}
+                </span>
+              )}
+            </button>
+            <SensitiveTransactionAmount
+              transaction={transaction}
+              categorySystemKeys={categorySystemKeys}
+              className="shrink-0 font-semibold"
+            />
+          </div>
         );
       })}
     </div>

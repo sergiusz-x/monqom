@@ -4,6 +4,7 @@ import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import DashboardPage from "@/pages/DashboardPage";
+import { AuthContext, type AuthContextValue } from "@/contexts/AuthContext";
 import type {
   CategoryBreakdown,
   SpendingTrendItem,
@@ -162,6 +163,43 @@ beforeEach(() => {
 });
 
 describe("DashboardPage", () => {
+  it("masks the trend again when privacy is re-enabled", async () => {
+    const user = userEvent.setup();
+    const auth: AuthContextValue = {
+      user: {
+        id: "u",
+        email: "a@example.com",
+        name: "A",
+        hideSalaryAmounts: true,
+        emailVerified: true,
+        totpEnabled: false,
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      },
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setUser: vi.fn(),
+    };
+    const view = (value: AuthContextValue) => (
+      <AuthContext.Provider value={value}>
+        <ToastProvider>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </AuthContext.Provider>
+    );
+    const { rerender } = render(view(auth));
+    await user.click(screen.getByRole("button", { name: "Reveal chart" }));
+    rerender(
+      view({ ...auth, user: { ...auth.user!, hideSalaryAmounts: false } }),
+    );
+    rerender(view(auth));
+    expect(
+      screen.getByRole("button", { name: "Reveal chart" }),
+    ).toBeInTheDocument();
+  });
   it("renders loading skeleton while workspace loads", () => {
     mockUseWorkspace.mockReturnValue({
       workspaceId: null,

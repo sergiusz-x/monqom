@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useOptionalAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSummary";
@@ -41,7 +42,14 @@ export default function DashboardPage() {
     refetch: retryWorkspace,
   } = useWorkspace();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [trendRevealed, setTrendRevealed] = useState(false);
+  const user = useOptionalAuth()?.user;
+  const privacyKey = `${user?.id ?? "anonymous"}:${user?.hideSalaryAmounts ? user.updatedAt : "disabled"}:${workspaceId ?? ""}`;
+  const [trendPrivacy, setTrendPrivacy] = useState({
+    key: privacyKey,
+    revealed: false,
+  });
+  if (trendPrivacy.key !== privacyKey)
+    setTrendPrivacy({ key: privacyKey, revealed: false });
   const [trendRange, setTrendRange] = useState<6 | 12>(6);
   const categoryCardRef = useRef<HTMLDivElement>(null);
   const [categoryHeight, setCategoryHeight] = useState(0);
@@ -155,8 +163,8 @@ export default function DashboardPage() {
         currency={summary.currency}
         selectedMonth={month}
         currentMonth={currentMonth}
-        revealed={trendRevealed}
-        onReveal={() => setTrendRevealed(true)}
+        revealed={trendPrivacy.key === privacyKey && trendPrivacy.revealed}
+        onReveal={() => setTrendPrivacy({ key: privacyKey, revealed: true })}
         onSelectMonth={setSelectedMonth}
         range={trendRange}
         onRangeChange={setTrendRange}

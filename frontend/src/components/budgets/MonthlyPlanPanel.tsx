@@ -97,6 +97,7 @@ export function MonthlyPlanPanel({
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState(true);
   const [amounts, setAmounts] = useState<Record<string, number | null>>({});
+  const [removedAllocations, setRemovedAllocations] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const display = (value: number) =>
@@ -139,6 +140,7 @@ export function MonthlyPlanPanel({
     setFundsOpen(true);
   }
   function openGoals() {
+    setRemovedAllocations([]);
     setAmounts(
       Object.fromEntries(
         (plan?.allocations ?? []).flatMap((item) =>
@@ -206,6 +208,9 @@ export function MonthlyPlanPanel({
       const response = await api.put<MonthlyPlan>(`${url}/goals`, {
         expected_revision: plan.revision,
         allocations,
+        ...(removedAllocations.length
+          ? { removed_allocation_ids: removedAllocations }
+          : {}),
       });
       client.setQueryData(key, response.data);
       setGoalsOpen(false);
@@ -647,6 +652,27 @@ export function MonthlyPlanPanel({
             void saveGoals();
           }}
         >
+          {plan?.allocations
+            .filter((item) => !item.goal_id)
+            .map((item) => (
+              <label key={item.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={removedAllocations.includes(item.id)}
+                  onChange={(event) =>
+                    setRemovedAllocations((current) =>
+                      event.target.checked
+                        ? [...current, item.id]
+                        : current.filter((id) => id !== item.id),
+                    )
+                  }
+                />
+                {t("budgets.removeDeletedGoal", {
+                  name: item.name,
+                  amount: display(item.amount_cents),
+                })}
+              </label>
+            ))}
           {goalsLoading ? (
             <p className="text-sm text-muted-foreground">
               {t("common.loading")}

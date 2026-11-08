@@ -59,9 +59,7 @@ export class MonthlyPlanService {
             confirmedAt: rule!.updatedAt,
             revision: 0,
         }
-        const useRule = Boolean(
-            rule && (!plan || !plan.incomePlanned || plan.incomeMode === 'transactions'),
-        )
+        const useRule = Boolean(rule && (!plan || !plan.incomePlanned))
         const incomeMode = useRule ? 'transactions' : current.incomeMode
         const incomeCategoryIds = useRule ? rule!.categoryIds : current.incomeCategoryIds
         const start = new Date(Date.UTC(year, monthNumber - 1, 1))
@@ -317,6 +315,18 @@ export class MonthlyPlanService {
                 })
                 if (updated.count !== 1)
                     throw new ConflictException('Monthly plan has changed; reload and try again')
+                if (body.removed_allocation_ids?.length) {
+                    const removed = await tx.monthlyGoalAllocation.deleteMany({
+                        where: {
+                            workspaceId,
+                            planId: plan.id,
+                            goalId: null,
+                            id: { in: body.removed_allocation_ids },
+                        },
+                    })
+                    if (removed.count !== body.removed_allocation_ids.length)
+                        throw new BadRequestException('Invalid deleted goal allocations')
+                }
                 await tx.monthlyGoalAllocation.deleteMany({
                     where: { workspaceId, planId: plan.id, goalId: { not: null } },
                 })

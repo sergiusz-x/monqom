@@ -31,6 +31,8 @@ export const enBudgets = {
     noGoalsToPlan: "You don't have any active goals yet.",
     openGoals: "Go to goals",
     deletedGoal: "deleted goal",
+    removeDeletedGoal:
+      "Remove {{name}} (deleted goal, {{amount}}) from this plan",
     confirmFundsTitle: "Planned income",
     confirmFundsDescription:
       "How much do you expect to receive? This amount applies only to this month.",
@@ -42,7 +44,7 @@ export const enBudgets = {
     futureIncomeHint:
       "Income for this future month is currently zero. It will update as matching transactions are added.",
     incomeSyncDescription:
-      "Adds up income transactions recorded for this month. This setting applies from this month onward.",
+      "Adds up income transactions for this month. New plans from this month onward use this selection; confirmed plans keep their existing selection.",
     allIncomeCategories: "All income categories",
     incomeCategories: "Categories",
     allCategories: "All",
@@ -148,6 +150,7 @@ export const plBudgets = {
     noGoalsToPlan: "Nie masz jeszcze aktywnych celów.",
     openGoals: "Przejdź do celów",
     deletedGoal: "usunięty cel",
+    removeDeletedGoal: "Usuń {{name}} (usunięty cel, {{amount}}) z tego planu",
     confirmFundsTitle: "Planowane wpływy",
     confirmFundsDescription:
       "Ile spodziewasz się otrzymać? Ta kwota dotyczy tylko tego miesiąca.",
@@ -159,7 +162,7 @@ export const plBudgets = {
     futureIncomeHint:
       "Wpływy w tym przyszłym miesiącu wynoszą teraz zero. Kwota zaktualizuje się po dodaniu pasujących transakcji.",
     incomeSyncDescription:
-      "Suma wpływów zapisanych w tym miesiącu. To ustawienie obowiązuje od tego miesiąca także w kolejnych.",
+      "Suma wpływów zapisanych w tym miesiącu. Nowe plany od tego miesiąca użyją tego wyboru; potwierdzone plany zachowają dotychczasowy wybór.",
     allIncomeCategories: "Wszystkie kategorie wpływów",
     incomeCategories: "Kategorie",
     allCategories: "Wszystkie",

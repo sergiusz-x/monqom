@@ -69,6 +69,43 @@ beforeEach(() => {
 });
 
 describe("MonthlyPlanPanel", () => {
+  it("removes a selected deleted goal allocation from this plan", async () => {
+    get.mockResolvedValue({
+      data: {
+        ...base,
+        allocations: [
+          {
+            id: "deleted-allocation",
+            goal_id: null,
+            name: "Old goal",
+            amount_cents: 3000,
+            deposited_cents: 0,
+            withdrawn_cents: 0,
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(
+      await screen.findByRole("button", { name: "Plan savings" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Plan savings" });
+    await user.click(
+      within(dialog).getByRole("checkbox", { name: /Remove Old goal/ }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith(expect.stringContaining("/goals"), {
+        expected_revision: 3,
+        allocations: [],
+        removed_allocation_ids: ["deleted-allocation"],
+      }),
+    );
+    expect(
+      await screen.findByText("No savings planned yet."),
+    ).toBeInTheDocument();
+  });
   it("can replace inherited income with a manual amount for this month", async () => {
     get.mockResolvedValue({
       data: {

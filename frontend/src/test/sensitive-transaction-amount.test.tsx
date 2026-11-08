@@ -6,6 +6,7 @@ import {
   type AuthContextValue,
   type User,
 } from "@/contexts/AuthContext";
+import { TransactionCards } from "@/components/transactions/TransactionCards";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { SalaryPrivacyProvider } from "@/contexts/SalaryPrivacyContext";
 import { SALARY_CATEGORY_SYSTEM_KEY } from "@/lib/category-system-keys";
@@ -62,6 +63,56 @@ function renderAmount(
 }
 
 describe("SensitiveTransactionAmount", () => {
+  it("provides separate keyboard controls for a salary card and its amount", async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    const auth: AuthContextValue = {
+      user: {
+        id: "u",
+        email: "a@example.com",
+        name: "A",
+        hideSalaryAmounts: true,
+        emailVerified: true,
+        totpEnabled: false,
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      },
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setUser: vi.fn(),
+    };
+    render(
+      <AuthContext.Provider value={auth}>
+        <SalaryPrivacyProvider>
+          <TransactionCards
+            transactions={[salaryTransaction]}
+            categories={{}}
+            categorySystemKeys={{
+              "salary-category": SALARY_CATEGORY_SYSTEM_KEY,
+            }}
+            paymentSourceMap={{}}
+            onOpen={onOpen}
+          />
+        </SalaryPrivacyProvider>
+      </AuthContext.Provider>,
+    );
+    const reveal = screen.getByRole("button", { name: "Reveal salary amount" });
+    expect(
+      reveal.closest("button")?.parentElement?.closest("button"),
+    ).toBeNull();
+    const card = screen.getByRole("button", { name: /August salary/ });
+    await user.tab();
+    expect(card).toHaveFocus();
+    await user.tab();
+    expect(reveal).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(onOpen).not.toHaveBeenCalled();
+    card.focus();
+    await user.keyboard("{Enter}");
+    expect(onOpen).toHaveBeenCalledWith("salary-1");
+  });
+
   it("keeps the salary amount visible when privacy mode is disabled", () => {
     renderAmount(false);
 

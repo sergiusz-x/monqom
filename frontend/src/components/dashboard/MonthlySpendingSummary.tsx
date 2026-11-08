@@ -29,9 +29,19 @@ export function MonthlySpendingSummary({
   onNextMonth,
 }: MonthlySpendingSummaryProps) {
   const { t } = useTranslation();
-  const hideAmounts = Boolean(useOptionalAuth()?.user?.hideSalaryAmounts);
-  const [incomeRevealed, setIncomeRevealed] = useState(false);
-  const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const user = useOptionalAuth()?.user;
+  const hideAmounts = Boolean(user?.hideSalaryAmounts);
+  const privacyKey = `${user?.id ?? "anonymous"}:${hideAmounts ? user?.updatedAt : "disabled"}`;
+  const [privacy, setPrivacy] = useState({
+    key: privacyKey,
+    income: false,
+    balance: false,
+  });
+  if (privacy.key !== privacyKey) {
+    setPrivacy({ key: privacyKey, income: false, balance: false });
+  }
+  const incomeRevealed = privacy.key === privacyKey && privacy.income;
+  const balanceRevealed = privacy.key === privacyKey && privacy.balance;
   return (
     <section aria-label={t("dashboard.summary")} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -77,7 +87,9 @@ export function MonthlySpendingSummary({
                 data-sensitive-amount="masked"
                 aria-label={t("dashboard.revealIncome")}
                 className="mt-1 block cursor-pointer select-none border-0 bg-transparent p-0 text-left text-2xl font-semibold tracking-tight tabular-nums text-emerald-600 blur-[8px] transition-[filter] hover:blur-[5px] focus-visible:blur-[5px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring dark:text-emerald-400"
-                onClick={() => setIncomeRevealed(true)}
+                onClick={() =>
+                  setPrivacy((current) => ({ ...current, income: true }))
+                }
               >
                 {formatCurrency(summary.incomeTotal, summary.currency)}
               </button>
@@ -97,7 +109,9 @@ export function MonthlySpendingSummary({
                   data-sensitive-amount="masked"
                   aria-label={t("dashboard.revealBalance")}
                   className="-my-2 cursor-pointer select-none border-0 bg-transparent py-2 tabular-nums blur-[8px] transition-[filter] hover:blur-[5px] focus-visible:blur-[5px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-                  onClick={() => setBalanceRevealed(true)}
+                  onClick={() =>
+                    setPrivacy((current) => ({ ...current, balance: true }))
+                  }
                 >
                   {formatCurrency(summary.netTotal, summary.currency)}
                 </button>

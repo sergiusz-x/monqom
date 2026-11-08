@@ -34,6 +34,18 @@ describe('WorkspaceRepository', () => {
         await expect(repository.findWorkspaceById('workspace-1')).resolves.toMatchObject({
             baseCurrencyLocked: expected,
         })
+        const listPrisma = {
+            workspace: {
+                findMany: jest
+                    .fn()
+                    .mockResolvedValue([
+                        { id: 'workspace-1', memberships: [{ role: 'owner' }], _count },
+                    ]),
+            },
+        }
+        await expect(
+            new WorkspaceRepository(listPrisma as never).findWorkspacesByUserId('user-1'),
+        ).resolves.toMatchObject([{ baseCurrencyLocked: expected }])
         expect(prisma.workspace.findUnique).toHaveBeenCalledWith(
             expect.objectContaining({
                 include: {

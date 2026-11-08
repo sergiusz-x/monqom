@@ -59,4 +59,12 @@ export class SaveGoalAllocationsDto {
     @ValidateNested({ each: true })
     @Type(() => GoalAllocationDto)
     allocations!: GoalAllocationDto[]
+
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(100)
+    @ArrayUnique()
+    @IsString({ each: true })
+    @Length(1, 128, { each: true })
+    removed_allocation_ids?: string[]
 }

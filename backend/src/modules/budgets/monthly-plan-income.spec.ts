@@ -1,6 +1,43 @@
 import { MonthlyPlanService } from './monthly-plan.service'
 
 describe('monthly plan income', () => {
+    it('keeps confirmed category selections when an earlier income rule changes', async () => {
+        const aggregate = jest.fn().mockResolvedValue({ _sum: { baseAmount: 10000 } })
+        const prisma = {
+            monthlyPlan: {
+                findUnique: jest.fn().mockResolvedValue({
+                    funds: 0,
+                    incomeMode: 'transactions',
+                    incomeCategoryIds: ['confirmed'],
+                    incomePlanned: true,
+                    currency: 'PLN',
+                    goalAllocations: [],
+                    revision: 1,
+                }),
+            },
+            monthlyPlanIncomeRule: {
+                findFirst: jest
+                    .fn()
+                    .mockResolvedValue({ categoryIds: ['changed'], currency: 'PLN' }),
+            },
+            goalOperation: { groupBy: jest.fn().mockResolvedValue([]) },
+            transaction: { aggregate },
+        }
+        const budgets = {
+            listCategoriesForProgress: jest.fn().mockResolvedValue([]),
+            listBudgetsByMonth: jest.fn().mockResolvedValue([]),
+            listTransactionSpendByCategory: jest.fn().mockResolvedValue([]),
+        }
+        const service = new MonthlyPlanService(
+            prisma as never,
+            { getWorkspaceById: jest.fn().mockResolvedValue({ baseCurrency: 'PLN' }) } as never,
+            budgets as never,
+            {} as never,
+        )
+        expect((await service.get('workspace', '2026-12'))?.category_ids).toEqual(['confirmed'])
+        expect(aggregate.mock.calls[0][0].where.categoryId.in).toEqual(['confirmed'])
+    })
+
     it('sums workspace income in the selected category and its descendants', async () => {
         const aggregate = jest.fn().mockResolvedValue({ _sum: { baseAmount: 70000 } })
         const prisma = {
