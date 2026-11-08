@@ -82,6 +82,7 @@ export function MonthlyPlanPanel({
   } = useGoals(workspaceId);
   const incomeCategories = useCategories(workspaceId, true, "income");
   const plan = query.data;
+  const allocations = plan?.allocations ?? [];
   const privacyKey = `${user?.id ?? "anonymous"}:${Boolean(user?.hideSalaryAmounts)}`;
   const [privacy, setPrivacy] = useState({ key: privacyKey, revealed: false });
   if (privacy.key !== privacyKey) {
@@ -143,7 +144,7 @@ export function MonthlyPlanPanel({
     setRemovedAllocations([]);
     setAmounts(
       Object.fromEntries(
-        (plan?.allocations ?? []).flatMap((item) =>
+        allocations.flatMap((item) =>
           item.goal_id ? [[item.goal_id, item.amount_cents]] : [],
         ),
       ),
@@ -416,9 +417,9 @@ export function MonthlyPlanPanel({
                 {t("budgets.planGoals")}
               </Button>
             </div>
-            {plan.allocations.length ? (
+            {allocations.length ? (
               <ul className="divide-y divide-border">
-                {plan.allocations.map((item) => {
+                {allocations.map((item) => {
                   const netDeposited =
                     item.deposited_cents - item.withdrawn_cents;
                   const progress =
@@ -652,7 +653,7 @@ export function MonthlyPlanPanel({
             void saveGoals();
           }}
         >
-          {plan?.allocations
+          {allocations
             .filter((item) => !item.goal_id)
             .map((item) => (
               <label key={item.id} className="flex items-center gap-2 text-sm">
