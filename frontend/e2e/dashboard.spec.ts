@@ -333,7 +333,9 @@ test("keeps the dashboard usable on a narrow screen", async ({
     .locator("xpath=../..");
   await expect(trend.getByRole("group", { name: "Time range" })).toBeVisible();
   await trend.getByRole("button", { name: "July 2026" }).click();
-  await expect(trend.getByRole("button", { name: "July 2026" })).toHaveAttribute(
+  await expect(
+    trend.getByRole("button", { name: "July 2026" }),
+  ).toHaveAttribute(
     "aria-pressed",
     "true",
   );
