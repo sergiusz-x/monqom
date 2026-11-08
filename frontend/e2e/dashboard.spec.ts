@@ -159,6 +159,14 @@ test.beforeEach(async ({ page }) => {
             { month: "2026-06", total: 98000 },
             { month: "2026-07", total: 126500 },
           ],
+          financial_trend: [
+            { month: "2026-02", income: 70000, spending: 62000 },
+            { month: "2026-03", income: 85000, spending: 81000 },
+            { month: "2026-04", income: 78000, spending: 58000 },
+            { month: "2026-05", income: 105000, spending: 110000 },
+            { month: "2026-06", income: 110000, spending: 98000 },
+            { month: "2026-07", income: 120000, spending: 126500 },
+          ],
           recent_transactions: [],
         },
       });
@@ -178,23 +186,21 @@ test("renders a readable dashboard without duplicated chart series", async ({
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("heading", { name: "Spending trend" }),
+    page.getByRole("heading", { name: "Your finances over time" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Spending by category" }),
   ).toBeVisible();
   await expect(page.locator(".recharts-legend-wrapper")).toHaveCount(0);
   await expect(
-    page.getByRole("list", { name: "Monthly spending amounts" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("img", { name: "Spending by category" }),
+    page.getByRole("group", { name: "Time range" }),
   ).toBeVisible();
   await expect(
     page
-      .getByRole("list", { name: "Monthly spending amounts" })
-      .getByRole("listitem"),
-  ).toHaveCount(6);
+      .getByRole("heading", { name: "Your finances over time" })
+      .locator("xpath=../..")
+      .locator("svg"),
+  ).toBeVisible();
 
   await page.screenshot({
     path: testInfo.outputPath("dashboard.png"),
@@ -257,6 +263,7 @@ test("lets a mobile user change theme and log out from settings", async ({
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await page.getByRole("button", { name: "Open Account" }).click();
   await expect(
     page.getByRole("main").getByText("test@example.com"),
   ).toBeVisible();
@@ -321,10 +328,12 @@ test("keeps the dashboard usable on a narrow screen", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Next month" })).toBeVisible();
 
-  const trend = page.getByRole("list", { name: "Monthly spending amounts" });
-  await expect(trend).toBeVisible();
-  await trend.getByRole("listitem").last().click();
-  await expect(trend.getByRole("listitem").last()).toHaveAttribute(
+  const trend = page
+    .getByRole("heading", { name: "Your finances over time" })
+    .locator("xpath=../..");
+  await expect(trend.getByRole("group", { name: "Time range" })).toBeVisible();
+  await trend.getByRole("button", { name: "July 2026" }).click();
+  await expect(trend.getByRole("button", { name: "July 2026" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );

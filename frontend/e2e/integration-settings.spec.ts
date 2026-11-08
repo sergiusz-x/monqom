@@ -174,7 +174,7 @@ async function setup(page: Page, role = "owner") {
 }
 
 async function fillCreate(page: Page) {
-  await page.getByRole("button", { name: "Integrations", exact: true }).click();
+  await openIntegrations(page);
   await page.getByRole("button", { name: "Add integration" }).click();
   await page.getByLabel("Integration name").fill("expense-importer");
   await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -187,6 +187,24 @@ async function fillCreate(page: Page) {
   await expect(
     page.getByRole("dialog", { name: "Save your integration key" }),
   ).toBeVisible();
+}
+
+async function openIntegrations(page: Page) {
+  if (
+    await page
+      .getByRole("button", { name: "Add integration" })
+      .isVisible()
+      .catch(() => false)
+  ) {
+    return;
+  }
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  await page
+    .getByRole("button", {
+      name: isMobile ? "Open Integrations" : "Integrations",
+      exact: true,
+    })
+    .click();
 }
 
 test("creates, inspects, replaces and revokes with no secret in browser storage or query caches", async ({
@@ -267,7 +285,7 @@ test("keeps dialogs within mobile screens and supports keyboard focus, labels an
   isMobile,
 }, testInfo) => {
   await setup(page);
-  await page.getByRole("button", { name: "Integrations", exact: true }).click();
+  await openIntegrations(page);
   const add = page.getByRole("button", { name: "Add integration" });
   await add.focus();
   await page.keyboard.press("Enter");
@@ -318,7 +336,7 @@ test("keeps every setup step usable on a small screen and sends a local end-of-d
 }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 568 });
   const mutations = await setup(page);
-  await page.getByRole("button", { name: "Integrations", exact: true }).click();
+  await openIntegrations(page);
   await page.getByRole("button", { name: "Add integration" }).click();
   const dialog = page.getByRole("dialog");
   const date = await page.evaluate(() => {
