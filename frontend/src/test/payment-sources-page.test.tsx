@@ -91,6 +91,11 @@ describe("PaymentSourcesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Options for Daily card" }),
     );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Options for Daily card" }),
+      ).toHaveAttribute("aria-expanded", "true"),
+    );
     await user.click(screen.getByRole("menuitem", { name: "Archive" }));
     expect(mockPost).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog", { name: "Archive" });
