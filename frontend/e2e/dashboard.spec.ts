@@ -192,9 +192,7 @@ test("renders a readable dashboard without duplicated chart series", async ({
     page.getByRole("heading", { name: "Spending by category" }),
   ).toBeVisible();
   await expect(page.locator(".recharts-legend-wrapper")).toHaveCount(0);
-  await expect(
-    page.getByRole("group", { name: "Time range" }),
-  ).toBeVisible();
+  await expect(page.getByRole("group", { name: "Time range" })).toBeVisible();
   await expect(
     page
       .getByRole("heading", { name: "Your finances over time" })
@@ -335,10 +333,7 @@ test("keeps the dashboard usable on a narrow screen", async ({
   await trend.getByRole("button", { name: "July 2026" }).click();
   await expect(
     trend.getByRole("button", { name: "July 2026" }),
-  ).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  ).toHaveAttribute("aria-pressed", "true");
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
