@@ -320,7 +320,10 @@ test("keeps the dashboard usable on a narrow screen", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Next month" })).toBeVisible();
 
-  const selectedMonth = page.getByRole("button", { name: "July 2026" });
+  const selectedMonth = page.getByRole("button", {
+    name: "July 2026",
+    exact: true,
+  });
   await expect(selectedMonth).toBeVisible();
   await selectedMonth.click();
   await expect(selectedMonth).toHaveAttribute("aria-pressed", "true");
