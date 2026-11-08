@@ -42,6 +42,8 @@ import {
   RequiredError,
 } from "../base";
 // @ts-ignore
+import type { AssignTransactionCategoryDto } from "../model";
+// @ts-ignore
 import type { InlineResponse20010RecentTransactions } from "../model";
 // @ts-ignore
 import type { InlineResponse20011 } from "../model";
@@ -55,6 +57,77 @@ export const TransactionsApiAxiosParamCreator = function (
   configuration?: Configuration,
 ) {
   return {
+    /**
+     *
+     * @param {string} id
+     * @param {string} workspaceId
+     * @param {AssignTransactionCategoryDto} assignTransactionCategoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    transactionsControllerAssignCategory: async (
+      id: string,
+      workspaceId: string,
+      assignTransactionCategoryDto: AssignTransactionCategoryDto,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists("transactionsControllerAssignCategory", "id", id);
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "transactionsControllerAssignCategory",
+        "workspaceId",
+        workspaceId,
+      );
+      // verify required parameter 'assignTransactionCategoryDto' is not null or undefined
+      assertParamExists(
+        "transactionsControllerAssignCategory",
+        "assignTransactionCategoryDto",
+        assignTransactionCategoryDto,
+      );
+      const localVarPath =
+        `/workspaces/{workspaceId}/transactions/{id}/category`
+          .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+          .replace(
+            `{${"workspaceId"}}`,
+            encodeURIComponent(String(workspaceId)),
+          );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "PATCH",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      localVarHeaderParameter["Content-Type"] = "application/json";
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        assignTransactionCategoryDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
     /**
      *
      * @param {string} workspaceId
@@ -226,6 +299,7 @@ export const TransactionsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} workspaceId
+     * @param {string} [search]
      * @param {'uncategorized'} [categoryStatus]
      * @param {'manual' | 'integration'} [origin]
      * @param {'expense' | 'income'} [type]
@@ -244,6 +318,7 @@ export const TransactionsApiAxiosParamCreator = function (
      */
     transactionsControllerListTransactions: async (
       workspaceId: string,
+      search?: string,
       categoryStatus?: "uncategorized",
       origin?: "manual" | "integration",
       type?: "expense" | "income",
@@ -290,6 +365,10 @@ export const TransactionsApiAxiosParamCreator = function (
       };
       const localVarHeaderParameter = {} as any;
       const localVarQueryParameter = {} as any;
+
+      if (search !== undefined) {
+        localVarQueryParameter["search"] = search;
+      }
 
       if (categoryStatus !== undefined) {
         localVarQueryParameter["category_status"] = categoryStatus;
@@ -443,6 +522,36 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
   return {
     /**
      *
+     * @param {string} id
+     * @param {string} workspaceId
+     * @param {AssignTransactionCategoryDto} assignTransactionCategoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async transactionsControllerAssignCategory(
+      id: string,
+      workspaceId: string,
+      assignTransactionCategoryDto: AssignTransactionCategoryDto,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.transactionsControllerAssignCategory(
+          id,
+          workspaceId,
+          assignTransactionCategoryDto,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
      * @param {string} workspaceId
      * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
@@ -531,6 +640,7 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} workspaceId
+     * @param {string} [search]
      * @param {'uncategorized'} [categoryStatus]
      * @param {'manual' | 'integration'} [origin]
      * @param {'expense' | 'income'} [type]
@@ -549,6 +659,7 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
      */
     async transactionsControllerListTransactions(
       workspaceId: string,
+      search?: string,
       categoryStatus?: "uncategorized",
       origin?: "manual" | "integration",
       type?: "expense" | "income",
@@ -579,6 +690,7 @@ export const TransactionsApiFp = function (configuration?: Configuration) {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.transactionsControllerListTransactions(
           workspaceId,
+          search,
           categoryStatus,
           origin,
           type,
@@ -650,6 +762,29 @@ export const TransactionsApiFactory = function (
   return {
     /**
      *
+     * @param {string} id
+     * @param {string} workspaceId
+     * @param {AssignTransactionCategoryDto} assignTransactionCategoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    transactionsControllerAssignCategory(
+      id: string,
+      workspaceId: string,
+      assignTransactionCategoryDto: AssignTransactionCategoryDto,
+      options?: any,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .transactionsControllerAssignCategory(
+          id,
+          workspaceId,
+          assignTransactionCategoryDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
      * @param {string} workspaceId
      * @param {TransactionBodyDto} transactionBodyDto
      * @param {*} [options] Override http request option.
@@ -703,6 +838,7 @@ export const TransactionsApiFactory = function (
     /**
      *
      * @param {string} workspaceId
+     * @param {string} [search]
      * @param {'uncategorized'} [categoryStatus]
      * @param {'manual' | 'integration'} [origin]
      * @param {'expense' | 'income'} [type]
@@ -721,6 +857,7 @@ export const TransactionsApiFactory = function (
      */
     transactionsControllerListTransactions(
       workspaceId: string,
+      search?: string,
       categoryStatus?: "uncategorized",
       origin?: "manual" | "integration",
       type?: "expense" | "income",
@@ -746,6 +883,7 @@ export const TransactionsApiFactory = function (
       return localVarFp
         .transactionsControllerListTransactions(
           workspaceId,
+          search,
           categoryStatus,
           origin,
           type,
@@ -796,6 +934,31 @@ export const TransactionsApiFactory = function (
  * @extends {BaseAPI}
  */
 export class TransactionsApi extends BaseAPI {
+  /**
+   *
+   * @param {string} id
+   * @param {string} workspaceId
+   * @param {AssignTransactionCategoryDto} assignTransactionCategoryDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof TransactionsApi
+   */
+  public transactionsControllerAssignCategory(
+    id: string,
+    workspaceId: string,
+    assignTransactionCategoryDto: AssignTransactionCategoryDto,
+    options?: AxiosRequestConfig,
+  ) {
+    return TransactionsApiFp(this.configuration)
+      .transactionsControllerAssignCategory(
+        id,
+        workspaceId,
+        assignTransactionCategoryDto,
+        options,
+      )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
   /**
    *
    * @param {string} workspaceId
@@ -857,6 +1020,7 @@ export class TransactionsApi extends BaseAPI {
   /**
    *
    * @param {string} workspaceId
+   * @param {string} [search]
    * @param {'uncategorized'} [categoryStatus]
    * @param {'manual' | 'integration'} [origin]
    * @param {'expense' | 'income'} [type]
@@ -876,6 +1040,7 @@ export class TransactionsApi extends BaseAPI {
    */
   public transactionsControllerListTransactions(
     workspaceId: string,
+    search?: string,
     categoryStatus?: "uncategorized",
     origin?: "manual" | "integration",
     type?: "expense" | "income",
@@ -901,6 +1066,7 @@ export class TransactionsApi extends BaseAPI {
     return TransactionsApiFp(this.configuration)
       .transactionsControllerListTransactions(
         workspaceId,
+        search,
         categoryStatus,
         origin,
         type,

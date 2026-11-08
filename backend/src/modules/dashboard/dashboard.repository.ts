@@ -12,6 +12,12 @@ export interface MonthlySpendRecord {
     amount: number
 }
 
+export interface MonthlyFinancialRecord {
+    month: string
+    income: number
+    spending: number
+}
+
 export interface DashboardCategoryRecord extends Pick<
     Category,
     'id' | 'name' | 'color' | 'systemKey'
@@ -89,6 +95,36 @@ export class DashboardRepository {
         return rows.map((row) => ({
             month: row.month,
             amount: Number(row.amount),
+        }))
+    }
+
+    async listMonthlyFinancialsForRange(
+        workspaceId: string,
+        startDate: Date,
+        endDateExclusive: Date,
+        prisma: DashboardPersistenceClient = this.prisma,
+    ): Promise<MonthlyFinancialRecord[]> {
+        const rows = await prisma.$queryRaw<
+            Array<{ month: string; income: bigint | number; spending: bigint | number }>
+        >(
+            Prisma.sql`
+                SELECT TO_CHAR(DATE_TRUNC('month', "date"), 'YYYY-MM') AS "month",
+                    COALESCE(SUM("base_amount") FILTER (WHERE "type" = 'income'), 0)::BIGINT AS "income",
+                    COALESCE(SUM("base_amount") FILTER (WHERE "type" = 'expense'), 0)::BIGINT AS "spending"
+                FROM "transactions"
+                WHERE "workspace_id" = ${workspaceId}
+                    AND "deleted_at" IS NULL
+                    AND "type" IN ('income', 'expense')
+                    AND "date" >= ${startDate}
+                    AND "date" < ${endDateExclusive}
+                GROUP BY DATE_TRUNC('month', "date")
+                ORDER BY DATE_TRUNC('month', "date") ASC
+            `,
+        )
+        return rows.map((row) => ({
+            month: row.month,
+            income: Number(row.income),
+            spending: Number(row.spending),
         }))
     }
 

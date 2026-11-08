@@ -21,20 +21,28 @@ const SalaryPrivacyContext = createContext<SalaryPrivacyContextValue>(
   fallbackSalaryPrivacy,
 );
 
-function SalaryPrivacyState({ children }: { children: ReactNode }) {
-  const [revealedTransactionIds, setRevealedTransactionIds] = useState<
-    Set<string>
-  >(() => new Set());
+export function SalaryPrivacyProvider({ children }: { children: ReactNode }) {
+  const user = useOptionalAuth()?.user;
+  const stateKey = `${user?.id ?? "anonymous"}:${user?.hideSalaryAmounts ? user.updatedAt : "disabled"}`;
+  const [revealed, setRevealed] = useState<{ key: string; ids: Set<string> }>(
+    () => ({ key: stateKey, ids: new Set() }),
+  );
+  if (revealed.key !== stateKey) {
+    setRevealed({ key: stateKey, ids: new Set() });
+  }
   const value = useMemo<SalaryPrivacyContextValue>(
     () => ({
-      isRevealed: (transactionId) => revealedTransactionIds.has(transactionId),
-      reveal: (transactionId) => {
-        setRevealedTransactionIds((current) =>
-          new Set(current).add(transactionId),
-        );
-      },
+      isRevealed: (transactionId) =>
+        revealed.key === stateKey && revealed.ids.has(transactionId),
+      reveal: (transactionId) =>
+        setRevealed((current) => ({
+          key: stateKey,
+          ids: new Set(current.key === stateKey ? current.ids : []).add(
+            transactionId,
+          ),
+        })),
     }),
-    [revealedTransactionIds],
+    [revealed, stateKey],
   );
 
   return (
@@ -42,13 +50,6 @@ function SalaryPrivacyState({ children }: { children: ReactNode }) {
       {children}
     </SalaryPrivacyContext.Provider>
   );
-}
-
-export function SalaryPrivacyProvider({ children }: { children: ReactNode }) {
-  const user = useOptionalAuth()?.user;
-  const stateKey = `${user?.id ?? "anonymous"}:${user?.hideSalaryAmounts ? user.updatedAt : "disabled"}`;
-
-  return <SalaryPrivacyState key={stateKey}>{children}</SalaryPrivacyState>;
 }
 
 export function useSalaryPrivacy(): SalaryPrivacyContextValue {

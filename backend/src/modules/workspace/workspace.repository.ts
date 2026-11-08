@@ -66,6 +66,8 @@ export class WorkspaceRepository {
                     select: {
                         transactions: true,
                         budgets: true,
+                        recurringBudgetVersions: true,
+                        monthlyPlans: true,
                         goals: true,
                     },
                 },
@@ -113,6 +115,8 @@ export class WorkspaceRepository {
                     select: {
                         transactions: true,
                         budgets: true,
+                        recurringBudgetVersions: true,
+                        monthlyPlans: true,
                         goals: true,
                     },
                 },
@@ -127,6 +131,8 @@ export class WorkspaceRepository {
             baseCurrencyLocked:
                 (_count?.transactions ?? 0) > 0 ||
                 (_count?.budgets ?? 0) > 0 ||
+                (_count?.recurringBudgetVersions ?? 0) > 0 ||
+                (_count?.monthlyPlans ?? 0) > 0 ||
                 (_count?.goals ?? 0) > 0,
         }
     }

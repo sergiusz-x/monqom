@@ -15,7 +15,7 @@ import {
   SectionCard,
   Select,
 } from "@monqom/ui";
-const TIMEZONE_OPTIONS = [
+const FALLBACK_TIMEZONES = [
   "UTC",
   "Europe/Warsaw",
   "Europe/London",
@@ -56,6 +56,15 @@ export function WorkspaceSection({
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
   const formRef = useFocusOnError(workspaceError);
   const canEdit = !workspace?.role || workspace.role === "owner";
+  const timezoneOptions = Array.from(
+    new Set([
+      "UTC",
+      ...(typeof Intl.supportedValuesOf === "function"
+        ? Intl.supportedValuesOf("timeZone")
+        : FALLBACK_TIMEZONES),
+      timezone,
+    ]),
+  ).sort();
 
   async function handleWorkspaceSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -123,6 +132,11 @@ export function WorkspaceSection({
           className="mt-5 max-w-xl space-y-4"
           onSubmit={handleWorkspaceSave}
         >
+          {!canEdit && (
+            <p className="text-sm text-muted-foreground">
+              {t("settings.ownerOnly")}
+            </p>
+          )}
           <FormField
             id="workspace-name"
             label={t("settings.workspaceName")}
@@ -147,7 +161,7 @@ export function WorkspaceSection({
               onChange={(event) => setTimezone(event.target.value)}
               disabled={!canEdit}
             >
-              {TIMEZONE_OPTIONS.map((option) => (
+              {timezoneOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>

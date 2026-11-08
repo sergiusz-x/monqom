@@ -31,9 +31,20 @@ export interface SpendingTrendItem {
   total: number;
 }
 
+export interface FinancialTrendItem {
+  month: string;
+  income: number | null;
+  spending: number | null;
+}
+
 export interface DashboardOverview {
   summary: SpendingSummary;
   categoryBreakdown: CategoryBreakdown;
   spendingTrend: SpendingTrendItem[];
+  financialTrend: FinancialTrendItem[];
+  spendingPace: {
+    changePercentage: number;
+    direction: "up" | "down" | "flat";
+  } | null;
   recentTransactions: import("@/types/transaction").Transaction[];
 }

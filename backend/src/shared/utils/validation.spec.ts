@@ -1,4 +1,4 @@
-import { validateEmailInput, validateMoneyAmountValue } from './validation'
+import { validateEmailInput, validateMoneyAmountValue, validatePassword } from './validation'
 
 describe('validateMoneyAmountValue', () => {
     it('converts decimal input to integer minor units without floating-point multiplication', () => {
@@ -35,5 +35,24 @@ describe('validateEmailInput', () => {
             email: 'ada@example.com',
             errors: [],
         })
+    })
+})
+
+describe('validatePassword', () => {
+    it('accepts a 15-character passphrase without composition rules', () => {
+        expect(validatePassword('kot śpi na kanapie')).toEqual([])
+        expect(validatePassword('my password is a long phrase')).toEqual([])
+    })
+
+    it('rejects short passwords and exact common passwords', () => {
+        expect(validatePassword('a'.repeat(14))).toContain(
+            'Password must be at least 15 characters long',
+        )
+        expect(validatePassword('PASSWORDPASSWORD')).toContain(
+            'Password is too common. Choose a less predictable password',
+        )
+        expect(validatePassword('😀'.repeat(14))).toContain(
+            'Password must be at least 15 characters long',
+        )
     })
 })

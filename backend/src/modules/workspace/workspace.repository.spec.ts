@@ -5,6 +5,14 @@ describe('WorkspaceRepository', () => {
         [{ transactions: 1, budgets: 0, goals: 0 }, true],
         [{ transactions: 0, budgets: 1, goals: 0 }, true],
         [{ transactions: 0, budgets: 0, goals: 1 }, true],
+        [
+            { transactions: 0, budgets: 0, goals: 0, recurringBudgetVersions: 1, monthlyPlans: 0 },
+            true,
+        ],
+        [
+            { transactions: 0, budgets: 0, goals: 0, recurringBudgetVersions: 0, monthlyPlans: 1 },
+            true,
+        ],
         [{ transactions: 0, budgets: 0, goals: 0 }, false],
     ])('derives the base currency lock from financial records', async (_count, expected) => {
         const prisma = {
@@ -33,6 +41,8 @@ describe('WorkspaceRepository', () => {
                         select: {
                             transactions: true,
                             budgets: true,
+                            recurringBudgetVersions: true,
+                            monthlyPlans: true,
                             goals: true,
                         },
                     },

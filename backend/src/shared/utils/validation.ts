@@ -14,6 +14,10 @@ const COMMON_PASSWORD_PATTERNS = [
     'football',
     'abc123',
     'iloveyou',
+    '123456789012345',
+    '1234567890123456',
+    'passwordpassword',
+    'qwertyuiopasdfgh',
 ] as const
 
 export interface RegistrationValidationInput {
@@ -89,25 +93,11 @@ export function normalizeEmail(email: string): string {
 
 export function validatePassword(password: string): string[] {
     const errors: string[] = []
-    const normalizedPassword = password.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-    if (password.length < 16) {
-        errors.push('Password must be at least 16 characters long')
+    if (Array.from(password).length < 15) {
+        errors.push('Password must be at least 15 characters long')
     }
 
-    if (!/[A-Z]/.test(password)) {
-        errors.push('Password must contain at least one uppercase letter')
-    }
-
-    if (!/\d/.test(password)) {
-        errors.push('Password must contain at least one number')
-    }
-
-    if (!/[^A-Za-z0-9]/.test(password)) {
-        errors.push('Password must contain at least one special character')
-    }
-
-    if (COMMON_PASSWORD_PATTERNS.some((pattern) => normalizedPassword.includes(pattern))) {
+    if (COMMON_PASSWORD_PATTERNS.some((pattern) => password.toLowerCase() === pattern)) {
         errors.push('Password is too common. Choose a less predictable password')
     }
 

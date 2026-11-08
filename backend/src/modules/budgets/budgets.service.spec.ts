@@ -13,6 +13,7 @@ describe('BudgetsService', () => {
             BudgetsRepository,
             | 'createBudget'
             | 'deleteBudget'
+            | 'excludeRecurringMonth'
             | 'findActiveCategoryById'
             | 'findBudgetByCategoryAndMonth'
             | 'findBudgetById'
@@ -33,6 +34,7 @@ describe('BudgetsService', () => {
         budgetsRepository = {
             createBudget: jest.fn(),
             deleteBudget: jest.fn(),
+            excludeRecurringMonth: jest.fn(),
             findActiveCategoryById: jest.fn(),
             findBudgetByCategoryAndMonth: jest.fn(),
             findBudgetById: jest.fn(),
@@ -126,6 +128,7 @@ describe('BudgetsService', () => {
                 workspaceId: 'workspace-1',
                 categoryId: 'category-child-groceries',
                 amount: 80000,
+                baseAmount: 80000,
                 currency: 'USD',
                 year: 2026,
                 month: 3,
@@ -299,27 +302,32 @@ describe('BudgetsService', () => {
         )
     })
 
-    it('rejects parent categories for budgets', async () => {
+    it('creates a monthly budget for an active parent category', async () => {
         budgetsRepository.findActiveCategoryById.mockResolvedValue({
             id: 'category-parent-food',
             parentId: null,
         } as never)
         budgetsRepository.findBudgetByCategoryAndMonth.mockResolvedValue(null)
+        budgetsRepository.createBudget.mockResolvedValue({
+            id: 'budget-parent',
+            workspaceId: 'workspace-1',
+            categoryId: 'category-parent-food',
+            amount: 12500,
+            currency: 'USD',
+            year: 2026,
+            month: 3,
+            createdAt: new Date('2026-03-24T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-24T12:00:00.000Z'),
+        } as never)
 
-        await expect(
-            service.createBudget(
-                {
-                    amount: 125,
-                    categoryId: 'category-parent-food',
-                    year: 2026,
-                    month: 3,
-                },
-                'workspace-1',
-                'user-1',
-            ),
-        ).rejects.toBeInstanceOf(BadRequestException)
+        const result = await service.createBudget(
+            { amount: 125, categoryId: 'category-parent-food', year: 2026, month: 3 },
+            'workspace-1',
+            'user-1',
+        )
 
-        expect(budgetsRepository.createBudget).not.toHaveBeenCalled()
+        expect(result.category_id).toBe('category-parent-food')
+        expect(budgetsRepository.createBudget).toHaveBeenCalledTimes(1)
     })
 
     it('rejects duplicate budgets for the same category and month', async () => {

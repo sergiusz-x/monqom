@@ -16,11 +16,13 @@ import {
   SectionCard,
 } from "@monqom/ui";
 interface DataSectionProps {
+  mode: "export" | "delete";
   workspaceId: string | null;
   setUser: (user: User | null) => void;
   onSaved: (message: string) => void;
 }
 export function DataSection({
+  mode,
   workspaceId,
   setUser,
   onSaved,
@@ -87,50 +89,55 @@ export function DataSection({
 
   return (
     <SectionCard>
-      <h2 className="text-lg font-semibold">{t("settings.data")}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {t("settings.dataDescription")}
-      </p>
+      {mode === "export" && (
+        <>
+          <h2 className="text-lg font-semibold">{t("settings.exportTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("settings.dataDescription")}
+          </p>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <PendingButton
-          type="button"
-          variant="outline"
-          onClick={() => handleExport("csv")}
-          disabled={exportingFormat !== null}
-          isPending={exportingFormat === "csv"}
-          pendingLabel={t("settings.exporting", { format: "CSV" })}
-        >
-          {t("settings.export", { format: "CSV" })}
-        </PendingButton>
-        <PendingButton
-          type="button"
-          variant="outline"
-          onClick={() => handleExport("json")}
-          disabled={exportingFormat !== null}
-          isPending={exportingFormat === "json"}
-          pendingLabel={t("settings.exporting", { format: "JSON" })}
-        >
-          {t("settings.export", { format: "JSON" })}
-        </PendingButton>
-      </div>
-
-      <Card tone="danger" className="mt-6">
-        <h3 className="font-semibold text-destructive">
-          {t("settings.deleteAccount")}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("settings.deleteDescription")}
-        </p>
-        <Button
-          type="button"
-          variant="destructive"
-          className="mt-4"
-          onClick={() => setDeleteConfirmOpen(true)}
-        >
-          {t("settings.deleteAccount")}
-        </Button>
-      </Card>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <PendingButton
+              type="button"
+              variant="outline"
+              onClick={() => handleExport("csv")}
+              disabled={exportingFormat !== null}
+              isPending={exportingFormat === "csv"}
+              pendingLabel={t("settings.exporting", { format: "CSV" })}
+            >
+              {t("settings.export", { format: "CSV" })}
+            </PendingButton>
+            <PendingButton
+              type="button"
+              variant="outline"
+              onClick={() => handleExport("json")}
+              disabled={exportingFormat !== null}
+              isPending={exportingFormat === "json"}
+              pendingLabel={t("settings.exporting", { format: "JSON" })}
+            >
+              {t("settings.export", { format: "JSON" })}
+            </PendingButton>
+          </div>
+        </>
+      )}
+      {mode === "delete" && (
+        <Card tone="danger">
+          <h3 className="font-semibold text-destructive">
+            {t("settings.deleteAccount")}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("settings.deleteDescription")}
+          </p>
+          <Button
+            type="button"
+            variant="destructive"
+            className="mt-4"
+            onClick={() => setDeleteConfirmOpen(true)}
+          >
+            {t("settings.deleteAccount")}
+          </Button>
+        </Card>
+      )}
 
       {dataError && !deleteConfirmOpen && (
         <Alert variant="error" compact className="mt-4">

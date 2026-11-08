@@ -10,6 +10,7 @@ api/external-transactions-api.ts
 api/goals-api.ts
 api/health-api.ts
 api/integrations-api.ts
+api/monthly-plan-api.ts
 api/payment-sources-api.ts
 api/transaction-tags-api.ts
 api/transactions-api.ts
@@ -21,6 +22,7 @@ common.ts
 configuration.ts
 git_push.sh
 index.ts
+model/assign-transaction-category-dto.ts
 model/budget-body-dto.ts
 model/category-body-dto.ts
 model/category-order-body-dto.ts
@@ -39,7 +41,9 @@ model/inline-response200.ts
 model/inline-response2001.ts
 model/inline-response20010-category-breakdown-categories.ts
 model/inline-response20010-category-breakdown.ts
+model/inline-response20010-financial-trend.ts
 model/inline-response20010-recent-transactions.ts
+model/inline-response20010-spending-pace.ts
 model/inline-response20010-spending-trend.ts
 model/inline-response20010-summary.ts
 model/inline-response20010.ts

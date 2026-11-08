@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithQueryClient as render } from "@/test/query-test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
@@ -13,10 +13,9 @@ import type {
 vi.mock("@/hooks/useWorkspace", () => ({ useWorkspace: vi.fn() }));
 vi.mock("@/hooks/useCategories", () => ({ useCategories: vi.fn() }));
 vi.mock("@/hooks/usePaymentSources", () => ({ usePaymentSources: vi.fn() }));
-vi.mock("@/hooks/useTags", () => ({ useTags: vi.fn() }));
 vi.mock("@/hooks/useTransactions", () => ({ useTransactions: vi.fn() }));
 vi.mock("@/lib/api", () => ({
-  default: { delete: vi.fn() },
+  default: { delete: vi.fn(), patch: vi.fn() },
 }));
 vi.mock("@/components/transactions/TransactionFormModal", () => ({
   TransactionFormModal: ({
@@ -39,7 +38,6 @@ vi.mock("@/components/transactions/TransactionFormModal", () => ({
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useCategories } from "@/hooks/useCategories";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
-import { useTags } from "@/hooks/useTags";
 import { useTransactions } from "@/hooks/useTransactions";
 import api from "@/lib/api";
 import { ToastProvider } from "@monqom/ui";
@@ -48,10 +46,10 @@ const mockUseWorkspace = useWorkspace as ReturnType<typeof vi.fn>;
 const patchWorkspace = vi.fn();
 const mockUseCategories = useCategories as ReturnType<typeof vi.fn>;
 const mockUsePaymentSources = usePaymentSources as ReturnType<typeof vi.fn>;
-const mockUseTags = useTags as ReturnType<typeof vi.fn>;
 const mockUseTransactions = useTransactions as ReturnType<typeof vi.fn>;
 const mockApi = api as unknown as {
   delete: ReturnType<typeof vi.fn>;
+  patch: ReturnType<typeof vi.fn>;
 };
 
 function makeResponse(
@@ -93,17 +91,12 @@ beforeEach(() => {
     patchWorkspace,
   });
   mockUseCategories.mockReturnValue({
-    categories: [{ id: "cat-1", name: "Food", children: [] }],
+    categories: [{ id: "cat-1", name: "Food", icon: "🍔", children: [] }],
     isLoading: false,
     error: null,
   });
   mockUsePaymentSources.mockReturnValue({
     paymentSources: [{ id: "src-1", name: "Cash Wallet" }],
-    isLoading: false,
-    error: null,
-  });
-  mockUseTags.mockReturnValue({
-    tags: ["Food"],
     isLoading: false,
     error: null,
   });
@@ -166,6 +159,62 @@ describe("TransactionsPage", () => {
     );
   });
 
+  it("searches across the list and resets pagination", async () => {
+    const user = userEvent.setup();
+    renderPage("/transactions?page=2");
+    await waitForPreferenceHydration();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search transactions" }),
+      "team lunch",
+    );
+    await waitFor(() => {
+      const call = mockUseTransactions.mock.calls.at(-1) as [
+        string,
+        TransactionFilters,
+        number,
+        number,
+      ];
+      expect(call[1].search).toBe("team lunch");
+      expect(call[3]).toBe(0);
+    });
+  });
+
+  it("clears filters from the empty results state", async () => {
+    const user = userEvent.setup();
+    mockUseTransactions.mockReturnValue({
+      data: makeResponse({ data: [], total: 0 }),
+      isLoading: false,
+      error: null,
+    });
+    renderPage("/transactions?search=missing");
+    await waitForPreferenceHydration();
+    expect(
+      screen.getByText("No transactions match your filters"),
+    ).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Clear" }).at(-1)!);
+    await waitFor(() =>
+      expect(
+        screen.getByText("No transactions yet. Add your first expense."),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("sorts on mobile and opens a transaction from its entire card", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForPreferenceHydration();
+    await user.selectOptions(screen.getByLabelText("Sort"), "amount:desc");
+    expect(
+      (
+        mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters]
+      )[1],
+    ).toMatchObject({ sortBy: "amount", sortDirection: "desc" });
+    await user.click(
+      screen.getByRole("button", { name: /Team lunch.*Cash Wallet/ }),
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("shows loading skeleton while fetching", () => {
     mockUseTransactions.mockReturnValue({
       data: null,
@@ -199,7 +248,9 @@ describe("TransactionsPage", () => {
 
     screen.getByRole("button", { name: "All categories" }).focus();
     await user.keyboard("{Enter}");
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Food" }));
+    await user.click(
+      screen.getByRole("button", { name: "Food", pressed: false }),
+    );
 
     const latestCall = mockUseTransactions.mock.calls.at(-1) as [
       string,
@@ -226,9 +277,11 @@ describe("TransactionsPage", () => {
 
     screen.getByRole("button", { name: "All categories" }).focus();
     await user.keyboard("{Enter}");
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Food" }));
     await user.click(
-      screen.getByRole("menuitemcheckbox", { name: "Transport" }),
+      screen.getByRole("button", { name: "Food", pressed: false }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Transport", pressed: false }),
     );
 
     const latestCall = mockUseTransactions.mock.calls.at(-1) as [
@@ -240,22 +293,19 @@ describe("TransactionsPage", () => {
     expect(latestCall[1].categoryIds).toEqual(["cat-1", "cat-2"]);
   });
 
-  it("selects tags only from existing workspace tags", async () => {
+  it("does not show the tag filter or apply a legacy tag URL", async () => {
     const user = userEvent.setup();
-    renderPage();
-
+    renderPage("/transactions?tag=Food");
+    await waitForPreferenceHydration();
     await user.click(screen.getByRole("button", { name: "More filters" }));
-    const tagFilter = screen.getByLabelText("Tags");
-    expect(tagFilter).toHaveProperty("tagName", "SELECT");
-    await user.selectOptions(tagFilter, "Food");
-
+    expect(screen.queryByLabelText("Tags")).not.toBeInTheDocument();
     const latestCall = mockUseTransactions.mock.calls.at(-1) as [
       string,
       TransactionFilters,
       number,
       number,
     ];
-    expect(latestCall[1].tag).toBe("Food");
+    expect(latestCall[1]).not.toHaveProperty("tag");
   });
   it("keeps an advanced filter visible and removable when its controls are collapsed", async () => {
     const user = userEvent.setup();
@@ -321,7 +371,6 @@ describe("TransactionsPage", () => {
       ];
       expect(latestCall[1]).toMatchObject({
         categoryIds: ["cat-1"],
-        tag: "Food",
         paymentSourceId: "src-1",
         dateFrom: "2026-04-01",
         dateTo: "2026-04-30",
@@ -440,39 +489,24 @@ describe("TransactionsPage", () => {
     const detailsDialog = screen.getByRole("dialog", {
       name: "Transaction details",
     });
+    expect(detailsDialog).toHaveTextContent("🍔");
     expect(detailsDialog).toHaveTextContent("Food");
+    expect(detailsDialog).toHaveTextContent("Account or wallet");
     expect(detailsDialog).toHaveTextContent("$20.50");
     expect(detailsDialog).toHaveTextContent("Cash Wallet");
     expect(detailsDialog).toHaveTextContent("Lunch");
 
-    const actionsButton = screen.getByRole("button", {
-      name: "Transaction actions",
-    });
-    actionsButton.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
-    await user.keyboard("{Escape}");
-    expect(
-      screen.queryByRole("menuitem", { name: "Edit" }),
-    ).not.toBeInTheDocument();
-    expect(actionsButton).toHaveFocus();
-    await user.keyboard("{Enter}");
-    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
 
     expect(
       screen.getByRole("dialog", { name: "Edit transaction" }),
     ).toBeInTheDocument();
   });
 
-  it("opens category assignment for an imported transaction needing attention", async () => {
+  it("hides the notes section when no note was added", async () => {
     const user = userEvent.setup();
     const response = makeResponse();
-    response.data[0] = {
-      ...response.data[0]!,
-      categoryId: null,
-      integrationId: "bank-sync",
-      integrationName: "Bank sync",
-    };
+    response.data[0] = { ...response.data[0]!, notes: null };
     mockUseTransactions.mockReturnValue({
       data: response,
       isLoading: false,
@@ -484,12 +518,94 @@ describe("TransactionsPage", () => {
       .find((element) => element.closest("td"));
     await user.click(description!.closest("tr")!);
     const dialog = screen.getByRole("dialog", { name: "Transaction details" });
-    expect(dialog).toHaveTextContent("Needs a category");
-    expect(dialog).not.toHaveTextContent("Bank sync");
+    expect(dialog).not.toHaveTextContent("Notes");
+    expect(dialog).not.toHaveTextContent("No notes");
+  });
+
+  it.each(["expense", "income"] as const)(
+    "assigns a category inline for an uncategorized %s",
+    async (type) => {
+      const user = userEvent.setup();
+      const response = makeResponse();
+      response.data[0] = {
+        ...response.data[0]!,
+        type,
+        categoryId: null,
+        integrationId: "bank-sync",
+        integrationName: "Bank sync",
+      };
+      mockUseTransactions.mockReturnValue({
+        data: response,
+        isLoading: false,
+        error: null,
+      });
+      mockApi.patch.mockResolvedValueOnce({ data: undefined });
+      renderPage();
+      const description = screen
+        .getAllByText("Team lunch")
+        .find((element) => element.closest("td"));
+      await user.click(description!.closest("tr")!);
+      expect(
+        screen.getByRole("dialog", { name: "Transaction details" }),
+      ).not.toHaveTextContent("Uncategorized");
+      await user.click(screen.getByRole("button", { name: "Assign category" }));
+      expect(
+        screen.getByRole("listbox", { name: "Categories" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("dialog", { name: "Edit transaction" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await user.click(screen.getByRole("option", { name: /Food/ }));
+      expect(mockUseCategories).toHaveBeenCalledWith("ws-1", false, type);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() =>
+        expect(mockApi.patch).toHaveBeenCalledWith(
+          "/workspaces/ws-1/transactions/tx-1/category",
+          { category_id: "cat-1" },
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("dialog", { name: "Transaction details" }),
+        ).not.toHaveTextContent("Needs a category"),
+      );
+      expect(
+        screen.getByRole("dialog", { name: "Transaction details" }),
+      ).toHaveTextContent("Food");
+    },
+  );
+
+  it("allows cancelling category assignment and reports save errors", async () => {
+    const user = userEvent.setup();
+    const response = makeResponse();
+    response.data[0] = { ...response.data[0]!, categoryId: null };
+    mockUseTransactions.mockReturnValue({
+      data: response,
+      isLoading: false,
+      error: null,
+    });
+    mockApi.patch.mockRejectedValueOnce(new Error("failed"));
+    renderPage();
+    const description = screen
+      .getAllByText("Team lunch")
+      .find((element) => element.closest("td"));
+    await user.click(description!.closest("tr")!);
     await user.click(screen.getByRole("button", { name: "Assign category" }));
+    await user.click(screen.getByRole("option", { name: /Food/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      screen.getByRole("dialog", { name: "Edit transaction" }),
+      await screen.findByText(
+        "Could not assign the category. Please try again.",
+      ),
     ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("button", { name: "Assign category" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Transaction details" }),
+    ).toHaveTextContent("Needs a category");
   });
 
   it("returns to transaction details after cancelling edit", async () => {
@@ -500,9 +616,7 @@ describe("TransactionsPage", () => {
       .getAllByText("Team lunch")
       .find((element) => element.closest("td"));
     await user.click(descriptionCell!.closest("tr") as HTMLTableRowElement);
-    screen.getByRole("button", { name: "Transaction actions" }).focus();
-    await user.keyboard("{Enter}");
-    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(
@@ -557,5 +671,154 @@ describe("TransactionsPage", () => {
       number,
     ];
     expect(latestCall[0]).toBe("");
+  });
+});
+
+describe("transaction filters", () => {
+  it("shows grouped searchable categories and retains compatible choices when changing type", async () => {
+    const user = userEvent.setup();
+    mockUseCategories.mockImplementation(
+      (_workspace: string, _archived: boolean, type: string) => ({
+        categories:
+          type === "expense"
+            ? [
+                {
+                  id: "food",
+                  name: "Food",
+                  icon: "🍔",
+                  type: "expense",
+                  children: [
+                    {
+                      id: "groceries",
+                      name: "Groceries",
+                      icon: "🛒",
+                      type: "expense",
+                      children: [],
+                    },
+                  ],
+                },
+              ]
+            : [
+                {
+                  id: "salary",
+                  name: "Salary",
+                  icon: "💼",
+                  type: "income",
+                  children: [],
+                },
+              ],
+        isLoading: false,
+        error: null,
+      }),
+    );
+    renderPage();
+    await waitForPreferenceHydration();
+    await user.click(screen.getByRole("button", { name: "All categories" }));
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search categories" }),
+      "grocer",
+    );
+    expect(
+      screen.getByRole("button", { name: /Groceries/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Food/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Salary/ }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Groceries/ }));
+    await user.keyboard("{Escape}");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Type" }),
+      "expense",
+    );
+    await waitFor(() =>
+      expect(
+        (
+          mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters]
+        )[1].categoryIds,
+      ).toEqual(["groceries"]),
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Type" }),
+      "income",
+    );
+    await waitFor(() =>
+      expect(
+        (
+          mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters]
+        )[1].categoryIds,
+      ).toEqual([]),
+    );
+  });
+
+  it("displays active filters individually and supports date presets", async () => {
+    const user = userEvent.setup();
+    renderPage(
+      "/transactions?type=expense&search=lunch&category_status=uncategorized",
+    );
+    await waitForPreferenceHydration();
+    expect(
+      screen.getByRole("button", { name: "Remove filter: lunch" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove filter: Expense" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Remove filter: Without category" }),
+    );
+    await waitFor(() =>
+      expect(
+        (
+          mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters]
+        )[1].uncategorized,
+      ).toBeUndefined(),
+    );
+    await user.click(screen.getByRole("button", { name: /More filters/ }));
+    await user.click(screen.getByRole("button", { name: "Last 30 days" }));
+    await waitFor(() =>
+      expect(
+        (
+          mockUseTransactions.mock.calls.at(-1) as [string, TransactionFilters]
+        )[1].dateFrom,
+      ).toMatch(/^\d{4}-\d{2}-\d{2}$/),
+    );
+  });
+});
+
+describe("category in transaction lists", () => {
+  it("shows the category icon and hierarchy in both layouts", () => {
+    mockUseCategories.mockReturnValue({
+      categories: [
+        {
+          id: "parent",
+          name: "Food",
+          icon: "🍔",
+          children: [
+            { id: "cat-1", name: "Groceries", icon: "🛒", children: [] },
+          ],
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+    renderPage();
+    for (const list of [
+      screen.getByTestId("transaction-table"),
+      screen.getByTestId("transaction-cards"),
+    ]) {
+      expect(within(list).getByText("Food /")).toBeInTheDocument();
+      expect(within(list).getByText("Groceries")).toBeInTheDocument();
+      expect(within(list).getByText("🛒")).toBeInTheDocument();
+    }
+  });
+  it("shows a readable fallback for an unavailable category", () => {
+    mockUseCategories.mockReturnValue({
+      categories: [],
+      isLoading: false,
+      error: null,
+    });
+    renderPage();
+    expect(screen.getAllByText("Category unavailable")).toHaveLength(2);
+    expect(screen.queryByText("cat-1")).not.toBeInTheDocument();
   });
 });

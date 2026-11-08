@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import { Menu } from "@base-ui/react/menu";
+import { Popover } from "@base-ui/react/popover";
 import { useTranslation } from "react-i18next";
-import { buttonVariants } from "@monqom/ui";
+import { Input, buttonVariants } from "@monqom/ui";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import type { Category } from "@/types/category";
 import type { TransactionFilters } from "@/types/transaction";
@@ -17,33 +17,51 @@ export function TransactionCategoryFilter({
   onChange: (next: TransactionFilters) => void;
 }) {
   const { t } = useTranslation();
-  const options = useMemo(
-    () =>
-      categories.flatMap((category) => {
-        const name = translateSystemLabel(t, category.systemKey, category.name);
-        return [
-          { id: category.id, label: name },
-          ...category.children.map((child) => ({
-            id: child.id,
-            label: `${name} / ${translateSystemLabel(t, child.systemKey, child.name)}`,
-          })),
-        ];
-      }),
-    [categories, t],
+  const [search, setSearch] = useState("");
+  const available = categories.filter(
+    (category) =>
+      !filters.type || !category.type || category.type === filters.type,
   );
-  const selectedLabels = options
-    .filter((option) => filters.categoryIds.includes(option.id))
-    .map((option) => option.label);
+  const localized = available.map((parent) => ({
+    ...parent,
+    name: translateSystemLabel(t, parent.systemKey, parent.name),
+    children: parent.children.map((child) => ({
+      ...child,
+      name: translateSystemLabel(t, child.systemKey, child.name),
+    })),
+  }));
+  const selected = localized
+    .flatMap((parent) => [parent, ...parent.children])
+    .filter((item) => filters.categoryIds.includes(item.id));
   const summary =
-    selectedLabels.length === 0
+    filters.categoryIds.length === 0
       ? t("transactions.allCategories")
-      : selectedLabels.length === 1
-        ? selectedLabels[0]
+      : filters.categoryIds.length === 1 && selected[0]
+        ? selected[0].name
         : t("transactions.selectedCategories", {
-            count: selectedLabels.length,
+            count: filters.categoryIds.length,
           });
+  const query = search.trim().toLocaleLowerCase();
+  const groups = localized
+    .map((parent) => {
+      const parentMatches = parent.name.toLocaleLowerCase().includes(query);
+      return {
+        ...parent,
+        children: parentMatches
+          ? parent.children
+          : parent.children.filter((child) =>
+              child.name.toLocaleLowerCase().includes(query),
+            ),
+        visible:
+          parentMatches ||
+          parent.children.some((child) =>
+            child.name.toLocaleLowerCase().includes(query),
+          ),
+      };
+    })
+    .filter((parent) => parent.visible);
 
-  function toggleCategory(id: string) {
+  function toggle(id: string) {
     onChange({
       ...filters,
       uncategorized: false,
@@ -52,14 +70,36 @@ export function TransactionCategoryFilter({
         : [...filters.categoryIds, id],
     });
   }
-
+  function option(category: Category, child = false) {
+    const checked = filters.categoryIds.includes(category.id);
+    return (
+      <button
+        key={category.id}
+        type="button"
+        aria-pressed={checked}
+        onClick={() => toggle(category.id)}
+        className={`flex min-h-10 w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${child ? "pl-8" : "font-medium"}`}
+      >
+        <span aria-hidden="true" className="w-5 text-center">
+          {category.icon || "•"}
+        </span>
+        <span className="min-w-0 flex-1 break-words">{category.name}</span>
+        {checked && <Check size={16} aria-hidden="true" />}
+      </button>
+    );
+  }
   return (
-    <Menu.Root>
-      <Menu.Trigger
+    <Popover.Root
+      onOpenChange={(open) => {
+        if (!open) setSearch("");
+      }}
+    >
+      <Popover.Trigger
         className={buttonVariants({
           variant: "outline",
           size: "sm",
-          className: "h-9 w-full justify-between gap-3 font-normal sm:w-44",
+          className:
+            "h-9 min-h-11 w-full justify-between gap-3 font-normal sm:min-h-0 sm:w-44",
         })}
       >
         <span className="truncate">{summary}</span>
@@ -68,46 +108,43 @@ export function TransactionCategoryFilter({
           className="shrink-0 text-muted-foreground"
           aria-hidden="true"
         />
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner
           sideOffset={6}
           align="start"
           className="z-[90] outline-none"
         >
-          <Menu.Popup className="max-h-72 min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none sm:w-64">
-            {filters.categoryIds.length > 0 && (
-              <Menu.Item
-                className="cursor-pointer rounded-md px-3 py-2 text-sm text-muted-foreground outline-none data-[highlighted]:bg-muted"
-                onClick={() =>
-                  onChange({
-                    ...filters,
-                    categoryIds: [],
-                    uncategorized: false,
-                  })
-                }
-              >
-                {t("transactions.clearCategories")}
-              </Menu.Item>
-            )}
-            {options.map((option) => (
-              <Menu.CheckboxItem
-                key={option.id}
-                checked={filters.categoryIds.includes(option.id)}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
-                onCheckedChange={() => toggleCategory(option.id)}
-              >
-                <span className="flex size-4 shrink-0 items-center justify-center rounded border border-input">
-                  {filters.categoryIds.includes(option.id) && (
-                    <Check size={12} aria-hidden="true" />
-                  )}
-                </span>
-                {option.label}
-              </Menu.CheckboxItem>
-            ))}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+          <Popover.Popup
+            aria-label={t("transactions.categories")}
+            className="w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg outline-none"
+          >
+            <Input
+              type="search"
+              aria-label={t("transactions.searchCategoriesLabel")}
+              placeholder={t("transactions.searchCategories")}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <p className="px-1 pt-2 text-xs text-muted-foreground">
+              {t("transactions.categoryGroupHint")}
+            </p>
+            <div className="mt-2 max-h-64 overflow-y-auto">
+              {groups.length === 0 && (
+                <p className="px-3 py-2 text-sm text-muted-foreground">
+                  {t("transactions.noResults")}
+                </p>
+              )}
+              {groups.map((parent) => (
+                <div key={parent.id}>
+                  {option(parent)}
+                  {parent.children.map((child) => option(child, true))}
+                </div>
+              ))}
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

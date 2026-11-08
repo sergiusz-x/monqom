@@ -542,7 +542,7 @@ describe("ResetPasswordPage", () => {
       screen.getByRole("button", { name: /reset password/i }),
     );
     await waitFor(() => {
-      expect(screen.getByText(/at least 16 characters/i)).toBeInTheDocument();
+      expect(screen.getByText(/at least 15 characters/i)).toBeInTheDocument();
     });
   });
 });

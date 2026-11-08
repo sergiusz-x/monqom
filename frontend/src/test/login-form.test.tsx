@@ -136,7 +136,7 @@ describe("RegisterPage form validation", () => {
       screen.getByRole("button", { name: /create account/i }),
     );
     await waitFor(() => {
-      expect(screen.getByText(/at least 16 characters/i)).toBeInTheDocument();
+      expect(screen.getByText(/at least 15 characters/i)).toBeInTheDocument();
     });
   });
 });

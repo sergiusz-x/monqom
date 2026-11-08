@@ -21,8 +21,10 @@ export function useDashboardData(workspaceId: string, month: string) {
 
   return {
     summary: query.data?.summary ?? null,
+    spendingPace: query.data?.spendingPace ?? null,
     categoryBreakdown: query.data?.categoryBreakdown ?? null,
     spendingTrend: query.data?.spendingTrend ?? [],
+    financialTrend: query.data?.financialTrend ?? [],
     transactions: query.data?.recentTransactions ?? [],
     isLoading: query.isPending,
     error: query.isError ? getApiErrorMessage(query.error) : null,

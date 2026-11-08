@@ -272,25 +272,6 @@ export default function TransactionDetailPage() {
             {transaction.notes || t("transactions.noNotes")}
           </p>
         </div>
-        <div>
-          <h2 className="text-sm font-medium">{t("common.tags")}</h2>
-          {transaction.tags.length ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {transaction.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-muted px-2.5 py-1 text-xs"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("transactions.noTags")}
-            </p>
-          )}
-        </div>
       </SectionCard>
 
       <ConfirmationDialog

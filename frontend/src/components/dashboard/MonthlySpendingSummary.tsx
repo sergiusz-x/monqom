@@ -1,86 +1,43 @@
+import { useState } from "react";
+import { useOptionalAuth } from "@/contexts/AuthContext";
 import type { SpendingSummary } from "@/types/dashboard";
 import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { Button, SectionCard } from "@monqom/ui";
+import { DashboardMonthPicker } from "./DashboardMonthPicker";
 
 interface MonthlySpendingSummaryProps {
   summary: SpendingSummary;
-  monthLabel: string;
+  spendingPace?: {
+    changePercentage: number;
+    direction: "up" | "down" | "flat";
+  } | null;
+  month: string;
+  currentMonth: string;
+  onSelectMonth: (month: string) => void;
   onPreviousMonth: () => void;
   onNextMonth: () => void;
 }
 
-function formatChange(summary: SpendingSummary, t: TFunction): string {
-  if (summary.changePercentage === null) {
-    return t("dashboard.noPrevious");
-  }
-
-  if (summary.direction === "flat") {
-    return t("dashboard.noChange");
-  }
-
-  return t("dashboard.changeVsPrevious", {
-    value: Math.abs(summary.changePercentage).toFixed(1),
-    direction: t(
-      summary.direction === "up" ? "dashboard.up" : "dashboard.down",
-    ),
-  });
-}
-
-function getDirectionSymbol(direction: SpendingSummary["direction"]): string {
-  if (direction === "up") return "↑";
-  if (direction === "down") return "↓";
-  return "→";
-}
-
-function SummaryMetric({
-  label,
-  value,
-  currency,
-  className,
-}: {
-  label: string;
-  value: number;
-  currency: string;
-  className: string;
-}) {
-  return (
-    <div className="rounded-lg bg-muted/50 p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className={`mt-1 text-lg font-semibold ${className}`}>
-        {formatCurrency(value, currency)}
-      </p>
-    </div>
-  );
-}
-
 export function MonthlySpendingSummary({
   summary,
-  monthLabel,
+  spendingPace,
+  month,
+  currentMonth,
+  onSelectMonth,
   onPreviousMonth,
   onNextMonth,
 }: MonthlySpendingSummaryProps) {
   const { t } = useTranslation();
+  const hideAmounts = Boolean(useOptionalAuth()?.user?.hideSalaryAmounts);
+  const [incomeRevealed, setIncomeRevealed] = useState(false);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
   return (
-    <SectionCard
-      padding="spacious"
-      elevation="raised"
-      aria-label={t("dashboard.summary")}
-    >
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {t("dashboard.totalSpending")}
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            {formatCurrency(summary.currentTotal, summary.currency)}
-          </h1>
-        </div>
+    <section aria-label={t("dashboard.summary")} className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{t("dashboard.title")}</h1>
         <div
-          className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start"
+          className="flex items-center gap-2"
           aria-label={t("dashboard.monthSelector")}
         >
           <Button
@@ -92,9 +49,11 @@ export function MonthlySpendingSummary({
           >
             ←
           </Button>
-          <span className="min-w-28 text-center text-sm font-medium">
-            {monthLabel}
-          </span>
+          <DashboardMonthPicker
+            month={month}
+            currentMonth={currentMonth}
+            onSelectMonth={onSelectMonth}
+          />
           <Button
             type="button"
             variant="outline"
@@ -106,54 +65,95 @@ export function MonthlySpendingSummary({
           </Button>
         </div>
       </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryMetric
-          label={t("dashboard.income")}
-          value={summary.incomeTotal}
-          currency={summary.currency}
-          className="text-emerald-600 dark:text-emerald-400"
-        />
-        <SummaryMetric
-          label={t("dashboard.totalSpending")}
-          value={summary.currentTotal}
-          currency={summary.currency}
-          className="text-rose-600 dark:text-rose-400"
-        />
-        <SummaryMetric
-          label={t("dashboard.netBalance")}
-          value={summary.netTotal}
-          currency={summary.currency}
-          className={
-            summary.netTotal >= 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-rose-600 dark:text-rose-400"
-          }
-        />
-      </div>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg bg-muted/50 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            {t("dashboard.previousMonth")}
-          </p>
-          <p className="mt-1 text-lg font-medium">
-            {formatCurrency(summary.previousTotal, summary.currency)}
-          </p>
+      <SectionCard padding="responsive" elevation="raised">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <div className="min-w-0 pb-4 sm:pb-0 sm:pr-5">
+            <p className="text-sm text-muted-foreground">
+              {t("dashboard.income")}
+            </p>
+            {hideAmounts && !incomeRevealed ? (
+              <button
+                type="button"
+                data-sensitive-amount="masked"
+                aria-label={t("dashboard.revealIncome")}
+                className="mt-1 block cursor-pointer select-none border-0 bg-transparent p-0 text-left text-2xl font-semibold tracking-tight tabular-nums text-emerald-600 blur-[8px] transition-[filter] hover:blur-[5px] focus-visible:blur-[5px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring dark:text-emerald-400"
+                onClick={() => setIncomeRevealed(true)}
+              >
+                {formatCurrency(summary.incomeTotal, summary.currency)}
+              </button>
+            ) : (
+              <p
+                data-sensitive-amount={hideAmounts ? "revealed" : undefined}
+                className="mt-1 break-words text-2xl font-semibold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400"
+              >
+                {formatCurrency(summary.incomeTotal, summary.currency)}
+              </p>
+            )}
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+              <span>{t("dashboard.netBalance")}:</span>
+              {hideAmounts && !balanceRevealed ? (
+                <button
+                  type="button"
+                  data-sensitive-amount="masked"
+                  aria-label={t("dashboard.revealBalance")}
+                  className="-my-2 cursor-pointer select-none border-0 bg-transparent py-2 tabular-nums blur-[8px] transition-[filter] hover:blur-[5px] focus-visible:blur-[5px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                  onClick={() => setBalanceRevealed(true)}
+                >
+                  {formatCurrency(summary.netTotal, summary.currency)}
+                </button>
+              ) : (
+                <span
+                  data-sensitive-amount={hideAmounts ? "revealed" : undefined}
+                  className="tabular-nums"
+                >
+                  {formatCurrency(summary.netTotal, summary.currency)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="min-w-0 pt-4 sm:pl-5 sm:pt-0">
+            <p className="text-sm text-muted-foreground">
+              {t("dashboard.totalSpending")}
+            </p>
+            <p className="mt-1 break-words text-2xl font-semibold tracking-tight tabular-nums">
+              {formatCurrency(summary.currentTotal, summary.currency)}
+            </p>
+            {month === currentMonth
+              ? spendingPace && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {spendingPace.direction === "flat"
+                      ? t("dashboard.paceNoChange")
+                      : t("dashboard.paceChange", {
+                          value: Math.abs(
+                            spendingPace.changePercentage,
+                          ).toFixed(1),
+                          direction: t(
+                            spendingPace.direction === "up"
+                              ? "dashboard.up"
+                              : "dashboard.down",
+                          ),
+                        })}
+                  </p>
+                )
+              : month < currentMonth &&
+                summary.previousTotal > 0 &&
+                summary.changePercentage !== null && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {summary.direction === "flat"
+                      ? t("dashboard.noChange")
+                      : t("dashboard.changeVsPrevious", {
+                          value: Math.abs(summary.changePercentage).toFixed(1),
+                          direction: t(
+                            summary.direction === "up"
+                              ? "dashboard.up"
+                              : "dashboard.down",
+                          ),
+                        })}
+                  </p>
+                )}
+          </div>
         </div>
-        <div className="rounded-lg bg-muted/50 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            {t("dashboard.change")}
-          </p>
-          <p className="mt-1 text-lg font-medium">
-            {getDirectionSymbol(summary.direction)}{" "}
-            {formatCurrency(Math.abs(summary.changeAmount), summary.currency)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {formatChange(summary, t)}
-          </p>
-        </div>
-      </div>
-    </SectionCard>
+      </SectionCard>
+    </section>
   );
 }

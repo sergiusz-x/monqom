@@ -6,7 +6,6 @@ import type {
 export const DEFAULT_TRANSACTION_FILTERS: TransactionFilters = {
   type: "",
   categoryIds: [],
-  tag: "",
   paymentSourceId: "",
   dateFrom: "",
   dateTo: "",
@@ -19,6 +18,7 @@ const PREFERENCE_KEY_PREFIX = "monqom:transaction-list-preferences:v1:";
 const LEGACY_KEY_PREFIX = "monqom:transaction-filters:";
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const FILTER_PARAMS = [
+  "search",
   "category_status",
   "origin",
   "type",
@@ -37,7 +37,6 @@ const SORT_FIELDS = new Set<TransactionSortField>([
   "amount",
   "description",
   "notes",
-  "tags",
   "payment_source",
 ]);
 
@@ -49,6 +48,7 @@ export function parseTransactionFilters(
   params: URLSearchParams,
 ): TransactionFilters {
   return normalizeFilters({
+    search: params.get("search"),
     type: params.get("type"),
     uncategorized: params.get("category_status") === "uncategorized",
     origin: params.get("origin"),
@@ -57,7 +57,6 @@ export function parseTransactionFilters(
       params.get("category_id") ??
       ""
     ).split(","),
-    tag: params.get("tag"),
     paymentSourceId: params.get("payment_source_id"),
     dateFrom: params.get("date_from"),
     dateTo: params.get("date_to"),
@@ -82,13 +81,13 @@ export function buildTransactionListParams(
   FILTER_PARAMS.forEach((name) => params.delete(name));
   params.delete("page");
 
+  if (filters.search) params.set("search", filters.search);
   if (filters.type) params.set("type", filters.type);
   if (filters.uncategorized) params.set("category_status", "uncategorized");
   if (filters.origin) params.set("origin", filters.origin);
   if (filters.categoryIds.length > 0) {
     params.set("category_ids", filters.categoryIds.join(","));
   }
-  if (filters.tag) params.set("tag", filters.tag);
   if (filters.paymentSourceId) {
     params.set("payment_source_id", filters.paymentSourceId);
   }
@@ -149,7 +148,10 @@ export function saveTransactionPreferences(
   try {
     storage.setItem(
       `${PREFERENCE_KEY_PREFIX}${workspaceId}`,
-      JSON.stringify({ version: PREFERENCE_VERSION, filters }),
+      JSON.stringify({
+        version: PREFERENCE_VERSION,
+        filters: normalizeFilters({ ...filters }),
+      }),
     );
   } catch {
     // Preferences are an enhancement; unavailable storage must not break the list.
@@ -174,6 +176,9 @@ function normalizeFilters(value: Record<string, unknown>): TransactionFilters {
     : DEFAULT_TRANSACTION_FILTERS.sortBy;
 
   return {
+    ...(normalizeString(value.search, 200)
+      ? { search: normalizeString(value.search, 200) }
+      : {}),
     type:
       value.type === "income"
         ? "income"
@@ -185,7 +190,6 @@ function normalizeFilters(value: Record<string, unknown>): TransactionFilters {
     ...(value.origin === "manual" || value.origin === "integration"
       ? { origin: value.origin }
       : {}),
-    tag: normalizeString(value.tag, 100),
     paymentSourceId: normalizeString(value.paymentSourceId, 128),
     dateFrom: normalizeDate(value.dateFrom),
     dateTo: normalizeDate(value.dateTo),

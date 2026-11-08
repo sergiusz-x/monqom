@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -14,10 +14,16 @@ const trend: SpendingTrendItem[] = [
   { month: "2026-05", total: 100 },
 ];
 
+const onSelectMonth = vi.fn();
 function renderChart(data = trend) {
   return render(
     <MemoryRouter>
-      <SpendingTrendChart trend={data} currency="USD" currentMonth="2026-05" />
+      <SpendingTrendChart
+        trend={data}
+        currency="USD"
+        selectedMonth="2026-05"
+        onSelectMonth={onSelectMonth}
+      />
     </MemoryRouter>,
   );
 }
@@ -37,13 +43,12 @@ describe("SpendingTrendChart", () => {
     const user = userEvent.setup();
     renderChart();
 
-    const april = screen.getByRole("listitem", {
+    const april = screen.getByRole("button", {
       name: "April 2026 spending $75.00",
     });
     await user.click(april);
 
-    expect(april).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("April 2026: $75.00")).toBeInTheDocument();
+    expect(onSelectMonth).toHaveBeenCalledWith("2026-04");
   });
 
   it("shows an empty state when all monthly totals are zero", () => {

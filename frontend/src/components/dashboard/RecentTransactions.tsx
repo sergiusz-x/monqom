@@ -1,16 +1,19 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { TransactionDetailsModal } from "@/components/transactions/TransactionDetailsModal";
-import { TransactionMetadata } from "@/components/transactions/TransactionMetadata";
+import {
+  TransactionListCategory,
+  type ListCategory,
+} from "@/components/transactions/TransactionListCategory";
 import { TransactionFormModal } from "@/components/transactions/TransactionFormModal";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
 import { useToast } from "@/hooks/useToast";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
 import { transactionsApi } from "@/api/contract";
-import { formatShortDate } from "@/lib/date-only";
+import { formatShortDateWithWeekday } from "@/lib/date-only";
 import { categorySystemKeys } from "@/lib/category-system-keys";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { paymentSourceName } from "@/lib/payment-sources";
@@ -25,12 +28,14 @@ interface RecentTransactionsProps {
   workspaceId: string;
   transactions: Transaction[];
   categories: Category[];
+  categoryHeight: number;
 }
 
 export function RecentTransactions({
   workspaceId,
   transactions,
   categories,
+  categoryHeight,
 }: RecentTransactionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -44,6 +49,39 @@ export function RecentTransactions({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const editWasSavedRef = useRef(false);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [desktopHeight, setDesktopHeight] = useState<number | undefined>();
+  useEffect(() => {
+    const update = () => {
+      const list = listRef.current;
+      const section = list?.closest("section");
+      const row = list?.firstElementChild as HTMLElement | null;
+      if (
+        !categoryHeight ||
+        !window.matchMedia("(min-width: 1024px)").matches
+      ) {
+        setVisibleCount(5);
+        setDesktopHeight(undefined);
+        return;
+      }
+      setDesktopHeight(categoryHeight);
+      if (!section || !list || !row) return;
+      const overhead =
+        list.getBoundingClientRect().top -
+        section.getBoundingClientRect().top +
+        parseFloat(getComputedStyle(section).paddingBottom) +
+        1;
+      const count = Math.max(
+        1,
+        Math.floor((categoryHeight - overhead + 8) / (row.offsetHeight + 8)),
+      );
+      setVisibleCount(Math.min(transactions.length, count));
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [categoryHeight, transactions.length]);
 
   const categoryNames = useMemo(() => {
     const allCategories = flattenCategories(categories);
@@ -53,6 +91,19 @@ export function RecentTransactions({
         translateSystemLabel(t, category.systemKey, category.name),
       ]),
     );
+  }, [categories, t]);
+
+  const listCategories = useMemo(() => {
+    const result: Record<string, ListCategory> = {};
+    function visit(items: Category[], parentName?: string) {
+      for (const category of items) {
+        const name = translateSystemLabel(t, category.systemKey, category.name);
+        result[category.id] = { name, parentName, icon: category.icon };
+        visit(category.children, name);
+      }
+    }
+    visit(categories);
+    return result;
   }, [categories, t]);
 
   const categorySystemKeyMap = useMemo(
@@ -100,12 +151,19 @@ export function RecentTransactions({
   return (
     <>
       <SectionCard
+        style={desktopHeight ? { height: desktopHeight } : undefined}
         padding="spacious"
         elevation="raised"
+        className="min-w-0"
         aria-label={t("dashboard.recent")}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("dashboard.recent")}</h2>
+          <div>
+            <h2 className="text-lg font-semibold">{t("dashboard.recent")}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t("dashboard.recentDescription")}
+            </p>
+          </div>
           <Link
             to="/transactions"
             className="text-sm font-medium text-primary hover:underline"
@@ -122,38 +180,40 @@ export function RecentTransactions({
             onAction={() => navigate("/transactions")}
           />
         ) : (
-          <ul className="space-y-2">
-            {transactions.slice(0, 5).map((transaction) => (
+          <ul ref={listRef} className="space-y-2">
+            {transactions.slice(0, visibleCount).map((transaction) => (
               <li key={transaction.id}>
-                <div className="flex items-center justify-between gap-3 rounded-md px-3 py-2 hover:border-border hover:bg-muted/50">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2 hover:bg-muted/50">
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-auto min-w-0 flex-1 justify-start p-0 text-left hover:bg-transparent"
+                    className="h-auto w-full min-w-0 justify-start p-0 text-left hover:bg-transparent"
                     onClick={() => {
                       setDeleteError(null);
                       setSelectedTransaction(transaction);
                     }}
                   >
-                    <span>
-                      <span className="block text-sm font-medium">
+                    <span className="block w-full min-w-0">
+                      <span
+                        className="block truncate text-sm font-medium"
+                        title={transaction.description}
+                      >
                         {transaction.description}
                       </span>
 
-                      <span className="block text-xs text-muted-foreground">
-                        {formatShortDate(transaction.date)} &middot;{" "}
-                        {categoryNames.get(transaction.categoryId ?? "") ??
-                          t("dashboard.uncategorized")}
-                      </span>
-                      <span className="mt-1 block">
-                        <TransactionMetadata transaction={transaction} />
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {formatShortDateWithWeekday(transaction.date)} &middot;{" "}
+                        <TransactionListCategory
+                          transaction={transaction}
+                          categories={listCategories}
+                        />
                       </span>
                     </span>
                   </Button>
                   <SensitiveTransactionAmount
                     transaction={transaction}
                     categorySystemKeys={categorySystemKeyMap}
-                    className="text-sm font-semibold"
+                    className="text-sm font-semibold tabular-nums"
                   />
                 </div>
               </li>
@@ -167,10 +227,17 @@ export function RecentTransactions({
         open={Boolean(selectedTransaction)}
         transaction={selectedTransaction}
         categorySystemKeys={categorySystemKeyMap}
+        categoryIcon={
+          flattenCategories(categories).find(
+            (category) => category.id === selectedTransaction?.categoryId,
+          )?.icon
+        }
         categoryLabel={
           selectedTransaction
             ? (categoryNames.get(selectedTransaction.categoryId ?? "") ??
-              t("dashboard.uncategorized"))
+              (selectedTransaction.categoryId
+                ? t("transactions.unavailableCategory")
+                : t("dashboard.uncategorized")))
             : ""
         }
         paymentSourceLabel={
@@ -184,6 +251,11 @@ export function RecentTransactions({
         onClose={() => {
           setSelectedTransaction(null);
           setDeleteError(null);
+        }}
+        onCategorySaved={(categoryId) => {
+          setSelectedTransaction((current) =>
+            current ? { ...current, categoryId } : null,
+          );
         }}
         onEdit={() => {
           if (!selectedTransaction) return;

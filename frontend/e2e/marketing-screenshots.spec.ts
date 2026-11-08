@@ -190,6 +190,14 @@ test.beforeEach(async ({ page }) => {
           },
         ],
       });
+    if (
+      path.endsWith(`/workspaces/${workspaceId}/transactions`) &&
+      new URL(route.request().url()).searchParams.get("category_status") ===
+        "uncategorized"
+    )
+      return route.fulfill({
+        json: { data: [], total: 0, limit: 20, offset: 0 },
+      });
     if (path.endsWith(`/workspaces/${workspaceId}/transactions`))
       return route.fulfill({
         json: {

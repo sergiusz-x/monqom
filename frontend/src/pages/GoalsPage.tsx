@@ -167,14 +167,24 @@ function GoalCard({ goal, locale }: { goal: Goal; locale: string }) {
           </p>
         </div>
         <div className="flex items-baseline justify-between gap-3 border-t border-border pt-4">
-          <span className="text-xs text-muted-foreground">
-            {t("goals.monthlyNeeded")}
-          </span>
-          <span className="font-semibold tabular-nums">
-            {goal.recommendedMonthlyAmount === null
-              ? "-"
-              : formatCurrency(goal.recommendedMonthlyAmount, goal.currency)}
-          </span>
+          {goal.status === "completed" ? (
+            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              {t("goals.completedMessage")}
+            </span>
+          ) : goal.status === "overdue" ? (
+            <span className="text-sm text-muted-foreground">
+              {t("goals.deadlinePassed")}
+            </span>
+          ) : (
+            <>
+              <span className="text-xs text-muted-foreground">
+                {t("goals.remaining")}
+              </span>
+              <span className="font-semibold tabular-nums">
+                {formatCurrency(goal.remainingAmount, goal.currency)}
+              </span>
+            </>
+          )}
         </div>
       </Card>
     </Link>

@@ -12,6 +12,7 @@ import type {
 import type { Transaction } from "@/types/transaction";
 import type { Category } from "@/types/category";
 
+vi.mock("@/hooks/useBudgetOverview", () => ({ useBudgetOverview: vi.fn() }));
 vi.mock("@/hooks/useWorkspace", () => ({ useWorkspace: vi.fn() }));
 vi.mock("@/hooks/useDashboardData", () => ({ useDashboardData: vi.fn() }));
 vi.mock("@/hooks/useCategories", () => ({ useCategories: vi.fn() }));
@@ -19,6 +20,7 @@ vi.mock("@/hooks/usePaymentSources", () => ({
   usePaymentSources: vi.fn(),
 }));
 
+import { useBudgetOverview } from "@/hooks/useBudgetOverview";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useCategories } from "@/hooks/useCategories";
@@ -122,6 +124,13 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(useBudgetOverview).mockReturnValue({
+    progressItems: [],
+    budgets: [],
+    isLoading: false,
+    error: null,
+    retry: vi.fn(),
+  });
   mockUseWorkspace.mockReturnValue({
     workspaceId: "ws-1",
     isLoading: false,
@@ -141,6 +150,11 @@ beforeEach(() => {
     summary: makeSummary(),
     categoryBreakdown: makeCategoryBreakdown(),
     spendingTrend: makeSpendingTrend(),
+    financialTrend: makeSpendingTrend().map((item) => ({
+      month: item.month,
+      income: 500,
+      spending: item.total,
+    })),
     transactions: [makeTransaction()],
     isLoading: false,
     error: null,
@@ -166,7 +180,7 @@ describe("DashboardPage", () => {
       screen.getByLabelText(/monthly spending summary/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/Groceries/i).length).toBeGreaterThan(0);
-    expect(screen.getByText("View all")).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "View all" })).toHaveAttribute(
       "href",
       "/transactions",
     );
@@ -181,6 +195,77 @@ describe("DashboardPage", () => {
 
     expect(mockUseDashboardData).toHaveBeenCalled();
     expect(mockUseDashboardData.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("selects a month in another year and returns to the current month", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const currentMonth = mockUseDashboardData.mock.lastCall?.[1] as string;
+    const previousYear = Number(currentMonth.slice(0, 4)) - 1;
+    await user.click(
+      screen.getByRole("button", { name: /choose month, selected/i }),
+    );
+    await user.click(screen.getByRole("button", { name: "Previous year" }));
+    await user.click(
+      screen.getByRole("button", { name: `March ${previousYear}` }),
+    );
+    expect(mockUseDashboardData).toHaveBeenLastCalledWith(
+      "ws-1",
+      `${previousYear}-03`,
+    );
+    await user.click(
+      screen.getByRole("button", { name: /choose month, selected/i }),
+    );
+    await user.click(screen.getByRole("button", { name: "Current month" }));
+    expect(mockUseDashboardData).toHaveBeenLastCalledWith("ws-1", currentMonth);
+  });
+
+  it("updates the whole dashboard when a month on the chart is selected", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "March 2026" }));
+    expect(mockUseDashboardData).toHaveBeenLastCalledWith("ws-1", "2026-03");
+    expect(vi.mocked(useBudgetOverview)).toHaveBeenLastCalledWith(
+      "ws-1",
+      "2026-03",
+    );
+  });
+
+  it("shows exceeded budgets only when there are any", () => {
+    vi.mocked(useBudgetOverview).mockReturnValue({
+      progressItems: [
+        {
+          categoryId: "cat-1",
+          categoryName: "Groceries",
+          budgetAmount: 100,
+          limit: 100,
+          spent: 120,
+          remaining: -20,
+          percentage: 120,
+        },
+      ],
+      budgets: [],
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+    });
+    renderPage();
+    expect(screen.getByText("1 budget exceeded")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View budgets" })).toHaveAttribute(
+      "href",
+      "/budgets",
+    );
+  });
+
+  it("links category spending to expenses for the selected month", () => {
+    renderPage();
+    const link = screen.getByRole("link", { name: /groceries/i });
+    const params = new URLSearchParams(
+      link.getAttribute("href")?.split("?")[1],
+    );
+    expect(params.get("category_id")).toBe("cat-1");
+    expect(params.get("type")).toBe("expense");
+    expect(params.get("date_from")).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(params.get("date_to")).toBeTruthy();
   });
 
   it("opens transaction details when a recent item is clicked", async () => {

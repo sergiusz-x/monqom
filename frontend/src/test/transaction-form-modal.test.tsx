@@ -8,9 +8,6 @@ import { ToastProvider } from "@monqom/ui/toast";
 vi.mock("@/lib/api", () => ({
   default: { post: vi.fn(), put: vi.fn() },
 }));
-vi.mock("@/hooks/useTags", () => ({
-  useTags: () => ({ tags: ["Food", "Travel"], isLoading: false, error: null }),
-}));
 vi.mock("@/hooks/usePaymentSources", () => ({
   usePaymentSources: vi.fn(() => ({
     paymentSources: [
@@ -123,6 +120,9 @@ describe("TransactionFormModal", () => {
       screen.getByRole("button", { name: /pick category/i }),
     ).toHaveFocus();
     await user.tab();
+    expect(screen.getByRole("button", { name: /today.*cash/i })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await user.tab();
     expect(screen.getByLabelText("Date")).toHaveFocus();
     await user.tab();
     expect(screen.getByLabelText("Account or wallet")).toHaveFocus();
@@ -186,6 +186,46 @@ describe("TransactionFormModal", () => {
       amount: 2500,
     });
   });
+  it.each([
+    ["Expense", "Income"],
+    ["Income", "Expense"],
+  ])(
+    "requires a new category after switching from %s to %s",
+    async (initial, next) => {
+      const user = userEvent.setup();
+      render(
+        <ToastProvider>
+          <TransactionFormModal
+            open
+            mode="create"
+            workspaceId="ws-1"
+            onClose={vi.fn()}
+            onSaved={vi.fn()}
+          />
+        </ToastProvider>,
+      );
+      await user.click(screen.getByRole("tab", { name: initial }));
+      await user.type(screen.getByLabelText("Amount"), "1000");
+      await user.type(screen.getByLabelText("Description"), "Example");
+      await user.click(screen.getByRole("button", { name: /pick category/i }));
+      await user.click(screen.getByRole("tab", { name: next }));
+      await user.click(
+        screen.getByRole("button", { name: /save transaction/i }),
+      );
+      expect(screen.getByText("Category is required.")).toBeInTheDocument();
+      expect(mockApi.post).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: /pick category/i }));
+      await user.click(
+        screen.getByRole("button", { name: /save transaction/i }),
+      );
+      await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
+      expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
+        type: next.toLowerCase(),
+        category_id: "cat-1",
+      });
+    },
+  );
+
   it("uses workspace currency, local today and the user's last payment source", async () => {
     const user = userEvent.setup();
     const now = new Date();
@@ -204,6 +244,7 @@ describe("TransactionFormModal", () => {
       </ToastProvider>,
     );
 
+    await user.click(screen.getByRole("button", { name: /today.*card/i }));
     expect(screen.getByLabelText("Date")).toHaveValue(today);
     await waitFor(() =>
       expect(screen.getByLabelText("Account or wallet")).toHaveValue("ps-2"),
@@ -211,14 +252,8 @@ describe("TransactionFormModal", () => {
     await user.type(screen.getByLabelText("Amount"), "1234");
     await user.type(screen.getByLabelText("Description"), "Team lunch");
     await user.click(screen.getByRole("button", { name: /pick category/i }));
-    await user.click(screen.getByRole("button", { name: /more options/i }));
     expect(screen.getByLabelText("Currency")).toHaveValue("PLN");
-    await user.selectOptions(
-      screen.getByLabelText("Select an existing tag"),
-      "Food",
-    );
-    await user.type(screen.getByLabelText("New tag"), "Lunch");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(screen.queryByText("Tags")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /save transaction/i }));
 
     await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
@@ -229,8 +264,66 @@ describe("TransactionFormModal", () => {
       description: "Team lunch",
       category_id: "cat-1",
       payment_source_id: "ps-2",
-      tags: ["Food", "Lunch"],
+      tags: [],
     });
+  });
+
+  it("lets the user change the date and payment source and saves them", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /today.*cash/i }));
+    await user.clear(screen.getByLabelText("Date"));
+    await user.type(screen.getByLabelText("Date"), "2026-10-15");
+    await user.selectOptions(
+      screen.getByLabelText("Account or wallet"),
+      "ps-2",
+    );
+    await user.click(screen.getByRole("button", { name: /card/i }));
+    await user.type(screen.getByLabelText("Amount"), "2500");
+    await user.type(screen.getByLabelText("Description"), "Lunch");
+    await user.click(screen.getByRole("button", { name: /pick category/i }));
+    await user.click(screen.getByRole("button", { name: /save transaction/i }));
+
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledTimes(1));
+    expect(mockApi.post.mock.calls[0]?.[1]).toMatchObject({
+      date: "2026-10-15",
+      payment_source_id: "ps-2",
+    });
+  });
+
+  it("opens account creation from the source list and preserves the selection when cancelled", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="create"
+          workspaceId="ws-1"
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: /today.*cash/i }));
+    const source = screen.getByLabelText("Account or wallet");
+    expect(source).toHaveValue("ps-1");
+    await user.selectOptions(source, "__create_payment_source__");
+    expect(
+      screen.getByRole("dialog", { name: "Add payment source" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(source).toHaveValue("ps-1");
   });
 
   it("prefills and updates transaction in edit mode", async () => {
@@ -264,10 +357,14 @@ describe("TransactionFormModal", () => {
 
     expect(screen.getByLabelText("Amount")).toHaveValue("20.50");
     expect(screen.getByLabelText("Description")).toHaveValue("Team lunch");
+    expect(
+      screen.getByRole("button", { name: /transaction details/i }),
+    ).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByLabelText("Notes")).toHaveValue("Lunch");
     expect(
-      screen.getByRole("button", { name: "Remove tag Food" }),
-    ).toBeInTheDocument();
+      screen.getByLabelText("Notes").closest("#transaction-default-details"),
+    ).toHaveClass("hidden");
+    expect(screen.queryByText("Food")).not.toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Amount"));
     await user.type(screen.getByLabelText("Amount"), "1999");
@@ -277,7 +374,47 @@ describe("TransactionFormModal", () => {
     expect(mockApi.put.mock.calls[0]?.[0]).toBe(
       "/workspaces/ws-1/transactions/tx-1",
     );
-    expect(mockApi.put.mock.calls[0]?.[1]).toMatchObject({ amount: 19.99 });
+    expect(mockApi.put.mock.calls[0]?.[1]).toMatchObject({
+      amount: 19.99,
+      notes: "Lunch",
+      currency: "PLN",
+      tags: ["Food"],
+    });
+  });
+
+  it("does not save an edit when existing tags were not loaded", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransactionFormModal
+          open
+          mode="edit"
+          workspaceId="ws-1"
+          transaction={{
+            id: "tx-missing-tags",
+            amount: 20,
+            currency: "PLN",
+            date: "2026-04-20",
+            description: "Lunch",
+            workspaceId: "ws-1",
+            categoryId: "cat-1",
+            notes: null,
+            tags: undefined as unknown as string[],
+            paymentSourceId: "ps-1",
+            type: "expense",
+            createdAt: "2026-04-20",
+            updatedAt: "2026-04-20",
+          }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: /save transaction/i }));
+    expect(mockApi.put).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Failed to load transaction details."),
+    ).toBeInTheDocument();
   });
 
   it("submits the form with Ctrl+Enter keyboard shortcut", async () => {

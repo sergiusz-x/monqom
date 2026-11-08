@@ -63,6 +63,7 @@ export type TransactionSortField =
 export type TransactionSortDirection = 'asc' | 'desc'
 
 export interface ListTransactionsFilters {
+    search?: string
     uncategorized?: boolean
     origin?: 'manual' | 'integration'
     type?: 'expense' | 'income'
@@ -305,6 +306,46 @@ export class TransactionsRepository {
                 },
             },
         })
+    }
+
+    async assignCategory(
+        input: {
+            workspaceId: string
+            transactionId: string
+            categoryId: string
+            userId: string
+            previousTransaction: TransactionWithOrigin
+        },
+        tx: TransactionsPersistenceClient,
+    ): Promise<boolean> {
+        const updated = await tx.transaction.updateMany({
+            where: {
+                workspaceId: input.workspaceId,
+                id: input.transactionId,
+                categoryId: null,
+                deletedAt: null,
+                version: input.previousTransaction.version,
+            },
+            data: { categoryId: input.categoryId, version: { increment: 1 } },
+        })
+        if (!updated.count) return false
+        const current = await this.findTransactionById(input.workspaceId, input.transactionId, tx)
+        if (!current) throw new Error('Updated transaction could not be loaded')
+        await this.auditService.record(
+            {
+                action: AUDIT_ACTIONS.TRANSACTION_UPDATED,
+                workspaceId: input.workspaceId,
+                userId: input.userId,
+                entityType: AUDIT_ENTITY_TYPES.TRANSACTION,
+                entityId: input.transactionId,
+                metadata: {
+                    previous: mapTransactionAuditMetadata(input.previousTransaction),
+                    current: mapTransactionAuditMetadata(current),
+                },
+            },
+            tx,
+        )
+        return true
     }
 
     async updateTransactionWithTags(
@@ -659,6 +700,10 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
             AND t."deleted_at" IS NULL
     `
 
+    if (filters.search) {
+        whereClause = Prisma.sql`${whereClause} AND POSITION(LOWER(${filters.search}) IN LOWER(t."description")) > 0`
+    }
+
     if (filters.type) {
         whereClause = Prisma.sql`${whereClause} AND t."type" = ${filters.type}`
     }
@@ -666,7 +711,10 @@ function buildTransactionsWhereClause(filters: ListTransactionsFilters): Prisma.
     if (filters.uncategorized) {
         whereClause = Prisma.sql`${whereClause} AND t."category_id" IS NULL`
     } else if (filters.categoryIds && filters.categoryIds.length > 0) {
-        whereClause = Prisma.sql`${whereClause} AND t."category_id" IN (${Prisma.join(filters.categoryIds)})`
+        whereClause = Prisma.sql`${whereClause} AND (t."category_id" IN (${Prisma.join(filters.categoryIds)}) OR t."category_id" IN (
+            SELECT child."id" FROM "categories" child
+            WHERE child."workspace_id" = ${filters.workspaceId} AND child."parent_id" IN (${Prisma.join(filters.categoryIds)})
+        ))`
     } else if (filters.categoryId) {
         whereClause = Prisma.sql`${whereClause} AND t."category_id" = ${filters.categoryId}`
     }

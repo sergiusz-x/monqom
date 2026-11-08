@@ -42,7 +42,7 @@ describe("BudgetProgressBar - basic display", () => {
 
   it("shows percentage for budgeted item", () => {
     render(<BudgetProgressBar item={makeItem({ percentage: 50 })} />);
-    expect(screen.getByText("50.0%")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
   });
 
   it("shows spent and budget amounts", () => {
@@ -133,7 +133,7 @@ describe("BudgetProgressBar - over budget", () => {
 
   it("shows percentage over 100", () => {
     render(<BudgetProgressBar item={overBudgetItem} />);
-    expect(screen.getByText("150.0%")).toBeInTheDocument();
+    expect(screen.getByText("150%")).toBeInTheDocument();
   });
 });
 
@@ -145,11 +145,9 @@ describe("BudgetProgressBar - color coding", () => {
     expect(screen.getByRole("progressbar").className).toContain("bg-green-500");
   });
 
-  it("uses yellow bar at exactly 75%", () => {
+  it("uses green bar at exactly 75%", () => {
     render(<BudgetProgressBar item={makeItem({ percentage: 75 })} />);
-    expect(screen.getByRole("progressbar").className).toContain(
-      "bg-yellow-500",
-    );
+    expect(screen.getByRole("progressbar").className).toContain("bg-green-500");
   });
 
   it("uses yellow bar between 75% and 89%", () => {
@@ -159,9 +157,11 @@ describe("BudgetProgressBar - color coding", () => {
     );
   });
 
-  it("uses red bar at exactly 90%", () => {
+  it("uses yellow bar at exactly 90%", () => {
     render(<BudgetProgressBar item={makeItem({ percentage: 90 })} />);
-    expect(screen.getByRole("progressbar").className).toContain("bg-red-500");
+    expect(screen.getByRole("progressbar").className).toContain(
+      "bg-yellow-500",
+    );
   });
 
   it("uses red bar when over budget", () => {

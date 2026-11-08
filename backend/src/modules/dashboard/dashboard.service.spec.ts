@@ -13,17 +13,20 @@ describe('DashboardService', () => {
             | 'listCategoriesByIds'
             | 'listCategorySpendForRange'
             | 'listMonthlySpendForRange'
+            | 'listMonthlyFinancialsForRange'
         >
     >
     let transactionsRepository: jest.Mocked<Pick<TransactionsRepository, 'listTransactions'>>
 
     beforeEach(() => {
+        jest.useFakeTimers().setSystemTime(new Date('2026-11-08T12:00:00Z'))
         dashboardRepository = {
             getTotalSpendForRange: jest.fn(),
             getTotalIncomeForRange: jest.fn(),
             listCategoriesByIds: jest.fn(),
             listCategorySpendForRange: jest.fn(),
             listMonthlySpendForRange: jest.fn(),
+            listMonthlyFinancialsForRange: jest.fn().mockResolvedValue([]),
         }
         transactionsRepository = {
             listTransactions: jest.fn(),
@@ -35,6 +38,8 @@ describe('DashboardService', () => {
             transactionsRepository as unknown as TransactionsRepository,
         )
     })
+
+    afterEach(() => jest.useRealTimers())
 
     it('returns current and previous month spending totals with change metadata', async () => {
         dashboardRepository.getTotalSpendForRange
@@ -71,6 +76,10 @@ describe('DashboardService', () => {
     })
 
     it('builds the complete dashboard from one monthly aggregation query', async () => {
+        dashboardRepository.listMonthlyFinancialsForRange.mockResolvedValue([
+            { month: '2026-03', income: 9000, spending: 4000 },
+            { month: '2026-04', income: 2500, spending: 10000 },
+        ])
         dashboardRepository.listMonthlySpendForRange.mockResolvedValue([
             { month: '2025-12', amount: 1000 },
             { month: '2026-03', amount: 4000 },
@@ -119,6 +128,7 @@ describe('DashboardService', () => {
                 income_total: 25,
                 net_total: -75,
             },
+            spending_pace: null,
             category_breakdown: {
                 month: '2026-04',
                 currency: 'USD',
@@ -141,6 +151,22 @@ describe('DashboardService', () => {
                 { month: '2026-02', total: 0 },
                 { month: '2026-03', total: 40 },
                 { month: '2026-04', total: 100 },
+            ],
+            financial_trend: [
+                ...[
+                    '2025-05',
+                    '2025-06',
+                    '2025-07',
+                    '2025-08',
+                    '2025-09',
+                    '2025-10',
+                    '2025-11',
+                    '2025-12',
+                    '2026-01',
+                    '2026-02',
+                ].map((month) => ({ month, income: null, spending: null })),
+                { month: '2026-03', income: 90, spending: 40 },
+                { month: '2026-04', income: 25, spending: 100 },
             ],
             recent_transactions: [
                 {
@@ -167,14 +193,91 @@ describe('DashboardService', () => {
             new Date('2025-11-01T00:00:00.000Z'),
             new Date('2026-05-01T00:00:00.000Z'),
         )
+        expect(dashboardRepository.listMonthlyFinancialsForRange).toHaveBeenCalledWith(
+            'workspace-1',
+            new Date('2025-05-01T00:00:00.000Z'),
+            new Date('2026-05-01T00:00:00.000Z'),
+        )
         expect(dashboardRepository.getTotalSpendForRange).not.toHaveBeenCalled()
         expect(transactionsRepository.listTransactions).toHaveBeenCalledWith({
             workspaceId: 'workspace-1',
-            limit: 5,
+            limit: 30,
             offset: 0,
             sortBy: 'date',
             sortDirection: 'desc',
         })
+    })
+
+    it('compares spending through today with the same days in the previous month', async () => {
+        dashboardRepository.listMonthlySpendForRange.mockResolvedValue([])
+        dashboardRepository.listCategorySpendForRange.mockResolvedValue([])
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValue(0)
+        dashboardRepository.getTotalSpendForRange
+            .mockResolvedValueOnce(12000)
+            .mockResolvedValueOnce(10000)
+        transactionsRepository.listTransactions.mockResolvedValue([])
+        const result = await service.getOverview({ month: '2026-11' }, 'workspace-1')
+        expect(result.spending_pace).toEqual({ change_percentage: 20, direction: 'up' })
+        expect(dashboardRepository.getTotalSpendForRange).toHaveBeenNthCalledWith(
+            1,
+            'workspace-1',
+            new Date('2026-11-01T00:00:00Z'),
+            new Date('2026-11-09T00:00:00Z'),
+        )
+        expect(dashboardRepository.getTotalSpendForRange).toHaveBeenNthCalledWith(
+            2,
+            'workspace-1',
+            new Date('2026-10-01T00:00:00Z'),
+            new Date('2026-10-09T00:00:00Z'),
+        )
+    })
+
+    it('uses the workspace day and clamps the previous month to its last day', async () => {
+        jest.setSystemTime(new Date('2027-03-30T16:30:00Z'))
+        const workspaceService = {
+            getWorkspaceById: jest
+                .fn()
+                .mockResolvedValue({ baseCurrency: 'PLN', timezone: 'Asia/Tokyo' }),
+        }
+        service = new DashboardService(
+            dashboardRepository as unknown as DashboardRepository,
+            workspaceService as never,
+            transactionsRepository as unknown as TransactionsRepository,
+        )
+        dashboardRepository.listMonthlySpendForRange.mockResolvedValue([])
+        dashboardRepository.listCategorySpendForRange.mockResolvedValue([])
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValue(0)
+        dashboardRepository.getTotalSpendForRange
+            .mockResolvedValueOnce(0)
+            .mockResolvedValueOnce(10000)
+        transactionsRepository.listTransactions.mockResolvedValue([])
+        const result = await service.getOverview({ month: '2027-03' }, 'workspace-1')
+        expect(result.spending_pace).toEqual({ change_percentage: -100, direction: 'down' })
+        expect(dashboardRepository.getTotalSpendForRange).toHaveBeenNthCalledWith(
+            1,
+            'workspace-1',
+            new Date('2027-03-01T00:00:00Z'),
+            new Date('2027-04-01T00:00:00Z'),
+        )
+        expect(dashboardRepository.getTotalSpendForRange).toHaveBeenNthCalledWith(
+            2,
+            'workspace-1',
+            new Date('2027-02-01T00:00:00Z'),
+            new Date('2027-03-01T00:00:00Z'),
+        )
+    })
+
+    it('omits the pace when the previous period has no spending', async () => {
+        dashboardRepository.listMonthlySpendForRange.mockResolvedValue([])
+        dashboardRepository.listCategorySpendForRange.mockResolvedValue([])
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValue(0)
+        dashboardRepository.getTotalSpendForRange
+            .mockResolvedValueOnce(10000)
+            .mockResolvedValueOnce(0)
+        transactionsRepository.listTransactions.mockResolvedValue([])
+        expect(
+            (await service.getOverview({ month: '2026-11' }, 'workspace-1')).spending_pace,
+        ).toBeNull()
     })
 
     it('returns a null percentage when the previous month has no spending', async () => {

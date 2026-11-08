@@ -79,11 +79,19 @@ void i18n.use(initReactI18next).init({
 });
 
 document.documentElement.lang = initialLanguage;
+document.title =
+  initialLanguage === "pl"
+    ? "Monqom - finanse osobiste bez chaosu"
+    : "Monqom - personal finance, made clear";
 
 i18n.on("languageChanged", (language) => {
   const supportedLanguage = language === "pl" ? "pl" : "en";
   localStorage.setItem("monqom-language", supportedLanguage);
   document.documentElement.lang = supportedLanguage;
+  document.title =
+    supportedLanguage === "pl"
+      ? "Monqom - finanse osobiste bez chaosu"
+      : "Monqom - personal finance, made clear";
 });
 
 export default i18n;

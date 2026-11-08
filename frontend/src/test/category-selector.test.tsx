@@ -19,14 +19,14 @@ const mockCategories: ApiCategory[] = [
   {
     id: "food",
     name: "Food",
-    icon: null,
+    icon: "🍽️",
     parent_id: null,
     sort_order: 1,
     children: [
       {
         id: "groceries",
         name: "Groceries",
-        icon: null,
+        icon: "🛒",
         parent_id: "food",
         sort_order: 1,
         children: [],
@@ -192,6 +192,23 @@ describe("CategorySelector category display", () => {
       ).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "Fuel" })).toBeInTheDocument();
     });
+  });
+
+  it("shows category icons in the list and for the selected category", async () => {
+    renderSelector("groceries");
+    const selector = screen.getByRole("combobox");
+    await waitFor(() => expect(selector).toHaveTextContent("🛒"));
+    expect(selector).toHaveTextContent("Food → Groceries");
+    await userEvent.click(selector);
+    expect(screen.getByRole("option", { name: "Food" })).toHaveTextContent(
+      "🍽️",
+    );
+    expect(screen.getByRole("option", { name: "Groceries" })).toHaveTextContent(
+      "🛒",
+    );
+    expect(
+      screen.getByRole("option", { name: "Restaurants" }),
+    ).toHaveTextContent("Restaurants");
   });
 
   it("marks selected option with aria-selected", async () => {

@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
 import { TransactionsRepository } from './transactions.repository'
 import { TransactionsService } from './transactions.service'
 
@@ -11,6 +11,7 @@ describe('TransactionsService', () => {
     let transactionsRepository: jest.Mocked<
         Pick<
             TransactionsRepository,
+            | 'assignCategory'
             | 'countTransactions'
             | 'createTransactionWithTags'
             | 'findActivePaymentSourceById'
@@ -31,6 +32,7 @@ describe('TransactionsService', () => {
             ),
         }
         transactionsRepository = {
+            assignCategory: jest.fn(),
             countTransactions: jest.fn(),
             createTransactionWithTags: jest.fn(),
             findActivePaymentSourceById: jest.fn(),
@@ -45,6 +47,44 @@ describe('TransactionsService', () => {
         service = new TransactionsService(
             prisma as never,
             transactionsRepository as unknown as TransactionsRepository,
+        )
+    })
+
+    it.each(['expense', 'income'] as const)('assigns only a matching %s category', async (type) => {
+        const transaction = { id: 'transaction-1', type, categoryId: null }
+        transactionsRepository.findTransactionById.mockResolvedValue(transaction as never)
+        transactionsRepository.findCategoryById.mockResolvedValue({
+            id: 'category-1',
+            type,
+        } as never)
+        transactionsRepository.assignCategory.mockResolvedValue(true)
+        await service.assignCategory('transaction-1', 'workspace-1', 'user-1', 'category-1')
+        expect(transactionsRepository.assignCategory).toHaveBeenCalledWith(
+            {
+                workspaceId: 'workspace-1',
+                transactionId: 'transaction-1',
+                userId: 'user-1',
+                categoryId: 'category-1',
+                previousTransaction: transaction,
+            },
+            transactionClient,
+        )
+    })
+
+    it('rejects mismatched categories and concurrent assignments', async () => {
+        transactionsRepository.findTransactionById.mockResolvedValue({
+            type: 'income',
+            categoryId: null,
+        } as never)
+        transactionsRepository.findCategoryById.mockResolvedValue({ type: 'expense' } as never)
+        await expect(service.assignCategory('tx', 'ws', 'user', 'cat')).rejects.toBeInstanceOf(
+            NotFoundException,
+        )
+        expect(transactionsRepository.assignCategory).not.toHaveBeenCalled()
+        transactionsRepository.findCategoryById.mockResolvedValue({ type: 'income' } as never)
+        transactionsRepository.assignCategory.mockResolvedValue(false)
+        await expect(service.assignCategory('tx', 'ws', 'user', 'cat')).rejects.toBeInstanceOf(
+            ConflictException,
         )
     })
 

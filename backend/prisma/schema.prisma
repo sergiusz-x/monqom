@@ -95,6 +95,10 @@ model Workspace {
   paymentSources  PaymentSource[]
   transactions    Transaction[]
   budgets         Budget[]
+  recurringBudgetVersions RecurringBudgetVersion[]
+  budgetMonthExclusions BudgetMonthExclusion[]
+  monthlyPlans MonthlyPlan[]
+  incomeRules MonthlyPlanIncomeRule[]
   goals           Goal[]
   goalOperations  GoalOperation[]
   auditEvents     AuditEvent[]
@@ -141,6 +145,8 @@ model Category {
   children               Category[]                      @relation("ParentChild")
   transactions           Transaction[]
   budgets                Budget[]
+  recurringBudgetVersions RecurringBudgetVersion[]
+  budgetMonthExclusions BudgetMonthExclusion[]
   credentialRestrictions IntegrationCredentialCategory[]
 
   @@unique([workspaceId, id])
@@ -283,6 +289,93 @@ model Budget {
   @@map("budgets")
 }
 
+// Changes are effective from a month onward; an inactive version ends a rule.
+model RecurringBudgetVersion {
+  id             String   @id @default(uuid())
+  workspaceId    String   @map("workspace_id")
+  categoryId     String   @map("category_id")
+  effectiveMonth String   @map("effective_month") @db.VarChar(7)
+  active         Boolean  @default(true)
+  amount         Int
+  currency       String
+  baseAmount     Int      @map("base_amount")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+
+  @@unique([workspaceId, categoryId, effectiveMonth])
+  @@index([workspaceId, effectiveMonth])
+  @@map("recurring_budget_versions")
+}
+
+// Suppresses an inherited limit for one month without ending the recurring rule.
+model BudgetMonthExclusion {
+  id          String @id @default(uuid())
+  workspaceId String @map("workspace_id")
+  categoryId  String @map("category_id")
+  month       String @db.VarChar(7)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [workspaceId, categoryId], references: [workspaceId, id])
+
+  @@unique([workspaceId, categoryId, month])
+  @@map("budget_month_exclusions")
+}
+
+// Legacy plans retain their original funds until planned income is entered.
+model MonthlyPlan {
+  id            String   @id @default(uuid())
+  workspaceId   String   @map("workspace_id")
+  month         String   @db.VarChar(7)
+  currency      String
+  funds         Int
+  incomePlanned Boolean  @default(false) @map("income_planned")
+  incomeMode    String   @default("manual") @map("income_mode")
+  incomeCategoryIds String[] @default([]) @map("income_category_ids")
+  confirmedAt   DateTime @map("confirmed_at")
+  revision      Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  goalAllocations MonthlyGoalAllocation[]
+
+  @@unique([workspaceId, month])
+  @@unique([workspaceId, id])
+  @@map("monthly_plans")
+}
+
+model MonthlyPlanIncomeRule {
+  id String @id @default(uuid())
+  workspaceId String @map("workspace_id")
+  effectiveMonth String @db.VarChar(7) @map("effective_month")
+  currency String
+  categoryIds String[] @default([]) @map("category_ids")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, effectiveMonth])
+  @@map("monthly_plan_income_rules")
+}
+
+model MonthlyGoalAllocation {
+  id          String @id @default(uuid())
+  workspaceId String @map("workspace_id")
+  planId      String @map("plan_id")
+  goalId      String? @map("goal_id")
+  goalName    String @map("goal_name")
+  amount      Int
+
+  plan MonthlyPlan @relation(fields: [workspaceId, planId], references: [workspaceId, id], onDelete: Cascade)
+  goal Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, planId, goalId])
+  @@index([workspaceId, goalId])
+  @@map("monthly_goal_allocations")
+}
+
 model Goal {
   id             String    @id @default(uuid())
   workspaceId    String    @map("workspace_id")
@@ -298,6 +391,7 @@ model Goal {
 
   workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   operations GoalOperation[]
+  monthlyAllocations MonthlyGoalAllocation[]
 
   @@unique([workspaceId, id])
   @@index([workspaceId, archivedAt])

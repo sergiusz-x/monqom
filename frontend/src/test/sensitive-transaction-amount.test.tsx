@@ -136,6 +136,51 @@ describe("SensitiveTransactionAmount", () => {
       document.querySelectorAll('[data-sensitive-amount="revealed"]'),
     ).toHaveLength(2);
   });
+  it("resets revealed amounts without remounting the current screen when preferences change", async () => {
+    const user = userEvent.setup();
+    const initialUser: User = {
+      id: "user-1",
+      email: "ada@example.com",
+      name: "Ada",
+      hideSalaryAmounts: true,
+      emailVerified: true,
+      totpEnabled: false,
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+    const auth: AuthContextValue = {
+      user: initialUser,
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setUser: vi.fn(),
+    };
+    const view = (value: AuthContextValue) => (
+      <AuthContext.Provider value={value}>
+        <SalaryPrivacyProvider>
+          <input aria-label="Draft" defaultValue="" />
+          <SensitiveTransactionAmount
+            transaction={salaryTransaction}
+            categorySystemKeys={{
+              "salary-category": SALARY_CATEGORY_SYSTEM_KEY,
+            }}
+          />
+        </SalaryPrivacyProvider>
+      </AuthContext.Provider>
+    );
+    const { rerender } = render(view(auth));
+    await user.type(screen.getByLabelText("Draft"), "unsaved changes");
+    await user.click(
+      screen.getByRole("button", { name: "Reveal salary amount" }),
+    );
+    rerender(
+      view({ ...auth, user: { ...initialUser, updatedAt: "2026-08-02" } }),
+    );
+    expect(screen.getByLabelText("Draft")).toHaveValue("unsaved changes");
+    expect(
+      screen.getByRole("button", { name: "Reveal salary amount" }),
+    ).toHaveClass("blur-[8px]");
+  });
   it("does not hide a custom category that only shares the Salary name", () => {
     renderAmount(true, "categories.income.custom-salary");
 

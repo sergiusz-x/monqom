@@ -75,6 +75,19 @@ export class PaymentSourcesController {
         )
     }
 
+    @Post(':id/restore')
+    @ApiPaymentSourceResponse()
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRole('admin')
+    @HttpCode(HttpStatus.OK)
+    async restorePaymentSource(
+        @Param('id') paymentSourceId: string,
+        @CurrentWorkspaceId() workspaceId: string,
+        @CurrentUserId() userId: string,
+    ): Promise<PaymentSourceResponse> {
+        return this.paymentSourcesService.restorePaymentSource(paymentSourceId, workspaceId, userId)
+    }
+
     @Post(':id/archive')
     @ApiPaymentSourceResponse()
     @UseGuards(WorkspaceRoleGuard)

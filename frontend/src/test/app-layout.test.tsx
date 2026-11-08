@@ -337,42 +337,52 @@ describe("Sidebar", () => {
     expect(screen.getByText("Alice Smith")).toBeInTheDocument();
   });
 
-  it("defaults to one theme button in system mode", () => {
+  it("shows the actual light theme when following the system", () => {
     renderSidebar();
-
     expect(
       screen.getByRole("button", {
-        name: "Current theme: System. Click to change.",
+        name: "Switch to Dark theme",
       }),
     ).toBeInTheDocument();
     expect(localStorage.getItem("monqom-theme")).toBe("system");
   });
 
-  it("cycles system, light, dark, and back to system", async () => {
+  it("toggles between light and dark from the current appearance", async () => {
     const user = userEvent.setup();
     renderSidebar();
-
     await user.click(
       screen.getByRole("button", {
-        name: "Current theme: System. Click to change.",
-      }),
-    );
-    expect(localStorage.getItem("monqom-theme")).toBe("light");
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Current theme: Light. Click to change.",
+        name: "Switch to Dark theme",
       }),
     );
     expect(document.documentElement).toHaveClass("dark");
     expect(localStorage.getItem("monqom-theme")).toBe("dark");
-
     await user.click(
       screen.getByRole("button", {
-        name: "Current theme: Dark. Click to change.",
+        name: "Switch to Light theme",
       }),
     );
-    expect(localStorage.getItem("monqom-theme")).toBe("system");
+    expect(localStorage.getItem("monqom-theme")).toBe("light");
+  });
+
+  it("shows dark when the system theme is dark", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    const user = userEvent.setup();
+    renderSidebar();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Switch to Light theme",
+      }),
+    );
+    expect(localStorage.getItem("monqom-theme")).toBe("light");
+    vi.unstubAllGlobals();
   });
 
   it("does not render user info when user is null", () => {

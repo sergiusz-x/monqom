@@ -236,6 +236,66 @@ export const PaymentSourcesApiAxiosParamCreator = function (
      *
      * @param {string} id
      * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    paymentSourcesControllerRestorePaymentSource: async (
+      id: string,
+      workspaceId: string,
+      options: AxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists(
+        "paymentSourcesControllerRestorePaymentSource",
+        "id",
+        id,
+      );
+      // verify required parameter 'workspaceId' is not null or undefined
+      assertParamExists(
+        "paymentSourcesControllerRestorePaymentSource",
+        "workspaceId",
+        workspaceId,
+      );
+      const localVarPath =
+        `/workspaces/{workspaceId}/payment-sources/{id}/restore`
+          .replace(`{${"id"}}`, encodeURIComponent(String(id)))
+          .replace(
+            `{${"workspaceId"}}`,
+            encodeURIComponent(String(workspaceId)),
+          );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: "POST",
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {string} workspaceId
      * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -408,6 +468,36 @@ export const PaymentSourcesApiFp = function (configuration?: Configuration) {
      *
      * @param {string} id
      * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async paymentSourcesControllerRestorePaymentSource(
+      id: string,
+      workspaceId: string,
+      options?: AxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<InlineResponse20012>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.paymentSourcesControllerRestorePaymentSource(
+          id,
+          workspaceId,
+          options,
+        );
+      return createRequestFunction(
+        localVarAxiosArgs,
+        globalAxios,
+        BASE_PATH,
+        configuration,
+      );
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {string} workspaceId
      * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -511,6 +601,22 @@ export const PaymentSourcesApiFactory = function (
      *
      * @param {string} id
      * @param {string} workspaceId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    paymentSourcesControllerRestorePaymentSource(
+      id: string,
+      workspaceId: string,
+      options?: any,
+    ): AxiosPromise<InlineResponse20012> {
+      return localVarFp
+        .paymentSourcesControllerRestorePaymentSource(id, workspaceId, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {string} workspaceId
      * @param {PaymentSourceBodyDto} paymentSourceBodyDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -599,6 +705,24 @@ export class PaymentSourcesApi extends BaseAPI {
         includeArchived,
         options,
       )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {string} workspaceId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof PaymentSourcesApi
+   */
+  public paymentSourcesControllerRestorePaymentSource(
+    id: string,
+    workspaceId: string,
+    options?: AxiosRequestConfig,
+  ) {
+    return PaymentSourcesApiFp(this.configuration)
+      .paymentSourcesControllerRestorePaymentSource(id, workspaceId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 

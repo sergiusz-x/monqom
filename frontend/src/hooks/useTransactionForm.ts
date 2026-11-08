@@ -5,7 +5,6 @@ import { formatApiError } from "@monqom/ui/lib/error-message";
 import { transactionsApi } from "@/api/contract";
 import type { TransactionBodyDto } from "@/api/client";
 import { usePaymentSources } from "@/hooks/usePaymentSources";
-import { useTags } from "@/hooks/useTags";
 import { useFocusOnError } from "@/hooks/useFocusOnError";
 import { getDateOnlyInTimeZone, normalizeDateOnly } from "@/lib/date-only";
 import { majorAmountToMinorUnits, minorUnitsToMajorAmount } from "@/lib/money";
@@ -46,7 +45,6 @@ export function useTransactionForm({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const isEdit = mode === "edit";
-  const { tags: workspaceTags } = useTags(workspaceId);
   const {
     paymentSources,
     isLoading: paymentSourcesLoading,
@@ -75,22 +73,10 @@ export function useTransactionForm({
   const [notes, setNotes] = useState(() =>
     isEdit && transaction ? (transaction.notes ?? "") : "",
   );
-  const [selectedTags, setSelectedTags] = useState<string[]>(() =>
-    transaction?.tags ? [...transaction.tags] : [],
-  );
   const [paymentSourceId, setPaymentSourceId] = useState(() =>
     isEdit && transaction
       ? (transaction.paymentSourceId ?? "")
       : (defaultPaymentSourceId ?? ""),
-  );
-  const [advancedOpen, setAdvancedOpen] = useState(
-    Boolean(
-      isEdit &&
-      transaction &&
-      (transaction.notes ||
-        transaction.tags.length > 0 ||
-        transaction.currency !== defaultCurrency),
-    ),
   );
   const [errors, setErrors] = useState<TransactionFormErrors>({});
   const formRef = useFocusOnError(
@@ -157,6 +143,10 @@ export function useTransactionForm({
 
     setErrors({});
     setSubmitError(null);
+    if (isEdit && (!transaction || !Array.isArray(transaction.tags))) {
+      setSubmitError(t("transactions.loadDetailsError"));
+      return;
+    }
     setIsSaving(true);
     const payload = {
       type: transactionType,
@@ -166,7 +156,8 @@ export function useTransactionForm({
       description: description.trim(),
       category_id: categoryId,
       notes: notes.trim() || null,
-      tags: selectedTags,
+      // Keep existing tags even though the interface no longer edits them.
+      tags: isEdit ? transaction!.tags : [],
       payment_source_id: selectedPaymentSourceId,
     } as TransactionBodyDto;
 
@@ -206,7 +197,13 @@ export function useTransactionForm({
     submitError,
     isSaving,
     transactionType,
-    setTransactionType,
+    setTransactionType: (nextType: "expense" | "income") => {
+      if (nextType === transactionType) return;
+      setTransactionType(nextType);
+      setCategoryId(null);
+      setErrors((current) => ({ ...current, categoryId: undefined }));
+      setSubmitError(null);
+    },
     fields: {
       amountMinorUnits,
       setAmountMinorUnits: (val: number | null) => {
@@ -235,13 +232,6 @@ export function useTransactionForm({
       },
       notes,
       setNotes,
-      selectedTags,
-      setSelectedTags,
-    },
-    advanced: {
-      open: advancedOpen,
-      setOpen: setAdvancedOpen,
-      workspaceTags,
     },
     sources: {
       available: availablePaymentSources,
