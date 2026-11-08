@@ -69,6 +69,16 @@ beforeEach(() => {
 });
 
 describe("MonthlyPlanPanel", () => {
+  it("renders when a legacy plan has no allocations field", async () => {
+    get.mockResolvedValue({ data: { ...base, allocations: undefined } });
+
+    renderPanel();
+
+    expect(
+      await screen.findByRole("button", { name: "Plan savings" }),
+    ).toBeInTheDocument();
+  });
+
   it("removes a selected deleted goal allocation from this plan", async () => {
     get.mockResolvedValue({
       data: {
