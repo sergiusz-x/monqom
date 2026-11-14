@@ -263,7 +263,7 @@ describe('privacy operations in PostgreSQL', () => {
         expect(remainingMail.map((row) => [row.status, row.encryptedPayload])).toEqual([
             ['failed', ''],
             ['failed', ''],
-            ['processing', 'in-flight-secret'],
+            ['failed', ''],
             ['pending', 'other-secret'],
         ])
     })
