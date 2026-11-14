@@ -81,6 +81,7 @@ export class DashboardService {
         const normalizedWorkspaceId = normalizeRequiredValue(workspaceId, 'Workspace id')
         const monthRange = validateDashboardMonthInput(input)
         const trendMonths = getMonthSequence(monthRange.month, 6)
+        const financialMonths = getMonthSequence(monthRange.month, 12)
         const trendStart = parseMonthStart(trendMonths[0])
         const workspacePromise = this.workspaceService
             ? this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
@@ -95,7 +96,37 @@ export class DashboardService {
               })
             : Promise.resolve([])
 
-        const workspace = await workspacePromise
+        const [
+            workspace,
+            monthlySpend,
+            categorySpend,
+            recentTransactions,
+            incomeCents,
+            monthlyFinancials,
+        ] = await Promise.all([
+            workspacePromise,
+            this.dashboardRepository.listMonthlySpendForRange(
+                normalizedWorkspaceId,
+                trendStart,
+                monthRange.endDateExclusive,
+            ),
+            this.dashboardRepository.listCategorySpendForRange(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+            ),
+            recentTransactionsPromise,
+            this.dashboardRepository.getTotalIncomeForRange(
+                normalizedWorkspaceId,
+                monthRange.startDate,
+                monthRange.endDateExclusive,
+            ),
+            this.dashboardRepository.listMonthlyFinancialsForRange(
+                normalizedWorkspaceId,
+                parseMonthStart(financialMonths[0]),
+                monthRange.endDateExclusive,
+            ),
+        ])
         const today = new Intl.DateTimeFormat('en-CA', {
             timeZone: workspace.timezone,
             year: 'numeric',
@@ -104,32 +135,7 @@ export class DashboardService {
         }).formatToParts(new Date())
         const dateParts = new Map(today.map((part) => [part.type, part.value]))
         const currentMonth = `${dateParts.get('year')}-${dateParts.get('month')}`
-        const financialMonths = getMonthSequence(monthRange.month, 12)
 
-        const [monthlySpend, categorySpend, recentTransactions, incomeCents, monthlyFinancials] =
-            await Promise.all([
-                this.dashboardRepository.listMonthlySpendForRange(
-                    normalizedWorkspaceId,
-                    trendStart,
-                    monthRange.endDateExclusive,
-                ),
-                this.dashboardRepository.listCategorySpendForRange(
-                    normalizedWorkspaceId,
-                    monthRange.startDate,
-                    monthRange.endDateExclusive,
-                ),
-                recentTransactionsPromise,
-                this.dashboardRepository.getTotalIncomeForRange(
-                    normalizedWorkspaceId,
-                    monthRange.startDate,
-                    monthRange.endDateExclusive,
-                ),
-                this.dashboardRepository.listMonthlyFinancialsForRange(
-                    normalizedWorkspaceId,
-                    parseMonthStart(financialMonths[0]),
-                    monthRange.endDateExclusive,
-                ),
-            ])
         const totalsByMonth = new Map(monthlySpend.map((item) => [item.month, item.amount]))
         const currentTotalCents = totalsByMonth.get(monthRange.month) ?? 0
         const previousMonth = getMonthSequence(monthRange.month, 2)[0]

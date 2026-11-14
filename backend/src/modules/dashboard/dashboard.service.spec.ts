@@ -41,6 +41,38 @@ describe('DashboardService', () => {
 
     afterEach(() => jest.useRealTimers())
 
+    it('starts dashboard queries before waiting for workspace details', async () => {
+        dashboardRepository.listMonthlySpendForRange.mockResolvedValue([])
+        dashboardRepository.listCategorySpendForRange.mockResolvedValue([])
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValue(0)
+        dashboardRepository.listMonthlyFinancialsForRange.mockResolvedValue([])
+        transactionsRepository.listTransactions.mockResolvedValue([])
+
+        let resolveWorkspace!: (workspace: { baseCurrency: string; timezone: string }) => void
+        const workspacePromise = new Promise<{ baseCurrency: string; timezone: string }>(
+            (resolve) => {
+                resolveWorkspace = resolve
+            },
+        )
+        const workspaceService = { getWorkspaceById: jest.fn(() => workspacePromise) }
+        service = new DashboardService(
+            dashboardRepository as unknown as DashboardRepository,
+            workspaceService as never,
+            transactionsRepository as unknown as TransactionsRepository,
+        )
+
+        const overviewPromise = service.getOverview({ month: '2026-10' }, 'workspace-1')
+
+        expect(dashboardRepository.listMonthlySpendForRange).toHaveBeenCalled()
+        expect(dashboardRepository.listCategorySpendForRange).toHaveBeenCalled()
+        expect(dashboardRepository.getTotalIncomeForRange).toHaveBeenCalled()
+        expect(dashboardRepository.listMonthlyFinancialsForRange).toHaveBeenCalled()
+        expect(transactionsRepository.listTransactions).toHaveBeenCalled()
+
+        resolveWorkspace({ baseCurrency: 'USD', timezone: 'UTC' })
+        await overviewPromise
+    })
+
     it('loads financial history ending at an older selected month', async () => {
         dashboardRepository.listMonthlySpendForRange.mockResolvedValue([])
         dashboardRepository.listCategorySpendForRange.mockResolvedValue([])

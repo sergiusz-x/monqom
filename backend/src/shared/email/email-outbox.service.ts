@@ -134,6 +134,9 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async deliver(row: EmailOutbox): Promise<void> {
+        const claimedAt = row.lockedAt
+        if (!claimedAt) return
+
         try {
             const { recipient, token } = JSON.parse(this.decrypt(row.encryptedPayload)) as {
                 recipient: string
@@ -144,8 +147,8 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
                 ...buildEmail(row.kind as EmailKind, token, this.frontendUrl()),
                 idempotencyKey: `email-outbox/${row.id}`,
             })
-            await this.prisma.emailOutbox.update({
-                where: { id: row.id },
+            await this.prisma.emailOutbox.updateMany({
+                where: { id: row.id, status: 'processing', lockedAt: claimedAt },
                 data: {
                     status: 'sent',
                     sentAt: new Date(),
@@ -158,8 +161,8 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
             const attempts = row.attempts + 1
             const expired =
                 attempts >= MAX_ATTEMPTS || row.createdAt.getTime() < Date.now() - MAX_AGE_MS
-            await this.prisma.emailOutbox.update({
-                where: { id: row.id },
+            await this.prisma.emailOutbox.updateMany({
+                where: { id: row.id, status: 'processing', lockedAt: claimedAt },
                 data: {
                     status: expired ? 'failed' : 'pending',
                     ...(expired ? { encryptedPayload: '' } : {}),

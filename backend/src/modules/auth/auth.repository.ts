@@ -424,12 +424,12 @@ export class AuthRepository {
                     where: { id: userId },
                     select: { email: true },
                 })
-                // Cancel unclaimed mail in the same transaction as deletion. A message
-                // already claimed by a worker may already be in transit.
+                // Cancel every unsent message in the same transaction as deletion.
+                // Workers finish only while their original processing lease is active.
                 await tx.emailOutbox.updateMany({
                     where: {
                         recipient: emailRecipientHash(user.email),
-                        status: { in: ['pending', 'failed'] },
+                        status: { in: ['pending', 'failed', 'processing'] },
                     },
                     data: {
                         status: 'failed',

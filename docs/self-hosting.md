@@ -89,7 +89,12 @@ password, and wait until `pg_isready` succeeds before restoring:
 
 ```sh
 docker run -d --name monqom-restore-check --network none -e POSTGRES_PASSWORD=temporary-test-password postgres:18-alpine
-docker exec monqom-restore-check pg_isready -U postgres
+attempt=0
+until docker exec monqom-restore-check pg_isready -U postgres; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 30 ]; then echo "PostgreSQL did not become ready" >&2; exit 1; fi
+  sleep 1
+done
 docker exec -i monqom-restore-check pg_restore --exit-on-error --no-owner --no-privileges -U postgres -d postgres < monqom.dump
 docker exec monqom-restore-check psql -U postgres -d postgres -c '\dt'
 ```

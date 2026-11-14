@@ -100,7 +100,7 @@ describe('AuthRepository', () => {
         expect(tx.emailOutbox.updateMany).toHaveBeenCalledWith({
             where: {
                 recipient: expect.any(String),
-                status: { in: ['pending', 'failed'] },
+                status: { in: ['pending', 'failed', 'processing'] },
             },
             data: { status: 'failed', encryptedPayload: '', lockedAt: null, lastError: null },
         })
