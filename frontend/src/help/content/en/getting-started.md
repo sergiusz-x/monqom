@@ -21,7 +21,4 @@ Monqom helps you keep track of income, expenses and budgets in a workspace.
 
 [![Add Budget button](/marketing/screenshots/en/help-budget-add-light.png)](/marketing/screenshots/en/help-budget-add-light.png)
 
-
-
-
 Continue with [transactions](/help/en/transactions/) or [budgets](/help/en/budgets/). You can change your language and appearance in the app settings.

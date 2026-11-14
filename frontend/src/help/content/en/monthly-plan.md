@@ -10,7 +10,6 @@ Divide your planned income between expenses and savings goals.
 
 ## Plan income and savings
 
-
 1. In **Budgets**, find **Monthly plan** and select **Enter planned income**.
 
 [![Monthly plan with the Enter planned income button highlighted](/marketing/screenshots/en/help-plan-income-light.png)](/marketing/screenshots/en/help-plan-income-light.png)
@@ -39,7 +38,6 @@ Enter this month’s amount for each goal and select **Save**. If you do not hav
 For example, with PLN 5,000 of income, PLN 1,300 in budgets and PLN 500 in planned savings, PLN 3,200 remains to plan.
 
 [![Income allocation with the remaining amount highlighted](/marketing/screenshots/en/help-plan-summary-light.png)](/marketing/screenshots/en/help-plan-summary-light.png)
-
 
 If planned expenses and savings exceed your income, **Planned above income** shows the excess. Adjust budget limits, goal amounts or planned income to change the plan. Subcategory limits are included in their parent budget.
 

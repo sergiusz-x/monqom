@@ -109,8 +109,12 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
             {t(label)}
           </NavLink>
         ))}
-        <HelpLink newTab className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50">
-          <CircleHelp size={16} aria-hidden="true" />{t("nav.help")}
+        <HelpLink
+          newTab
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <CircleHelp size={16} aria-hidden="true" />
+          {t("nav.help")}
         </HelpLink>
       </nav>
 
@@ -143,15 +147,23 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
                 size="icon"
                 className="shrink-0"
                 aria-label={t(
-                  revealAll ? "privacy.hideAllSensitiveAmounts" : "privacy.revealAllSensitiveAmounts",
+                  revealAll
+                    ? "privacy.hideAllSensitiveAmounts"
+                    : "privacy.revealAllSensitiveAmounts",
                 )}
                 title={t(
-                  revealAll ? "privacy.hideAllSensitiveAmounts" : "privacy.revealAllSensitiveAmounts",
+                  revealAll
+                    ? "privacy.hideAllSensitiveAmounts"
+                    : "privacy.revealAllSensitiveAmounts",
                 )}
                 aria-pressed={revealAll}
                 onClick={() => setRevealAll(!revealAll)}
               >
-                {revealAll ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                {revealAll ? (
+                  <EyeOff size={16} aria-hidden="true" />
+                ) : (
+                  <Eye size={16} aria-hidden="true" />
+                )}
               </Button>
             )}
             <Button

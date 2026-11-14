@@ -16,9 +16,7 @@ Cel pomaga zaplanować oszczędzanie i śledzić, ile udało się już odłoży�
 
 2. Wpisz nazwę, kwotę docelową i kwotę, którą masz już odłożoną.
 
-[![Formularz tworzenia celu](/marketing/screenshots/pl/help-goal-form-light.png)](/marketing/screenshots/pl/help-goal-form-light.png)
-3. Ustaw termin celu i zdecyduj, czy zaczynasz oszczędzać w tym miesiącu. Zobaczysz, ile potrzeba odkładać miesięcznie.
-4. Wybierz **Utwórz cel**.
+[![Formularz tworzenia celu](/marketing/screenshots/pl/help-goal-form-light.png)](/marketing/screenshots/pl/help-goal-form-light.png) 3. Ustaw termin celu i zdecyduj, czy zaczynasz oszczędzać w tym miesiącu. Zobaczysz, ile potrzeba odkładać miesięcznie. 4. Wybierz **Utwórz cel**.
 
 ## Zapisz wpłatę lub wypłatę
 

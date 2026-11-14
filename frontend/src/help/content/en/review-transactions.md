@@ -10,7 +10,6 @@ Assign categories to transactions so expenses appear in the appropriate budgets.
 
 ## Review transactions
 
-
 1. If you see a notice about transactions without a category, select **Review transactions**.
 
 [![Transaction list with the Review transactions button highlighted](/marketing/screenshots/en/help-review-start-light.png)](/marketing/screenshots/en/help-review-start-light.png)

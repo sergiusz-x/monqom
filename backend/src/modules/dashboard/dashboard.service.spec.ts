@@ -48,7 +48,9 @@ describe('DashboardService', () => {
         transactionsRepository.listTransactions.mockResolvedValue([])
         const result = await service.getOverview({ month: '2024-02' }, 'workspace-1')
         expect(dashboardRepository.listMonthlyFinancialsForRange).toHaveBeenCalledWith(
-            'workspace-1', new Date('2023-03-01T00:00:00.000Z'), new Date('2024-03-01T00:00:00.000Z'),
+            'workspace-1',
+            new Date('2023-03-01T00:00:00.000Z'),
+            new Date('2024-03-01T00:00:00.000Z'),
         )
         expect(result.financial_trend.at(-1)?.month).toBe('2024-02')
     })

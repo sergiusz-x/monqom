@@ -113,7 +113,9 @@ describe("public landing page", () => {
       screen.getByText(/Możesz wyeksportować transakcje do pliku CSV lub JSON/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Załóż konto i zacznij śledzić wydatki bez konfiguracji/),
+      screen.getByText(
+        /Załóż konto i zacznij śledzić wydatki bez konfiguracji/,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Kontakt" })).toHaveAttribute(
       "href",

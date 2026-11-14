@@ -347,7 +347,7 @@ export default function TransactionsPage() {
         title={t("transactions.title")}
         description={
           <HelpLink
-              newTab
+            newTab
             article="transactions"
             className="underline underline-offset-4 hover:text-foreground"
           >

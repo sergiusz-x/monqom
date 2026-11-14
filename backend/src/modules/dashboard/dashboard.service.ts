@@ -106,36 +106,30 @@ export class DashboardService {
         const currentMonth = `${dateParts.get('year')}-${dateParts.get('month')}`
         const financialMonths = getMonthSequence(monthRange.month, 12)
 
-
-        const [
-            monthlySpend,
-            categorySpend,
-            recentTransactions,
-            incomeCents,
-            monthlyFinancials,
-        ] = await Promise.all([
-            this.dashboardRepository.listMonthlySpendForRange(
-                normalizedWorkspaceId,
-                trendStart,
-                monthRange.endDateExclusive,
-            ),
-            this.dashboardRepository.listCategorySpendForRange(
-                normalizedWorkspaceId,
-                monthRange.startDate,
-                monthRange.endDateExclusive,
-            ),
-            recentTransactionsPromise,
-            this.dashboardRepository.getTotalIncomeForRange(
-                normalizedWorkspaceId,
-                monthRange.startDate,
-                monthRange.endDateExclusive,
-            ),
-            this.dashboardRepository.listMonthlyFinancialsForRange(
-                normalizedWorkspaceId,
-                parseMonthStart(financialMonths[0]),
-                monthRange.endDateExclusive,
-            ),
-        ])
+        const [monthlySpend, categorySpend, recentTransactions, incomeCents, monthlyFinancials] =
+            await Promise.all([
+                this.dashboardRepository.listMonthlySpendForRange(
+                    normalizedWorkspaceId,
+                    trendStart,
+                    monthRange.endDateExclusive,
+                ),
+                this.dashboardRepository.listCategorySpendForRange(
+                    normalizedWorkspaceId,
+                    monthRange.startDate,
+                    monthRange.endDateExclusive,
+                ),
+                recentTransactionsPromise,
+                this.dashboardRepository.getTotalIncomeForRange(
+                    normalizedWorkspaceId,
+                    monthRange.startDate,
+                    monthRange.endDateExclusive,
+                ),
+                this.dashboardRepository.listMonthlyFinancialsForRange(
+                    normalizedWorkspaceId,
+                    parseMonthStart(financialMonths[0]),
+                    monthRange.endDateExclusive,
+                ),
+            ])
         const totalsByMonth = new Map(monthlySpend.map((item) => [item.month, item.amount]))
         const currentTotalCents = totalsByMonth.get(monthRange.month) ?? 0
         const previousMonth = getMonthSequence(monthRange.month, 2)[0]

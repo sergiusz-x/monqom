@@ -21,7 +21,4 @@ W Monqom możesz zapisywać wpływy i wydatki oraz planować budżety w swoim wo
 
 [![Przycisk dodawania budżetu](/marketing/screenshots/pl/help-budget-add-light.png)](/marketing/screenshots/pl/help-budget-add-light.png)
 
-
-
-
 Przeczytaj więcej o [transakcjach](/help/pl/transactions/) i [budżetach](/help/pl/budgets/). Język i wygląd zmienisz w ustawieniach aplikacji.

@@ -18,7 +18,9 @@ export default function MarketingLayout() {
             className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <MonqomLogo size={28} className="text-foreground" />
-            <span className="hidden text-lg font-semibold tracking-tight sm:inline">Monqom</span>
+            <span className="hidden text-lg font-semibold tracking-tight sm:inline">
+              Monqom
+            </span>
           </Link>
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
             <nav

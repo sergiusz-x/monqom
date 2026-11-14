@@ -16,9 +16,7 @@ A goal helps you plan your savings and track how much you have set aside.
 
 2. Enter a name, target amount and the amount you have already saved.
 
-[![Create goal form](/marketing/screenshots/en/help-goal-form-light.png)](/marketing/screenshots/en/help-goal-form-light.png)
-3. Set a target date and choose whether to start saving this month. You will see how much you need to save each month.
-4. Select **Create goal**.
+[![Create goal form](/marketing/screenshots/en/help-goal-form-light.png)](/marketing/screenshots/en/help-goal-form-light.png) 3. Set a target date and choose whether to start saving this month. You will see how much you need to save each month. 4. Select **Create goal**.
 
 ## Record a deposit or withdrawal
 

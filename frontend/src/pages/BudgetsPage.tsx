@@ -430,7 +430,18 @@ export default function BudgetsPage() {
     <PageContainer>
       <PageHeader
         title={t("budgets.title")}
-        description={<>{t("budgets.description")} <HelpLink newTab article="budgets" className="underline underline-offset-4 hover:text-foreground">{t("nav.budgetHelp")}</HelpLink></>}
+        description={
+          <>
+            {t("budgets.description")}{" "}
+            <HelpLink
+              newTab
+              article="budgets"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              {t("nav.budgetHelp")}
+            </HelpLink>
+          </>
+        }
         className="mb-6"
         actions={
           <Button onClick={() => showCreate()}>{t("budgets.add")}</Button>

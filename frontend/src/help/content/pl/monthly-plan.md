@@ -10,7 +10,6 @@ Podziel planowane wpływy między wydatki i oszczędności na cele.
 
 ## Zaplanuj wpływy i oszczędności
 
-
 1. W **Budżetach** znajdź **Plan na miesiąc** i wybierz **Wpisz planowane wpływy**.
 
 [![Plan na miesiąc z zaznaczonym przyciskiem wpisania wpływów](/marketing/screenshots/pl/help-plan-income-light.png)](/marketing/screenshots/pl/help-plan-income-light.png)
@@ -39,7 +38,6 @@ Wpisz kwotę na ten miesiąc przy wybranym celu i wybierz **Zapisz**. Jeśli nie
 Na przykład przy wpływach 5 000 zł, budżetach na 1 300 zł i planowanych oszczędnościach 500 zł zostaje 3 200 zł do zaplanowania.
 
 [![Podział wpływów z zaznaczoną kwotą pozostałą do zaplanowania](/marketing/screenshots/pl/help-plan-summary-light.png)](/marketing/screenshots/pl/help-plan-summary-light.png)
-
 
 Jeśli wydatki i oszczędności razem przekroczą wpływy, zobaczysz **Zaplanowano ponad wpływy** i kwotę przekroczenia. Zmień limity budżetów, kwoty na cele lub planowane wpływy, żeby dostosować plan. Limity podkategorii są uwzględniane w budżecie kategorii nadrzędnej.
 

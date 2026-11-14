@@ -27,9 +27,7 @@ describe("legal pages", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Polityka prywatności" }),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("link", { name: "Regulamin" }),
-    );
+    await userEvent.click(screen.getByRole("link", { name: "Regulamin" }));
     expect(
       screen.getByRole("heading", { level: 1, name: "Regulamin" }),
     ).toBeInTheDocument();

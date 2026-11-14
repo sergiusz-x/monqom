@@ -98,7 +98,9 @@ async function capture(
     path: resolve(output, filename),
     animations: "disabled",
   });
-  await page.evaluate(() => document.getElementById("screenshot-highlight")?.remove());
+  await page.evaluate(() =>
+    document.getElementById("screenshot-highlight")?.remove(),
+  );
 }
 
 for (const locale of ["pl", "en"] as const) {
@@ -188,21 +190,52 @@ for (const locale of ["pl", "en"] as const) {
             );
             await page.keyboard.press("Escape");
           } else if (name === "budget-guide") {
-            const button = page.getByRole("button", { name: text.budgetAdd }).first();
+            const button = page
+              .getByRole("button", { name: text.budgetAdd })
+              .first();
             await capture(page, output, `help-budget-add-${theme}.png`, button);
             await button.click();
             const dialog = page.getByRole("dialog", { name: text.budgetAdd });
-            await capture(page, output, `help-budget-form-${theme}.png`, dialog);
-            await capture(page, output, `help-budget-scope-${theme}.png`, dialog.getByLabel(text.budgetScope));
+            await capture(
+              page,
+              output,
+              `help-budget-form-${theme}.png`,
+              dialog,
+            );
+            await capture(
+              page,
+              output,
+              `help-budget-scope-${theme}.png`,
+              dialog.getByLabel(text.budgetScope),
+            );
             await page.keyboard.press("Escape");
           } else if (name === "transaction-guide") {
-            const button = page.getByRole("button", { name: text.transactionAdd }).first();
-            await capture(page, output, `help-transaction-add-${theme}.png`, button);
+            const button = page
+              .getByRole("button", { name: text.transactionAdd })
+              .first();
+            await capture(
+              page,
+              output,
+              `help-transaction-add-${theme}.png`,
+              button,
+            );
             await button.click();
-            const dialog = page.getByRole("dialog", { name: text.transactionAdd });
-            await capture(page, output, `help-transaction-form-${theme}.png`, dialog);
+            const dialog = page.getByRole("dialog", {
+              name: text.transactionAdd,
+            });
+            await capture(
+              page,
+              output,
+              `help-transaction-form-${theme}.png`,
+              dialog,
+            );
             await page.keyboard.press("Escape");
-            await capture(page, output, `help-transaction-search-${theme}.png`, page.getByPlaceholder(text.search));
+            await capture(
+              page,
+              output,
+              `help-transaction-search-${theme}.png`,
+              page.getByPlaceholder(text.search),
+            );
           } else {
             await capture(
               page,
@@ -254,21 +287,51 @@ for (const locale of ["pl", "en"] as const) {
       const text = labels[locale];
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto("/budgets");
-      await page.getByRole("button", { name: new RegExp(`^(${text.income}|${text.editIncome})$`) }).click();
-      const incomeDialog = page.getByRole("dialog", { name: text.incomeDialog });
-      await incomeDialog.locator('input').first().fill("500000");
-      await incomeDialog.getByRole("button", { name: text.save, exact: true }).click();
-      await expect(page.getByRole("button", { name: text.planGoals })).toBeVisible();
+      await page
+        .getByRole("button", {
+          name: new RegExp(`^(${text.income}|${text.editIncome})$`),
+        })
+        .click();
+      const incomeDialog = page.getByRole("dialog", {
+        name: text.incomeDialog,
+      });
+      await incomeDialog.locator("input").first().fill("500000");
+      await incomeDialog
+        .getByRole("button", { name: text.save, exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: text.planGoals }),
+      ).toBeVisible();
       for (const theme of ["dark", "light"] as const) {
-        await capture(page, output, `help-plan-allocate-${theme}.png`, page.getByRole("button", { name: text.planGoals }));
+        await capture(
+          page,
+          output,
+          `help-plan-allocate-${theme}.png`,
+          page.getByRole("button", { name: text.planGoals }),
+        );
         await page.getByRole("button", { name: text.planGoals }).click();
         const dialog = page.getByRole("dialog", { name: text.planGoals });
         await dialog.getByLabel(text.holiday).fill("50000");
-        await capture(page, output, `help-plan-goals-${theme}.png`, dialog.getByLabel(text.holiday));
-        await dialog.getByRole("button", { name: text.save, exact: true }).click();
+        await capture(
+          page,
+          output,
+          `help-plan-goals-${theme}.png`,
+          dialog.getByLabel(text.holiday),
+        );
+        await dialog
+          .getByRole("button", { name: text.save, exact: true })
+          .click();
         await expect(dialog).not.toBeVisible();
-        await capture(page, output, `help-plan-summary-${theme}.png`, page.getByText(text.remaining, { exact: true }).locator(".."));
-        if (theme === "dark") await page.getByRole("button", { name: text.light, exact: true }).click();
+        await capture(
+          page,
+          output,
+          `help-plan-summary-${theme}.png`,
+          page.getByText(text.remaining, { exact: true }).locator(".."),
+        );
+        if (theme === "dark")
+          await page
+            .getByRole("button", { name: text.light, exact: true })
+            .click();
       }
     });
   });

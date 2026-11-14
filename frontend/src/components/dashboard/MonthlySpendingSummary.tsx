@@ -42,8 +42,10 @@ export function MonthlySpendingSummary({
   if (privacy.key !== privacyKey) {
     setPrivacy({ key: privacyKey, income: false, balance: false });
   }
-  const incomeRevealed = revealAll || (privacy.key === privacyKey && privacy.income);
-  const balanceRevealed = revealAll || (privacy.key === privacyKey && privacy.balance);
+  const incomeRevealed =
+    revealAll || (privacy.key === privacyKey && privacy.income);
+  const balanceRevealed =
+    revealAll || (privacy.key === privacyKey && privacy.balance);
   return (
     <section aria-label={t("dashboard.summary")} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">

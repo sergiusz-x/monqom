@@ -126,7 +126,8 @@ async function main() {
                 const parts = i === 0 ? [0.31, 0.26, 0.24, 0.19] : i === 2 ? [0.58, 0.42] : [1]
                 let remaining = amount
                 for (let part = 0; part < parts.length; part++) {
-                    const value = part === parts.length - 1 ? remaining : Math.round(amount * parts[part]!)
+                    const value =
+                        part === parts.length - 1 ? remaining : Math.round(amount * parts[part]!)
                     remaining -= value
                     const purchaseDate = new Date(date)
                     purchaseDate.setUTCDate(Math.max(1, date.getUTCDate() - part * 5))
@@ -139,44 +140,93 @@ async function main() {
                             baseAmount: value,
                             currency: 'PLN',
                             date: purchaseDate,
-                            description: i === 0 && part > 0
-                                ? (locale === 'pl' ? ['Zakupy na tydzień', 'Warzywniak', 'Piekarnia', 'Zakupy do domu'][part]! : ['Weekly groceries', 'Produce market', 'Bakery', 'Household groceries'][part]!)
-                                : i === 2 && part === 1
-                                  ? (locale === 'pl' ? 'Lunch na mieście' : 'Lunch out')
-                                  : descriptions[i]!,
+                            description:
+                                i === 0 && part > 0
+                                    ? locale === 'pl'
+                                        ? [
+                                              'Zakupy na tydzień',
+                                              'Warzywniak',
+                                              'Piekarnia',
+                                              'Zakupy do domu',
+                                          ][part]!
+                                        : [
+                                              'Weekly groceries',
+                                              'Produce market',
+                                              'Bakery',
+                                              'Household groceries',
+                                          ][part]!
+                                    : i === 2 && part === 1
+                                      ? locale === 'pl'
+                                          ? 'Lunch na mieście'
+                                          : 'Lunch out'
+                                      : descriptions[i]!,
                         },
                     })
                 }
             }
         }
         // Additional everyday costs make the trend and recent activity more representative.
-        const extraNames = locale === 'pl' ? ['Mieszkanie', 'Rachunki', 'Rozrywka'] : ['Housing', 'Bills', 'Entertainment']
-        const extraDescriptions = locale === 'pl' ? ['Wynajem mieszkania', 'Prąd i internet', 'Bilety na koncert'] : ['Apartment rent', 'Electricity and internet', 'Concert tickets']
+        const extraNames =
+            locale === 'pl'
+                ? ['Mieszkanie', 'Rachunki', 'Rozrywka']
+                : ['Housing', 'Bills', 'Entertainment']
+        const extraDescriptions =
+            locale === 'pl'
+                ? ['Wynajem mieszkania', 'Prąd i internet', 'Bilety na koncert']
+                : ['Apartment rent', 'Electricity and internet', 'Concert tickets']
         const extraCosts = [
-            [230000, 34500, 22500], [230000, 41000, 9500], [230000, 36500, 39000],
-            [220000, 29000, 12000], [220000, 44000, 28000], [220000, 33500, 6000],
+            [230000, 34500, 22500],
+            [230000, 41000, 9500],
+            [230000, 36500, 39000],
+            [220000, 29000, 12000],
+            [220000, 44000, 28000],
+            [220000, 33500, 6000],
         ]
         for (let i = 0; i < extraNames.length; i++) {
-            const category = await prisma.category.create({ data: {
-                workspaceId, name: extraNames[i]!, sortOrder: i + names.length,
-                color: ['#6366f1', '#f97316', '#a855f7'][i],
-            } })
+            const category = await prisma.category.create({
+                data: {
+                    workspaceId,
+                    name: extraNames[i]!,
+                    sortOrder: i + names.length,
+                    color: ['#6366f1', '#f97316', '#a855f7'][i],
+                },
+            })
             for (let offset = 5; offset >= 0; offset--) {
                 const amount = extraCosts[offset]![i]!
-                await prisma.transaction.create({ data: {
-                    workspaceId, categoryId: category.id, paymentSourceId: source.id,
-                    amount, baseAmount: amount, currency: 'PLN',
-                    date: new Date(Date.UTC(now.getFullYear(), now.getMonth() - offset, Math.min(now.getDate(), 12 - i * 3))),
-                    description: extraDescriptions[i]!,
-                } })
+                await prisma.transaction.create({
+                    data: {
+                        workspaceId,
+                        categoryId: category.id,
+                        paymentSourceId: source.id,
+                        amount,
+                        baseAmount: amount,
+                        currency: 'PLN',
+                        date: new Date(
+                            Date.UTC(
+                                now.getFullYear(),
+                                now.getMonth() - offset,
+                                Math.min(now.getDate(), 12 - i * 3),
+                            ),
+                        ),
+                        description: extraDescriptions[i]!,
+                    },
+                })
             }
         }
         // An uncategorized transaction illustrates the review workflow.
-        await prisma.transaction.create({ data: {
-            workspaceId, paymentSourceId: source.id, amount: 4890, baseAmount: 4890,
-            currency: 'PLN', date: new Date(Date.UTC(now.getFullYear(), now.getMonth(), Math.min(now.getDate(), 15))),
-            description: locale === 'pl' ? 'Kawa i śniadanie' : 'Coffee and breakfast',
-        } })
+        await prisma.transaction.create({
+            data: {
+                workspaceId,
+                paymentSourceId: source.id,
+                amount: 4890,
+                baseAmount: 4890,
+                currency: 'PLN',
+                date: new Date(
+                    Date.UTC(now.getFullYear(), now.getMonth(), Math.min(now.getDate(), 15)),
+                ),
+                description: locale === 'pl' ? 'Kawa i śniadanie' : 'Coffee and breakfast',
+            },
+        })
         for (let i = 0; i < 3; i++) {
             const amount = [90000, 22000, 18000][i]!
             await prisma.budget.create({
@@ -191,13 +241,17 @@ async function main() {
                 },
             })
         }
-        await prisma.goal.create({ data: {
-            workspaceId,
-            name: locale === 'pl' ? 'Fundusz awaryjny' : 'Emergency fund',
-            targetAmount: 1200000, initialAmount: 840000, currency: 'PLN',
-            planStartMonth: new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)),
-            targetDate: new Date(Date.UTC(now.getFullYear(), now.getMonth() + 12, 1)),
-        } })
+        await prisma.goal.create({
+            data: {
+                workspaceId,
+                name: locale === 'pl' ? 'Fundusz awaryjny' : 'Emergency fund',
+                targetAmount: 1200000,
+                initialAmount: 840000,
+                currency: 'PLN',
+                planStartMonth: new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)),
+                targetDate: new Date(Date.UTC(now.getFullYear(), now.getMonth() + 12, 1)),
+            },
+        })
         await prisma.goal.create({
             data: {
                 workspaceId,

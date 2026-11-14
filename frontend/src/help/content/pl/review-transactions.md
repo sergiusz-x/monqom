@@ -10,7 +10,6 @@ Przypisz kategorie transakcjom. Wydatki pojawią się dzięki temu w odpowiednic
 
 ## Przejrzyj transakcje
 
-
 1. Jeśli widzisz informację o transakcjach bez kategorii, wybierz **Przejrzyj transakcje**.
 
 [![Lista transakcji z zaznaczonym przyciskiem Przejrzyj transakcje](/marketing/screenshots/pl/help-review-start-light.png)](/marketing/screenshots/pl/help-review-start-light.png)

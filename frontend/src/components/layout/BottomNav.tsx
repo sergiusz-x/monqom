@@ -120,8 +120,12 @@ export default function BottomNav({ onAddTransaction }: BottomNavProps) {
             <Settings aria-hidden="true" />
             {t("nav.settings")}
           </Button>
-          <HelpLink newTab className="flex h-12 items-center gap-3 rounded-md border border-input px-4 text-sm font-medium hover:bg-accent">
-            <CircleHelp aria-hidden="true" />{t("nav.help")}
+          <HelpLink
+            newTab
+            className="flex h-12 items-center gap-3 rounded-md border border-input px-4 text-sm font-medium hover:bg-accent"
+          >
+            <CircleHelp aria-hidden="true" />
+            {t("nav.help")}
           </HelpLink>
         </div>
       </Modal>

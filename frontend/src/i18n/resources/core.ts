@@ -403,8 +403,7 @@ export const plCore = {
       title: "Załóż konto albo uruchom Monqom na własnej infrastrukturze.",
       hosted: {
         title: "Załóż konto",
-        description:
-          "Załóż konto i zacznij śledzić wydatki bez konfiguracji.",
+        description: "Załóż konto i zacznij śledzić wydatki bez konfiguracji.",
         action: "Załóż konto",
       },
       selfHosted: {
