@@ -11,7 +11,7 @@ test("opens public authentication journeys from the landing page", async ({
 
   await expect(
     page.getByRole("heading", {
-      name: "Understand your money without the complexity.",
+      name: "Your spending and budgets, all in one place.",
     }),
   ).toBeVisible();
 

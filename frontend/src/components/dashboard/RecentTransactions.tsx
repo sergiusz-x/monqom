@@ -22,7 +22,7 @@ import { invalidateFinancialData } from "@/lib/query-invalidation";
 import type { Category } from "@/types/category";
 import type { Transaction } from "@/types/transaction";
 
-import { Button, EmptyState, SectionCard } from "@monqom/ui";
+import { EmptyState, SectionCard } from "@monqom/ui";
 
 interface RecentTransactionsProps {
   workspaceId: string;
@@ -183,11 +183,10 @@ export function RecentTransactions({
           <ul ref={listRef} className="space-y-2">
             {transactions.slice(0, visibleCount).map((transaction) => (
               <li key={transaction.id}>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2 hover:bg-muted/50">
-                  <Button
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted/50">
+                  <button
                     type="button"
-                    variant="ghost"
-                    className="h-auto w-full min-w-0 justify-start p-0 text-left hover:bg-transparent"
+                    className="block min-w-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => {
                       setDeleteError(null);
                       setSelectedTransaction(transaction);
@@ -209,12 +208,14 @@ export function RecentTransactions({
                         />
                       </span>
                     </span>
-                  </Button>
-                  <SensitiveTransactionAmount
-                    transaction={transaction}
-                    categorySystemKeys={categorySystemKeyMap}
-                    className="text-sm font-semibold tabular-nums"
-                  />
+                  </button>
+                  <div className="self-center">
+                    <SensitiveTransactionAmount
+                      transaction={transaction}
+                      categorySystemKeys={categorySystemKeyMap}
+                      className="text-sm font-semibold tabular-nums"
+                    />
+                  </div>
                 </div>
               </li>
             ))}

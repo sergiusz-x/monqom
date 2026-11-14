@@ -5,7 +5,6 @@ ENV CI=true
 RUN corepack enable pnpm
 RUN apk upgrade --no-cache
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY patches ./patches
 COPY backend/package.json ./backend/
 COPY packages/ui/package.json ./packages/ui/
 COPY backend/scripts ./backend/scripts

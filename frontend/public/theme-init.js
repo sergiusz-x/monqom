@@ -16,5 +16,6 @@
     (theme === "system" &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.classList.toggle("dark", isDark);
+  document.documentElement.dataset.theme = isDark ? "dark" : "light";
   document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 })();

@@ -17,6 +17,8 @@ import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ToastProvider } from "@monqom/ui";
 import { PwaLifecycle } from "@/components/PwaLifecycle";
 
+const HelpPage = lazy(() => import("@/pages/HelpPage"));
+const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const TransactionsPage = lazy(() => import("@/pages/TransactionsPage"));
@@ -53,6 +55,18 @@ export default function App() {
               <AuthProvider>
                 <SalaryPrivacyProvider>
                   <Routes>
+                    <Route
+                      path="/privacy"
+                      element={lazyRoute(<LegalPage document="privacy" />)}
+                    />
+                    <Route
+                      path="/terms"
+                      element={lazyRoute(<LegalPage document="terms" />)}
+                    />
+                    <Route
+                      path="/help/:locale?/:article?"
+                      element={lazyRoute(<HelpPage />)}
+                    />
                     <Route element={<LandingRoute />}>
                       <Route element={<MarketingLayout />}>
                         <Route path="/" element={lazyRoute(<LandingPage />)} />

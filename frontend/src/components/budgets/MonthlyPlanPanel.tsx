@@ -14,6 +14,7 @@ import {
   SegmentedControl,
 } from "@monqom/ui";
 import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useSalaryPrivacy } from "@/contexts/SalaryPrivacyContext";
 import { useGoals } from "@/hooks/useGoals";
 import { useCategories } from "@/hooks/useCategories";
 import { translateSystemLabel } from "@/i18n/translate-system-label";
@@ -82,8 +83,9 @@ export function MonthlyPlanPanel({
   } = useGoals(workspaceId);
   const incomeCategories = useCategories(workspaceId, true, "income");
   const plan = query.data;
+  const { revealAll, hideVersion } = useSalaryPrivacy();
   const allocations = plan?.allocations ?? [];
-  const privacyKey = `${user?.id ?? "anonymous"}:${Boolean(user?.hideSalaryAmounts)}`;
+  const privacyKey = `${hideVersion}:${user?.id ?? "anonymous"}:${Boolean(user?.hideSalaryAmounts)}`;
   const [privacy, setPrivacy] = useState({ key: privacyKey, revealed: false });
   if (privacy.key !== privacyKey) {
     setPrivacy({ key: privacyKey, revealed: false });
@@ -243,6 +245,7 @@ export function MonthlyPlanPanel({
   if (
     plan &&
     user?.hideSalaryAmounts &&
+    !revealAll &&
     !(privacy.key === privacyKey && privacy.revealed)
   )
     return (

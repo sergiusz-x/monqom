@@ -54,6 +54,8 @@ export const enCore = {
     addTransaction: "Add transaction",
     logout: "Log out",
     account: "Account menu",
+    help: "Help center",
+    budgetHelp: "How budgets work",
     main: "Main navigation",
     mobile: "Mobile navigation",
     lightMode: "Switch to light mode",
@@ -61,47 +63,48 @@ export const enCore = {
   },
   landing: {
     eyebrow: "Personal finance, made clear",
-    title: "Understand your money without the complexity.",
+    title: "Your spending and budgets, all in one place.",
     description:
-      "Track everyday spending, stay within budget, and keep your financial data under your control.",
+      "Monqom is a personal finance app for tracking expenses, setting budgets, and saving for your goals.",
     signIn: "Sign in",
     createAccount: "Create account",
     selfHost: "Self-host Monqom",
     viewOnGitHub: "View on GitHub",
-    exploreFeatures: "Explore features",
+    exploreFeatures: "See how it works",
     preview: {
       open: "Open full preview: {{title}}",
       close: "Close preview",
     },
-    heroImageAlt: "Monqom dashboard in dark mode",
+    heroImageAlt: "Monqom dashboard",
+    mobileImageAlt: "Monqom dashboard on a phone",
     navigation: {
       features: "Features",
       control: "Your data",
       selfHosting: "Self-hosting",
     },
     proof: {
-      overview: "See the month at a glance",
+      overview: "Add transactions manually",
       budget: "Keep budgets in view",
       ownership: "Export your data anytime",
     },
     overview: {
       eyebrow: "A clear monthly picture",
-      title: "Know what happened before deciding what to do next.",
+      title: "See where your money goes.",
       description:
-        "Your dashboard brings spending, category breakdowns, trends, and recent activity into one calm place.",
+        "Your dashboard shows your spending, categories, and trends over time, so you can see where your money goes.",
       imageAlt: "Dashboard with monthly spending trend and categories",
     },
     transactions: {
       eyebrow: "Everyday tracking",
-      title: "Capture the details that make your spending make sense.",
+      title: "All your transactions in one place.",
       description:
-        "Record expenses in seconds, then use categories, payment sources, search, and filters to find what matters.",
+        "Add expenses and income manually. Organize them with categories and payment sources, then find them using search and filters.",
       imageAlt:
         "Transaction list with filters, categories, and payment sources",
     },
     budgets: {
       eyebrow: "Simple budgets",
-      title: "Give each category a clear monthly boundary.",
+      title: "See how much is left in your budget.",
       description:
         "Set practical limits, follow progress at a glance, and spot the categories that need attention before the month is over.",
       imageAlt: "Monthly budget progress in Monqom",
@@ -122,9 +125,32 @@ export const enCore = {
         description: "Set simple monthly budgets and make progress visible.",
       },
     },
+    goals: {
+      eyebrow: "Savings goals",
+      title: "Make room for what matters to you.",
+      description:
+        "Set a target and a date, see how much to save each month, and record your progress as you put money aside.",
+      imageAlt: "Savings goals and progress in Monqom",
+    },
+    steps: {
+      eyebrow: "Getting started",
+      title: "A clearer picture in three steps.",
+      add: {
+        title: "Add a transaction",
+        description: "Manually add an expense or income and choose a category.",
+      },
+      review: {
+        title: "See the bigger picture",
+        description: "Review your monthly totals, categories, and trends.",
+      },
+      plan: {
+        title: "Make a plan",
+        description: "Set a budget or a savings goal and follow your progress.",
+      },
+    },
     control: {
       eyebrow: "Built around control",
-      title: "Your finances should stay understandable and portable.",
+      title: "Understand your finances and keep access to your data.",
       export: {
         title: "Take your data with you",
         description:
@@ -140,7 +166,7 @@ export const enCore = {
         description:
           "A responsive interface, dark mode, and Polish or English keep the experience comfortable.",
       },
-      imageAlt: "Monqom dashboard on a mobile phone in dark mode",
+      imageAlt: "Monqom dashboard on a mobile phone",
     },
     selfHostingSection: {
       eyebrow: "Use Monqom your way",
@@ -148,26 +174,40 @@ export const enCore = {
       hosted: {
         title: "Create an account",
         description:
-          "Use the hosted version and begin tracking your spending without any setup.",
+          "Create an account and start tracking your spending without setup.",
         action: "Create account",
       },
       selfHosted: {
-        title: "Self-host Monqom",
-        description:
-          "Run the open-source core on infrastructure you control with Docker and PostgreSQL.",
+        title: "Host it yourself",
+        description: "Run Monqom on your own server.",
         action: "Read self-hosting guide",
       },
     },
+    faq: {
+      eyebrow: "Good to know",
+      title: "Before you get started",
+      transactions: {
+        question: "How do I add transactions?",
+        answer:
+          "You can add expenses and income manually in the app. Transactions can also be sent through the integration API.",
+      },
+      data: {
+        question: "Can I export my data?",
+        answer: "You can export your transactions as a CSV or JSON file.",
+      },
+      devices: {
+        question: "Can I use Monqom on my phone?",
+        answer:
+          "Yes. You can use Monqom in a browser on your phone or computer.",
+      },
+    },
     finalCta: {
-      title: "A clearer view of your money starts here.",
+      title: "Start tracking your finances.",
       description:
         "Create an account to begin, or explore the source code and run Monqom yourself.",
     },
     footer: {
-      source: "Source code",
-      selfHosting: "Self-hosting guide",
-      security: "Security policy",
-      license: "AGPL-3.0",
+      contact: "Contact",
       copyright: "Open-source personal finance software.",
     },
   },
@@ -246,6 +286,8 @@ export const plCore = {
     addTransaction: "Dodaj transakcję",
     logout: "Wyloguj się",
     account: "Menu konta",
+    help: "Centrum pomocy",
+    budgetHelp: "Jak działają budżety",
     main: "Główna nawigacja",
     mobile: "Nawigacja mobilna",
     lightMode: "Włącz jasny motyw",
@@ -253,48 +295,49 @@ export const plCore = {
   },
   landing: {
     eyebrow: "Finanse osobiste bez chaosu",
-    title: "Zrozum swoje finanse bez zbędnych komplikacji.",
+    title: "Twoje wydatki i budżety w jednym miejscu.",
     description:
-      "Śledź codzienne wydatki, pilnuj budżetu i zachowaj kontrolę nad swoimi danymi finansowymi.",
+      "Monqom to aplikacja do finansów osobistych. Zapisuj wydatki, planuj budżet i odkładaj na swoje cele.",
     signIn: "Zaloguj się",
     createAccount: "Załóż konto",
     selfHost: "Hostuj Monqom samodzielnie",
     viewOnGitHub: "Zobacz na GitHubie",
-    exploreFeatures: "Poznaj funkcje",
+    exploreFeatures: "Zobacz, jak działa",
     preview: {
       open: "Otwórz pełny podgląd: {{title}}",
       close: "Zamknij podgląd",
     },
-    heroImageAlt: "Pulpit Monqom w ciemnym motywie",
+    heroImageAlt: "Pulpit Monqom",
+    mobileImageAlt: "Pulpit Monqom na telefonie",
     navigation: {
       features: "Funkcje",
       control: "Twoje dane",
       selfHosting: "Self-hosting",
     },
     proof: {
-      overview: "Zobacz cały miesiąc na jednym ekranie",
+      overview: "Dodawaj transakcje ręcznie",
       budget: "Kontroluj budżety",
-      ownership: "Eksportuj dane kiedy chcesz",
+      ownership: "Eksportuj transakcje, kiedy chcesz",
     },
     overview: {
       eyebrow: "Jasny obraz miesiąca",
-      title: "Najpierw zobacz, co się wydarzyło. Potem zdecyduj, co dalej.",
+      title: "Zobacz, na co wydajesz pieniądze.",
       description:
-        "Pulpit łączy wydatki, strukturę kategorii, trendy i ostatnią aktywność w jednym spokojnym widoku.",
+        "Na pulpicie zobaczysz wydatki według kategorii oraz to, jak zmieniały się w kolejnych miesiącach.",
       imageAlt: "Pulpit z trendem wydatków i kategoriami",
     },
     transactions: {
       eyebrow: "Codzienne śledzenie",
-      title: "Zapisuj szczegóły, dzięki którym wydatki mają sens.",
+      title: "Wszystkie transakcje w jednym miejscu.",
       description:
-        "Dodawaj wydatki w kilka chwil, a potem korzystaj z kategorii, źródeł płatności, wyszukiwania i filtrów.",
+        "Dodawaj ręcznie wydatki i przychody. Przypisuj je do kategorii i źródeł płatności, a później korzystaj z wyszukiwarki i filtrów.",
       imageAlt: "Lista transakcji z filtrami, kategoriami i źródłami płatności",
     },
     budgets: {
       eyebrow: "Proste budżety",
-      title: "Nadaj każdej kategorii czytelną miesięczną granicę.",
+      title: "Sprawdź, ile zostało w budżecie.",
       description:
-        "Ustaw praktyczne limity, śledź postęp i zauważ kategorie wymagające uwagi, zanim miesiąc się skończy.",
+        "Ustaw miesięczne limity i sprawdzaj, ile jeszcze możesz wydać w każdej kategorii.",
       imageAlt: "Miesięczny postęp budżetów w Monqom",
     },
     featureCards: {
@@ -312,11 +355,34 @@ export const plCore = {
         description: "Ustaw proste miesięczne budżety i obserwuj postęp.",
       },
     },
+    goals: {
+      eyebrow: "Cele oszczędnościowe",
+      title: "Odkładaj na to, co jest dla Ciebie ważne.",
+      description:
+        "Ustal kwotę i termin, a następnie sprawdź, ile warto odkładać co miesiąc. Wpisuj kolejne wpłaty, aby śledzić postęp.",
+      imageAlt: "Cele oszczędnościowe i ich postęp w Monqom",
+    },
+    steps: {
+      eyebrow: "Jak zacząć",
+      title: "Zacznij w trzech krokach.",
+      add: {
+        title: "Dodaj transakcję",
+        description: "Dodaj ręcznie wydatek lub przychód i wybierz kategorię.",
+      },
+      review: {
+        title: "Sprawdź podsumowanie",
+        description: "Zobacz miesięczne sumy, kategorie i trendy.",
+      },
+      plan: {
+        title: "Zaplanuj kolejny krok",
+        description: "Ustaw budżet lub cel oszczędnościowy i śledź postępy.",
+      },
+    },
     control: {
-      eyebrow: "Zaprojektowany z myślą o kontroli",
-      title: "Twoje finanse powinny być zrozumiałe i możliwe do przeniesienia.",
+      eyebrow: "Twoje dane",
+      title: "Eksportuj transakcje i chroń dostęp do konta.",
       export: {
-        title: "Zabierz swoje dane",
+        title: "Eksportuj transakcje",
         description:
           "Eksportuj transakcje do CSV lub JSON, kiedy tylko tego potrzebujesz.",
       },
@@ -328,37 +394,50 @@ export const plCore = {
       mobile: {
         title: "Działa na różnych urządzeniach",
         description:
-          "Responsywny interfejs, ciemny motyw oraz polski i angielski zapewniają wygodę.",
+          "Korzystaj w przeglądarce na telefonie i komputerze, po polsku lub angielsku, w jasnym albo ciemnym motywie.",
       },
-      imageAlt: "Pulpit Monqom na telefonie w ciemnym motywie",
+      imageAlt: "Pulpit Monqom na telefonie",
     },
     selfHostingSection: {
       eyebrow: "Korzystaj po swojemu",
       title: "Załóż konto albo uruchom Monqom na własnej infrastrukturze.",
       hosted: {
         title: "Załóż konto",
-        description:
-          "Skorzystaj z hostowanej wersji i zacznij śledzić wydatki bez konfiguracji.",
+        description: "Załóż konto i zacznij śledzić wydatki bez konfiguracji.",
         action: "Załóż konto",
       },
       selfHosted: {
-        title: "Hostuj Monqom samodzielnie",
-        description:
-          "Uruchom otwarty rdzeń na infrastrukturze, którą kontrolujesz, z Dockerem i PostgreSQL.",
+        title: "Hostuj samodzielnie",
+        description: "Uruchom Monqom na własnym serwerze.",
         action: "Przeczytaj instrukcję",
       },
     },
+    faq: {
+      eyebrow: "Warto wiedzieć",
+      title: "Zanim zaczniesz",
+      transactions: {
+        question: "Jak dodawać transakcje?",
+        answer:
+          "Wydatki i przychody możesz dodawać ręcznie w aplikacji. Transakcje można też przesyłać przez API integracji.",
+      },
+      data: {
+        question: "Czy mogę wyeksportować transakcje?",
+        answer: "Możesz wyeksportować transakcje do pliku CSV lub JSON.",
+      },
+      devices: {
+        question: "Czy Monqom działa na telefonie?",
+        answer:
+          "Tak. Z Monqom możesz korzystać w przeglądarce na telefonie lub komputerze.",
+      },
+    },
     finalCta: {
-      title: "Wyraźniejszy obraz finansów zaczyna się tutaj.",
+      title: "Zacznij śledzić swoje finanse.",
       description:
         "Załóż konto, aby zacząć, albo zobacz kod źródłowy i uruchom Monqom samodzielnie.",
     },
     footer: {
-      source: "Kod źródłowy",
-      selfHosting: "Instrukcja self-hostingu",
-      security: "Polityka bezpieczeństwa",
-      license: "AGPL-3.0",
-      copyright: "Open-source'owe oprogramowanie do finansów osobistych.",
+      contact: "Kontakt",
+      copyright: "Aplikacja do finansów osobistych z otwartym kodem źródłowym.",
     },
   },
   publicPreferences: {

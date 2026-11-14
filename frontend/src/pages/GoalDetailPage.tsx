@@ -39,6 +39,7 @@ import { formatCurrency } from "@/lib/money";
 import { queryKeys } from "@/lib/query-client";
 import { useGoal } from "@/hooks/useGoals";
 import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useSalaryPrivacy } from "@/contexts/SalaryPrivacyContext";
 import { useToast } from "@/hooks/useToast";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
@@ -66,20 +67,24 @@ export default function GoalDetailPage() {
   );
   const planQuery = useQuery({
     queryKey: [...queryKeys.budgets(workspaceId ?? ""), "plan", currentMonth],
-    queryFn: async ({ signal }) =>
-      (
-        await api.get<{
-          currency: string;
-          allocations: { goal_id: string | null; amount_cents: number }[];
-        } | null>(
-          `/workspaces/${encodeURIComponent(workspaceId ?? "")}/budgets/plan/${encodeURIComponent(currentMonth)}`,
-          { signal },
-        )
-      ).data,
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<{
+        currency: string;
+        allocations: { goal_id: string | null; amount_cents: number }[];
+      } | null>(
+        `/workspaces/${encodeURIComponent(workspaceId ?? "")}/budgets/plan/${encodeURIComponent(currentMonth)}`,
+        { signal },
+      );
+      // An empty HTTP response is decoded as an empty string by Axios.
+      return data || null;
+    },
     enabled: Boolean(workspaceId && workspace),
   });
   const { showToast } = useToast(3000);
-  const hidePlanAmount = useOptionalAuth()?.user?.hideSalaryAmounts;
+  const { revealAll } = useSalaryPrivacy();
+  const hidePlanAmount = Boolean(
+    useOptionalAuth()?.user?.hideSalaryAmounts && !revealAll,
+  );
   const [operationDialog, setOperationDialog] = useState<{
     type: GoalOperationType;
     operation?: GoalOperation;

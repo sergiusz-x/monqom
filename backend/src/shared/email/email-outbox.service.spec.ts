@@ -26,11 +26,11 @@ describe('EmailOutboxService', () => {
 
     it('delivers a claimed message with a stable idempotency key and clears the payload', async () => {
         const create = jest.fn().mockResolvedValue(undefined)
-        const update = jest.fn().mockResolvedValue(undefined)
+        const updateMany = jest.fn().mockResolvedValue({ count: 1 })
         const transaction = jest.fn().mockResolvedValue(undefined)
         const queryRaw = jest.fn()
         const prisma = {
-            emailOutbox: { create, update },
+            emailOutbox: { create, updateMany },
             emailVerificationToken: { deleteMany: jest.fn() },
             passwordResetToken: { deleteMany: jest.fn() },
             $transaction: transaction,
@@ -64,9 +64,9 @@ describe('EmailOutboxService', () => {
                 idempotencyKey: `email-outbox/${row.id}`,
             }),
         )
-        expect(update).toHaveBeenCalledWith(
+        expect(updateMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: { id: row.id },
+                where: { id: row.id, status: 'processing', lockedAt: row.lockedAt },
                 data: expect.objectContaining({ status: 'sent', encryptedPayload: '' }),
             }),
         )
@@ -74,10 +74,10 @@ describe('EmailOutboxService', () => {
 
     it('records a delivery failure and schedules a retry for a claimed message', async () => {
         const create = jest.fn().mockResolvedValue(undefined)
-        const update = jest.fn().mockResolvedValue(undefined)
+        const updateMany = jest.fn().mockResolvedValue({ count: 1 })
         const queryRaw = jest.fn()
         const prisma = {
-            emailOutbox: { create, update },
+            emailOutbox: { create, updateMany },
             emailVerificationToken: { deleteMany: jest.fn() },
             passwordResetToken: { deleteMany: jest.fn() },
             $transaction: jest.fn().mockResolvedValue(undefined),
@@ -105,14 +105,110 @@ describe('EmailOutboxService', () => {
 
         await service.processBatch()
 
-        expect(update).toHaveBeenCalledWith(
+        expect(updateMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: { id: row.id },
+                where: { id: row.id, status: 'processing', lockedAt: row.lockedAt },
                 data: expect.objectContaining({
                     status: 'pending',
                     attempts: 1,
                     lastError: 'provider unavailable',
                     lockedAt: null,
+                }),
+            }),
+        )
+    })
+
+    it('does not retry a message after its processing lease was revoked', async () => {
+        const create = jest.fn().mockResolvedValue(undefined)
+        const updateMany = jest.fn().mockResolvedValue({ count: 0 })
+        const queryRaw = jest.fn()
+        const prisma = {
+            emailOutbox: { create, updateMany },
+            emailVerificationToken: { deleteMany: jest.fn() },
+            passwordResetToken: { deleteMany: jest.fn() },
+            $transaction: jest.fn().mockResolvedValue(undefined),
+            $queryRaw: queryRaw,
+        }
+        const service = new EmailOutboxService(
+            prisma as never,
+            { send: jest.fn().mockRejectedValue(new Error('provider unavailable')) } as never,
+            config,
+        )
+        await service.enqueue('verification', 'user@example.test', 'verification-token')
+        const lockedAt = new Date()
+        const row = {
+            id: 'revoked-lease-message',
+            kind: 'verification',
+            recipient: create.mock.calls[0][0].data.recipient,
+            encryptedPayload: create.mock.calls[0][0].data.encryptedPayload,
+            status: 'processing',
+            attempts: 0,
+            availableAt: new Date(),
+            lockedAt,
+            sentAt: null,
+            lastError: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        } satisfies EmailOutbox
+        queryRaw.mockResolvedValue([row])
+
+        await service.processBatch()
+
+        expect(updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: row.id, status: 'processing', lockedAt },
+                data: expect.objectContaining({ status: 'pending', attempts: 1 }),
+            }),
+        )
+    })
+
+    it('clears the payload on the last failed delivery attempt', async () => {
+        const create = jest.fn().mockResolvedValue(undefined)
+        const updateMany = jest.fn().mockResolvedValue({ count: 1 })
+        const prisma = {
+            emailOutbox: { create, updateMany },
+            emailVerificationToken: { deleteMany: jest.fn() },
+            passwordResetToken: { deleteMany: jest.fn() },
+            $transaction: jest.fn().mockResolvedValue(undefined),
+            $queryRaw: jest.fn(),
+        }
+        const service = new EmailOutboxService(
+            prisma as never,
+            { send: jest.fn().mockRejectedValue(new Error('provider unavailable')) } as never,
+            config,
+        )
+        await service.enqueue('verification', 'user@example.test', 'verification-token')
+        const lockedAt = new Date()
+        prisma.$queryRaw.mockResolvedValue([
+            {
+                id: 'expired-message',
+                kind: 'verification',
+                recipient: create.mock.calls[0][0].data.recipient,
+                encryptedPayload: create.mock.calls[0][0].data.encryptedPayload,
+                status: 'processing',
+                attempts: 6,
+                availableAt: new Date(),
+                lockedAt,
+                sentAt: null,
+                lastError: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            } satisfies EmailOutbox,
+        ])
+
+        await service.processBatch()
+
+        expect(updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: {
+                    id: 'expired-message',
+                    status: 'processing',
+                    lockedAt,
+                },
+                data: expect.objectContaining({
+                    status: 'failed',
+                    encryptedPayload: '',
+                    attempts: 7,
                 }),
             }),
         )

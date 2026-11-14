@@ -1,5 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { defaultLocale, locales, resolveLocale } from "@monqom/ui/locales";
+import { enHelp, plHelp } from "./resources/help";
 import type { TranslationShape } from "./resources/types";
 import { enCore, plCore } from "./resources/core";
 import { enAuth, plAuth } from "./resources/auth";
@@ -20,6 +22,7 @@ import {
 
 const en = {
   ...enCore,
+  ...enHelp,
   ...enAuth,
   ...enDashboard,
   ...enTransactions,
@@ -43,6 +46,7 @@ export type AppTranslationKey = TranslationKeyOf<typeof en>;
 
 const pl = {
   ...plCore,
+  ...plHelp,
   ...plAuth,
   ...plDashboard,
   ...plTransactions,
@@ -60,20 +64,17 @@ export const resources = {
   pl: { [defaultNS]: pl },
 } as const;
 
-const storedLanguage = localStorage.getItem("monqom-language");
-const initialLanguage =
-  storedLanguage === "pl" || storedLanguage === "en"
-    ? storedLanguage
-    : navigator.language.toLowerCase().startsWith("pl")
-      ? "pl"
-      : "en";
+const initialLanguage = resolveLocale(
+  localStorage.getItem("monqom-language"),
+  navigator.language,
+);
 
 void i18n.use(initReactI18next).init({
   resources,
   defaultNS,
   lng: initialLanguage,
-  fallbackLng: "en",
-  supportedLngs: ["en", "pl"],
+  fallbackLng: defaultLocale,
+  supportedLngs: Object.keys(locales),
   interpolation: { escapeValue: false },
   returnNull: false,
 });
@@ -85,13 +86,20 @@ document.title =
     : "Monqom - personal finance, made clear";
 
 i18n.on("languageChanged", (language) => {
-  const supportedLanguage = language === "pl" ? "pl" : "en";
+  const supportedLanguage = resolveLocale(language, defaultLocale);
   localStorage.setItem("monqom-language", supportedLanguage);
   document.documentElement.lang = supportedLanguage;
   document.title =
     supportedLanguage === "pl"
       ? "Monqom - finanse osobiste bez chaosu"
       : "Monqom - personal finance, made clear";
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key === "monqom-language") {
+    const language = resolveLocale(event.newValue, navigator.language);
+    if (language !== i18n.resolvedLanguage) void i18n.changeLanguage(language);
+  }
 });
 
 export default i18n;

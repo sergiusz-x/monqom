@@ -10,6 +10,7 @@ import {
   SectionCard,
   SegmentedControl,
 } from "@monqom/ui";
+import { HelpLink } from "@/components/layout/HelpLink";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { GoalStatusBadge } from "@/components/goals/GoalStatusBadge";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
@@ -43,7 +44,18 @@ export default function GoalsPage() {
     <PageContainer className="space-y-6">
       <PageHeader
         title={t("goals.title")}
-        description={t("goals.description")}
+        description={
+          <>
+            {t("goals.description")}{" "}
+            <HelpLink
+              newTab
+              article="goals"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              {t("help.goalGuide")}
+            </HelpLink>
+          </>
+        }
         actions={
           <Button
             type="button"

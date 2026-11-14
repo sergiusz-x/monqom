@@ -1,6 +1,6 @@
 # ADR 0001: Single-domain API proxy
 
-The public nginx frontend serves the SPA and reverse-proxies /api to a private backend service. Browser requests remain same-origin, reducing CORS and cookie complexity. The backend and database publish no host ports.
+The nginx frontend serves the SPA and reverse-proxies /api to a private backend service. Browser requests remain same-origin, reducing CORS and cookie complexity. The backend and database publish no host ports.
 
 Dokploy's Traefik is the public trust boundary. It terminates TLS, rejects untrusted
 forwarded-header assertions by default, and rebuilds `X-Forwarded-Proto` and
@@ -14,3 +14,8 @@ Keep Traefik's `forwardedHeaders.insecure` disabled and do not publish origin po
 No ingress address/CIDR environment variable is needed. Docker-network access is
 trusted infrastructure access; this topology does not treat other containers on
 that network as untrusted public clients.
+
+The standalone Compose setup instead binds the frontend to localhost and expects one
+trusted HTTPS reverse proxy on the host. It uses the same two proxy hops and requires
+that the outer proxy discard untrusted forwarded headers. See the
+[self-hosting guide](../self-hosting.md) for its separate trust boundary.

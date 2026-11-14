@@ -9,11 +9,16 @@ import {
   Plus,
   Sun,
   Moon,
+  Eye,
+  EyeOff,
   LogOut,
+  CircleHelp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSalaryPrivacy } from "@/contexts/SalaryPrivacyContext";
 
+import { HelpLink } from "./HelpLink";
 import MonqomLogo from "@/components/MonqomLogo";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -50,6 +55,7 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { isDark, setMode } = useTheme();
+  const { revealAll, setRevealAll } = useSalaryPrivacy();
   const ThemeIcon = isDark ? Sun : Moon;
   const nextThemeLabel = isDark
     ? "publicPreferences.light"
@@ -103,6 +109,13 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
             {t(label)}
           </NavLink>
         ))}
+        <HelpLink
+          newTab
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <CircleHelp size={16} aria-hidden="true" />
+          {t("nav.help")}
+        </HelpLink>
       </nav>
 
       <div className="px-3 pb-4 space-y-3">
@@ -127,6 +140,32 @@ export default function Sidebar({ onAddTransaction }: SidebarProps) {
             </div>
           )}
           <div className="flex items-center gap-2">
+            {user?.hideSalaryAmounts && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label={t(
+                  revealAll
+                    ? "privacy.hideAllSensitiveAmounts"
+                    : "privacy.revealAllSensitiveAmounts",
+                )}
+                title={t(
+                  revealAll
+                    ? "privacy.hideAllSensitiveAmounts"
+                    : "privacy.revealAllSensitiveAmounts",
+                )}
+                aria-pressed={revealAll}
+                onClick={() => setRevealAll(!revealAll)}
+              >
+                {revealAll ? (
+                  <EyeOff size={16} aria-hidden="true" />
+                ) : (
+                  <Eye size={16} aria-hidden="true" />
+                )}
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"

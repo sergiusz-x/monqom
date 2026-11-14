@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Expand, X } from "lucide-react";
-import { Button, Card, Modal } from "@monqom/ui";
+import { Expand } from "lucide-react";
+import { Card } from "@monqom/ui";
+import { ScreenshotDialog } from "@/components/ScreenshotDialog";
 
 import { cn } from "@/lib/utils";
 
@@ -68,36 +69,13 @@ export function ProductPreview({
         </Card>
       </button>
 
-      <Modal
+      <ScreenshotDialog
         open={isOpen}
         onClose={() => setIsOpen(false)}
-        ariaLabel={alt}
-        contentClassName="max-w-6xl overflow-visible border-0 bg-transparent p-0 shadow-none"
-      >
-        <div className="relative">
-          <Card
-            padding="none"
-            elevation="raised"
-            className="overflow-hidden bg-card"
-          >
-            <img
-              src={src}
-              alt=""
-              className="block max-h-[calc(100dvh-5rem)] w-full object-contain"
-            />
-          </Card>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="absolute -right-2 -top-2 rounded-full bg-background shadow-sm"
-            aria-label={closeLabel}
-            onClick={() => setIsOpen(false)}
-          >
-            <X size={17} aria-hidden="true" />
-          </Button>
-        </div>
-      </Modal>
+        src={src}
+        alt={alt}
+        closeLabel={closeLabel}
+      />
     </>
   );
 }

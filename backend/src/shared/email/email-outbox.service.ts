@@ -6,6 +6,7 @@ import { RuntimeConfig } from '../../config/env'
 import { PrismaService } from '../database/prisma.service'
 import { logger } from '../utils/logger'
 import { EmailDeliveryService } from './resend'
+import { emailRecipientHash } from './email-recipient'
 
 type EmailKind = 'password_reset' | 'verification'
 type PersistenceClient = Prisma.TransactionClient | PrismaService
@@ -44,9 +45,7 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
         await prisma.emailOutbox.create({
             data: {
                 kind,
-                recipient: createHash('sha256')
-                    .update(recipient.trim().toLowerCase())
-                    .digest('hex'),
+                recipient: emailRecipientHash(recipient),
                 encryptedPayload: this.encrypt(JSON.stringify({ recipient, token })),
             },
         })
@@ -58,6 +57,7 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
         try {
             if (Date.now() - this.lastCleanupAt >= 60 * 60_000) {
                 await this.cleanupExpiredLegacyTokens()
+                await this.expireUndeliverableMessages()
                 this.lastCleanupAt = Date.now()
             }
             const rows = await this.claimBatch()
@@ -70,6 +70,27 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
         } finally {
             this.processing = false
         }
+    }
+
+    private async expireUndeliverableMessages(): Promise<void> {
+        // Respect the same five-minute lease as claimBatch for in-flight deliveries.
+        const cutoff = new Date(Date.now() - MAX_AGE_MS)
+        const staleBefore = new Date(Date.now() - 5 * 60_000)
+        await this.prisma.emailOutbox.updateMany({
+            where: {
+                OR: [
+                    { status: 'failed' },
+                    { status: 'pending', createdAt: { lt: cutoff } },
+                    {
+                        status: 'processing',
+                        createdAt: { lt: cutoff },
+                        OR: [{ lockedAt: null }, { lockedAt: { lt: staleBefore } }],
+                    },
+                ],
+                encryptedPayload: { not: '' },
+            },
+            data: { status: 'failed', encryptedPayload: '', lockedAt: null },
+        })
     }
 
     private async cleanupExpiredLegacyTokens(): Promise<void> {
@@ -113,6 +134,9 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async deliver(row: EmailOutbox): Promise<void> {
+        const claimedAt = row.lockedAt
+        if (!claimedAt) return
+
         try {
             const { recipient, token } = JSON.parse(this.decrypt(row.encryptedPayload)) as {
                 recipient: string
@@ -123,8 +147,8 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
                 ...buildEmail(row.kind as EmailKind, token, this.frontendUrl()),
                 idempotencyKey: `email-outbox/${row.id}`,
             })
-            await this.prisma.emailOutbox.update({
-                where: { id: row.id },
+            await this.prisma.emailOutbox.updateMany({
+                where: { id: row.id, status: 'processing', lockedAt: claimedAt },
                 data: {
                     status: 'sent',
                     sentAt: new Date(),
@@ -137,10 +161,11 @@ export class EmailOutboxService implements OnModuleInit, OnModuleDestroy {
             const attempts = row.attempts + 1
             const expired =
                 attempts >= MAX_ATTEMPTS || row.createdAt.getTime() < Date.now() - MAX_AGE_MS
-            await this.prisma.emailOutbox.update({
-                where: { id: row.id },
+            await this.prisma.emailOutbox.updateMany({
+                where: { id: row.id, status: 'processing', lockedAt: claimedAt },
                 data: {
                     status: expired ? 'failed' : 'pending',
+                    ...(expired ? { encryptedPayload: '' } : {}),
                     attempts,
                     availableAt: new Date(Date.now() + retryDelay(attempts)),
                     lockedAt: null,

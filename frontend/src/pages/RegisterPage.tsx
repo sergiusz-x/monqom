@@ -147,6 +147,17 @@ export default function RegisterPage() {
           {t("auth.signUp")}
         </PendingButton>
       </form>
+      <nav
+        className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground"
+        aria-label={t("nav.main")}
+      >
+        <Link to="/privacy" className="hover:text-foreground hover:underline">
+          {t("auth.privacyNotice")}
+        </Link>
+        <Link to="/terms" className="hover:text-foreground hover:underline">
+          {t("auth.terms")}
+        </Link>
+      </nav>
       <p className="text-center text-sm text-muted-foreground">
         {t("auth.haveAccount")}{" "}
         <Link to="/login" className="text-primary hover:underline">

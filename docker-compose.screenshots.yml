@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: screenshots
+      POSTGRES_PASSWORD: screenshots
+      POSTGRES_DB: screenshots
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U screenshots -d screenshots"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  backend:
+    image: monqom-screenshots:local
+    build:
+      context: .
+      dockerfile: Dockerfile.screenshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://screenshots:screenshots@postgres:5432/screenshots
+      NODE_ENV: development
+      SESSION_SECRET: screenshot-session-secret-at-least-32-characters
+      TOTP_ENCRYPTION_KEY: screenshot-totp-key-32-characters
+      EMAIL_OUTBOX_ENCRYPTION_KEY: screenshot-email-key-32-characters
+      FRONTEND_URL: http://frontend:5173
+      CORS_ALLOWED_ORIGINS: http://frontend:5173
+      TURNSTILE_ENABLED: "false"
+    command: sh -c "pnpm --dir backend run migrate:deploy && pnpm --dir backend exec ts-node prisma/screenshot-seed.ts && pnpm --dir backend run start:prod"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+  frontend:
+    image: monqom-screenshots:local
+    build:
+      context: .
+      dockerfile: Dockerfile.screenshots
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_TARGET: http://backend:3000
+      SCREENSHOT_MODE: "true"
+      VITE_CACHE_DIR: /tmp/monqom-vite-cache
+    ports:
+      - "127.0.0.1:5179:5173"
+    volumes:
+      - ./frontend:/app/frontend
+      # Keep the image's dependencies instead of the host's frontend node_modules.
+      - /app/frontend/node_modules
+      - ./packages/ui:/app/packages/ui
+    command: pnpm --dir frontend exec vite --host 0.0.0.0
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:5173/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30

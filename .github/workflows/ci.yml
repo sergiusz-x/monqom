@@ -102,8 +102,6 @@ jobs:
             --env CI=true \
             mcr.microsoft.com/playwright:v1.62.0-noble \
             ./node_modules/.bin/playwright test
-      - run: pnpm run check:dependency-patches
-        working-directory: .
       - run: pnpm audit --prod --audit-level=high
         working-directory: .
       - run: pnpm audit --audit-level=high
