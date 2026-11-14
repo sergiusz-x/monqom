@@ -82,7 +82,6 @@ export class DashboardService {
         const monthRange = validateDashboardMonthInput(input)
         const trendMonths = getMonthSequence(monthRange.month, 6)
         const trendStart = parseMonthStart(trendMonths[0])
-        const financialMonths = getMonthSequence(monthRange.month, 12)
         const workspacePromise = this.workspaceService
             ? this.workspaceService.getWorkspaceById(normalizedWorkspaceId)
             : Promise.resolve({ baseCurrency: 'USD', timezone: 'UTC' } as const)
@@ -96,15 +95,25 @@ export class DashboardService {
               })
             : Promise.resolve([])
 
+        const workspace = await workspacePromise
+        const today = new Intl.DateTimeFormat('en-CA', {
+            timeZone: workspace.timezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(new Date())
+        const dateParts = new Map(today.map((part) => [part.type, part.value]))
+        const currentMonth = `${dateParts.get('year')}-${dateParts.get('month')}`
+        const financialMonths = getMonthSequence(monthRange.month, 12)
+
+
         const [
-            workspace,
             monthlySpend,
             categorySpend,
             recentTransactions,
             incomeCents,
             monthlyFinancials,
         ] = await Promise.all([
-            workspacePromise,
             this.dashboardRepository.listMonthlySpendForRange(
                 normalizedWorkspaceId,
                 trendStart,
@@ -146,14 +155,6 @@ export class DashboardService {
         )
 
         const financialByMonth = new Map(monthlyFinancials.map((item) => [item.month, item]))
-        const today = new Intl.DateTimeFormat('en-CA', {
-            timeZone: workspace.timezone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-        }).formatToParts(new Date())
-        const dateParts = new Map(today.map((part) => [part.type, part.value]))
-        const currentMonth = `${dateParts.get('year')}-${dateParts.get('month')}`
         let spendingPace: DashboardOverviewResponse['spending_pace'] = null
         if (monthRange.month === currentMonth) {
             const day = Number(dateParts.get('day'))

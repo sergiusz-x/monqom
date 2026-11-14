@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useSalaryPrivacy } from "@/contexts/SalaryPrivacyContext";
 import type { SpendingSummary } from "@/types/dashboard";
 import { formatCurrency } from "@/lib/money";
 import { useTranslation } from "react-i18next";
@@ -31,7 +32,8 @@ export function MonthlySpendingSummary({
   const { t } = useTranslation();
   const user = useOptionalAuth()?.user;
   const hideAmounts = Boolean(user?.hideSalaryAmounts);
-  const privacyKey = `${user?.id ?? "anonymous"}:${hideAmounts ? user?.updatedAt : "disabled"}`;
+  const { revealAll, hideVersion } = useSalaryPrivacy();
+  const privacyKey = `${hideVersion}:${user?.id ?? "anonymous"}:${hideAmounts ? user?.updatedAt : "disabled"}`;
   const [privacy, setPrivacy] = useState({
     key: privacyKey,
     income: false,
@@ -40,8 +42,8 @@ export function MonthlySpendingSummary({
   if (privacy.key !== privacyKey) {
     setPrivacy({ key: privacyKey, income: false, balance: false });
   }
-  const incomeRevealed = privacy.key === privacyKey && privacy.income;
-  const balanceRevealed = privacy.key === privacyKey && privacy.balance;
+  const incomeRevealed = revealAll || (privacy.key === privacyKey && privacy.income);
+  const balanceRevealed = revealAll || (privacy.key === privacyKey && privacy.balance);
   return (
     <section aria-label={t("dashboard.summary")} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">

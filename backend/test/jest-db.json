@@ -2,7 +2,7 @@
     "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": ".",
     "testEnvironment": "node",
-    "testRegex": "(integration-credentials|external-transactions|external-transactions-http|workspace-currency|category-repair|tag-preservation|monthly-plan-deleted-goals)[.]database[.]e2e-spec[.]ts$",
+    "testRegex": "(integration-credentials|external-transactions|external-transactions-http|workspace-currency|category-repair|tag-preservation|monthly-plan-deleted-goals|privacy)[.]database[.]e2e-spec[.]ts$",
     "transform": {
         "^.+\\.(t|j)s$": "ts-jest"
     }

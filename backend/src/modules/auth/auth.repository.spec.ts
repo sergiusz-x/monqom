@@ -78,8 +78,10 @@ describe('AuthRepository', () => {
                 delete: jest.fn().mockResolvedValue(undefined),
             },
             user: {
+                findUniqueOrThrow: jest.fn().mockResolvedValue({ email: 'User@Example.test' }),
                 delete: jest.fn().mockResolvedValue(undefined),
             },
+            emailOutbox: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             $executeRaw: jest.fn().mockResolvedValue(1),
         }
         const transactionalPrisma = {
@@ -95,6 +97,13 @@ describe('AuthRepository', () => {
 
         await transactionalRepository.deleteUserAccount('user-1')
 
+        expect(tx.emailOutbox.updateMany).toHaveBeenCalledWith({
+            where: {
+                recipient: expect.any(String),
+                status: { in: ['pending', 'failed'] },
+            },
+            data: { status: 'failed', encryptedPayload: '', lockedAt: null, lastError: null },
+        })
         expect(tx.workspace.delete).toHaveBeenCalledTimes(1)
         expect(tx.workspace.delete).toHaveBeenCalledWith({
             where: { id: 'orphaned' },

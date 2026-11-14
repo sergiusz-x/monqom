@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/useToast";
 import { WorkspaceErrorState } from "@/components/WorkspaceErrorState";
 
+import { HelpLink } from "@/components/layout/HelpLink";
 import { PageContainer, PageHeader } from "@/components/layout/PageLayout";
 import { invalidateFinancialData } from "@/lib/query-invalidation";
 import { categorySystemKeys } from "@/lib/category-system-keys";
@@ -342,7 +343,19 @@ export default function TransactionsPage() {
 
   return (
     <PageContainer>
-      <PageHeader title={t("transactions.title")} className="mb-4" />
+      <PageHeader
+        title={t("transactions.title")}
+        description={
+          <HelpLink
+              newTab
+            article="transactions"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            {t("help.transactionGuide")}
+          </HelpLink>
+        }
+        className="mb-4"
+      />
       <div className="space-y-4">
         {Boolean(attentionData?.total) && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5">

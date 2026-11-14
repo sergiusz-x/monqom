@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { HelpLink } from "@/components/layout/HelpLink";
 import { budgetsApi } from "@/api/contract";
 import api from "@/lib/api";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -429,7 +430,7 @@ export default function BudgetsPage() {
     <PageContainer>
       <PageHeader
         title={t("budgets.title")}
-        description={t("budgets.description")}
+        description={<>{t("budgets.description")} <HelpLink newTab article="budgets" className="underline underline-offset-4 hover:text-foreground">{t("nav.budgetHelp")}</HelpLink></>}
         className="mb-6"
         actions={
           <Button onClick={() => showCreate()}>{t("budgets.add")}</Button>

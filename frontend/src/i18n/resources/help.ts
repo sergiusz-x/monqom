@@ -1,0 +1,41 @@
+export const enHelp = {
+  help: {
+    title: "Help center",
+    transactionGuide: "How transactions work",
+    goalGuide: "How savings goals work",
+    description: "Find practical guides to using Monqom.",
+    searchPlaceholder: "Search help articles",
+    results: "Search results",
+    contactLink: "Contact us",
+    needHelp: "Still need help?",
+    related: "Related articles",
+    contents: "In this article",
+    updated: "Last reviewed:",
+    noResults: "No articles found. Try a different phrase.",
+    articles: "Help articles",
+    other: "Other",
+    notFound: "This article could not be found.",
+    backToApp: "Back to Monqom",
+  },
+} as const;
+
+export const plHelp = {
+  help: {
+    title: "Centrum pomocy",
+    transactionGuide: "Jak działają transakcje",
+    goalGuide: "Jak działają cele oszczędnościowe",
+    description: "Znajdź praktyczne poradniki korzystania z Monqom.",
+    searchPlaceholder: "Szukaj w centrum pomocy",
+    results: "Wyniki wyszukiwania",
+    contactLink: "Napisz do nas",
+    needHelp: "Potrzebujesz więcej pomocy?",
+    related: "Powiązane poradniki",
+    contents: "W tym artykule",
+    updated: "Ostatnio sprawdzono:",
+    noResults: "Nie znaleziono artykułów. Spróbuj innego hasła.",
+    articles: "Artykuły pomocy",
+    other: "Inne",
+    notFound: "Nie znaleziono tego artykułu.",
+    backToApp: "Wróć do Monqom",
+  },
+} as const;

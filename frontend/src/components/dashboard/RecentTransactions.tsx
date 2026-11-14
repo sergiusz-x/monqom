@@ -22,7 +22,7 @@ import { invalidateFinancialData } from "@/lib/query-invalidation";
 import type { Category } from "@/types/category";
 import type { Transaction } from "@/types/transaction";
 
-import { Button, EmptyState, SectionCard } from "@monqom/ui";
+import { EmptyState, SectionCard } from "@monqom/ui";
 
 interface RecentTransactionsProps {
   workspaceId: string;
@@ -183,33 +183,39 @@ export function RecentTransactions({
           <ul ref={listRef} className="space-y-2">
             {transactions.slice(0, visibleCount).map((transaction) => (
               <li key={transaction.id}>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2 hover:bg-muted/50">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-auto w-full min-w-0 justify-start p-0 text-left hover:bg-transparent"
-                    onClick={() => {
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setSelectedTransaction(transaction);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
                       setDeleteError(null);
                       setSelectedTransaction(transaction);
-                    }}
-                  >
-                    <span className="block w-full min-w-0">
-                      <span
-                        className="block truncate text-sm font-medium"
-                        title={transaction.description}
-                      >
-                        {transaction.description}
-                      </span>
-
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {formatShortDateWithWeekday(transaction.date)} &middot;{" "}
-                        <TransactionListCategory
-                          transaction={transaction}
-                          categories={listCategories}
-                        />
-                      </span>
+                    }
+                  }}
+                >
+                  <span className="block w-full min-w-0">
+                    <span
+                      className="block truncate text-sm font-medium"
+                      title={transaction.description}
+                    >
+                      {transaction.description}
                     </span>
-                  </Button>
+
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {formatShortDateWithWeekday(transaction.date)} &middot;{" "}
+                      <TransactionListCategory
+                        transaction={transaction}
+                        categories={listCategories}
+                      />
+                    </span>
+                  </span>
                   <SensitiveTransactionAmount
                     transaction={transaction}
                     categorySystemKeys={categorySystemKeyMap}

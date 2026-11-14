@@ -30,7 +30,7 @@ describe('EmailOutboxService', () => {
         const transaction = jest.fn().mockResolvedValue(undefined)
         const queryRaw = jest.fn()
         const prisma = {
-            emailOutbox: { create, update },
+            emailOutbox: { create, update, updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
             emailVerificationToken: { deleteMany: jest.fn() },
             passwordResetToken: { deleteMany: jest.fn() },
             $transaction: transaction,
@@ -77,7 +77,7 @@ describe('EmailOutboxService', () => {
         const update = jest.fn().mockResolvedValue(undefined)
         const queryRaw = jest.fn()
         const prisma = {
-            emailOutbox: { create, update },
+            emailOutbox: { create, update, updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
             emailVerificationToken: { deleteMany: jest.fn() },
             passwordResetToken: { deleteMany: jest.fn() },
             $transaction: jest.fn().mockResolvedValue(undefined),
@@ -113,6 +113,53 @@ describe('EmailOutboxService', () => {
                     attempts: 1,
                     lastError: 'provider unavailable',
                     lockedAt: null,
+                }),
+            }),
+        )
+    })
+
+    it('clears the payload on the last failed delivery attempt', async () => {
+        const create = jest.fn().mockResolvedValue(undefined)
+        const update = jest.fn().mockResolvedValue(undefined)
+        const prisma = {
+            emailOutbox: { create, update, updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+            emailVerificationToken: { deleteMany: jest.fn() },
+            passwordResetToken: { deleteMany: jest.fn() },
+            $transaction: jest.fn().mockResolvedValue(undefined),
+            $queryRaw: jest.fn(),
+        }
+        const service = new EmailOutboxService(
+            prisma as never,
+            { send: jest.fn().mockRejectedValue(new Error('provider unavailable')) } as never,
+            config,
+        )
+        await service.enqueue('verification', 'user@example.test', 'verification-token')
+        prisma.$queryRaw.mockResolvedValue([
+            {
+                id: 'expired-message',
+                kind: 'verification',
+                recipient: create.mock.calls[0][0].data.recipient,
+                encryptedPayload: create.mock.calls[0][0].data.encryptedPayload,
+                status: 'processing',
+                attempts: 6,
+                availableAt: new Date(),
+                lockedAt: new Date(),
+                sentAt: null,
+                lastError: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            } satisfies EmailOutbox,
+        ])
+
+        await service.processBatch()
+
+        expect(update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: 'expired-message' },
+                data: expect.objectContaining({
+                    status: 'failed',
+                    encryptedPayload: '',
+                    attempts: 7,
                 }),
             }),
         )

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useSalaryPrivacy } from "@/contexts/SalaryPrivacyContext";
 import { useCategories } from "@/hooks/useCategories";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { MonthlySpendingSummary } from "@/components/dashboard/MonthlySpendingSummary";
@@ -43,7 +44,8 @@ export default function DashboardPage() {
   } = useWorkspace();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const user = useOptionalAuth()?.user;
-  const privacyKey = `${user?.id ?? "anonymous"}:${user?.hideSalaryAmounts ? user.updatedAt : "disabled"}:${workspaceId ?? ""}`;
+  const { hideVersion } = useSalaryPrivacy();
+  const privacyKey = `${hideVersion}:${user?.id ?? "anonymous"}:${user?.hideSalaryAmounts ? user.updatedAt : "disabled"}:${workspaceId ?? ""}`;
   const [trendPrivacy, setTrendPrivacy] = useState({
     key: privacyKey,
     revealed: false,

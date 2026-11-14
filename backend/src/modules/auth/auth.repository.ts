@@ -16,6 +16,7 @@ import {
 } from '../../shared/audit/audit.types'
 import { PrismaService } from '../../shared/database/prisma.service'
 import { createOpaqueDigest } from '../../shared/security/opaque-digest'
+import { emailRecipientHash } from '../../shared/email/email-recipient'
 
 const POSTGRES_UNDEFINED_TABLE_ERROR_CODE = '42P01'
 const ACCOUNT_LOCKOUT_MS = 15 * 60 * 1000
@@ -419,6 +420,24 @@ export class AuthRepository {
     async deleteUserAccount(userId: string): Promise<void> {
         await this.prisma.$transaction(
             async (tx: Prisma.TransactionClient) => {
+                const user = await tx.user.findUniqueOrThrow({
+                    where: { id: userId },
+                    select: { email: true },
+                })
+                // Cancel unclaimed mail in the same transaction as deletion. A message
+                // already claimed by a worker may already be in transit.
+                await tx.emailOutbox.updateMany({
+                    where: {
+                        recipient: emailRecipientHash(user.email),
+                        status: { in: ['pending', 'failed'] },
+                    },
+                    data: {
+                        status: 'failed',
+                        encryptedPayload: '',
+                        lockedAt: null,
+                        lastError: null,
+                    },
+                })
                 const memberships = await tx.workspaceMembership.findMany({
                     where: { userId },
                     select: { workspaceId: true, role: true },
