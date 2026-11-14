@@ -12,7 +12,10 @@ const prisma = new PrismaClient({
 
 async function main() {
     const passwordHash = await argon2.hash('Screenshot-demo-2026!')
-    const now = new Date()
+    const currentDate = new Date()
+    // Keep screenshot data stable during each month and spread transactions
+    // across realistic dates in the first half of the month.
+    const now = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 14))
     for (const locale of ['en', 'pl'] as const) {
         const workspaceId = `screenshots-${locale}`
         // This seed runs only in the disposable screenshot database.
@@ -99,7 +102,9 @@ async function main() {
             [38000, 15500, 19500, 3999, 15800],
         ]
         for (let offset = 5; offset >= 0; offset--) {
-            const incomeDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() - offset, 1))
+            const incomeDate = new Date(
+                Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1),
+            )
             await prisma.transaction.create({
                 data: {
                     workspaceId,
@@ -116,9 +121,11 @@ async function main() {
             for (let i = 0; i < categories.length; i++) {
                 const date = new Date(
                     Date.UTC(
-                        now.getFullYear(),
-                        now.getMonth() - offset,
-                        Math.min(now.getDate(), 24) - i > 0 ? Math.min(now.getDate(), 24) - i : 1,
+                        now.getUTCFullYear(),
+                        now.getUTCMonth() - offset,
+                        Math.min(now.getUTCDate(), 24) - i > 0
+                            ? Math.min(now.getUTCDate(), 24) - i
+                            : 1,
                     ),
                 )
                 const amount = spendingByMonth[offset]![i]!
@@ -203,9 +210,9 @@ async function main() {
                         currency: 'PLN',
                         date: new Date(
                             Date.UTC(
-                                now.getFullYear(),
-                                now.getMonth() - offset,
-                                Math.min(now.getDate(), 12 - i * 3),
+                                now.getUTCFullYear(),
+                                now.getUTCMonth() - offset,
+                                Math.min(now.getUTCDate(), 12 - i * 3),
                             ),
                         ),
                         description: extraDescriptions[i]!,
@@ -222,7 +229,11 @@ async function main() {
                 baseAmount: 4890,
                 currency: 'PLN',
                 date: new Date(
-                    Date.UTC(now.getFullYear(), now.getMonth(), Math.min(now.getDate(), 15)),
+                    Date.UTC(
+                        now.getUTCFullYear(),
+                        now.getUTCMonth(),
+                        Math.min(now.getUTCDate(), 15),
+                    ),
                 ),
                 description: locale === 'pl' ? 'Kawa i śniadanie' : 'Coffee and breakfast',
             },
@@ -236,8 +247,8 @@ async function main() {
                     amount,
                     baseAmount: amount,
                     currency: 'PLN',
-                    year: now.getFullYear(),
-                    month: now.getMonth() + 1,
+                    year: now.getUTCFullYear(),
+                    month: now.getUTCMonth() + 1,
                 },
             })
         }
@@ -248,8 +259,8 @@ async function main() {
                 targetAmount: 1200000,
                 initialAmount: 840000,
                 currency: 'PLN',
-                planStartMonth: new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)),
-                targetDate: new Date(Date.UTC(now.getFullYear(), now.getMonth() + 12, 1)),
+                planStartMonth: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+                targetDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 12, 1)),
             },
         })
         await prisma.goal.create({
@@ -259,8 +270,8 @@ async function main() {
                 targetAmount: 600000,
                 initialAmount: 180000,
                 currency: 'PLN',
-                planStartMonth: new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)),
-                targetDate: new Date(Date.UTC(now.getFullYear(), now.getMonth() + 8, 1)),
+                planStartMonth: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+                targetDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 8, 1)),
             },
         })
     }

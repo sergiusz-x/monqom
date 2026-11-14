@@ -7,10 +7,18 @@ import {
   type User,
 } from "@/contexts/AuthContext";
 import { TransactionCards } from "@/components/transactions/TransactionCards";
+import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { SensitiveTransactionAmount } from "@/components/privacy/SensitiveTransactionAmount";
 import { SalaryPrivacyProvider } from "@/contexts/SalaryPrivacyContext";
 import { SALARY_CATEGORY_SYSTEM_KEY } from "@/lib/category-system-keys";
 import { formatCurrency } from "@/lib/money";
+import { renderWithQueryClient } from "@/test/query-test-utils";
+import { MemoryRouter } from "react-router";
+import type { Category } from "@/types/category";
+
+vi.mock("@/hooks/usePaymentSources", () => ({ usePaymentSources: vi.fn() }));
+
+import { usePaymentSources } from "@/hooks/usePaymentSources";
 
 const salaryTransaction = {
   id: "salary-1",
@@ -26,6 +34,16 @@ const salaryTransaction = {
   tags: [],
   createdAt: "2026-08-01T00:00:00.000Z",
   updatedAt: "2026-08-01T00:00:00.000Z",
+};
+
+const salaryCategory: Category = {
+  id: "salary-category",
+  name: "Salary",
+  systemKey: SALARY_CATEGORY_SYSTEM_KEY,
+  icon: null,
+  parentId: null,
+  sortOrder: 0,
+  children: [],
 };
 
 function renderAmount(
@@ -63,6 +81,52 @@ function renderAmount(
 }
 
 describe("SensitiveTransactionAmount", () => {
+  it("keeps the transaction and salary reveal controls as siblings", () => {
+    vi.mocked(usePaymentSources).mockReturnValue({
+      paymentSources: [],
+      isLoading: false,
+      error: null,
+      retry: vi.fn(),
+    });
+    const auth: AuthContextValue = {
+      user: {
+        id: "user-1",
+        email: "ada@example.com",
+        name: "Ada",
+        hideSalaryAmounts: true,
+        emailVerified: true,
+        totpEnabled: false,
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      },
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setUser: vi.fn(),
+    };
+
+    renderWithQueryClient(
+      <AuthContext.Provider value={auth}>
+        <MemoryRouter>
+          <RecentTransactions
+            workspaceId="workspace-1"
+            transactions={[salaryTransaction]}
+            categories={[salaryCategory]}
+            categoryHeight={0}
+          />
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    );
+
+    const rowButton = screen.getByRole("button", { name: /August salary/ });
+    const revealButton = screen.getByRole("button", {
+      name: "Reveal salary amount",
+    });
+
+    expect(rowButton).not.toContainElement(revealButton);
+    expect(revealButton.closest('[role="button"]')).toBeNull();
+  });
+
   it("provides separate keyboard controls for a salary card and its amount", async () => {
     const user = userEvent.setup();
     const onOpen = vi.fn();
