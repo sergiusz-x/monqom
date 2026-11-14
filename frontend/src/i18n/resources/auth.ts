@@ -13,6 +13,8 @@ export const enAuth = {
     forgotPassword: "Forgot password?",
     noAccount: "Don't have an account?",
     haveAccount: "Already have an account?",
+    privacyNotice: "Privacy notice",
+    terms: "Terms of service",
     checkEmail: "Check your email",
     forgotTitle: "Forgot password",
     forgotDescription:
@@ -93,6 +95,8 @@ export const plAuth = {
     forgotPassword: "Nie pamiętasz hasła?",
     noAccount: "Nie masz konta?",
     haveAccount: "Masz już konto?",
+    privacyNotice: "Polityka prywatności",
+    terms: "Regulamin",
     checkEmail: "Sprawdź skrzynkę e-mail",
     forgotTitle: "Nie pamiętasz hasła?",
     forgotDescription:

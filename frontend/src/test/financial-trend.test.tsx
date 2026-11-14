@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthContext, type AuthContextValue } from "@/contexts/AuthContext";
 import { FinancialTrend } from "@/components/dashboard/FinancialTrend";
@@ -63,7 +63,31 @@ describe("FinancialTrend", () => {
       screen.getByRole("button", { name: "January 2026" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "January 2026" }));
-    expect(screen.getByText(/January 2026/)).toBeInTheDocument();
+    expect(screen.getAllByText(/January 2026/).length).toBeGreaterThan(0);
+  });
+
+  it("shows month values on point hover and keyboard focus", async () => {
+    const user = userEvent.setup();
+    const { container } = renderTrend(false);
+    const point = container.querySelector<HTMLElement>(
+      'span[aria-hidden="true"][style*="left:"]',
+    );
+    expect(point).not.toBeNull();
+    await user.hover(point!);
+    expect(
+      within(screen.getByRole("tooltip")).getByText("$1,000.00"),
+    ).toBeInTheDocument();
+    await user.unhover(point!);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    const month = screen.getByRole("button", { name: "September 2026" });
+    fireEvent.focus(month);
+    expect(month).toHaveAccessibleDescription(/Income.*\$1,000\.00/);
+    expect(
+      within(screen.getByRole("tooltip")).getByText("$600.00"),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(month, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
   it("tracks the selected dashboard month and rounds the axis up", () => {
     const data = trend.map((item) => ({

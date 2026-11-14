@@ -298,6 +298,8 @@ export const enSettings = {
     saveError: "Failed to save the privacy preference",
     salaryAmountHidden: "Salary amount hidden",
     revealSalaryAmount: "Reveal salary amount",
+    revealAllSensitiveAmounts: "Temporarily show all sensitive amounts",
+    hideAllSensitiveAmounts: "Hide sensitive amounts again",
   },
 } as const;
 
@@ -604,5 +606,7 @@ export const plSettings = {
     saveError: "Nie udało się zapisać preferencji prywatności",
     salaryAmountHidden: "Kwota pensji jest ukryta",
     revealSalaryAmount: "Pokaż kwotę pensji",
+    revealAllSensitiveAmounts: "Tymczasowo pokaż wszystkie wrażliwe kwoty",
+    hideAllSensitiveAmounts: "Ponownie ukryj wrażliwe kwoty",
   },
 } as const satisfies TranslationShape<typeof enSettings>;

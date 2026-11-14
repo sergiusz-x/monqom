@@ -5,6 +5,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  cacheDir: process.env.VITE_CACHE_DIR ?? "node_modules/.vite",
   test: {
     include: ["src/test/**/*.{test,spec}.{ts,tsx}"],
     environment: "jsdom",
@@ -64,6 +65,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: process.env.SCREENSHOT_MODE === "true" ? ["frontend"] : [],
     proxy: {
       "/api": {
         target: process.env.VITE_API_TARGET ?? "http://localhost:3000",

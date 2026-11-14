@@ -41,6 +41,20 @@ describe('DashboardService', () => {
 
     afterEach(() => jest.useRealTimers())
 
+    it('loads financial history ending at an older selected month', async () => {
+        dashboardRepository.listMonthlySpendForRange.mockResolvedValue([])
+        dashboardRepository.listCategorySpendForRange.mockResolvedValue([])
+        dashboardRepository.getTotalIncomeForRange.mockResolvedValue(0)
+        transactionsRepository.listTransactions.mockResolvedValue([])
+        const result = await service.getOverview({ month: '2024-02' }, 'workspace-1')
+        expect(dashboardRepository.listMonthlyFinancialsForRange).toHaveBeenCalledWith(
+            'workspace-1',
+            new Date('2023-03-01T00:00:00.000Z'),
+            new Date('2024-03-01T00:00:00.000Z'),
+        )
+        expect(result.financial_trend.at(-1)?.month).toBe('2024-02')
+    })
+
     it('returns current and previous month spending totals with change metadata', async () => {
         dashboardRepository.getTotalSpendForRange
             .mockResolvedValueOnce(62599)
